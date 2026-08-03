@@ -2,6 +2,36 @@ import { z } from 'zod'
 import { parseCongestionLevel } from '../domain/congestion'
 import type { AreaSnapshot, CongestionLevel, Forecast } from '../domain/types'
 
+/** 요청한 명소와 응답에 담긴 명소가 다를 때. `sample` 인증키는 지역명과 무관하게
+ * 항상 광화문·덕수궁을 돌려주므로, 이 대조가 없으면 아무도 모르게 엉뚱한 데이터가 흐른다. */
+export class AreaNameMismatchError extends Error {
+  readonly requested: string
+  readonly received: readonly string[]
+
+  constructor(requested: string, received: readonly string[]) {
+    super(
+      `요청한 명소(${requested})가 응답에 없습니다. 받은 명소: ${
+        received.length > 0 ? received.join(', ') : '(없음)'
+      }`,
+    )
+    this.name = 'AreaNameMismatchError'
+    this.requested = requested
+    this.received = received
+  }
+}
+
+/** 서울 API가 데이터 대신 `RESULT` 봉투로 에러를 돌려줄 때 (예: 오타 난 명소, 서비스 장애).
+ * 이 정보를 버리지 않고 그대로 전달해야 오타 진단이 가능하다. */
+export class SeoulApiError extends Error {
+  readonly code: string
+
+  constructor(code: string, message: string) {
+    super(`서울 API 오류 (${code}): ${message}`)
+    this.name = 'SeoulApiError'
+    this.code = code
+  }
+}
+
 // `code: 'custom'`은 zod v3·v4 양쪽에서 동작한다.
 // v3의 `z.ZodIssueCode.custom`은 v4에서 제거됐으므로 문자열 리터럴을 쓴다.
 const congestionSchema = z.string().transform((value, ctx): CongestionLevel => {
@@ -13,71 +43,120 @@ const congestionSchema = z.string().transform((value, ctx): CongestionLevel => {
   return level
 })
 
-const numericSchema = z.string().transform((value, ctx): number => {
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed)) {
-    ctx.addIssue({ code: 'custom', message: `숫자가 아닌 값: ${value}` })
+// 인구는 음수도 소수도 없다. 자릿수 문자만 허용해 `''`(→ Number('')는 0), `-500`, `0x1f`,
+// `1e5`가 그럴듯한 숫자로 통과하는 걸 막는다.
+const numericSchema = z
+  .string()
+  .regex(/^\d+$/, '숫자가 아닌 값')
+  .transform(Number)
+
+interface ParsedTime {
+  readonly raw: string
+  /** 0~23 */
+  readonly hour: number
+  /** "HH:MM" */
+  readonly label: string
+}
+
+// 서울 API는 "2026-08-03 16:00" 형식을 준다. ISO가 아니고 타임존도 없다.
+// 이 형식에 대한 의존을 여기 zod 파이프라인 한 곳에 가둔다 — 시각 파싱 실패도
+// 다른 필드처럼 하나의 ZodError 경로로 나가야 호출부가 분기하기 쉽다.
+// 시(hour)는 00~23으로 범위를 좁힌다 — 느슨한 `\d{2}`였다면 "99:99"도 통과해
+// 화면에 "99시엔 여유 예상"이 뜨고 차트 축이 깨진다. 분(minute)도 00~59로 좁힌다.
+const TIME_PATTERN = /^\d{4}-\d{2}-\d{2} ((?:[01]\d|2[0-3]):[0-5]\d)$/
+
+const timeSchema = z.string().transform((value, ctx): ParsedTime => {
+  const matched = value.match(TIME_PATTERN)
+  if (matched === null) {
+    ctx.addIssue({ code: 'custom', message: `예상치 못한 시각 형식: ${value}` })
     return z.NEVER
   }
-  return parsed
+  const label = matched[1]
+  return { raw: value, hour: Number(label.slice(0, 2)), label }
 })
 
-const forecastSchema = z.object({
-  FCST_TIME: z.string(),
-  FCST_CONGEST_LVL: congestionSchema,
-  FCST_PPLTN_MIN: numericSchema,
-  FCST_PPLTN_MAX: numericSchema,
-})
+const forecastSchema = z
+  .object({
+    FCST_TIME: timeSchema,
+    FCST_CONGEST_LVL: congestionSchema,
+    FCST_PPLTN_MIN: numericSchema,
+    FCST_PPLTN_MAX: numericSchema,
+  })
+  .refine((value) => value.FCST_PPLTN_MIN <= value.FCST_PPLTN_MAX, {
+    message: '최소 인구가 최대 인구보다 큽니다',
+    path: ['FCST_PPLTN_MAX'],
+  })
 
-const areaSchema = z.object({
-  AREA_NM: z.string(),
-  AREA_CD: z.string(),
-  AREA_CONGEST_LVL: congestionSchema,
-  AREA_CONGEST_MSG: z.string(),
-  AREA_PPLTN_MIN: numericSchema,
-  AREA_PPLTN_MAX: numericSchema,
-  PPLTN_TIME: z.string(),
-  FCST_PPLTN: z.array(forecastSchema).nullish(),
-})
+const areaSchema = z
+  .object({
+    AREA_NM: z.string(),
+    AREA_CD: z.string(),
+    AREA_CONGEST_LVL: congestionSchema,
+    AREA_CONGEST_MSG: z.string(),
+    AREA_PPLTN_MIN: numericSchema,
+    AREA_PPLTN_MAX: numericSchema,
+    PPLTN_TIME: timeSchema,
+    FCST_PPLTN: z.array(forecastSchema).nullish(),
+  })
+  .refine((value) => value.AREA_PPLTN_MIN <= value.AREA_PPLTN_MAX, {
+    message: '최소 인구가 최대 인구보다 큽니다',
+    path: ['AREA_PPLTN_MAX'],
+  })
 
 const responseSchema = z.object({
   'SeoulRtd.citydata_ppltn': z.array(areaSchema).min(1),
 })
 
-// 서울 API는 "2026-08-03 16:00" 형식을 준다. ISO가 아니고 타임존도 없다.
-// 이 형식에 대한 의존을 여기 한 곳에 가두고, 바깥에는 파싱된 hour를 넘긴다.
-const TIME_PATTERN = /^\d{4}-\d{2}-\d{2} (\d{2}):\d{2}$/
-
-function parseHour(raw: string): number {
-  const matched = raw.match(TIME_PATTERN)
-  if (matched === null) {
-    throw new Error(`예상치 못한 시각 형식: ${raw}`)
-  }
-  return Number(matched[1])
-}
+// 서울 API가 데이터 대신 에러를 돌려줄 때의 봉투. 성공 응답에도 부수적으로
+// `RESULT`가 실려 있을 수 있으므로, 이 스키마는 `responseSchema` 파싱이 실패했을 때만
+// 진단용으로 시도한다 — 그래야 성공 응답을 오탐하지 않는다.
+const errorEnvelopeSchema = z.object({
+  RESULT: z.object({
+    'RESULT.CODE': z.string(),
+    'RESULT.MESSAGE': z.string(),
+  }),
+})
 
 function toForecast(raw: z.infer<typeof forecastSchema>): Forecast {
   return {
-    time: raw.FCST_TIME,
-    hour: parseHour(raw.FCST_TIME),
+    time: raw.FCST_TIME.raw,
+    hour: raw.FCST_TIME.hour,
     congestion: raw.FCST_CONGEST_LVL,
     populationMin: raw.FCST_PPLTN_MIN,
     populationMax: raw.FCST_PPLTN_MAX,
   }
 }
 
-export function parseCitydataResponse(payload: unknown): AreaSnapshot {
-  const parsed = responseSchema.parse(payload)
-  const area = parsed['SeoulRtd.citydata_ppltn'][0]
+export function parseCitydataResponse(payload: unknown, expectedName: string): AreaSnapshot {
+  const result = responseSchema.safeParse(payload)
+  if (!result.success) {
+    const envelope = errorEnvelopeSchema.safeParse(payload)
+    if (envelope.success) {
+      throw new SeoulApiError(envelope.data.RESULT['RESULT.CODE'], envelope.data.RESULT['RESULT.MESSAGE'])
+    }
+    throw result.error
+  }
+
+  const areas = result.data['SeoulRtd.citydata_ppltn']
+  const area = areas.find((entry) => entry.AREA_NM === expectedName)
+  if (area === undefined) {
+    throw new AreaNameMismatchError(
+      expectedName,
+      areas.map((entry) => entry.AREA_NM),
+    )
+  }
 
   return {
     code: area.AREA_CD,
-    name: area.AREA_NM,
+    // 표시용 이름은 카탈로그 값(expectedName)이 권위다. 응답의 AREA_NM은 대조에만 쓴다 —
+    // 위에서 이미 일치를 확인했으므로 문자열은 같지만, 신뢰 소스는 카탈로그 쪽으로 고정한다.
+    name: expectedName,
     congestion: area.AREA_CONGEST_LVL,
     message: area.AREA_CONGEST_MSG,
     populationMin: area.AREA_PPLTN_MIN,
     populationMax: area.AREA_PPLTN_MAX,
-    observedAt: area.PPLTN_TIME,
+    observedAt: area.PPLTN_TIME.raw,
+    observedAtLabel: area.PPLTN_TIME.label,
     forecasts: (area.FCST_PPLTN ?? []).map(toForecast),
   }
 }

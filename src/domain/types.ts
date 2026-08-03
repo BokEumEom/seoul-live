@@ -32,7 +32,10 @@ export interface AreaSnapshot {
   readonly message: string
   readonly populationMin: number
   readonly populationMax: number
+  /** 서울 API 원본 형식. `"2026-08-03 14:35"` — ISO 아님, 타임존 없음 */
   readonly observedAt: string
+  /** `observedAt`에서 뽑은 "HH:MM". 화면이 원본 형식을 파싱하지 않게 하려는 것 */
+  readonly observedAtLabel: string
   readonly forecasts: readonly Forecast[]
 }
 

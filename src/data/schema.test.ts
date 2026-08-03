@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseCitydataResponse } from './schema'
+import { z } from 'zod'
+import { AreaNameMismatchError, parseCitydataResponse, SeoulApiError } from './schema'
 
 const VALID = {
   'SeoulRtd.citydata_ppltn': [
@@ -24,9 +25,11 @@ const VALID = {
   ],
 }
 
+const NAME = '광화문·덕수궁'
+
 describe('parseCitydataResponse', () => {
   it('정상 응답을 도메인 모델로 바꾼다', () => {
-    const snapshot = parseCitydataResponse(VALID)
+    const snapshot = parseCitydataResponse(VALID, NAME)
     expect(snapshot.name).toBe('광화문·덕수궁')
     expect(snapshot.code).toBe('POI009')
     expect(snapshot.congestion).toBe('보통')
@@ -39,7 +42,7 @@ describe('parseCitydataResponse', () => {
   })
 
   it('예측 시각에서 hour를 뽑는다', () => {
-    const snapshot = parseCitydataResponse(VALID)
+    const snapshot = parseCitydataResponse(VALID, NAME)
     expect(snapshot.forecasts[0].hour).toBe(16)
     expect(snapshot.forecasts[0].time).toBe('2026-08-03 16:00')
   })
@@ -60,10 +63,10 @@ describe('parseCitydataResponse', () => {
         },
       ],
     }
-    expect(parseCitydataResponse(midnight).forecasts[0].hour).toBe(0)
+    expect(parseCitydataResponse(midnight, NAME).forecasts[0].hour).toBe(0)
   })
 
-  it('예측 시각 형식이 다르면 던진다', () => {
+  it('예측 시각 형식이 다르면 ZodError를 던진다', () => {
     const badTime = {
       'SeoulRtd.citydata_ppltn': [
         {
@@ -79,7 +82,26 @@ describe('parseCitydataResponse', () => {
         },
       ],
     }
-    expect(() => parseCitydataResponse(badTime)).toThrow()
+    expect(() => parseCitydataResponse(badTime, NAME)).toThrow(z.ZodError)
+  })
+
+  it('시(hour)가 0~23 범위를 벗어나면 ZodError를 던진다', () => {
+    const badHour = {
+      'SeoulRtd.citydata_ppltn': [
+        {
+          ...VALID['SeoulRtd.citydata_ppltn'][0],
+          FCST_PPLTN: [
+            {
+              FCST_TIME: '2026-08-04 99:99',
+              FCST_CONGEST_LVL: '여유',
+              FCST_PPLTN_MIN: '100',
+              FCST_PPLTN_MAX: '200',
+            },
+          ],
+        },
+      ],
+    }
+    expect(() => parseCitydataResponse(badHour, NAME)).toThrow(z.ZodError)
   })
 
   it('예측이 없어도 빈 배열로 처리한다', () => {
@@ -88,32 +110,100 @@ describe('parseCitydataResponse', () => {
         { ...VALID['SeoulRtd.citydata_ppltn'][0], FCST_YN: 'N', FCST_PPLTN: null },
       ],
     }
-    expect(parseCitydataResponse(withoutForecast).forecasts).toEqual([])
+    expect(parseCitydataResponse(withoutForecast, NAME).forecasts).toEqual([])
   })
 
-  it('모르는 혼잡도 값이 오면 던진다', () => {
+  it('모르는 혼잡도 값이 오면 ZodError를 던진다', () => {
     const badLevel = {
       'SeoulRtd.citydata_ppltn': [
         { ...VALID['SeoulRtd.citydata_ppltn'][0], AREA_CONGEST_LVL: '초혼잡' },
       ],
     }
-    expect(() => parseCitydataResponse(badLevel)).toThrow()
+    expect(() => parseCitydataResponse(badLevel, NAME)).toThrow(z.ZodError)
   })
 
-  it('숫자가 아닌 인구값이 오면 던진다', () => {
+  it('숫자가 아닌 인구값이 오면 ZodError를 던진다', () => {
     const badNumber = {
       'SeoulRtd.citydata_ppltn': [
         { ...VALID['SeoulRtd.citydata_ppltn'][0], AREA_PPLTN_MIN: '알수없음' },
       ],
     }
-    expect(() => parseCitydataResponse(badNumber)).toThrow()
+    expect(() => parseCitydataResponse(badNumber, NAME)).toThrow(z.ZodError)
   })
 
-  it('빈 배열이면 던진다', () => {
-    expect(() => parseCitydataResponse({ 'SeoulRtd.citydata_ppltn': [] })).toThrow()
+  it('빈 문자열 인구값은 0으로 통과시키지 않고 ZodError를 던진다', () => {
+    const emptyNumber = {
+      'SeoulRtd.citydata_ppltn': [{ ...VALID['SeoulRtd.citydata_ppltn'][0], AREA_PPLTN_MIN: '' }],
+    }
+    expect(() => parseCitydataResponse(emptyNumber, NAME)).toThrow(z.ZodError)
+  })
+
+  it('음수·소수·16진수·지수 인구값은 ZodError를 던진다', () => {
+    for (const bad of ['-500', '42000.5', '0x1f', '1e5']) {
+      const badNumber = {
+        'SeoulRtd.citydata_ppltn': [
+          { ...VALID['SeoulRtd.citydata_ppltn'][0], AREA_PPLTN_MIN: bad },
+        ],
+      }
+      expect(() => parseCitydataResponse(badNumber, NAME)).toThrow(z.ZodError)
+    }
+  })
+
+  it('최소 인구가 최대 인구보다 크면 ZodError를 던진다', () => {
+    const inverted = {
+      'SeoulRtd.citydata_ppltn': [
+        {
+          ...VALID['SeoulRtd.citydata_ppltn'][0],
+          AREA_PPLTN_MIN: '50000',
+          AREA_PPLTN_MAX: '40000',
+        },
+      ],
+    }
+    expect(() => parseCitydataResponse(inverted, NAME)).toThrow(z.ZodError)
+  })
+
+  it('빈 배열이면 ZodError를 던진다', () => {
+    expect(() => parseCitydataResponse({ 'SeoulRtd.citydata_ppltn': [] }, NAME)).toThrow(
+      z.ZodError,
+    )
   })
 
   it('형태가 아예 다르면 던진다', () => {
-    expect(() => parseCitydataResponse({ RESULT: { CODE: 'ERROR-500' } })).toThrow()
+    expect(() => parseCitydataResponse({ RESULT: { CODE: 'ERROR-500' } }, NAME)).toThrow()
+  })
+
+  it('마지막 업데이트 시각을 "HH:MM" 라벨로도 노출한다', () => {
+    const snapshot = parseCitydataResponse(VALID, NAME)
+    expect(snapshot.observedAtLabel).toBe('14:35')
+  })
+
+  it('요청한 명소와 응답 명소가 다르면 AreaNameMismatchError를 던진다', () => {
+    // sample 인증키는 지역명과 무관하게 항상 광화문·덕수궁을 돌려준다 — 이 시나리오를 재현한다.
+    expect(() => parseCitydataResponse(VALID, '강남역')).toThrow(AreaNameMismatchError)
+    try {
+      parseCitydataResponse(VALID, '강남역')
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect(error).toBeInstanceOf(AreaNameMismatchError)
+      const mismatch = error as AreaNameMismatchError
+      expect(mismatch.requested).toBe('강남역')
+      expect(mismatch.received).toEqual(['광화문·덕수궁'])
+    }
+  })
+
+  it('서울 API의 RESULT 에러 봉투를 SeoulApiError로 바꾼다', () => {
+    const errorEnvelope = {
+      RESULT: { 'RESULT.CODE': 'INFO-200', 'RESULT.MESSAGE': '해당하는 데이터가 없습니다.' },
+    }
+    expect(() => parseCitydataResponse(errorEnvelope, NAME)).toThrow(SeoulApiError)
+    try {
+      parseCitydataResponse(errorEnvelope, NAME)
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect(error).toBeInstanceOf(SeoulApiError)
+      const apiError = error as SeoulApiError
+      expect(apiError.code).toBe('INFO-200')
+      expect(apiError.message).toContain('해당하는 데이터가 없습니다.')
+    }
   })
 })
