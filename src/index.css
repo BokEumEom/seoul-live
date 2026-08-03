@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* stitch_ui는 디자인 시안 HTML이라 앱 번들과 무관하다.
+   스캔 대상에서 빼지 않으면 쓰지 않는 유틸리티가 CSS에 섞인다. */
+@source not "../stitch_ui";
+
 @theme {
   --color-primary: #004ac6;
   --color-on-primary: #ffffff;
