@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AreaCategory } from '../domain/types'
 import { AREA_CATALOG, findAreaByName } from './areas'
+import { OFFICIAL_AREA_NAMES } from './official-areas'
 
 const ALL_CATEGORIES: readonly AreaCategory[] = ['공원', '쇼핑몰', '카페', '문화재', '기타']
 
@@ -38,10 +39,20 @@ describe('AREA_CATALOG', () => {
     }
   })
 
-  // 인증키 발급 후 반드시 실행할 것: areas.ts의 name(=AREA_NM)이 실제 서울 열린데이터광장
-  // 응답과 일치하는지 30곳 전부 대조한다. 지금은 검증할 방법이 없어 todo로 남겨
-  // 테스트를 돌릴 때마다 눈에 띄게 한다.
-  it.todo('30개 이름을 실제 API 응답과 대조한다')
+  it('모든 명소 이름이 공식 121곳 목록에 있다', () => {
+    // name이 곧 API 호출 키(AREA_NM)다. 목록에 없는 이름은 그 명소만 조용히 실패한다.
+    const official = new Set(OFFICIAL_AREA_NAMES)
+    const unknown = AREA_CATALOG.map((area) => area.name).filter(
+      (name) => !official.has(name),
+    )
+    expect(unknown).toEqual([])
+  })
+
+  // 위 테스트는 "공식 목록에 있는 이름인가"까지만 보장한다. 공백까지 정확한지는 별개다.
+  // 매뉴얼 PDF에서 목록을 뽑았는데 텍스트 추출이 공백을 임의로 넣는다
+  // ("광장( 전통) 시장", "홍대입구역(2 호선)"). 괄호 주변 공백을 지워 정규화했지만
+  // 실제 API가 받는 형태와 같은지는 호출해봐야 안다.
+  it.todo('인증키 발급 후 30곳을 실제 호출해 공백까지 일치하는지 확인한다')
 })
 
 describe('findAreaByName', () => {
