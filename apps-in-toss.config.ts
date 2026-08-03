@@ -3,8 +3,8 @@ import { defineConfig } from "@apps-in-toss/web-framework/config";
 export default defineConfig({
   appName: "seoul-live",
   brand: {
-    primaryColor: "#3FD599",
+    primaryColor: "#004ac6",
   },
-  permissions: [],
+  permissions: [{ name: "geolocation", access: "access" }],
   webBundleDir: "dist",
 });
