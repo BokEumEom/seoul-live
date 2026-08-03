@@ -12,7 +12,7 @@
 ## 진행률 — 20개 태스크 중 9개 완료
 
 | # | 태스크 | 상태 |
-|---|---|---|
+| --- | --- | --- |
 | T1 | 의존성·Vitest 환경 | 완료 |
 | T2 | Tailwind v4·디자인 토큰 | 완료 |
 | T3 | 앱인토스 권한 설정 | 완료 |
@@ -38,7 +38,7 @@
 
 ## 지금 있는 것
 
-```
+```text
 src/domain/     types.ts, congestion.ts, distance.ts   (순수 함수, React 모름)
 src/data/       areas.ts, schema.ts, mock.ts
 ```
@@ -60,9 +60,11 @@ src/data/       areas.ts, schema.ts, mock.ts
 ## 인증키가 나오면 제일 먼저 할 것
 
 1. **일괄 조회 되는지 확인**
+
    ```bash
    curl "http://openapi.seoul.go.kr:8088/{KEY}/json/citydata_ppltn/1/100/%20"
    ```
+
    전체 명소가 한 번에 오면 호출량이 명소 수와 무관해져 **쿼터 문제가 통째로 사라진다.** 그러면 `api/citydata-bulk.ts`를 단일 호출로 바꾼다.
 
 2. **`src/data/areas.ts`의 30개 이름 검증** — 하나씩 실제 호출해 확인한다. 오타가 있으면 그 명소만 조용히 실패한다. `areas.test.ts`에 `it.todo`로 남겨뒀다.
@@ -74,7 +76,7 @@ src/data/       areas.ts, schema.ts, mock.ts
 계획서에 있던 결함들이다. 같은 실수를 반복하지 않으려고 남긴다.
 
 | 문제 | 영향 | 처리 |
-|---|---|---|
+| --- | --- | --- |
 | Tailwind가 `stitch_ui/` 시안까지 스캔 | CSS 39.5KB → 쓰지 않는 유틸리티 포함 | `@source not`으로 제외, 13.9KB로 감소 |
 | `formatDistance` 경계 버그 | 997m가 "1000m", 1000m가 "1.0km" | 반올림을 분기 앞으로 |
 | `isCalm` 이름 모순 | `isCalm('보통')`은 true인데 `congestionTone('보통')`은 'normal' | `isUncrowded`로 개명 |
@@ -93,7 +95,7 @@ src/data/       areas.ts, schema.ts, mock.ts
 ## 1차에서 의도적으로 뺀 것
 
 | 항목 | 이유 |
-|---|---|
+| --- | --- |
 | 지도 화면 | 카카오/네이버 지도 키 발급과 도메인 등록이 선행돼야 함 |
 | 도시정보(더보기) 화면 | 주차·따릉이·도로소통·문화행사·재난문자 등 API 5종 추가 필요 |
 | 요일×시간 히트맵 | 서울 API는 현재와 예측만 준다. 과거 데이터 누적용 저장소 필요 |

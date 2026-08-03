@@ -19,7 +19,7 @@ npm run dev
 ## 명령어
 
 | 명령 | 설명 |
-|---|---|
+| --- | --- |
 | `npm run dev` | 개발 서버 |
 | `npm test` | 테스트 1회 실행 |
 | `npm run test:watch` | 테스트 감시 모드 |
@@ -63,7 +63,7 @@ api/              Vercel Function — 서울 API HTTPS 중계와 캐시
 ## 문서
 
 | 문서 | 내용 |
-|---|---|
+| --- | --- |
 | [AGENTS.md](./AGENTS.md) | 개발 규칙, 아키텍처 제약 — 코드 고치기 전에 읽을 것 |
 | [STATE.md](./STATE.md) | 현재 진행 상황, 다음 할 일 |
 | [PLAN.md](./PLAN.md) | 제품 방향, 차수별 기능 |
