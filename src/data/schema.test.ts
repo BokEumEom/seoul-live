@@ -168,8 +168,12 @@ describe('parseCitydataResponse', () => {
     )
   })
 
-  it('형태가 아예 다르면 던진다', () => {
-    expect(() => parseCitydataResponse({ RESULT: { CODE: 'ERROR-500' } }, NAME)).toThrow()
+  it('형태가 아예 다르면 ZodError를 던진다', () => {
+    // 'RESULT.CODE'/'RESULT.MESSAGE' 키가 아니므로 SeoulApiError 봉투로도 인식되지
+    // 않고, 일반 ZodError로 떨어진다.
+    expect(() => parseCitydataResponse({ RESULT: { CODE: 'ERROR-500' } }, NAME)).toThrow(
+      z.ZodError,
+    )
   })
 
   it('마지막 업데이트 시각을 "HH:MM" 라벨로도 노출한다', () => {
