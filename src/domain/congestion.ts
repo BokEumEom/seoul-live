@@ -22,6 +22,7 @@ export function congestionTone(level: CongestionLevel): CongestionTone {
   return TONE_BY_LEVEL[level]
 }
 
-export function isCalm(level: CongestionLevel): boolean {
+/** 여유·보통을 한산한 것으로 본다. `congestionTone`의 'calm'보다 넓은 범위다. */
+export function isUncrowded(level: CongestionLevel): boolean {
   return congestionRank(level) <= congestionRank('보통')
 }

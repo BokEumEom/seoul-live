@@ -9,10 +9,8 @@ describe('haversineMeters', () => {
     expect(haversineMeters(CITY_HALL, CITY_HALL)).toBe(0)
   })
 
-  it('서울시청-강남역은 약 8.7km다', () => {
-    const meters = haversineMeters(CITY_HALL, GANGNAM)
-    expect(meters).toBeGreaterThan(8300)
-    expect(meters).toBeLessThan(9100)
+  it('서울시청-강남역은 약 8.78km다', () => {
+    expect(haversineMeters(CITY_HALL, GANGNAM)).toBeCloseTo(8783, -1)
   })
 
   it('방향이 바뀌어도 거리는 같다', () => {
@@ -33,6 +31,12 @@ describe('formatDistance', () => {
     expect(formatDistance(1200)).toBe('1.2km')
     expect(formatDistance(8700)).toBe('8.7km')
   })
+
+  it('반올림이 1km를 넘기면 km로 표시한다', () => {
+    expect(formatDistance(997)).toBe('1.0km')
+    expect(formatDistance(994)).toBe('990m')
+    expect(formatDistance(1000)).toBe('1.0km')
+  })
 })
 
 describe('walkingMinutes', () => {
@@ -43,5 +47,9 @@ describe('walkingMinutes', () => {
 
   it('최소 1분은 보장한다', () => {
     expect(walkingMinutes(10)).toBe(1)
+  })
+
+  it('0m도 최소 1분으로 본다', () => {
+    expect(walkingMinutes(0)).toBe(1)
   })
 })

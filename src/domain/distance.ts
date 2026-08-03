@@ -21,10 +21,13 @@ export function haversineMeters(from: Coords, to: Coords): number {
 }
 
 export function formatDistance(meters: number): string {
-  if (meters < 1000) {
-    return `${Math.round(meters / 10) * 10}m`
+  // 10m 단위로 먼저 반올림한 뒤 분기한다.
+  // 분기를 먼저 하면 997m가 "1000m"으로 나온다.
+  const rounded = Math.round(meters / 10) * 10
+  if (rounded < 1000) {
+    return `${rounded}m`
   }
-  return `${(meters / 1000).toFixed(1)}km`
+  return `${(rounded / 1000).toFixed(1)}km`
 }
 
 export function walkingMinutes(meters: number): number {

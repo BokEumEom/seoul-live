@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   congestionRank,
   congestionTone,
-  isCalm,
+  isUncrowded,
   parseCongestionLevel,
 } from './congestion'
 
@@ -33,7 +33,7 @@ describe('congestionRank', () => {
   })
 
   it('정렬에 쓸 수 있다', () => {
-    const sorted = ['붐빔' as const, '여유' as const, '보통' as const].sort(
+    const sorted = ['붐빔' as const, '여유' as const, '보통' as const].toSorted(
       (a, b) => congestionRank(a) - congestionRank(b),
     )
     expect(sorted).toEqual(['여유', '보통', '붐빔'])
@@ -49,11 +49,11 @@ describe('congestionTone', () => {
   })
 })
 
-describe('isCalm', () => {
+describe('isUncrowded', () => {
   it('여유와 보통만 한산한 것으로 본다', () => {
-    expect(isCalm('여유')).toBe(true)
-    expect(isCalm('보통')).toBe(true)
-    expect(isCalm('약간 붐빔')).toBe(false)
-    expect(isCalm('붐빔')).toBe(false)
+    expect(isUncrowded('여유')).toBe(true)
+    expect(isUncrowded('보통')).toBe(true)
+    expect(isUncrowded('약간 붐빔')).toBe(false)
+    expect(isUncrowded('붐빔')).toBe(false)
   })
 })
