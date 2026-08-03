@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Seoul Live - 내 주변</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#943700",
+                    "on-tertiary-fixed": "#360f00",
+                    "on-primary-fixed": "#00174b",
+                    "on-secondary": "#ffffff",
+                    "on-surface-variant": "#434655",
+                    "secondary": "#545f73",
+                    "surface-container": "#ededf9",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "surface-container-low": "#f3f3fe",
+                    "inverse-surface": "#2e3039",
+                    "primary-fixed": "#dbe1ff",
+                    "surface-bright": "#faf8ff",
+                    "primary": "#004ac6",
+                    "on-secondary-container": "#586377",
+                    "inverse-primary": "#b4c5ff",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-container": "#d5e0f8",
+                    "outline-variant": "#c3c6d7",
+                    "surface-tint": "#0053db",
+                    "background": "#faf8ff",
+                    "on-primary-container": "#eeefff",
+                    "surface-dim": "#d9d9e5",
+                    "secondary-fixed": "#d8e3fb",
+                    "surface": "#faf8ff",
+                    "tertiary-fixed": "#ffdbcd",
+                    "surface-variant": "#e1e2ed",
+                    "on-tertiary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-tertiary-container": "#ffede6",
+                    "primary-container": "#2563eb",
+                    "surface-container-high": "#e7e7f3",
+                    "on-tertiary-fixed-variant": "#7d2d00",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "tertiary-fixed-dim": "#ffb596",
+                    "on-primary": "#ffffff",
+                    "on-surface": "#191b23",
+                    "error-container": "#ffdad6",
+                    "on-secondary-fixed": "#111c2d",
+                    "tertiary-container": "#bc4800",
+                    "inverse-on-surface": "#f0f0fb",
+                    "on-secondary-fixed-variant": "#3c475a",
+                    "secondary-fixed-dim": "#bcc7de",
+                    "surface-container-highest": "#e1e2ed",
+                    "on-background": "#191b23",
+                    "outline": "#737686",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-gap": "12px",
+                    "card-padding": "16px",
+                    "unit": "4px",
+                    "container-padding": "16px",
+                    "gutter": "12px"
+            },
+            "fontFamily": {
+                    "body-md": ["Hanken Grotesk"],
+                    "headline-sm": ["Hanken Grotesk"],
+                    "headline-md-mobile": ["Hanken Grotesk"],
+                    "display-lg": ["Hanken Grotesk"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "label-md": ["Hanken Grotesk"],
+                    "label-sm": ["Hanken Grotesk"],
+                    "body-lg": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-md-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; background-color: #faf8ff; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl sticky top-0 z-50 flex justify-between items-center px-container-padding h-14 w-full border-b border-outline-variant dark:border-outline">
+<button class="flex items-center justify-center w-10 h-10 hover:bg-surface-container-high/50 transition-colors active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim">menu</span>
+</button>
+<h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed-dim">Seoul Live</h1>
+<button class="flex items-center justify-center w-10 h-10 hover:bg-surface-container-high/50 transition-colors active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim">search</span>
+</button>
+</header>
+<main class="max-w-md mx-auto">
+<!-- Headline Section -->
+<section class="px-container-padding pt-6 pb-4">
+<h2 class="font-headline-md-mobile text-headline-md-mobile text-on-surface">내 주변 명소</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">현재 위치 기반 실시간 혼잡도 정보</p>
+</section>
+<!-- Quick Filters -->
+<div class="flex gap-2 px-container-padding overflow-x-auto no-scrollbar pb-4">
+<button class="bg-primary text-on-primary px-4 py-2 rounded-full font-label-md text-label-md whitespace-nowrap active:scale-95 transition-transform">전체</button>
+<button class="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-surface-container-highest active:scale-95 transition-transform">공원</button>
+<button class="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-surface-container-highest active:scale-95 transition-transform">쇼핑몰</button>
+<button class="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-surface-container-highest active:scale-95 transition-transform">카페</button>
+<button class="bg-surface-container-high text-on-surface-variant px-4 py-2 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-surface-container-highest active:scale-95 transition-transform">문화재</button>
+</div>
+<!-- Recommendation Section -->
+<section class="px-container-padding mb-8">
+<div class="flex justify-between items-end mb-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">가까우면서 여유로운 곳 추천</h3>
+</div>
+<div class="flex gap-4 overflow-x-auto no-scrollbar snap-x">
+<!-- Large Card 1 -->
+<div class="min-w-[280px] snap-start bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="h-40 relative">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A serene wide shot of the Han River park at sunset in Seoul. The sky is a blend of soft oranges and purples, reflecting off the calm water. Minimalist modern architecture is visible in the distance. The overall mood is peaceful and refreshing, with high-end photographic clarity." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBDLAC5Xopu6bOIsQ8OZVPpa7E3TNfy2paoqIjsRzExwc7rwoDeCs4fSAnaYLD7QQsH_2h4Oz2Mz6uokrxngbjIKU3aq2cAkrm5tl6KV4KRy38Cequ2ZH78nFr4EkQ4ljZWHxl_alCNhKaWrNlHI_ZElkaahWlSWsh0D-BN18SvvmKtoU6MuSoHmrPd1PcNPrJky18doa_TKJADY-SI762bZp-cf8aKr9vmMqBktapqUuAkgR3N_v8l')"></div>
+<div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1.5 border border-emerald-100">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="text-emerald-700 font-label-sm text-label-sm">여유</span>
+</div>
+</div>
+<div class="p-card-padding">
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">반포한강공원</h4>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">near_me</span>
+<span class="font-label-md text-label-md">800m • 도보 12분</span>
+</div>
+<p class="font-label-sm text-label-sm text-outline mt-3">방금 전 업데이트됨</p>
+</div>
+</div>
+<!-- Large Card 2 -->
+<div class="min-w-[280px] snap-start bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<div class="h-40 relative">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A modern, high-ceilinged cafe interior in Seoul with large floor-to-ceiling windows. Warm wooden textures and lush green plants create a cozy atmosphere. The lighting is soft and natural. A few people are seen reading quietly. The visual style is minimalist and sophisticated." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDSRlXw3Fhyaqmn8WKjq3Tvun3A54I7frQ_peNjo6cKOfWCePsBT6A8EBCDdhm2O_s6fG3wZ4PDn8fZ4lEJxfPTRe9EL9Jev_r-PyPqXfsdeaj3JqjAcQbcrF5A8iepm_6mDj9YOgD41mq8wmD_FCE3D2cVGSTU6AWBTth2tlZkoJRMZ7FbVGqFUhl9azkM0sKid6z6Oe5mRXZTG7OoQyUQoXYV4cSUHSUFETETWnHyMblDEEcxkdsu')"></div>
+<div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1.5 border border-emerald-100">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+<span class="text-emerald-700 font-label-sm text-label-sm">여유</span>
+</div>
+</div>
+<div class="p-card-padding">
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">북카페 채그로</h4>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">near_me</span>
+<span class="font-label-md text-label-md">1.2km • 도보 18분</span>
+</div>
+<p class="font-label-sm text-label-sm text-outline mt-3">2분 전 업데이트됨</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Distance Sorted List -->
+<section class="px-container-padding">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">거리순 주변 장소</h3>
+<button class="text-primary font-label-md text-label-md flex items-center gap-1">
+                    정렬 기준 <span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+<div class="flex flex-col gap-3">
+<!-- List Item 1 -->
+<div class="flex items-center gap-4 p-3 bg-white border border-outline-variant rounded-xl active:bg-surface-container transition-colors">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center shrink-0" data-alt="A close-up high-quality photo of a trendy boutique storefront in Seoul. The design is sleek with glass and steel elements. Bright morning sunlight casts soft shadows. The aesthetic is clean and high-utility urban." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAWWXMWUKxCaNSOgN4oii1o91Pi219Cg0194Of8Fcyz5gDWUqgZvOm0iULVtelAY1QioLhDtyZpGczxJo-JzFAhSadRknHQMzfZWL4ygJu77YQH1NjlxQUF6z8NPFKjsKaoCDE_j2XlTYnCB4eD4C38gqepHVZ1i7_lXqkpG8kM-nrNgK6AfksVq3WZ059sVq-Hq6qlrRRLR0NlIXhs9MvyMqIvaiiPfBLhqY6psE0meurQe-yLs7Cr')"></div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-headline-sm text-[16px] text-on-surface truncate">가로수길 에이치엔엠</h4>
+<div class="px-2 py-0.5 rounded-md bg-yellow-50 border border-yellow-200 flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+<span class="text-yellow-700 font-label-sm text-[10px]">보통</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-md text-label-md text-primary font-semibold">300m</span>
+<span class="font-body-md text-label-md text-on-surface-variant">쇼핑몰 • 신사동</span>
+</div>
+</div>
+</div>
+<!-- List Item 2 -->
+<div class="flex items-center gap-4 p-3 bg-white border border-outline-variant rounded-xl active:bg-surface-container transition-colors">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center shrink-0" data-alt="An expansive view of a large modern shopping mall atrium in Seoul. Multi-story architectural curves and bright, high-key artificial lighting create a vibrant commercial atmosphere. Many people are visible moving through the space, suggesting a busy urban hub." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBnbXpnZoSl2Rx8mM1Mshi5Lu987s_uF-r2NeEFW9dAC_G3vFNgoYl9zDJN3pLJKGgRM5uowNdz6xlLuE3peMETbtPXzGcjqv3zIvDly-FRVtFfxRMP9XfEzUrHgv74VmvkaZ7kotelLSG2wZOQOpH9KYZ_GiVBo4yl0U7OqCM4GMqnMax88ujvEI0cPjGbM-OCS6AvaMptz6tT25rT4VSUIZf4xmpOmgCaOEnc6xsqNOEDr8UNIFmD')"></div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-headline-sm text-[16px] text-on-surface truncate">더현대 서울</h4>
+<div class="px-2 py-0.5 rounded-md bg-red-50 border border-red-200 flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-red-500"></span>
+<span class="text-red-700 font-label-sm text-[10px]">붐빔</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-md text-label-md text-primary font-semibold">450m</span>
+<span class="font-body-md text-label-md text-on-surface-variant">쇼핑몰 • 여의도</span>
+</div>
+</div>
+</div>
+<!-- List Item 3 -->
+<div class="flex items-center gap-4 p-3 bg-white border border-outline-variant rounded-xl active:bg-surface-container transition-colors">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center shrink-0" data-alt="A lush green urban park landscape in Seoul during midday. Dense trees and manicured lawns create a refreshing green escape. The lighting is bright and sunny, highlighting the textures of leaves and grass. Minimalist park benches are placed along a winding path." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBBhEWQ71dfs2dd3ConnxPs0o_IaH2nDoI2Gw8D0I0K2_fRuGEAF6R8p3A06TKNvcAdpOSTPdYzoXvHRwFwb9WRuHcs7GIM0Zh3He9eHY8Ve-wU2S7-Z_YWJRfV55SYUPXRSqPCYJtVevFSIrTxPy_HvW4g9NFQb09QyQSjTuIJ3Q6MVINrhOpuMt4-a-r3MFfvVC6LiNZsFjXiMhBo6_VEPT7nwDHJAJTV6Kj3E9wBCkxpGRym1O7b')"></div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-headline-sm text-[16px] text-on-surface truncate">도산공원</h4>
+<div class="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-emerald-700 font-label-sm text-[10px]">여유</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-md text-label-md text-primary font-semibold">600m</span>
+<span class="font-body-md text-label-md text-on-surface-variant">공원 • 신사동</span>
+</div>
+</div>
+</div>
+<!-- List Item 4 -->
+<div class="flex items-center gap-4 p-3 bg-white border border-outline-variant rounded-xl active:bg-surface-container transition-colors">
+<div class="w-16 h-16 rounded-lg bg-cover bg-center shrink-0" data-alt="A high-end designer bookstore in Seoul with tall wooden shelves and warm, directed spotlighting. The floor is polished concrete. The atmosphere is quiet, intellectual, and premium. A few patrons are browsing books in the soft lighting." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCRwcsXo_I3oJZlDIX1lXS5olfVQGMWgR_KIDeOBs8Mu1vz0vsQGcZocS_G5IXo0e1UGvKVFyZgYGtk0cZfVVlBGMHszkvaCLVXpu9rrOeokeImALgQPpBWBRa7pMoFgrGnljaNPtwkjTDyuTR0x8ZBbi1-lPvFJ__xsdpTFkGOJ4InURZcrmn7ip2A_j-Yg90bTv0EgX-oM3UZbHDz-h5t-t2at489rdeUeKT0Ksu466Rtt-4XreQP')"></div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-headline-sm text-[16px] text-on-surface truncate">최인아책방</h4>
+<div class="px-2 py-0.5 rounded-md bg-yellow-50 border border-yellow-200 flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+<span class="text-yellow-700 font-label-sm text-[10px]">보통</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-label-md text-label-md text-primary font-semibold">950m</span>
+<span class="font-body-md text-label-md text-on-surface-variant">카페/서점 • 선릉</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- FAB for Map Recenter -->
+<button class="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform z-40">
+<span class="material-symbols-outlined text-[28px]">my_location</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 py-3 pb-safe bg-surface dark:bg-inverse-surface shadow-[0_-4px_12px_0_rgba(0,0,0,0.08)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1.5 hover:bg-surface-container-low dark:hover:bg-surface-variant/20 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1">map</span>
+<span class="font-label-sm text-label-sm">지도</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-fixed-dim text-on-secondary-container dark:text-on-secondary-fixed rounded-2xl px-4 py-1.5 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">near_me</span>
+<span class="font-label-sm text-label-sm">내 주변</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1.5 hover:bg-surface-container-low dark:hover:bg-surface-variant/20 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1">trending_up</span>
+<span class="font-label-sm text-label-sm">혼잡예보</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1.5 hover:bg-surface-container-low dark:hover:bg-surface-variant/20 active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined mb-1">more_horiz</span>
+<span class="font-label-sm text-label-sm">더보기</span>
+</a>
+</nav>
+<script>
+        // Simple interaction for filters
+        const filterButtons = document.querySelectorAll('div.overflow-x-auto button');
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterButtons.forEach(b => {
+                    b.classList.remove('bg-primary', 'text-on-primary');
+                    b.classList.add('bg-surface-container-high', 'text-on-surface-variant');
+                });
+                btn.classList.remove('bg-surface-container-high', 'text-on-surface-variant');
+                btn.classList.add('bg-primary', 'text-on-primary');
+            });
+        });
+    </script>
+</body></html>

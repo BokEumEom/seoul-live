@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Seoul Live - City Data Index</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "tertiary": "#943700",
+                "on-tertiary-fixed": "#360f00",
+                "on-primary-fixed": "#00174b",
+                "on-secondary": "#ffffff",
+                "on-surface-variant": "#434655",
+                "secondary": "#545f73",
+                "surface-container": "#ededf9",
+                "on-error-container": "#93000a",
+                "primary-fixed-dim": "#b4c5ff",
+                "surface-container-low": "#f3f3fe",
+                "inverse-surface": "#2e3039",
+                "primary-fixed": "#dbe1ff",
+                "surface-bright": "#faf8ff",
+                "primary": "#004ac6",
+                "on-secondary-container": "#586377",
+                "inverse-primary": "#b4c5ff",
+                "surface-container-lowest": "#ffffff",
+                "secondary-container": "#d5e0f8",
+                "outline-variant": "#c3c6d7",
+                "surface-tint": "#0053db",
+                "background": "#faf8ff",
+                "on-primary-container": "#eeefff",
+                "surface-dim": "#d9d9e5",
+                "secondary-fixed": "#d8e3fb",
+                "surface-variant": "#e1e2ed",
+                "on-tertiary": "#ffffff",
+                "on-error": "#ffffff",
+                "on-tertiary-container": "#ffede6",
+                "primary-container": "#2563eb",
+                "surface-container-high": "#e7e7f3",
+                "on-tertiary-fixed-variant": "#7d2d00",
+                "on-primary-fixed-variant": "#003ea8",
+                "tertiary-fixed-dim": "#ffb596",
+                "on-primary": "#ffffff",
+                "on-surface": "#191b23",
+                "error-container": "#ffdad6",
+                "on-secondary-fixed": "#111c2d",
+                "tertiary-container": "#bc4800",
+                "inverse-on-surface": "#f0f0fb",
+                "on-secondary-fixed-variant": "#3c475a",
+                "secondary-fixed-dim": "#bcc7de",
+                "surface-container-highest": "#e1e2ed",
+                "on-background": "#191b23",
+                "outline": "#737686",
+                "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "stack-gap": "12px",
+                "card-padding": "16px",
+                "unit": "4px",
+                "container-padding": "16px",
+                "gutter": "12px"
+            },
+            "fontFamily": {
+                "body-md": ["Hanken Grotesk"],
+                "headline-sm": ["Hanken Grotesk"],
+                "headline-md-mobile": ["Hanken Grotesk"],
+                "display-lg": ["Hanken Grotesk"],
+                "headline-md": ["Hanken Grotesk"],
+                "label-md": ["Hanken Grotesk"],
+                "label-sm": ["Hanken Grotesk"],
+                "body-lg": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                "headline-md-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Hanken Grotesk', sans-serif; -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-header {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .bento-wide { grid-column: span 2; }
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse-soft { animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-background text-on-background selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top AppBar (JSON Logic) -->
+<header class="bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-xl border-b border-outline-variant dark:border-outline docked full-width top-0 sticky z-50 flex justify-between items-center px-container-padding h-14 w-full">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-high/50 transition-colors active:scale-95 transition-transform p-1">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim">menu</span>
+</button>
+<h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed-dim">Seoul Live</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="hover:bg-surface-container-high/50 transition-colors active:scale-95 transition-transform p-1">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim">search</span>
+</button>
+</div>
+</header>
+<main class="max-w-md mx-auto px-container-padding pt-4 pb-24 space-y-4">
+<!-- Header Section -->
+<header class="mb-6">
+<h2 class="font-display-lg text-display-lg text-on-surface tracking-tight">도시 정보 한눈에</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">실시간 서울시 주요 데이터 인덱스</p>
+</header>
+<!-- Disaster Alert Banner (Top Banner) -->
+<div class="relative overflow-hidden bg-tertiary-container text-on-tertiary-container p-4 rounded-xl flex items-center gap-3 animate-pulse-soft">
+<div class="flex-shrink-0 w-10 h-10 bg-on-tertiary-container/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-container" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm uppercase opacity-80">재난 알림</p>
+<p class="font-headline-sm text-headline-sm">폭염 주의보 발효 중</p>
+<p class="font-body-md text-body-md opacity-90">야외 활동을 자제하고 충분한 수분을 섭취하세요.</p>
+</div>
+</div>
+<!-- Incident/Control Alert Badge List -->
+<div class="flex items-start gap-3 bg-error-container/40 p-3 rounded-xl border border-error/20">
+<span class="bg-error text-on-error font-label-sm text-label-sm px-2 py-0.5 rounded-full uppercase">Alert</span>
+<p class="font-body-md text-body-md text-on-error-container">
+<span class="font-bold">통제:</span> 광화문 광장 인근 대규모 집회로 인해 세종대로 양방향 전면 통제 중입니다.
+            </p>
+</div>
+<!-- Main Dashboard Bento Grid -->
+<div class="bento-grid">
+<!-- Parking Data Widget -->
+<div class="bg-surface-container-lowest border border-outline-variant p-card-padding rounded-xl flex flex-col justify-between min-h-[140px] hover:shadow-lg transition-all">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-secondary-container rounded-lg">
+<span class="material-symbols-outlined text-on-secondary-container">local_parking</span>
+</div>
+<span class="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary-container/20 px-2 py-0.5 rounded-full">
+<span class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
+                        LIVE
+                    </span>
+</div>
+<div class="mt-4">
+<p class="font-label-md text-label-md text-on-surface-variant">주차 여유</p>
+<p class="font-headline-sm text-headline-sm mt-1">서울역 주차장</p>
+<p class="font-display-lg text-display-lg text-primary mt-1">12<span class="text-headline-sm">면 여유</span></p>
+</div>
+</div>
+<!-- Bike (Ttareungyi) Widget -->
+<div class="bg-surface-container-lowest border border-outline-variant p-card-padding rounded-xl flex flex-col justify-between min-h-[140px] hover:shadow-lg transition-all">
+<div class="flex justify-between items-start">
+<div class="p-2 bg-secondary-container rounded-lg">
+<span class="material-symbols-outlined text-on-secondary-container">pedal_bike</span>
+</div>
+</div>
+<div class="mt-4">
+<p class="font-label-md text-label-md text-on-surface-variant">따릉이</p>
+<p class="font-headline-sm text-headline-sm mt-1">시청역 3번 출구</p>
+<p class="font-display-lg text-display-lg text-secondary mt-1">8<span class="text-headline-sm">대 대기</span></p>
+</div>
+</div>
+<!-- Road Traffic Summary (Wide Card) -->
+<div class="bento-wide bg-surface-container-lowest border border-outline-variant p-card-padding rounded-xl hover:shadow-lg transition-all">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<div class="p-2 bg-tertiary-fixed text-tertiary rounded-lg">
+<span class="material-symbols-outlined">traffic</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm">도로 소통 정보</h3>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">평균 24km/h</span>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-10 bg-error rounded-full"></div>
+<div>
+<p class="font-body-md text-body-md font-semibold">올림픽대로 (잠실 방향)</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">정체구간: 한남대교-영동대교</p>
+</div>
+</div>
+<span class="text-error font-bold">8km/h</span>
+</div>
+<div class="h-[1px] bg-outline-variant w-full"></div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-10 bg-tertiary rounded-full"></div>
+<div>
+<p class="font-body-md text-body-md font-semibold">강변북로 (구리 방향)</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">서행구간: 마포대교-원효대교</p>
+</div>
+</div>
+<span class="text-tertiary font-bold">18km/h</span>
+</div>
+</div>
+</div>
+<!-- Cultural Events (Wide Card) -->
+<div class="bento-wide bg-surface-container-lowest border border-outline-variant p-card-padding rounded-xl hover:shadow-lg transition-all">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<div class="p-2 bg-primary-fixed text-primary rounded-lg">
+<span class="material-symbols-outlined">event</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm">문화행사</h3>
+</div>
+<button class="text-primary font-label-md text-label-md">전체보기</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Event Item 1 -->
+<div class="flex gap-4 items-center group cursor-pointer">
+<div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="A vibrant outdoor poster for a modern jazz concert in Seoul, featuring silhouettes of musicians against a warm sunset city skyline. The style is contemporary graphic design with bold typography and bright corporate blue and white color accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYeiOvxBZitg4y6tTXOUXaG3EgR3wSosZWCTE2Xvuom86OzW5aSJ_sIG716M5RvVjPPVQxXdwwq77DWtOPGIp6PsPkj00ppukaxwo7O5Vf1eo7lYBrSe43yQP8AYwi1BFRkO3JKEAyC7BK5MipurObo1rYywt7Y24rCY30EyuFxKrAutErJwBYf0ujukWycVyNWeqCa0GRblt3QyE1148fmw0lyRdxXeU4U2tWxDM52sjWWEvNf-tQ"/>
+</div>
+<div class="flex flex-col gap-1">
+<span class="w-fit bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-sm">오늘의 무료 행사</span>
+<p class="font-body-md text-body-md font-semibold line-clamp-1">한강 달빛 야시장</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">반포한강공원 | 18:00~</p>
+</div>
+</div>
+<!-- Event Item 2 -->
+<div class="flex gap-4 items-center group cursor-pointer">
+<div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="A clean, minimalist exhibition poster showing a series of abstract ceramic sculptures in a white-walled modern gallery in Seoul. The lighting is soft and high-key, creating a peaceful and sophisticated mood aligned with a corporate light mode UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCu0lmJ9T0B0Gv_8Mak36syP7y94A6eJySbHkArxxK8umLxvgvAsFh1nhtKlhOyMUhUgpK-IMUm5wo25enr-sxHfcBO1C6AklAJQKjjNsYtFmsYzbxGMyBiTlWu9SZLThWScKG7W08Ys9HQiyeI5DRNyzAGoFXHzNkk4mTOJmrAvMWUelADfBYBkYIB1jKsrmbq_FH1v8D5k9YxMrg4Ltpm-tSKauO5gnCAP7JI_xra6PJwWln0tgXH"/>
+</div>
+<div class="flex flex-col gap-1">
+<span class="w-fit bg-outline-variant text-on-surface-variant text-[10px] font-bold px-2 py-0.5 rounded-sm">전시/체험</span>
+<p class="font-body-md text-body-md font-semibold line-clamp-1">서울 라이트 DDP</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">DDP 동대문 | 상시운영</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Map Mini-Widget -->
+<div class="bento-wide h-40 rounded-xl overflow-hidden relative border border-outline-variant shadow-inner group">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" data-location="Seoul City Hall" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAq8Iqrei_wwRph9YQ6ZbaBjlYa01jEI5_e3izg9iWkLCINWO-trr4vX6MwlfiRP3C-k3yuJu2E_Jq5_XQEjB9Tx4iOqi2KXOJ6BI-q8zPgyFZDE5zoKoSR4YyAZ8m5V9k4uyw27FDDuRNYTqvrF7ijCONYI17VCfWBL0ITld9O_Q6kAUrKOUQIesXs6xh6oLs8xymeDrFY5xx_a2ouJmqOtpncA0w3-xARLY9WYAUYvRoFZ0-0We-8')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-4 left-4 text-white">
+<p class="font-label-sm text-label-sm opacity-80">내 주변 인덱스</p>
+<p class="font-headline-sm text-headline-sm">중구 일대 데이터 지도</p>
+</div>
+<button class="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-2 rounded-full shadow-md text-primary">
+<span class="material-symbols-outlined">near_me</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (JSON Logic) -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-2 py-3 pb-safe bg-surface dark:bg-inverse-surface shadow-[0_-4px_12px_0_rgba(0,0,0,0.08)] rounded-t-xl">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1.5 hover:bg-surface-container-low dark:hover:bg-surface-variant/20 active:scale-90 duration-150">
+<span class="material-symbols-outlined">map</span>
+<span class="font-label-sm text-label-sm mt-1">지도</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1.5 hover:bg-surface-container-low dark:hover:bg-surface-variant/20 active:scale-90 duration-150">
+<span class="material-symbols-outlined">near_me</span>
+<span class="font-label-sm text-label-sm mt-1">내 주변</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1.5 hover:bg-surface-container-low dark:hover:bg-surface-variant/20 active:scale-90 duration-150">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="font-label-sm text-label-sm mt-1">혼잡예보</span>
+</button>
+<!-- ACTIVE TAB: 더보기 (Since we are in the Index/More data screen) -->
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-fixed-dim text-on-secondary-container dark:text-on-secondary-fixed rounded-2xl px-4 py-1.5 active:scale-90 duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">more_horiz</span>
+<span class="font-label-sm text-label-sm mt-1">더보기</span>
+</button>
+</nav>
+<!-- Micro-interaction for widget clicks -->
+<script>
+        document.querySelectorAll('.bento-grid > div').forEach(card => {
+            card.addEventListener('click', function() {
+                this.classList.add('scale-95');
+                setTimeout(() => this.classList.remove('scale-95'), 100);
+            });
+        });
+    </script>
+</body></html>
