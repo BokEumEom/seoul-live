@@ -1,4 +1,5 @@
 import { CONGESTION_LEVELS, type CongestionLevel } from '../domain/types'
+import { findAreaByName } from './areas'
 
 // CongestionLevel로 키를 고정한다 — Record<string, string>이었다면 레벨이 하나 빠져도
 // TypeScript가 잡아주지 못하고 런타임에서야 `undefined` 메시지가 나갔을 것이다.
@@ -17,6 +18,21 @@ function hash(value: string): number {
   return result
 }
 
+// (seed, index) 조합마다 서로 다른 값이 나오도록 비트 단위로 섞는다.
+// `hash(`${name}:${index}`)` 같은 문자열 이어붙이기도 시도해봤지만, 위 `hash()`가
+// mod 4에서 지나치게 고르게 섞이는 바람에 30곳 전부가 12시간 안에 반드시 '여유'를
+// 한 번은 지나가 버렸다 — "한산해지는 시각이 아예 없음" 빈 상태를 목업으로 재현할 수
+// 없었다. 정수 비트 믹싱(xorshift 계열)으로 바꿔 실제 이런 구간이 나오게 했다.
+function mixForecastIndex(seed: number, index: number): number {
+  let x = (seed + index * 2_654_435_761) >>> 0
+  x ^= x << 13
+  x >>>= 0
+  x ^= x >>> 17
+  x ^= x << 5
+  x >>>= 0
+  return x >>> 0
+}
+
 function pad(value: number): string {
   return String(value).padStart(2, '0')
 }
@@ -28,16 +44,31 @@ function formatTime(date: Date): string {
   )
 }
 
-export function buildMockSnapshot(areaName: string): unknown {
+// `hoursAhead`시간 뒤의 "정각"을 새 Date로 만든다. `base`는 건드리지 않는다.
+// `new Date(y, m, d, h, ...)`는 `h`가 23을 넘어도 setHours처럼 다음 날로 정확히 굴러간다.
+function topOfHourAfter(base: Date, hoursAhead: number): Date {
+  return new Date(
+    base.getFullYear(),
+    base.getMonth(),
+    base.getDate(),
+    base.getHours() + hoursAhead,
+    0,
+    0,
+    0,
+  )
+}
+
+export function buildMockSnapshot(areaName: string, now: Date = new Date()): unknown {
   const seed = hash(areaName)
   const level = CONGESTION_LEVELS[seed % CONGESTION_LEVELS.length]
   const base = 8_000 + (seed % 40) * 1_000
-  const now = new Date()
+  // 실제 응답은 카탈로그에 등록된 코드를 그대로 돌려준다 — 목업도 같은 값을 줘야
+  // `snapshot.code === entry.code` 대조(2차 오타 탐지기)나 React key로 안전하게 쓸 수 있다.
+  const areaCode = findAreaByName(areaName)?.code ?? 'POI000'
 
   const forecasts = Array.from({ length: 12 }, (_, index) => {
-    const at = new Date(now)
-    at.setHours(now.getHours() + index + 1, 0, 0, 0)
-    const shifted = CONGESTION_LEVELS[(seed + index) % CONGESTION_LEVELS.length]
+    const at = topOfHourAfter(now, index + 1)
+    const shifted = CONGESTION_LEVELS[mixForecastIndex(seed, index) % CONGESTION_LEVELS.length]
     return {
       FCST_TIME: formatTime(at),
       FCST_CONGEST_LVL: shifted,
@@ -50,7 +81,7 @@ export function buildMockSnapshot(areaName: string): unknown {
     'SeoulRtd.citydata_ppltn': [
       {
         AREA_NM: areaName,
-        AREA_CD: `MOCK${pad(seed % 100)}`,
+        AREA_CD: areaCode,
         AREA_CONGEST_LVL: level,
         AREA_CONGEST_MSG: MESSAGES[level],
         AREA_PPLTN_MIN: String(base),
