@@ -6,11 +6,16 @@ import { parseBulkEnvelope, parseCitydataResponse } from './schema'
 // 프록시가 502로 정리해서 응답할 여유를 두고 그보다 넉넉하게 잡는다.
 const SINGLE_AREA_TIMEOUT_MS = 10_000
 
-// 일괄 조회 타임아웃. api/citydata-bulk.ts는 명소별 8초 타임아웃을 Promise.allSettled로
-// "병렬" 실행하므로 이론상 8~9초면 끝난다. 하지만 Vercel 함수 자체의 상한(vercel.json의
-// maxDuration: 15초)이 있다 — 클라이언트 타임아웃이 이보다 짧으면, 함수가 정상적으로
-// 응답을 완성하기도 전에 클라이언트가 먼저 포기해버린다. 함수 상한보다 여유 있게 잡는다.
-const BULK_TIMEOUT_MS = 16_000
+// 일괄 조회 타임아웃. maxDuration(15초)은 Vercel 함수의 "실행 시간"이고 이 값은
+// 클라이언트 쪽 "벽시계" 시간이라 콜드 스타트(200ms~1s+), TLS 핸드셰이크+RTT, 504
+// 전파 시간까지 더해진다 — maxDuration보다 1초만 여유를 두면 콜드 스타트에서 먼저
+// 진다. 게다가 api/citydata-bulk.ts는 상류(서울 API)에 대한 동시 연결 수를
+// 8개로 제한한다(레거시 API 보호) — 최악의 경우 여러 "웨이브"로 나뉘어 실행되므로
+// "8~9초면 끝난다"는 가정도 더는 유효하지 않다. maxDuration보다 5초 이상 여유를
+// 두어, 함수가 끝까지 실행되거나 플랫폼이 자체적으로 타임아웃 응답을 만들 시간을
+// 먼저 준다 — 그래야 사용자가 실제로는 플랫폼 타임아웃인데 "네트워크 상태를
+// 확인해주세요" 같은 오해를 부르는 메시지를 보지 않는다.
+const BULK_TIMEOUT_MS = 20_000
 
 // 이름을 `useMock`으로 지으면 ESLint의 react-hooks/rules-of-hooks가 "use"로 시작하는
 // 이름을 React 훅으로 오인해 오류를 낸다. 이 함수는 훅이 아니라 순수 판별 함수라 이름을
@@ -26,7 +31,18 @@ function baseUrl(): string {
 // HTTP 실패(response.ok === false)를 표시하는 전용 에러. requestJson의 catch 블록에서
 // "이미 사용자용 메시지로 바뀐 에러"와 "아직 안 바뀐 원본 네트워크 에러"를 구분하는 데 쓴다.
 // 메시지 문자열 접두어 비교보다 안전하다 — 문구가 나중에 바뀌어도 분기가 깨지지 않는다.
-class ProxyResponseError extends Error {}
+// status를 들고 있는 이유: queries.ts의 재시도 정책이 4xx(요청 자체의 문제 — 예를 들어
+// 허용 목록에 없는 명소, 400)와 5xx(상류 일시 장애 — 재시도할 가치가 있다)를
+// 구분해야 한다. status 없이는 둘 다 똑같이 재시도됐다.
+export class ProxyResponseError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ProxyResponseError'
+    this.status = status
+  }
+}
 
 async function requestJson(url: string, timeoutMs: number): Promise<unknown> {
   const controller = new AbortController()
@@ -35,19 +51,32 @@ async function requestJson(url: string, timeoutMs: number): Promise<unknown> {
   try {
     const response = await fetch(url, { signal: controller.signal })
     if (!response.ok) {
-      throw new ProxyResponseError('혼잡도 정보를 가져오지 못했어요. 잠시 후 다시 시도해주세요.')
+      const proxyError = new ProxyResponseError(
+        '혼잡도 정보를 가져오지 못했어요. 잠시 후 다시 시도해주세요.',
+        response.status,
+      )
+      // ProxyResponseError를 여기서 바로 로그로 남긴다. 예전에는 이 분기 없이 곧장
+      // 던지기만 해서(아래 catch는 ProxyResponseError를 그대로 재던질 뿐이다),
+      // HTTP 실패(상태 코드, 요청 URL)가 콘솔 어디에도 남지 않았다 — 네트워크 실패만
+      // 로그가 있고 HTTP 실패는 진단할 방법이 없었다. status와 url을 남기면 이후
+      // 502(상류 실패)와 400(잘못된 요청)을 로그만 보고 구분할 수 있다.
+      console.error(`혼잡도 정보 요청 실패 (status=${response.status}):`, url)
+      throw proxyError
     }
     return await response.json()
   } catch (error) {
     if (error instanceof ProxyResponseError) {
       throw error
     }
-    // 여기로 오는 건 타임아웃에 의한 AbortError, 오프라인·DNS 실패에 의한 TypeError 등이다.
-    // 원본 메시지("Failed to fetch" 같은)를 그대로 사용자에게 보여주면 안 되지만 — 진단이
-    // 안 되면 카탈로그 오타인지 네트워크 문제인지 구분할 수 없으므로 콘솔에는 남기고,
-    // `cause`로도 원본을 붙여 상위에서 필요하면 꺼내 쓸 수 있게 한다.
+    // 여기로 오는 건 타임아웃에 의한 AbortError, 오프라인·DNS 실패에 의한 TypeError,
+    // 응답 본문이 JSON이 아니어서 response.json()이 던지는 SyntaxError 등이다 —
+    // "네트워크 상태를 확인해주세요"라고 못박으면 마지막 경우(응답은 왔는데 본문이
+    // 깨진 경우)엔 오해를 준다. 원인을 특정할 수 없는 만큼 메시지도 원인을 단정하지
+    // 않는 일반적인 문구로 둔다. 원본 메시지를 그대로 사용자에게 보여주면 안 되지만
+    // — 진단이 안 되면 원인을 구분할 수 없으므로 콘솔에는 남기고, cause로도 원본을
+    // 붙여 상위에서 필요하면 꺼내 쓸 수 있게 한다.
     console.error('혼잡도 정보 요청 실패:', error)
-    throw new Error('혼잡도 정보를 가져오지 못했어요. 네트워크 상태를 확인해주세요.', {
+    throw new Error('혼잡도 정보를 가져오지 못했어요. 잠시 후 다시 시도해주세요.', {
       cause: error,
     })
   } finally {

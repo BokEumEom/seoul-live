@@ -1,9 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { isAllowedAreaName } from './_lib/allowed-areas.js'
+import { mapWithConcurrency } from './_lib/concurrency.js'
 import { setCacheHeaders, setCorsHeaders, setNoStoreHeader } from './_lib/http.js'
 import { cacheTtlSeconds, fetchArea } from './_lib/seoul.js'
 
 const MAX_AREAS = 40
+
+// 레거시 정부 API를 한 번에 최대 40개까지 동시에 두드리지 않는다 — 연결 거부나
+// 상류 스로틀링을 유발할 수 있다. mapWithConcurrency 안의 주석에 이 값을 고른
+// 이유와 트레이드오프(최악의 경우 함수 시간 제한에 걸릴 수 있다는 것)를 적어뒀다.
+const UPSTREAM_CONCURRENCY = 8
 
 export default async function handler(
   req: VercelRequest,
@@ -48,13 +54,14 @@ export default async function handler(
     return
   }
 
-  // 개별 명소 실패가 전체 요청을 무너뜨리지 않도록 allSettled를 쓴다.
+  // 개별 명소 실패가 전체 요청을 무너뜨리지 않도록 PromiseSettledResult 형태로 모은다
+  // (allSettled 대신 mapWithConcurrency — 동시 실행 수를 제한하기 위해서다).
   // 응답은 위치(인덱스)가 아니라 이름을 키로 쓴다 — `{ results: { "강남역": ..., "경복궁":
   // null } }`. 위치 기반 배열이었다면 클라이언트가 자신이 보낸 순서와 서버가 응답한
   // 순서가 정확히 같다고 가정해야 했다(실제로 그랬다). 이름 키는 그 가정 자체를
   // 없앤다 — 클라이언트는 필요한 이름으로 바로 조회하면 되고, 서버가 중복을
   // 제거하거나 순서를 바꿔도(위에서 이미 그렇게 한다) 깨지지 않는다.
-  const settled = await Promise.allSettled(areas.map(fetchArea))
+  const settled = await mapWithConcurrency(areas, UPSTREAM_CONCURRENCY, fetchArea)
   let successCount = 0
   const results: Record<string, unknown> = {}
   settled.forEach((outcome, index) => {

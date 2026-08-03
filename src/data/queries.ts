@@ -1,20 +1,34 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
+import { z } from 'zod'
 import type { AreaSnapshot } from '../domain/types'
-import { fetchAreaSnapshot, fetchAreaSnapshots } from './client'
+import { fetchAreaSnapshot, fetchAreaSnapshots, ProxyResponseError } from './client'
 import { AreaNameMismatchError, SeoulApiError } from './schema'
 
 const FIVE_MINUTES = 5 * 60 * 1_000
+const MAX_RETRIES = 2
 
-// AreaNameMismatchError(카탈로그 오타 등으로 요청한 이름과 응답 이름이 다름)와
-// SeoulApiError(서울 API가 데이터 대신 RESULT 에러 봉투를 돌려줌, 예: "해당하는
-// 데이터가 없습니다")는 재시도해도 같은 입력으로 같은 실패를 반복할 뿐이다 — 둘 다
-// 네트워크 상태가 아니라 요청 자체의 문제라서다. 반면 프록시가 502를 주거나 타임아웃이
-// 나는 경우(client.ts가 던지는 일반 Error)는 일시적일 수 있으니 재시도할 가치가 있다.
-function shouldRetry(failureCount: number, error: Error): boolean {
+// 재시도해도 절대 성공하지 못하는 에러는 재시도하지 않는다 — 같은 입력으로 같은
+// 실패를 반복할 뿐이고, 사용자는 그만큼 더 오래 기다린다.
+//   - AreaNameMismatchError / SeoulApiError: 요청 자체의 문제다(카탈로그 오타,
+//     혹은 서울 API가 "해당하는 데이터가 없습니다" 같은 RESULT 에러 봉투를 준 것).
+//   - z.ZodError: 응답 형태가 스키마와 안 맞는다는 뜻이다 — 같은 서버가 같은 버그로
+//     같은 모양을 다시 준다.
+//   - ProxyResponseError의 4xx: 요청 자체가 잘못됐다는 신호다(예: area가 허용
+//     목록에 없어 400) — 서버 상태가 아니라 우리가 보낸 값의 문제이므로 다시
+//     보내도 같은 4xx가 온다.
+// 반대로 ProxyResponseError의 5xx나 순수 네트워크/타임아웃 에러(client.ts가 던지는
+// 일반 Error)는 일시적일 수 있으니 재시도할 가치가 있다.
+export function shouldRetry(failureCount: number, error: Error): boolean {
   if (error instanceof AreaNameMismatchError || error instanceof SeoulApiError) {
     return false
   }
-  return failureCount < 2
+  if (error instanceof z.ZodError) {
+    return false
+  }
+  if (error instanceof ProxyResponseError && error.status >= 400 && error.status < 500) {
+    return false
+  }
+  return failureCount < MAX_RETRIES
 }
 
 export function useAreaSnapshot(
@@ -44,14 +58,17 @@ export function useAreaSnapshots(
   // queryKey에 배열을 그대로 넣는다. TanStack Query는 queryKey를 참조가 아니라 값으로
   // 안정적으로 직렬화해 해시하므로(JSON.stringify 계열), areaNames가 매 렌더마다 새
   // 배열 참조로 넘어와도 내용이 같으면 같은 캐시 항목을 찾는다 — "참조가 바뀌면 캐시가
-  // 안 먹는다"는 걱정은 실제로는 기우다. 다만 값 자체(원소 구성이나 순서)가 호출마다
-  // 바뀌면 얘기가 다르다: 이건 진짜 캐시 미스를 만들고, 더 나아가 api/citydata-bulk.ts의
-  // CDN 캐시(Cache-Control: s-maxage, URL의 areas= 쿼리스트링으로 키가 잡힌다)까지
-  // 깨뜨린다 — 사용자마다 다른 순서로 보내면 캐시가 아예 공유되지 않아 AGENTS.md가 경고한
-  // "사용자 수에 비례한 호출량 증가" 문제가 서버 쪽에서도 재현된다. 그래서 호출부는
-  // "정렬된 표시 순서"가 아니라 `AREA_NAMES`(카탈로그 원본 순서) 같은 안정된 값을
-  // 넘겨야 한다 — 화면에서 보여줄 정렬은 받아온 스냅샷을 클라이언트에서 재배열해서
-  // 해결하고, 네트워크 요청의 areaNames 자체를 정렬하면 안 된다.
+  // 안 먹는다"는 걱정은 실제로는 기우다.
+  //
+  // 값 자체(원소 구성·순서)가 호출마다 바뀌는 건 이 훅의 캐시(TanStack Query)를
+  // 진짜로 미스시킨다 — 그건 감수한다. 다만 서버 쪽 CDN 캐시(api/citydata-bulk.ts의
+  // Cache-Control: s-maxage)까지 함께 쪼개지는 건 별도로 막혀 있다: client.ts의
+  // fetchAreaSnapshots가 실제 요청 URL을 만들 때 areaNames를 중복 제거 + 정렬해서
+  // 보내므로, 이 훅에 넘어오는 areaNames의 순서가(예: 나중에 "거리순 정렬" 기능이
+  // 생겨) 호출마다 달라지더라도 서버로 나가는 요청과 CDN 캐시 키는 항상 하나로
+  // 수렴한다. 즉 호출부가 정렬된 배열을 넘기는 건 이 훅의 자체 캐시 효율을 위한
+  // 최적화일 뿐, 서버 호출량이 느는 걸 막는 안전장치가 아니다 — 안전장치는 이미
+  // client.ts에 있다.
   return useQuery({
     queryKey: ['areas', areaNames],
     queryFn: () => fetchAreaSnapshots(areaNames),
