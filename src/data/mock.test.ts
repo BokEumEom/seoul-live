@@ -30,10 +30,12 @@ describe('buildMockSnapshot', () => {
   })
 
   it('명소마다 혼잡도가 다르게 나온다', () => {
+    // 30곳 중 29곳이 같은 값이어도 toBeGreaterThan(1)은 통과한다 — 4단계가 실제로
+    // 골고루 등장하는지까지 고정한다.
     const levels = new Set(
       AREA_CATALOG.map((a) => parseCitydataResponse(buildMockSnapshot(a.name), a.name).congestion),
     )
-    expect(levels.size).toBeGreaterThan(1)
+    expect(levels.size).toBe(4)
   })
 
   it('12시간치 예측을 만든다', () => {
