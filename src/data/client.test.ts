@@ -68,6 +68,23 @@ describe('fetchAreaSnapshot', () => {
 
     await expect(fetchAreaSnapshot('경복궁')).rejects.toThrow()
   })
+
+  // M2 — 목업 경로도 실패를 흉내 낼 수 있어야 T17/T18의 "정보 없음" 상태를
+  // 목업만으로 개발·테스트할 수 있다.
+  it('VITE_MOCK_FAIL_AREAS에 있는 명소는 목업 모드에서도 실패한다', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'true')
+    vi.stubEnv('VITE_MOCK_FAIL_AREAS', '강남역,경복궁')
+
+    await expect(fetchAreaSnapshot('강남역')).rejects.toThrow()
+  })
+
+  it('VITE_MOCK_FAIL_AREAS에 없는 명소는 목업 모드에서 평소대로 성공한다', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'true')
+    vi.stubEnv('VITE_MOCK_FAIL_AREAS', '경복궁')
+
+    const snapshot = await fetchAreaSnapshot('강남역')
+    expect(snapshot.name).toBe('강남역')
+  })
 })
 
 describe('fetchAreaSnapshots', () => {
@@ -77,6 +94,19 @@ describe('fetchAreaSnapshots', () => {
     expect(results).toHaveLength(2)
     expect(results[0]?.name).toBe('강남역')
     expect(results[1]?.name).toBe('경복궁')
+  })
+
+  // M2 — 실데이터 경로는 실패한 명소를 null로 돌려주는데(아래 "한 명소가 실패해도"
+  // 테스트), 목업 경로는 원래 절대 null을 만들 수 없었다. VITE_MOCK_FAIL_AREAS로
+  // 그 상태를 목업에서도 재현한다.
+  it('VITE_MOCK_FAIL_AREAS에 있는 명소는 목업 모드에서도 null이 된다', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'true')
+    vi.stubEnv('VITE_MOCK_FAIL_AREAS', '경복궁')
+
+    const results = await fetchAreaSnapshots(['강남역', '경복궁'])
+
+    expect(results[0]?.name).toBe('강남역')
+    expect(results[1]).toBeNull()
   })
 
   it('한 명소가 실패해도 나머지는 살린다', async () => {

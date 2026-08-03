@@ -28,6 +28,21 @@ function baseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? ''
 }
 
+// M2 — 실데이터 경로는 명소 하나가 실패하면 그 자리를 null로 돌려주지만(위의
+// 개별 try/catch), 목업 경로는 buildMockSnapshot이 항상 성공하는 값만 만들어서
+// null이 나올 수가 없었다. 그러면 "정보 없음" 카드 상태를 목업만으로 개발하거나
+// 테스트할 방법이 없다. VITE_MOCK_FAIL_AREAS에 쉼표로 구분한 명소 이름을 넣으면
+// 목업 모드에서도 그 명소만 실패를 흉내 낸다.
+function mockFailureAreaNames(): ReadonlySet<string> {
+  const raw: string = import.meta.env.VITE_MOCK_FAIL_AREAS ?? ''
+  return new Set(
+    raw
+      .split(',')
+      .map((name: string) => name.trim())
+      .filter(Boolean),
+  )
+}
+
 // HTTP 실패(response.ok === false)를 표시하는 전용 에러. requestJson의 catch 블록에서
 // "이미 사용자용 메시지로 바뀐 에러"와 "아직 안 바뀐 원본 네트워크 에러"를 구분하는 데 쓴다.
 // 메시지 문자열 접두어 비교보다 안전하다 — 문구가 나중에 바뀌어도 분기가 깨지지 않는다.
@@ -86,6 +101,11 @@ async function requestJson(url: string, timeoutMs: number): Promise<unknown> {
 
 export async function fetchAreaSnapshot(areaName: string): Promise<AreaSnapshot> {
   if (isMockMode()) {
+    if (mockFailureAreaNames().has(areaName)) {
+      throw new Error(
+        `[목업] ${areaName} 조회 실패를 시뮬레이션합니다. (VITE_MOCK_FAIL_AREAS)`,
+      )
+    }
     return parseCitydataResponse(buildMockSnapshot(areaName), areaName)
   }
 
@@ -97,7 +117,10 @@ export async function fetchAreaSnapshots(
   areaNames: readonly string[],
 ): Promise<readonly (AreaSnapshot | null)[]> {
   if (isMockMode()) {
-    return areaNames.map((name) => parseCitydataResponse(buildMockSnapshot(name), name))
+    const failing = mockFailureAreaNames()
+    return areaNames.map((name) =>
+      failing.has(name) ? null : parseCitydataResponse(buildMockSnapshot(name), name),
+    )
   }
 
   // 실제로 보내는 쿼리스트링은 중복 제거 + 정렬한 이름 집합이다(호출부가 넘긴
