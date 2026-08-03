@@ -1,6 +1,6 @@
 import type { AreaSnapshot } from '../domain/types'
 import { buildMockSnapshot } from './mock'
-import { parseCitydataResponse } from './schema'
+import { parseBulkEnvelope, parseCitydataResponse } from './schema'
 
 // 단일 명소 타임아웃. 프록시(api/citydata.ts)는 서울 API 호출 자체를 8초에서 끊으므로,
 // 프록시가 502로 정리해서 응답할 여유를 두고 그보다 넉넉하게 잡는다.
@@ -71,13 +71,22 @@ export async function fetchAreaSnapshots(
     return areaNames.map((name) => parseCitydataResponse(buildMockSnapshot(name), name))
   }
 
-  const url = `${baseUrl()}/api/citydata-bulk?areas=${encodeURIComponent(areaNames.join(','))}`
-  const payload = (await requestJson(url, BULK_TIMEOUT_MS)) as { results?: unknown[] }
+  // 실제로 보내는 쿼리스트링은 중복 제거 + 정렬한 이름 집합이다(호출부가 넘긴
+  // areaNames 자체의 순서는 건드리지 않는다 — 반환값은 아래에서 원래 순서로 만든다).
+  // 이렇게 정규화해서 보내야, 호출부가 나중에 "거리순으로 정렬해서 넘기기" 같은
+  // 최적화를 하더라도 같은 명소 집합이면 항상 같은 URL이 되어 api/citydata-bulk.ts의
+  // CDN 캐시(Cache-Control: s-maxage)를 사용자 전체가 공유할 수 있다. 정규화하지
+  // 않으면 사용자마다 다른 순서로 보내는 순간 캐시가 쪼개지고, AGENTS.md가 경고한
+  // "사용자 수에 비례한 호출량 증가" 문제가 서버 쪽에서 재현된다.
+  const canonicalAreas = Array.from(new Set(areaNames)).toSorted()
+  const url = `${baseUrl()}/api/citydata-bulk?areas=${encodeURIComponent(canonicalAreas.join(','))}`
+  const envelope = parseBulkEnvelope(await requestJson(url, BULK_TIMEOUT_MS))
 
-  // 프록시는 요청 순서를 그대로 유지하므로 results[i]는 areaNames[i]에 대응한다.
-  return areaNames.map((name, index) => {
+  // 봉투가 이름을 키로 쓰므로(api/citydata-bulk.ts 참고) 서버가 보낸 순서와
+  // 무관하게 호출부가 원래 넘긴 areaNames 순서로 결과를 만들 수 있다.
+  return areaNames.map((name) => {
     try {
-      return parseCitydataResponse(payload.results?.[index], name)
+      return parseCitydataResponse(envelope[name], name)
     } catch (error) {
       // 한 명소가 실패해도 목록 전체를 죽이지 않는다. 카드 하나만 "정보 없음"이 된다.
       // 다만 조용히 삼키면 카탈로그 오타를 영영 못 찾으므로 원인은 남긴다.

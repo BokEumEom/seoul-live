@@ -34,7 +34,14 @@ export default async function handler(
   // 임의 문자열이 전부 별개의 캐시 키가 되고, 그 문자열 수만큼 서울 API 호출량이
   // 는다. `curl '.../citydata-bulk?areas=z1,z2,...,z40'` 같은 호출 25번이면
   // 하루 1,000회 한도가 끝난다.
-  const areas = requested.filter(isAllowedAreaName)
+  //
+  // 중복 제거 + 정렬도 함께 한다. 정렬 덕분에 클라이언트가 어떤 순서로 보내든
+  // (예: `areas=B,A`와 `areas=A,B`) 실제 서울 API 호출 순서와 응답 JSON의 키
+  // 순서가 항상 같아진다 — 같은 명소 집합이면 항상 같은 바이트의 응답이 나온다는
+  // 뜻이다. 응답을 이름 키 객체로 만들기 때문에 순서 자체가 클라이언트 파싱에
+  // 영향을 주지는 않지만(아래 참고), 이렇게 정규화해두면 동작이 예측 가능해지고
+  // 디버깅·테스트 스냅샷이 안정된다.
+  const areas = Array.from(new Set(requested.filter(isAllowedAreaName))).toSorted()
 
   if (areas.length === 0) {
     res.status(400).json({ error: '요청한 명소를 찾을 수 없습니다.' })
@@ -42,19 +49,25 @@ export default async function handler(
   }
 
   // 개별 명소 실패가 전체 요청을 무너뜨리지 않도록 allSettled를 쓴다.
-  // 계약: results[i]는 areas[i]에 대응한다 — 순서를 보존해야 클라이언트
-  // (src/data/client.ts의 fetchAreaSnapshots)가 인덱스로 짝을 맞출 수 있다.
+  // 응답은 위치(인덱스)가 아니라 이름을 키로 쓴다 — `{ results: { "강남역": ..., "경복궁":
+  // null } }`. 위치 기반 배열이었다면 클라이언트가 자신이 보낸 순서와 서버가 응답한
+  // 순서가 정확히 같다고 가정해야 했다(실제로 그랬다). 이름 키는 그 가정 자체를
+  // 없앤다 — 클라이언트는 필요한 이름으로 바로 조회하면 되고, 서버가 중복을
+  // 제거하거나 순서를 바꿔도(위에서 이미 그렇게 한다) 깨지지 않는다.
   const settled = await Promise.allSettled(areas.map(fetchArea))
   let successCount = 0
-  const results = settled.map((outcome, index) => {
+  const results: Record<string, unknown> = {}
+  settled.forEach((outcome, index) => {
+    const name = areas[index]
     if (outcome.status === 'fulfilled') {
       successCount += 1
-      return outcome.value
+      results[name] = outcome.value
+      return
     }
     // 원본 예외를 응답에 담지 않는다 — fetchArea가 이미 키를 치환해서 던지므로
     // 로그로 남기는 것 자체는 안전하지만, 클라이언트에는 null만 보낸다.
-    console.error(`[citydata-bulk] area="${areas[index]}" 조회 실패:`, outcome.reason)
-    return null
+    console.error(`[citydata-bulk] area="${name}" 조회 실패:`, outcome.reason)
+    results[name] = null
   })
 
   if (successCount === 0) {
