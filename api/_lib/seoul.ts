@@ -4,7 +4,12 @@ const FETCH_TIMEOUT_MS = 8_000
 
 export function cacheTtlSeconds(): number {
   const raw = Number(process.env.CACHE_TTL_SECONDS)
-  return Number.isFinite(raw) && raw > 0 ? raw : 3_600
+  // Cache-Control의 s-maxage(delta-seconds)는 정수여야 한다(RFC 9111 §1.2.2). 예전에
+  // Number.isFinite만 썼을 때는 '300.5' 같은 값이 통과해 `s-maxage=300.5`를 만들었는데,
+  // 이걸 거부하는 CDN/파서는 디렉티브 자체가 없는 것으로 취급한다 — 즉 캐시가 통째로
+  // 꺼진다. 쿼터 전략 전체가 이 헤더 하나에 걸려 있고 사람이 대시보드에 손으로 넣는
+  // 값이라 실수하기 쉬우므로 정수만 받는다.
+  return Number.isInteger(raw) && raw > 0 ? raw : 3_600
 }
 
 export function apiKey(): string {

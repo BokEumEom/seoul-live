@@ -1,7 +1,7 @@
 // `name`은 서울 열린데이터광장 실시간 인구 API를 호출할 때 쓰는 키(AREA_NM)와 동일해야 한다.
 // 오타가 나면 해당 명소만 API 호출이 조용히 실패한다(에러 없이 빈 데이터로 보임).
 // 인증키 발급 후 공식 장소 목록과 반드시 대조 검증할 것 — 지금은 검증할 방법이 없다.
-import type { AreaCatalogEntry } from '../domain/types'
+import type { AreaCatalogEntry } from '../domain/types.js'
 
 export const AREA_CATALOG: readonly AreaCatalogEntry[] = [
   { code: 'POI014', name: '강남역', lat: 37.498, lng: 127.0276, category: '기타' },
