@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { SeoulApiError } from '../data/schema'
 import { ForecastScreen } from './ForecastScreen'
 
 vi.mock('../platform/links', () => ({
@@ -122,6 +123,28 @@ describe('ForecastScreen', () => {
 
     await waitFor(() =>
       expect(client.fetchAreaSnapshot).toHaveBeenCalledWith('경복궁'),
+    )
+  })
+
+  it('조회에 실패하면 안내와 다시 시도를 보여주고, 누르면 다시 부른다', async () => {
+    // 재시도해도 소용없는 에러를 쓴다. 일시적 에러(일반 Error)는 queries.ts의
+    // 재시도 정책이 알아서 살려내서 에러 화면 자체가 안 뜬다.
+    vi.mocked(client.fetchAreaSnapshot).mockRejectedValueOnce(
+      new SeoulApiError('INFO-200', '해당하는 데이터가 없습니다'),
+    )
+    renderScreen('경복궁')
+
+    await screen.findByText('혼잡도 정보를 가져오지 못했어요.')
+    await userEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+
+    await waitFor(() =>
+      expect(client.fetchAreaSnapshot).toHaveBeenCalledTimes(2),
+    )
+    // 두 번째 호출은 목업이 성공하므로 화면이 실제로 복구돼야 한다.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('img', { name: '시간별 혼잡도 예측' }),
+      ).toBeInTheDocument(),
     )
   })
 

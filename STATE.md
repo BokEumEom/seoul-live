@@ -2,51 +2,50 @@
 
 현재 진행 상황. 세션이 바뀌어도 여기만 읽으면 이어서 작업할 수 있게 유지한다.
 
-**최종 갱신:** 2026-08-03
+**최종 갱신:** 2026-08-04
 **작업 브랜치:** `feat/nearby-forecast` (master 아님)
 
 ## 한 줄 요약
 
-1차 범위인 「내 주변」·「혼잡예보」 두 화면 중 **네트워크 계층까지 완료**. 화면은 아직 없다. 인증키가 없어 목업으로 개발 중이다.
+1차 범위 20개 태스크 **전부 완료**. 「내 주변」·「혼잡예보」 두 화면이 목업 데이터로 동작한다. 남은 건 코드로 못 푸는 것들뿐이다 — 인증키 발급과 실기기 확인.
 
-## 진행률 — 20개 태스크 중 12개 완료
+## 진행률 — 20개 태스크 전부 완료
 
 | # | 태스크 | 상태 |
 | --- | --- | --- |
-| T1 | 의존성·Vitest 환경 | 완료 |
-| T2 | Tailwind v4·디자인 토큰 | 완료 |
-| T3 | 앱인토스 권한 설정 | 완료 |
-| T4 | 도메인 공용 타입 | 완료 |
-| T5 | 혼잡도 로직 | 완료 |
-| T6 | 거리 계산 | 완료 |
-| T7 | 명소 카탈로그 30곳 | 완료 |
-| T8 | zod 스키마·정규화 | 완료 |
-| T9 | 목업 데이터 | 완료 |
-| T10 | 데이터 클라이언트 | 완료 |
-| T11 | HTTPS 중계 프록시 | 완료 |
-| T12 | TanStack Query 훅 | 완료 |
-| T13 | 위치 훅 | **다음 차례** |
-| T14 | 내 주변 목록 로직 | 대기 |
-| T15 | 공통 컴포넌트 | 대기 |
-| T16 | 레이아웃 컴포넌트 | 대기 |
-| T17 | 내 주변 화면 | 대기 |
-| T18 | 혼잡예보 화면 | 대기 |
-| T19 | 앱 조립 | 대기 |
-| T20 | 커버리지·문서 | 대기 |
+| T1~T12 | 환경·도메인·데이터·프록시 계층 | 완료 |
+| T13 | 위치 훅 | 완료 |
+| T14 | 내 주변 목록 로직 | 완료 |
+| T15 | 공통 컴포넌트 | 완료 |
+| T16 | 레이아웃 컴포넌트 | 완료 |
+| T17 | 내 주변 화면 | 완료 |
+| T18 | 혼잡예보 화면 | 완료 |
+| T19 | 앱 조립 | 완료 |
+| T20 | 커버리지·문서 | 완료 |
 
-테스트 60개 + todo 1개 통과. `tsc -b`·`lint`·`build:vite` 통과.
+테스트 158개 + todo 1개 통과. 커버리지 라인 96.9% / 브랜치 90.2% (임계값 80/75).
+`tsc -b`·`lint`·`build:vite` 통과.
 
 ## 지금 있는 것
 
 ```text
-src/domain/   types.ts, congestion.ts, distance.ts        순수 함수, React 모름
-src/data/     areas.ts, schema.ts, mock.ts, client.ts, queries.ts
-src/app/      QueryProvider.tsx
-api/          _lib/seoul.ts, citydata.ts, citydata-bulk.ts
+src/domain/     types.ts, congestion.ts, distance.ts, forecast.ts   순수 함수, React 모름
+src/data/       areas.ts, official-areas.ts, schema.ts, mock.ts, client.ts, queries.ts
+src/platform/   links.ts                     토스 브리지 + 브라우저 폴백
+src/hooks/      useCurrentLocation.ts, useNearbyAreas.ts
+src/components/ common/, layout/, nearby/, forecast/
+src/screens/    NearbyScreen.tsx, ForecastScreen.tsx
+src/app/        QueryProvider.tsx
+api/            _lib/seoul.ts, citydata.ts, citydata-bulk.ts
 ```
 
-- `src/App.tsx`는 아직 Vite 스캐폴드다. T19에서 교체된다.
-- `src/components/`·`src/screens/`는 아직 없다. T15~T18에서 만든다.
+`npm run dev`로 두 화면이 실제로 뜬다. 라우터는 없다 — 화면이 둘뿐이라 `App.tsx`의 상태로 전환한다.
+
+## 위치 권한이 없을 때의 동작
+
+거부해도 화면은 선다. 좌표가 없으면 거리순 대신 **혼잡도 낮은 순**으로 내려가고, 상단에 허용 안내가 뜬다. 거부(`denied`)와 그 외 실패(`unavailable`)는 문구가 다르다 — 전자는 사용자가 풀 수 있고 후자는 아니다.
+
+권한 다이얼로그 재요청은 사용자가 「허용하기」를 누를 때만 연다. 화면에 들어오자마자 팝업이 연달아 뜨는 걸 막는다.
 
 ## 사람이 해야 할 일 (코드로 못 푸는 것)
 
@@ -63,7 +62,12 @@ api/          _lib/seoul.ts, citydata.ts, citydata-bulk.ts
 
 1. **명소 이름의 공백까지 확인** — 30곳을 실제 호출해본다. 아래 "명소 이름 검증" 참고.
 
-2. **토스 실기기 테스트** — `getCurrentLocation` 실제 동작과 프록시 호출 확인
+2. **토스 실기기 테스트** — 아래 3가지는 브라우저에서 확인할 수 없다.
+   - `Device.getLocation` 권한 흐름 (첫 호출이 네이티브 팝업을 띄우는지)
+   - `Device.openURL`로 카카오맵·네이버지도가 실제로 열리는지
+   - `Share.sendMessage` 공유 시트
+
+   셋 다 브리지가 없으면 웹 표준(`window.open`·클립보드)으로 떨어지게 해뒀다(`src/platform/links.ts`). 폴백이 도는 건 테스트로 확인했지만, 웹뷰 안에서 브리지 쪽이 도는지는 기기로만 알 수 있다.
 
 ### 일괄 조회는 불가능하다 (확인 완료)
 
@@ -86,6 +90,7 @@ api/          _lib/seoul.ts, citydata.ts, citydata-bulk.ts
 - 남은 건 공백뿐이다. PDF 추출이 `광장( 전통) 시장`처럼 공백을 넣어서, 괄호 주변을 정규화했지만 실제 API 형태와 같은지는 호출해봐야 안다.
 
 부수 소득 두 가지:
+
 - **2차 확장용 121곳 목록 확보.** 좌표와 카테고리만 채우면 된다.
 - **`AREA_NM` 자리에 장소코드도 넣을 수 있다** (`서울시+실시간+도시데이터.xls` 명세 확인). 코드가 이름보다 공백 문제에서 안전하다 — 실제 호출로 확인되면 전환을 고려한다.
 
@@ -103,12 +108,19 @@ api/          _lib/seoul.ts, citydata.ts, citydata-bulk.ts
 | 시각 정규식이 범위 미검사 | `"99:99"` 통과 → "99시엔 여유 예상" | 시(hour) 범위 제한 |
 | 서울 API 에러 봉투 폐기 | `INFO-200 해당하는 데이터가 없습니다`를 형태 불평으로 대체 | 전용 에러로 보존 |
 | 목업 예측이 톱니파 | 모든 명소가 4시간 내 여유 시간대를 가짐 → "한산할 시간 없음" 빈 상태를 목업으로 볼 수 없음 | 시간별 해시로 상관 제거 |
+| 계획서의 `getCurrentLocation` | web-framework 3.0.1에서 `@deprecated`. 언제 사라져도 이상하지 않다 | `Device.getLocation`으로 교체 |
+| 차트 라벨 인덱스 `[0, mid, last]` | 예측이 2개면 `[0,1,1]` → 같은 React key가 두 번 | `Set`으로 중복 제거 |
+| 길찾기·공유가 웹 표준만 사용 | 토스 웹뷰에서 `<a target=_blank>`·클립보드가 막히면 버튼이 조용히 죽음 | `src/platform/links.ts` — 네이티브 브리지 우선, 실패 시 웹 표준 폴백 |
+| 항상 참인 테스트 2건 | "입력 배열 불변", "없는 명소는 조회 안 함" 둘 다 무엇을 해도 통과 | 변이 테스트로 발견 → 실제로 falsifiable한 단언으로 교체 |
+| `App.test.tsx`가 실제 토스 브리지 호출 | jsdom엔 브리지가 없어 SDK가 던지는지 매다는지에 따라 정렬 결과가 달라짐 | SDK 목업으로 고정 |
+| ESLint가 `coverage/` 스캔 | 커버리지를 한 번 돌리면 lint가 계속 경고 3건 | `globalIgnores`에 추가 |
 
 ## 미해결 / 확인 안 된 가정
 
 - **토스 웹뷰의 mixed content 정책** — HTTPS로 번들을 서빙한다고 가정했다. 로컬 파일 스킴이면 HTTP 직접 호출이 될 수도 있다. 실기기로 확인한다. 다만 쿼터 때문에 프록시는 어차피 필요해서 설계는 안 바뀐다.
 - **명소 이름의 정확한 공백** — 121곳 공식 목록과 대조는 끝났지만(아래 참고), 매뉴얼 PDF 추출이 공백을 임의로 넣어서 `광장(전통)시장`·`홍대입구역(2호선)` 같은 이름의 정확한 형태는 실제 호출로만 확정된다.
-- **`AreaCatalogEntry.code`** — 현재 아무도 안 쓴다. 손으로 관리하는 값이 하나 더 있는 셈이라, 쓰이지 않으면 지우는 걸 고려한다.
+- **`AreaCatalogEntry.code`** — 목록의 React key로 쓰이기 시작했다(이름보다 안정적이라 적절하다). 다만 `AREA_NM` 자리에 코드를 넣는 호출 방식은 아직 안 쓴다 — 실제 호출로 코드가 먹히는 게 확인되면 이름 대신 코드로 부르는 쪽이 공백 문제에서 안전하다.
+- **위치 정확도** — `Accuracy.Balanced`(수백 m)를 쓴다. 거리순 정렬과 2km 추천에는 충분하다고 봤지만, 실제로 사용자가 "가까운 순이 이상하다"고 느끼는지는 기기에서 봐야 안다.
 
 ## 1차에서 의도적으로 뺀 것
 
