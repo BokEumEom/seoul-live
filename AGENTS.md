@@ -10,7 +10,7 @@
 npm run dev          # 개발 서버 (목업 데이터)
 npm test             # 테스트 1회 실행
 npm run test:watch   # 테스트 감시 모드
-npm run test:coverage # 커버리지 (임계값 lines 80%)
+npm run test:coverage # 커버리지 (임계값 lines/statements/functions 80%, branches 75%)
 npm run lint         # ESLint
 npm run build:vite   # 타입검사 + 번들 (앱인토스 없이)
 npm run build        # 위 + ait build
@@ -49,7 +49,9 @@ npm run deploy       # ait deploy
 
 `citydata_ppltn`은 위경도를 주지 않는다. 거리순 정렬과 카테고리 필터를 위해 `src/data/areas.ts`의 정적 카탈로그를 **손으로 관리**한다.
 
-**`areas.ts`의 `name`이 곧 API 호출 키다.** 오타가 나면 그 명소만 조용히 실패한다. 인증키 발급 후 공식 장소 목록과 대조 검증할 것.
+**`areas.ts`의 `name`이 곧 API 호출 키다.** 오타가 나면 그 명소만 조용히 실패한다.
+
+공식 121곳 목록과의 대조는 끝났다(`official-areas.ts`, `areas.test.ts`가 고정). 남은 건 괄호 주변 공백뿐이고, 그건 실제 호출로만 확정된다.
 
 ### sample 키로는 실데이터 검증이 불가능하다
 
@@ -78,6 +80,7 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 - `src/domain/`에서 React를 import하지 마라. 이 격리 덕에 렌더러 없이 단위 테스트가 된다.
 - 컴포넌트는 `fetch`를 직접 부르지 않는다. `src/data/queries.ts`의 훅만 쓴다.
 - 앱인토스 SDK는 `src/platform/`과 위치 훅에서만 import 한다. 토스 웹뷰 밖(개발 서버·테스트)에는 네이티브 브리지가 없어서, 브리지를 직접 부르는 코드가 흩어지면 브라우저에서 화면이 죽는다.
+- **위치는 `src/app/LocationProvider`가 앱 수준에서 한 번만 잡는다.** 화면 안에서 `useCurrentLocation`을 직접 부르지 마라 — 화면이 언마운트될 때마다 GPS가 다시 켜지고, 권한을 아직 안 정한 사용자에게는 팝업이 반복해서 뜬다. 화면은 `useLocation()`으로 받아 쓴다.
 - 목업↔실데이터 분기는 `src/data/client.ts` **한 곳에서만** 일어난다.
 - `api/`는 정규화하지 않는다. 원본을 그대로 넘기고 클라이언트가 파싱한다. 정규화 로직이 두 곳에 생기는 것을 막으려는 것이다.
 
@@ -100,6 +103,7 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 ## 작업 규칙
 
 - **TDD.** 실패하는 테스트 먼저, 실패 확인, 구현, 통과 확인, 커밋.
+- **통과한 테스트를 믿지 마라.** 새 테스트를 쓴 뒤에는 구현을 일부러 한 줄 깨뜨려 그 테스트가 실제로 실패하는지 확인한다. 이 프로젝트에서 이미 두 번, 무엇을 해도 통과하는 "항상 참인 테스트"를 이 방법으로 잡았다(`toSorted`를 `sort`로 바꿔도 통과하던 불변성 테스트, 구현과 무관하게 통과하던 "없는 명소는 조회 안 함" 테스트).
 - **불변성.** 객체를 변경하지 말고 새로 만든다. 배열은 `.sort()` 대신 `.toSorted()`를 쓴다 — TanStack Query 캐시 배열을 제자리 정렬하면 캐시가 오염된다.
 - **파일은 작게.** 200~400줄이 보통, 800줄이 상한.
 - **인증키를 코드에 넣지 마라.** 서버는 `process.env.SEOUL_API_KEY`, 클라이언트는 프록시를 통해서만 접근한다. 에러 메시지에 원본 예외를 담지 마라 — 키가 샐 수 있다.
