@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { QueryProvider } from './app/QueryProvider'
 import { BottomTabBar, type TabKey } from './components/layout/BottomTabBar'
 import { TopAppBar } from './components/layout/TopAppBar'
+import { ForecastScreen } from './screens/ForecastScreen'
 import { NearbyScreen } from './screens/NearbyScreen'
 
 // 화면이 둘뿐이라 라우터 대신 상태로 전환한다. 라우터를 넣으면 토스 웹뷰의
@@ -25,16 +26,12 @@ function AppShell() {
             <NearbyScreen onSelectArea={setSelectedArea} />
           </>
         ) : (
-          <>
-            <TopAppBar
-              title={selectedArea}
-              onBack={() => setSelectedArea(null)}
-            />
-            {/* 혼잡예보 화면(T18)은 아직이다. */}
-            <p className="px-4 py-16 text-center text-sm text-on-surface-variant">
-              혼잡예보 화면은 준비 중이에요.
-            </p>
-          </>
+          // 상단 바는 ForecastScreen이 직접 그린다. 명소를 못 찾은 경우에도
+          // 뒤로 갈 수 있어야 해서 화면 안쪽에 있어야 한다.
+          <ForecastScreen
+            areaName={selectedArea}
+            onBack={() => setSelectedArea(null)}
+          />
         )}
       </main>
       <BottomTabBar active={activeTab} onSelect={handleTab} />

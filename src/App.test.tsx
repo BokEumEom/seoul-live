@@ -87,6 +87,14 @@ describe('App', () => {
     await userEvent.click(screen.getByText('경복궁'))
     expect(screen.getByRole('heading', { name: '경복궁' })).toBeInTheDocument()
 
+    // 헤더만 바뀌고 본문이 비면 사용자에겐 고장이다. 실제 예보 내용까지 확인한다.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('img', { name: '시간별 혼잡도 예측' }),
+      ).toBeInTheDocument(),
+    )
+    expect(screen.getByRole('heading', { name: '시간별 예측' })).toBeInTheDocument()
+
     await userEvent.click(screen.getByRole('button', { name: '뒤로 가기' }))
     expect(screen.getByRole('heading', { name: '내 주변 명소' })).toBeInTheDocument()
   })

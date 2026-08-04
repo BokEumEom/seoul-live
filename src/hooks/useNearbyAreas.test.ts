@@ -115,9 +115,10 @@ describe('buildNearbyList', () => {
   })
 
   it('카탈로그 순서를 바꾸지 않는다', () => {
-    // 프록시 CDN 캐시의 키는 요청 URL이고, URL은 AREA_NAMES 순서로 만들어진다.
-    // 사용자 위치에 따라 카탈로그가 제자리 정렬되면 사용자마다 URL이 달라져
-    // 캐시가 한 번도 맞지 않는다 — 프록시를 둔 이유가 통째로 사라진다.
+    // 카탈로그는 모듈 전역 상수라 제자리 정렬하면 그 순서가 앱 전체에 남는다.
+    // 사용자 위치에 따라 순서가 바뀌면 useAreaSnapshots의 queryKey(['areas', names])가
+    // 매번 달라져 클라이언트 캐시가 미스난다. 서버 쪽 CDN 캐시 키는 client.ts가
+    // 이름을 중복 제거·정렬해 보내므로 여기 영향을 받지 않는다.
     const before = AREA_CATALOG.map((entry) => entry.name)
 
     buildNearbyList({

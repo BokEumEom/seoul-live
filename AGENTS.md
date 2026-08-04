@@ -64,6 +64,7 @@ npm run deploy       # ait deploy
 ```text
 src/domain/   순수 함수와 타입. React도 네트워크도 모른다.
 src/data/     스키마·네트워크·목업. 여기서만 fetch 한다.
+src/platform/ 토스 네이티브 브리지. 브리지가 없을 때의 폴백도 여기 있다.
 src/hooks/    React 훅. 도메인 로직을 화면에 잇는다.
 src/components/  props만 받는다. 데이터 페칭을 하지 않는다.
 src/screens/  데이터를 가져와 컴포넌트에 내려준다.
@@ -72,6 +73,7 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 
 - `src/domain/`에서 React를 import하지 마라. 이 격리 덕에 렌더러 없이 단위 테스트가 된다.
 - 컴포넌트는 `fetch`를 직접 부르지 않는다. `src/data/queries.ts`의 훅만 쓴다.
+- 앱인토스 SDK는 `src/platform/`과 위치 훅에서만 import 한다. 토스 웹뷰 밖(개발 서버·테스트)에는 네이티브 브리지가 없어서, 브리지를 직접 부르는 코드가 흩어지면 브라우저에서 화면이 죽는다.
 - 목업↔실데이터 분기는 `src/data/client.ts` **한 곳에서만** 일어난다.
 - `api/`는 정규화하지 않는다. 원본을 그대로 넘기고 클라이언트가 파싱한다. 정규화 로직이 두 곳에 생기는 것을 막으려는 것이다.
 
