@@ -1,121 +1,51 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { QueryProvider } from './app/QueryProvider'
+import { BottomTabBar, type TabKey } from './components/layout/BottomTabBar'
+import { TopAppBar } from './components/layout/TopAppBar'
+import { NearbyScreen } from './screens/NearbyScreen'
 
-function App() {
-  const [count, setCount] = useState(0)
+// 화면이 둘뿐이라 라우터 대신 상태로 전환한다. 라우터를 넣으면 토스 웹뷰의
+// 딥링크 처리까지 검증해야 하는데 1차 범위 밖이다.
+function AppShell() {
+  const [selectedArea, setSelectedArea] = useState<string | null>(null)
+  const activeTab: TabKey = selectedArea === null ? 'nearby' : 'forecast'
+
+  function handleTab(key: TabKey): void {
+    if (key === 'nearby') {
+      setSelectedArea(null)
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <div className="flex min-h-full flex-col bg-surface">
+      <main className="flex-1">
+        {selectedArea === null ? (
+          <>
+            <TopAppBar title="Seoul Live" />
+            <NearbyScreen onSelectArea={setSelectedArea} />
+          </>
+        ) : (
+          <>
+            <TopAppBar
+              title={selectedArea}
+              onBack={() => setSelectedArea(null)}
+            />
+            {/* 혼잡예보 화면(T18)은 아직이다. */}
+            <p className="px-4 py-16 text-center text-sm text-on-surface-variant">
+              혼잡예보 화면은 준비 중이에요.
+            </p>
+          </>
+        )}
+      </main>
+      <BottomTabBar active={activeTab} onSelect={handleTab} />
+    </div>
   )
 }
 
-export default App
+export default function App() {
+  return (
+    <QueryProvider>
+      <AppShell />
+    </QueryProvider>
+  )
+}
