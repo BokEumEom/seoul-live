@@ -4,11 +4,14 @@ import { congestionRank, isUncrowded } from '../domain/congestion'
 import { haversineMeters } from '../domain/distance'
 import type {
   AreaCatalogEntry,
+  AreaCategory,
   AreaSnapshot,
   Coords,
   NearbyArea,
 } from '../domain/types'
-import type { CategoryFilterValue } from '../components/nearby/CategoryFilter'
+
+/** 카탈로그의 카테고리 + 필터를 걸지 않은 상태. */
+export type CategoryFilterValue = AreaCategory | '전체'
 
 /** 도보 30분. 시안의 "800m · 도보 12분"이 시속 4km 기준이므로 그에 맞춘다. */
 const RECOMMENDATION_RADIUS_METERS = 2_000

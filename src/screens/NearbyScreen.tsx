@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { ErrorState } from '../components/common/ErrorState'
 import { SkeletonList } from '../components/common/SkeletonCard'
 import { AreaListItem } from '../components/nearby/AreaListItem'
-import {
-  CategoryFilter,
-  type CategoryFilterValue,
-} from '../components/nearby/CategoryFilter'
+import { CategoryFilter } from '../components/nearby/CategoryFilter'
+import { LocationNotice } from '../components/nearby/LocationNotice'
 import { AREA_NAMES } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
-import { useNearbyAreas } from '../hooks/useNearbyAreas'
+import { useCurrentLocation } from '../hooks/useCurrentLocation'
+import {
+  useNearbyAreas,
+  type CategoryFilterValue,
+} from '../hooks/useNearbyAreas'
 
 interface Props {
   readonly onSelectArea: (name: string) => void
@@ -17,10 +19,17 @@ interface Props {
 export function NearbyScreen({ onSelectArea }: Props) {
   const [category, setCategory] = useState<CategoryFilterValue>('전체')
   const snapshots = useAreaSnapshots(AREA_NAMES)
+  const location = useCurrentLocation()
 
-  // 위치 훅(T13)은 아직이다. coords가 null이면 혼잡도 낮은 순으로 정렬된다 —
-  // 위치 권한을 거부한 사용자에게도 그대로 쓸 대체 동작이다.
-  const { list } = useNearbyAreas(snapshots.data ?? [], null, category)
+  // 좌표가 없으면 혼잡도 낮은 순으로 내려간다. 위치를 거부한 사용자도
+  // 빈 화면 대신 쓸 수 있는 목록을 본다.
+  const { list, recommended } = useNearbyAreas(
+    snapshots.data ?? [],
+    location.coords,
+    category,
+  )
+
+  const sortedByDistance = location.coords !== null
 
   return (
     <div className="flex flex-col gap-4 pb-6">
@@ -30,6 +39,8 @@ export function NearbyScreen({ onSelectArea }: Props) {
           서울 {AREA_NAMES.length}곳 실시간 혼잡도
         </p>
       </section>
+
+      <LocationNotice status={location.status} onRetry={location.retry} />
 
       <CategoryFilter value={category} onChange={setCategory} />
 
@@ -49,24 +60,48 @@ export function NearbyScreen({ onSelectArea }: Props) {
       )}
 
       {!snapshots.isPending && !snapshots.isError && (
-        <section className="px-4">
-          <h3 className="text-lg font-bold text-on-surface">혼잡도 낮은 순</h3>
-          {list.length === 0 ? (
-            <p className="mt-6 text-center text-sm text-on-surface-variant">
-              이 카테고리에 해당하는 명소가 없어요.
-            </p>
-          ) : (
-            <div className="mt-3 flex flex-col gap-3">
-              {list.map((area) => (
-                <AreaListItem
-                  key={area.entry.code}
-                  area={area}
-                  onSelect={onSelectArea}
-                />
-              ))}
-            </div>
+        <>
+          {recommended.length > 0 && (
+            <section className="px-4">
+              <h3 className="text-lg font-bold text-on-surface">
+                지금 가기 좋은 곳
+              </h3>
+              <p className="mt-0.5 text-sm text-on-surface-variant">
+                2km 안에서 한산한 곳
+              </p>
+              <div className="mt-3 flex flex-col gap-3">
+                {recommended.map((area) => (
+                  <AreaListItem
+                    key={area.entry.code}
+                    area={area}
+                    onSelect={onSelectArea}
+                  />
+                ))}
+              </div>
+            </section>
           )}
-        </section>
+
+          <section className="px-4">
+            <h3 className="text-lg font-bold text-on-surface">
+              {sortedByDistance ? '가까운 순' : '혼잡도 낮은 순'}
+            </h3>
+            {list.length === 0 ? (
+              <p className="mt-6 text-center text-sm text-on-surface-variant">
+                이 카테고리에 해당하는 명소가 없어요.
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-col gap-3">
+                {list.map((area) => (
+                  <AreaListItem
+                    key={area.entry.code}
+                    area={area}
+                    onSelect={onSelectArea}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
       )}
     </div>
   )

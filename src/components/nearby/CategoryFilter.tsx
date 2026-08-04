@@ -1,6 +1,4 @@
-import type { AreaCategory } from '../../domain/types'
-
-export type CategoryFilterValue = AreaCategory | '전체'
+import type { CategoryFilterValue } from '../../hooks/useNearbyAreas'
 
 const OPTIONS: readonly CategoryFilterValue[] = [
   '전체',
