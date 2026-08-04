@@ -26,13 +26,13 @@ export function LocationNotice({ status, onRetry }: Props) {
 
   return (
     <div className="mx-4 flex items-center gap-3 rounded-card bg-surface-container px-4 py-3">
-      <p className="min-w-0 flex-1 text-sm text-on-surface-variant">
+      <p className="min-w-0 flex-1 text-label-md text-on-surface-variant">
         {notice.message}
       </p>
       <button
         type="button"
         onClick={onRetry}
-        className="min-h-12 shrink-0 rounded-full px-3 text-sm font-semibold text-primary"
+        className="min-h-12 shrink-0 rounded-full px-3 text-label-md font-semibold text-primary"
       >
         {notice.action}
       </button>

@@ -4,18 +4,53 @@
    스캔 대상에서 빼지 않으면 쓰지 않는 유틸리티가 CSS에 섞인다. */
 @source not "../stitch_ui";
 
+/* 값의 출처는 stitch_ui/seoul_flow/DESIGN.md 하나다. 여기서 손으로 바꾸지 말고
+   그 파일을 고친 뒤 옮길 것. */
 @theme {
+  /* 주요 색 */
   --color-primary: #004ac6;
   --color-on-primary: #ffffff;
   --color-primary-container: #2563eb;
+  --color-on-primary-container: #eeefff;
   --color-primary-fixed: #dbe1ff;
-  --color-secondary-container: #d5e0f8;
+  --color-primary-fixed-dim: #b4c5ff;
+  --color-on-primary-fixed: #00174b;
+  --color-on-primary-fixed-variant: #003ea8;
+  --color-inverse-primary: #b4c5ff;
+  --color-surface-tint: #0053db;
 
+  --color-secondary: #545f73;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #d5e0f8;
+  --color-on-secondary-container: #586377;
+  --color-secondary-fixed: #d8e3fb;
+  --color-secondary-fixed-dim: #bcc7de;
+  --color-on-secondary-fixed: #111c2d;
+  --color-on-secondary-fixed-variant: #3c475a;
+
+  --color-tertiary: #943700;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #bc4800;
+  --color-on-tertiary-container: #ffede6;
+  --color-tertiary-fixed: #ffdbcd;
+  --color-tertiary-fixed-dim: #ffb596;
+  --color-on-tertiary-fixed: #360f00;
+  --color-on-tertiary-fixed-variant: #7d2d00;
+
+  /* 표면 */
+  --color-background: #faf8ff;
+  --color-on-background: #191b23;
   --color-surface: #faf8ff;
+  --color-surface-dim: #d9d9e5;
+  --color-surface-bright: #faf8ff;
+  --color-surface-variant: #e1e2ed;
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-low: #f3f3fe;
   --color-surface-container: #ededf9;
   --color-surface-container-high: #e7e7f3;
+  --color-surface-container-highest: #e1e2ed;
+  --color-inverse-surface: #2e3039;
+  --color-inverse-on-surface: #f0f0fb;
 
   --color-on-surface: #191b23;
   --color-on-surface-variant: #434655;
@@ -23,10 +58,12 @@
   --color-outline-variant: #c3c6d7;
 
   --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
   --color-error-container: #ffdad6;
   --color-on-error-container: #93000a;
 
-  /* 혼잡도 4단계 */
+  /* 혼잡도 4단계. DESIGN.md는 3색(Success/Warning/Danger)이지만 서울 API가 주는
+     값이 4단계라 정보 손실을 피해 '약간 붐빔'(busy)을 하나 더 뒀다. */
   --color-calm: #059669;
   --color-calm-container: #d1fae5;
   --color-normal: #d97706;
@@ -38,8 +75,45 @@
 
   --font-sans: "Hanken Grotesk", "Pretendard", system-ui, sans-serif;
 
+  /* 타이포 스케일. DESIGN.md의 typography 블록과 1:1이다.
+     "걸으면서도 읽히게" 일반 유틸리티 앱보다 한 단계 크게 잡혀 있다. */
+  --text-display-lg: 2rem; /* 32px */
+  --text-display-lg--line-height: 2.5rem;
+  --text-display-lg--font-weight: 700;
+  --text-display-lg--letter-spacing: -0.02em;
+
+  --text-headline-md: 1.5rem; /* 24px */
+  --text-headline-md--line-height: 2rem;
+  --text-headline-md--font-weight: 600;
+  --text-headline-md--letter-spacing: -0.01em;
+
+  --text-headline-sm: 1.25rem; /* 20px */
+  --text-headline-sm--line-height: 1.75rem;
+  --text-headline-sm--font-weight: 600;
+
+  --text-body-lg: 1.125rem; /* 18px */
+  --text-body-lg--line-height: 1.75rem;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 1rem; /* 16px */
+  --text-body-md--line-height: 1.5rem;
+  --text-body-md--font-weight: 400;
+
+  --text-label-md: 0.875rem; /* 14px */
+  --text-label-md--line-height: 1.25rem;
+  --text-label-md--font-weight: 500;
+  --text-label-md--letter-spacing: 0.01em;
+
+  --text-label-sm: 0.75rem; /* 12px */
+  --text-label-sm--line-height: 1rem;
+  --text-label-sm--font-weight: 600;
+  --text-label-sm--letter-spacing: 0.02em;
+
   --radius-card: 0.5rem;
   --radius-action: 1rem;
+
+  /* Level 2 — 하단 탭바와 FAB. DESIGN.md의 "12% opacity, 8px blur, 4px offset" */
+  --shadow-floating: 0 4px 8px rgb(0 0 0 / 0.12);
 }
 
 html, body, #root {

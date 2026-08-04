@@ -93,7 +93,9 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 
 - **Tailwind v4.** `tailwind.config.js`가 없다. 토큰은 `src/index.css`의 `@theme` 블록에 있다.
 - `stitch_ui/`는 디자인 시안이라 `@source not`으로 스캔에서 제외돼 있다. 여기 클래스를 늘려도 번들에 반영되지 않는다.
-- 디자인 토큰의 출처는 `stitch_ui/seoul_flow/DESIGN.md`다.
+- **디자인 토큰의 출처는 `stitch_ui/seoul_flow/DESIGN.md` 하나다.** `index.css`에서 값을 직접 고치지 말고 그 파일을 고친 뒤 옮긴다.
+- **글자 크기는 토큰으로 쓴다** — `text-sm`·`text-lg` 같은 Tailwind 기본값 대신 `text-label-md`·`text-headline-sm`처럼 시안 스케일을 쓴다. 기본값을 섞으면 시안에 없는 크기가 화면마다 늘어난다.
+- 아이콘은 `src/components/common/Icon.tsx`에 필요한 것만 둔다. 쓰이지 않게 된 아이콘은 지운다.
 
 ## 작업 규칙
 

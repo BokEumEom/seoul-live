@@ -104,7 +104,7 @@ describe('App', () => {
     await waitFor(() => expect(screen.getByText('강남역')).toBeInTheDocument())
 
     expect(
-      screen.getByRole('heading', { name: '혼잡도 낮은 순' }),
+      screen.getByRole('heading', { name: '혼잡도순 주변 장소' }),
     ).toBeInTheDocument()
     expect(
       screen.getByText('위치를 허용하면 가까운 곳부터 볼 수 있어요.'),
@@ -115,13 +115,13 @@ describe('App', () => {
     expect(item?.textContent).not.toMatch(/\d+(\.\d+)?\s*(m|km)/)
   })
 
-  it('위치를 허용하면 가까운 순으로 바뀌고 거리가 보인다', async () => {
+  it('위치를 허용하면 거리순으로 바뀌고 거리가 보인다', async () => {
     grantLocation()
     render(<App />)
 
     await waitFor(() =>
       expect(
-        screen.getByRole('heading', { name: '가까운 순' }),
+        screen.getByRole('heading', { name: '거리순 주변 장소' }),
       ).toBeInTheDocument(),
     )
 
@@ -134,16 +134,31 @@ describe('App', () => {
     expect(screen.queryByText(/위치를 허용하면/)).not.toBeInTheDocument()
   })
 
-  it('위치를 허용하면 2km 안 한산한 곳을 추천으로 띄운다', async () => {
+  it('위치를 허용하면 가까우면서 여유로운 곳을 추천으로 띄운다', async () => {
     grantLocation()
     render(<App />)
 
     await waitFor(() =>
       expect(
-        screen.getByRole('heading', { name: '지금 가기 좋은 곳' }),
+        screen.getByRole('heading', { name: '가까우면서 여유로운 곳 추천' }),
       ).toBeInTheDocument(),
     )
-    expect(screen.getByText('2km 안에서 한산한 곳')).toBeInTheDocument()
+  })
+
+  it('정렬 기준을 바꾸면 목록 제목과 순서가 함께 바뀐다', async () => {
+    grantLocation()
+    render(<App />)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: '거리순 주변 장소' }),
+      ).toBeInTheDocument(),
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /정렬 기준/ }))
+
+    expect(
+      screen.getByRole('heading', { name: '혼잡도순 주변 장소' }),
+    ).toBeInTheDocument()
   })
 
   it('거부한 뒤 허용하기를 누르면 권한 다이얼로그를 연다', async () => {
@@ -160,6 +175,24 @@ describe('App', () => {
     expect(
       framework.Device.getLocation.openPermissionDialog,
     ).toHaveBeenCalledTimes(1)
+  })
+
+  it('상세에 갔다 돌아와도 위치를 다시 요청하지 않는다', async () => {
+    // 위치 훅이 화면 안에 있으면 화면이 언마운트될 때마다 GPS가 다시 켜지고,
+    // 권한을 아직 안 정한 사용자에게는 팝업이 반복해서 뜬다.
+    grantLocation()
+    render(<App />)
+    // 위치를 허용하면 추천 카드에도 같은 명소가 뜰 수 있어 첫 번째를 집는다.
+    await waitFor(() =>
+      expect(screen.getAllByText('경복궁').length).toBeGreaterThan(0),
+    )
+    expect(getLocation).toHaveBeenCalledTimes(1)
+
+    await userEvent.click(screen.getAllByText('경복궁')[0])
+    await userEvent.click(screen.getByRole('button', { name: '뒤로 가기' }))
+    await waitFor(() => expect(screen.getByText('강남역')).toBeInTheDocument())
+
+    expect(getLocation).toHaveBeenCalledTimes(1)
   })
 
   it('지도·더보기 탭은 비활성이다', async () => {

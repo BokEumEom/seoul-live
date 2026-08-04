@@ -1,5 +1,6 @@
 import type { AreaCatalogEntry } from '../../domain/types'
 import { openExternalUrl, shareMessage } from '../../platform/links'
+import { Icon, type IconName } from '../common/Icon'
 
 interface Props {
   readonly entry: AreaCatalogEntry
@@ -7,6 +8,7 @@ interface Props {
 
 interface MapLink {
   readonly label: string
+  readonly icon: IconName
   readonly href: (query: string) => string
   readonly className: string
 }
@@ -14,11 +16,13 @@ interface MapLink {
 const MAP_LINKS: readonly MapLink[] = [
   {
     label: '카카오맵 길찾기',
+    icon: 'pin',
     href: (query) => `https://map.kakao.com/link/search/${query}`,
     className: 'bg-[#FEE500] text-[#191600]',
   },
   {
     label: '네이버 길찾기',
+    icon: 'map',
     href: (query) => `https://map.naver.com/p/search/${query}`,
     className: 'bg-[#03C75A] text-white',
   },
@@ -31,8 +35,8 @@ export function ActionButtons({ entry }: Props) {
   // 폴백이 성립하고, 스크린리더도 링크로 읽는다. 실제 열기는 openExternalUrl이
   // 맡으므로 기본 동작은 막는다 — 웹뷰에서 두 번 열리는 걸 방지한다.
   return (
-    <div className="flex flex-col gap-2 px-4">
-      <div className="flex gap-2">
+    <div className="flex flex-col gap-3 px-4">
+      <div className="flex gap-3">
         {MAP_LINKS.map((link) => (
           <a
             key={link.label}
@@ -43,8 +47,9 @@ export function ActionButtons({ entry }: Props) {
               event.preventDefault()
               void openExternalUrl(link.href(query))
             }}
-            className={`flex min-h-12 flex-1 items-center justify-center rounded-action text-sm font-semibold ${link.className}`}
+            className={`flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-action text-label-md font-semibold ${link.className}`}
           >
+            <Icon name={link.icon} className="size-5" />
             {link.label}
           </a>
         ))}
@@ -54,8 +59,9 @@ export function ActionButtons({ entry }: Props) {
         onClick={() => {
           void shareMessage(`${entry.name} 실시간 혼잡도 - 서울 라이브`)
         }}
-        className="min-h-12 rounded-action border border-outline-variant bg-surface-container-lowest text-sm font-semibold text-on-surface"
+        className="flex min-h-12 items-center justify-center gap-1.5 rounded-action border border-outline-variant bg-surface-container-lowest text-label-md font-semibold text-on-surface"
       >
+        <Icon name="share" className="size-5" />
         친구에게 공유하기
       </button>
     </div>

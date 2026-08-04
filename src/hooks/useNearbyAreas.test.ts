@@ -46,6 +46,39 @@ const SNAPSHOTS: readonly AreaSnapshot[] = [
 
 const HERE = { lat: 37.5665, lng: 126.978 }
 
+describe('buildNearbyList — 정렬 기준', () => {
+  it('거리순을 골라도 좌표가 없으면 혼잡도순으로 내려간다', () => {
+    // 위치를 거부한 사용자에게 "거리순"을 고를 기회는 주되, 실제로는 정렬할
+    // 근거가 없으므로 조용히 혼잡도순으로 대체한다.
+    const list = buildNearbyList({
+      entries: ENTRIES,
+      snapshots: SNAPSHOTS,
+      coords: null,
+      category: '전체',
+      sort: 'distance',
+    })
+
+    expect(list[0].snapshot?.congestion).toBe('여유')
+    expect(list.at(-1)?.snapshot?.congestion).toBe('붐빔')
+  })
+
+  it('좌표가 있어도 혼잡도순을 고르면 그대로 따른다', () => {
+    const list = buildNearbyList({
+      entries: ENTRIES,
+      snapshots: SNAPSHOTS,
+      coords: HERE,
+      category: '전체',
+      sort: 'congestion',
+    })
+
+    // 가장 가까운 건 '가까운여유'(0m)지만, 혼잡도순에서도 여유라 1등이다.
+    // 순서를 가르는 건 두 번째다 — 거리순이면 '가까운붐빔', 혼잡도순이면 '먼여유'.
+    expect(list[1].entry.name).toBe('먼여유')
+    // 거리는 여전히 계산돼 화면에 표시된다.
+    expect(list[1].distanceMeters).toBeGreaterThan(0)
+  })
+})
+
 describe('buildNearbyList', () => {
   it('좌표가 있으면 거리 오름차순으로 정렬한다', () => {
     const list = buildNearbyList({

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  congestionHeadline,
   congestionRank,
   congestionTone,
   isUncrowded,
   parseCongestionLevel,
 } from './congestion'
+import { CONGESTION_LEVELS } from './types'
 
 describe('parseCongestionLevel', () => {
   it('서울 API가 주는 4단계를 그대로 인식한다', () => {
@@ -55,5 +57,23 @@ describe('isUncrowded', () => {
     expect(isUncrowded('보통')).toBe(true)
     expect(isUncrowded('약간 붐빔')).toBe(false)
     expect(isUncrowded('붐빔')).toBe(false)
+  })
+})
+
+describe('congestionHeadline', () => {
+  it('4단계 모두 서로 다른 문구를 준다', () => {
+    const headlines = CONGESTION_LEVELS.map(congestionHeadline)
+    expect(new Set(headlines).size).toBe(CONGESTION_LEVELS.length)
+  })
+
+  it('시안의 문구를 그대로 쓴다', () => {
+    // stitch_ui/_3 시안의 큰 제목이 "극심한 혼잡"이다.
+    expect(congestionHeadline('붐빔')).toBe('극심한 혼잡')
+  })
+
+  it('붐빌수록 강한 표현이 된다', () => {
+    expect(congestionHeadline('여유')).toBe('매우 원활')
+    expect(congestionHeadline('보통')).toBe('원활')
+    expect(congestionHeadline('약간 붐빔')).toBe('다소 혼잡')
   })
 })

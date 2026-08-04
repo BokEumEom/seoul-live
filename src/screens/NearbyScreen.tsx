@@ -1,15 +1,19 @@
 import { useState } from 'react'
 import { ErrorState } from '../components/common/ErrorState'
+import { Icon } from '../components/common/Icon'
 import { SkeletonList } from '../components/common/SkeletonCard'
 import { AreaListItem } from '../components/nearby/AreaListItem'
 import { CategoryFilter } from '../components/nearby/CategoryFilter'
 import { LocationNotice } from '../components/nearby/LocationNotice'
+import { RecommendationCard } from '../components/nearby/RecommendationCard'
+import { SortSelect } from '../components/nearby/SortSelect'
+import { useLocation } from '../app/locationContext'
 import { AREA_NAMES } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
-import { useCurrentLocation } from '../hooks/useCurrentLocation'
 import {
   useNearbyAreas,
   type CategoryFilterValue,
+  type SortMode,
 } from '../hooks/useNearbyAreas'
 
 interface Props {
@@ -18,25 +22,29 @@ interface Props {
 
 export function NearbyScreen({ onSelectArea }: Props) {
   const [category, setCategory] = useState<CategoryFilterValue>('전체')
+  const [sort, setSort] = useState<SortMode>('distance')
   const snapshots = useAreaSnapshots(AREA_NAMES)
-  const location = useCurrentLocation()
+  const location = useLocation()
 
-  // 좌표가 없으면 혼잡도 낮은 순으로 내려간다. 위치를 거부한 사용자도
+  // 좌표가 없으면 무엇을 골라도 혼잡도순으로 내려간다. 위치를 거부한 사용자도
   // 빈 화면 대신 쓸 수 있는 목록을 본다.
   const { list, recommended } = useNearbyAreas(
     snapshots.data ?? [],
     location.coords,
     category,
+    sort,
   )
 
-  const sortedByDistance = location.coords !== null
+  const hasLocation = location.coords !== null
+  const ready = !snapshots.isPending && !snapshots.isError
 
   return (
-    <div className="flex flex-col gap-4 pb-6">
+    <div className="relative flex flex-col gap-4 pb-6">
       <section className="px-4 pt-4">
-        <h2 className="text-2xl font-bold text-on-surface">내 주변 명소</h2>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          서울 {AREA_NAMES.length}곳 실시간 혼잡도
+        <h2 className="text-headline-md text-on-surface">내 주변 명소</h2>
+        <p className="mt-1 text-label-md text-on-surface-variant">
+          {hasLocation ? '현재 위치 기반' : '서울 도심'} 실시간 혼잡도 · 총{' '}
+          {AREA_NAMES.length}곳
         </p>
       </section>
 
@@ -59,19 +67,18 @@ export function NearbyScreen({ onSelectArea }: Props) {
         </div>
       )}
 
-      {!snapshots.isPending && !snapshots.isError && (
+      {ready && (
         <>
           {recommended.length > 0 && (
-            <section className="px-4">
-              <h3 className="text-lg font-bold text-on-surface">
-                지금 가기 좋은 곳
+            <section>
+              <h3 className="px-4 text-headline-sm text-on-surface">
+                가까우면서 여유로운 곳 추천
               </h3>
-              <p className="mt-0.5 text-sm text-on-surface-variant">
-                2km 안에서 한산한 곳
-              </p>
-              <div className="mt-3 flex flex-col gap-3">
+              {/* 가로 스크롤. 아래 목록과 같은 세로 행으로 두면 두 섹션이
+                  구분되지 않아 추천이 눈에 띄지 않는다. */}
+              <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
                 {recommended.map((area) => (
-                  <AreaListItem
+                  <RecommendationCard
                     key={area.entry.code}
                     area={area}
                     onSelect={onSelectArea}
@@ -82,11 +89,21 @@ export function NearbyScreen({ onSelectArea }: Props) {
           )}
 
           <section className="px-4">
-            <h3 className="text-lg font-bold text-on-surface">
-              {sortedByDistance ? '가까운 순' : '혼잡도 낮은 순'}
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-headline-sm text-on-surface">
+                {hasLocation && sort === 'distance'
+                  ? '거리순 주변 장소'
+                  : '혼잡도순 주변 장소'}
+              </h3>
+              <SortSelect
+                value={sort}
+                onChange={setSort}
+                distanceAvailable={hasLocation}
+              />
+            </div>
+
             {list.length === 0 ? (
-              <p className="mt-6 text-center text-sm text-on-surface-variant">
+              <p className="mt-6 text-center text-body-md text-on-surface-variant">
                 이 카테고리에 해당하는 명소가 없어요.
               </p>
             ) : (
@@ -103,6 +120,17 @@ export function NearbyScreen({ onSelectArea }: Props) {
           </section>
         </>
       )}
+
+      {/* 시안의 우하단 FAB. 지도가 없으니 "지도 다시 맞추기" 대신 위치를 다시
+          잡는 역할을 맡는다. */}
+      <button
+        type="button"
+        onClick={location.retry}
+        aria-label="현재 위치 다시 확인"
+        className="sticky bottom-4 left-full mr-4 grid size-14 place-items-center rounded-full bg-primary text-on-primary shadow-floating"
+      >
+        <Icon name="myLocation" />
+      </button>
     </div>
   )
 }

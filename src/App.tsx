@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LocationProvider } from './app/LocationProvider'
 import { QueryProvider } from './app/QueryProvider'
 import { BottomTabBar, type TabKey } from './components/layout/BottomTabBar'
 import { TopAppBar } from './components/layout/TopAppBar'
@@ -31,6 +32,7 @@ function AppShell() {
           <ForecastScreen
             areaName={selectedArea}
             onBack={() => setSelectedArea(null)}
+            onSelectArea={setSelectedArea}
           />
         )}
       </main>
@@ -42,7 +44,9 @@ function AppShell() {
 export default function App() {
   return (
     <QueryProvider>
-      <AppShell />
+      <LocationProvider>
+        <AppShell />
+      </LocationProvider>
     </QueryProvider>
   )
 }

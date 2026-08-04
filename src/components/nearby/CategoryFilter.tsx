@@ -24,7 +24,7 @@ export function CategoryFilter({ value, onChange }: Props) {
           role="tab"
           aria-selected={value === option}
           onClick={() => onChange(option)}
-          className={`min-h-12 shrink-0 rounded-full px-4 text-sm font-semibold ${
+          className={`min-h-12 shrink-0 rounded-full px-4 text-label-md font-semibold ${
             value === option
               ? 'bg-primary text-on-primary'
               : 'bg-surface-container text-on-surface-variant'

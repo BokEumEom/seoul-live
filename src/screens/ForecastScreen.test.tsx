@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { LocationProvider } from '../app/LocationProvider'
 import { SeoulApiError } from '../data/schema'
 import { ForecastScreen } from './ForecastScreen'
 
@@ -9,6 +10,22 @@ vi.mock('../platform/links', () => ({
   openExternalUrl: vi.fn(),
   shareMessage: vi.fn(),
 }))
+
+// 이 화면은 위치를 직접 요청하지 않지만 LocationProvider를 거쳐 간다.
+// jsdom에는 토스 브리지가 없어 목업으로 고정한다.
+vi.mock('@apps-in-toss/web-framework', () => {
+  class GetCurrentLocationPermissionError extends Error {}
+  return {
+    Accuracy: { Balanced: 3 },
+    Device: {
+      getLocation: Object.assign(
+        vi.fn().mockRejectedValue(new GetCurrentLocationPermissionError()),
+        { getPermission: vi.fn(), openPermissionDialog: vi.fn() },
+      ),
+    },
+    GetCurrentLocationPermissionError,
+  }
+})
 
 // 실제 목업 데이터는 그대로 흘리되, 호출 여부만 감시한다.
 vi.mock('../data/client', async (importOriginal) => {
@@ -25,7 +42,13 @@ function renderScreen(areaName: string, onBack = vi.fn()) {
   })
   render(
     <QueryClientProvider client={client}>
-      <ForecastScreen areaName={areaName} onBack={onBack} />
+      <LocationProvider>
+        <ForecastScreen
+          areaName={areaName}
+          onBack={onBack}
+          onSelectArea={vi.fn()}
+        />
+      </LocationProvider>
     </QueryClientProvider>,
   )
   return onBack
