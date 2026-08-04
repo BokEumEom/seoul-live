@@ -1,10 +1,21 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>seoul-live</title>
+    <title>서울 라이브</title>
+    <!--
+      Hanken Grotesk에는 한글 글리프가 없다. 거리·인구 같은 숫자와 라틴 문자만
+      이 폰트로 그려지고 한글은 index.css의 폴백(Pretendard → system-ui)으로
+      떨어진다. 의도된 동작이다.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>
