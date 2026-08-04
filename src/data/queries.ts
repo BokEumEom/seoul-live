@@ -7,10 +7,19 @@ import { AreaNameMismatchError, SeoulApiError } from './schema'
 const FIVE_MINUTES = 5 * 60 * 1_000
 const MAX_RETRIES = 2
 
+// 서울 API가 RESULT 봉투로 주는 에러 코드 중, 같은 요청을 다시 보내면 결과가
+// 달라질 수 있는 것들. 출처는 「서울시 실시간 도시데이터」 명세의 에러 코드 표다.
+//   ERROR-500 서버 오류 / ERROR-600 데이터베이스 연결 오류
+// ERROR-601(SQL 문장 오류)은 뺐다. 상대 서버의 결정적 버그라 같은 요청은 몇 번을
+// 보내도 같은 자리에서 깨진다.
+const TRANSIENT_SEOUL_CODES: ReadonlySet<string> = new Set(['ERROR-500', 'ERROR-600'])
+
 // 재시도해도 절대 성공하지 못하는 에러는 재시도하지 않는다 — 같은 입력으로 같은
 // 실패를 반복할 뿐이고, 사용자는 그만큼 더 오래 기다린다.
-//   - AreaNameMismatchError / SeoulApiError: 요청 자체의 문제다(카탈로그 오타,
-//     혹은 서울 API가 "해당하는 데이터가 없습니다" 같은 RESULT 에러 봉투를 준 것).
+//   - AreaNameMismatchError: 카탈로그 오타다. 같은 이름으로 몇 번을 물어도 같다.
+//   - SeoulApiError: 대부분 요청 자체의 문제다(없는 명소, 잘못된 인자, 무효한 키).
+//     단 ERROR-500·ERROR-600은 상대 서버가 흔들린 것이라 재시도할 가치가 있다 —
+//     TRANSIENT_SEOUL_CODES 참고.
 //   - z.ZodError: 응답 형태가 스키마와 안 맞는다는 뜻이다 — 같은 서버가 같은 버그로
 //     같은 모양을 다시 준다.
 //   - ProxyResponseError의 4xx: 요청 자체가 잘못됐다는 신호다(예: area가 허용
@@ -19,8 +28,11 @@ const MAX_RETRIES = 2
 // 반대로 ProxyResponseError의 5xx나 순수 네트워크/타임아웃 에러(client.ts가 던지는
 // 일반 Error)는 일시적일 수 있으니 재시도할 가치가 있다.
 export function shouldRetry(failureCount: number, error: Error): boolean {
-  if (error instanceof AreaNameMismatchError || error instanceof SeoulApiError) {
+  if (error instanceof AreaNameMismatchError) {
     return false
+  }
+  if (error instanceof SeoulApiError) {
+    return TRANSIENT_SEOUL_CODES.has(error.code) && failureCount < MAX_RETRIES
   }
   if (error instanceof z.ZodError) {
     return false
