@@ -99,6 +99,10 @@ export function MapScreen({ onSelectArea }: Props) {
           center={center}
           zoom={zoom}
           onCameraChanged={handleCameraChanged}
+          // 탭을 오갈 때마다 이 화면이 언마운트된다. reuseMaps가 없으면 그때마다
+          // google.maps.Map을 새로 만드는데, 이 인스턴스는 완전히 회수되지 않는
+          // 것으로 알려져 있어 메모리가 계단식으로 늘고 타일도 다시 받는다.
+          reuseMaps
           // 지도는 심사 체크리스트가 제스처 확대·축소를 명시적으로 허용하는 용례다.
           gestureHandling="greedy"
           disableDefaultUI
