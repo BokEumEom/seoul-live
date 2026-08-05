@@ -209,6 +209,26 @@ describe('MapScreen', () => {
     expect(screen.getByText('혼잡도를 불러오는 중')).toBeInTheDocument()
   })
 
+  it('조회에 실패하면 다시 시도할 수 있다', async () => {
+    const refetch = vi.fn()
+    useAreaSnapshots.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      refetch,
+    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+
+    render(<MapScreen onSelectArea={vi.fn()} />)
+    const retryButton = screen.getByRole('button', { name: '다시 시도' })
+    await userEvent.click(retryButton)
+
+    expect(refetch).toHaveBeenCalledTimes(1)
+    // jsdom은 Tailwind pointer-events를 실제로 계산하지 않아 바깥
+    // pointer-events-none만으로는 클릭 차단을 검증할 수 없다. 되살리는
+    // 안쪽 래퍼가 실제로 있는지 클래스로 확인한다.
+    expect(retryButton.closest('.pointer-events-auto')).toBeInTheDocument()
+  })
+
   it('조회에 실패한 명소도 마커가 남는다', () => {
     // 「내 주변」은 "정보 없음"으로 보여준다. 지도에서만 사라지면 사용자는
     // 그 명소가 존재하지 않는다고 오인한다.

@@ -142,8 +142,15 @@ export function MapScreen({ onSelectArea }: Props) {
       )}
 
       {snapshots.isError && (
+        // 바깥은 pointer-events-none으로 둬야 지도 드래그를 막지 않는다. 안쪽
+        // 박스만 되살려서 재시도 버튼이 실제로 눌리게 한다.
         <div className="pointer-events-none absolute inset-x-4 top-4 z-20">
-          <ErrorState message="혼잡도 정보를 가져오지 못했어요." />
+          <div className="pointer-events-auto">
+            <ErrorState
+              message="혼잡도 정보를 가져오지 못했어요."
+              onRetry={() => void snapshots.refetch()}
+            />
+          </div>
         </div>
       )}
 
