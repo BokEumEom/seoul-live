@@ -266,6 +266,23 @@ describe('탭 전환', () => {
     expect(screen.getByRole('button', { name: /더보기/ })).toBeDisabled()
   })
 
+  it('혼잡예보 탭을 눌러도 강조와 화면이 어긋나지 않는다', async () => {
+    // 혼잡예보는 명소를 골라야 열리는 상세 화면이다. 독립 화면이 없으므로
+    // 탭 상태로 받으면 강조만 옮겨가고 내용은 「내 주변」에 머문다 — 탭바가
+    // 거짓말을 하고 스크린리더에는 aria-current가 잘못 전달된다.
+    grantLocation()
+    render(<App />)
+    await screen.findByText('내 주변 명소')
+
+    await userEvent.click(screen.getByRole('button', { name: /혼잡예보/ }))
+
+    expect(screen.getByText('내 주변 명소')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /혼잡예보/ })).not.toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
   it('혼잡예보 화면에서 지도 탭을 누르면 상세가 닫히고 지도가 뜬다', async () => {
     // 하단 탭바는 상세 화면에서도 계속 보인다(App.tsx에서 main 바깥에 있다).
     // 그래서 handleTab의 setSelectedArea(null)은 방어적 코드가 아니라 이 경로를

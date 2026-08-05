@@ -18,6 +18,9 @@ function AppShell() {
   const activeTab: TabKey = selectedArea === null ? tab : 'forecast'
 
   function handleTab(key: TabKey): void {
+    // 혼잡예보는 명소를 골라야 열리는 상세 화면이라 독립 화면이 없다. 탭
+    // 상태로 받으면 강조만 옮겨가고 내용은 그대로라 탭바가 거짓말을 한다.
+    if (key === 'forecast') return
     setSelectedArea(null)
     setTab(key)
   }
