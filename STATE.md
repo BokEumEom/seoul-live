@@ -2,13 +2,13 @@
 
 현재 진행 상황. 세션이 바뀌어도 여기만 읽으면 이어서 작업할 수 있게 유지한다.
 
-**최종 갱신:** 2026-08-04
+**최종 갱신:** 2026-08-05
 **작업 브랜치:** `feat/nearby-forecast` — master에 아직 병합하지 않았다
-**마지막 커밋:** `309f16d feat: stitch_ui 시안에 맞춰 디자인 토큰과 화면 구조 정렬`
+**마지막 커밋:** `9504b84 test: 상세 화면에서 탭 전환 시 상세가 닫히는지 검증`
 
 ## 한 줄 요약
 
-1차 범위 20개 태스크 **전부 완료**. 「내 주변」·「혼잡예보」 두 화면이 목업 데이터로 동작하고 시안 디자인이 반영돼 있다. 실데이터로 넘어가려면 **인증키가 필요한데 아직 없다.**
+1차 범위 20개 태스크 **전부 완료**. 「내 주변」·「혼잡예보」 두 화면에 더해 **「지도」 화면**을 얹었다 — Google Maps로 명소 30곳의 혼잡도 마커를 보여준다. 셋 다 목업 데이터로 동작하고 시안 디자인이 반영돼 있다. 실데이터로 넘어가려면 **인증키가 필요한데 아직 없다.**
 
 ## 다음에 할 일
 
@@ -31,6 +31,7 @@
 3. **활용갤러리에 인증키와 함께 앱 등록** — 하루 1,000회 제한 해제. 출시 전까지 필수
 4. **Vercel 계정·프로젝트 연결** — 프록시 배포용
 5. **토스 실기기** — 아래 "실기기로만 확인되는 것" 참고
+6. **Google Cloud 설정** — 지도 탭을 실제 지도로 쓰려면 필요하다. 자세한 목록은 아래 "인증키가 나오면 제일 먼저" 참고
 
 1~3이 끝나기 전까지는 목업으로 진행한다. 전환은 `VITE_USE_MOCK`을 `false`로 바꾸면 된다.
 
@@ -38,6 +39,11 @@
 
 1. **명소 이름의 공백 확인** — 30곳을 실제 호출한다. `광장(전통)시장`처럼 괄호가 든 이름이 위험하다. `areas.test.ts`의 `it.todo`가 이 작업을 가리킨다.
 2. **`AREA_CD` 대조** — 응답에 실려 오는 공식 코드로 `areas.ts`의 손으로 적은 `POI0xx` 값을 검증한다.
+3. **Google Cloud 프로젝트에서 Maps JavaScript API 활성화**
+4. **API 키에 HTTP 리퍼러 제한 적용** — `https://seoul-live.web.tossmini.com/*`, `https://seoul-live.private-web.tossmini.com/*`, `http://localhost:5173/*`
+5. **API 키에 API 제한 적용** — Maps JavaScript API 하나만
+6. **결제 예산 알림 설정**
+7. **`DEMO_MAP_ID` → 자체 Map ID로 교체** — 없으면 마커가 아예 렌더되지 않는다
 
 ## 현재 상태
 
@@ -57,27 +63,28 @@
 
 ### 검증 수치
 
-테스트 **167개 + todo 1개** 통과 (테스트 파일 18개).
-커버리지 — 라인 96.9% / 브랜치 90.5% / 함수 96.9% (임계값 80/75/80).
+테스트 **221개 + todo 1개** 통과 (테스트 파일 26개).
+커버리지 — 라인 97.47% / 브랜치 91.89% / 함수 97.38% (임계값 라인·구문·함수 80%, 브랜치 75%).
 `npx tsc -b`·`npm run lint`·`npm run build:vite` 전부 통과.
 
 ### 파일 구조
 
 ```text
-src/domain/     types, congestion, distance, forecast        순수 함수. React도 네트워크도 모른다
+src/domain/     types, congestion, distance, forecast, map, mapLinks   순수 함수. React도 네트워크도 모른다
 src/data/       areas, official-areas, schema, mock, client, queries
-src/platform/   links                                        토스 브리지 + 브라우저 폴백
+src/platform/   links, googleMaps                             토스 브리지 + 브라우저 폴백, Google Maps SDK 경계
 src/hooks/      useCurrentLocation, useNearbyAreas
 src/app/        QueryProvider, LocationProvider, locationContext
 src/components/ common(Icon, CongestionBadge, ErrorState, SkeletonCard)
                 layout(TopAppBar, BottomTabBar)
                 nearby(AreaListItem, RecommendationCard, CategoryFilter, SortSelect, LocationNotice)
                 forecast(ForecastChart, ActionButtons)
-src/screens/    NearbyScreen, ForecastScreen
+                map(CongestionMarker, AreaSheet, MapUnavailableNotice, RecenterButton)
+src/screens/    NearbyScreen, ForecastScreen, MapScreen
 api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, citydata-bulk
 ```
 
-`npm run dev` → <http://localhost:5173/> 에서 두 화면이 실제로 뜬다. 라우터는 없다 — 화면이 둘뿐이라 `App.tsx`의 상태로 전환한다.
+`npm run dev` → <http://localhost:5173/> 에서 세 화면이 실제로 뜬다. 라우터는 없다 — `App.tsx`가 `tab`과 `selectedArea` 상태를 실제로 들고 전환한다(이전에는 `selectedArea`로 탭을 유추했는데, 탭이 셋이 되면서 그 유추가 깨져 상태를 분리했다).
 
 ## 알아둬야 할 동작
 
@@ -147,12 +154,14 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 
 ## 미해결 / 확인 안 된 가정
 
-- **실기기로만 확인되는 것 3가지** — `Device.getLocation`의 권한 흐름(첫 호출이 네이티브 팝업을 띄우는지), `Device.openURL`로 카카오맵·네이버지도가 실제로 열리는지, `Share.sendMessage` 공유 시트. 셋 다 브리지가 없으면 웹 표준(`window.open`·클립보드)으로 떨어지게 해뒀고(`src/platform/links.ts`) 폴백이 도는 건 테스트로 확인했다. 웹뷰 안에서 브리지 쪽이 도는지는 기기로만 알 수 있다.
+- **실기기로만 확인되는 것 4가지** — `Device.getLocation`의 권한 흐름(첫 호출이 네이티브 팝업을 띄우는지), `Device.openURL`로 카카오맵·네이버지도가 실제로 열리는지, `Share.sendMessage` 공유 시트, **지도 제스처(핀치 줌·팬)가 토스 웹뷰 안에서 정상 동작하는지**. 앞의 셋은 브리지가 없으면 웹 표준(`window.open`·클립보드)으로 떨어지게 해뒀고(`src/platform/links.ts`) 폴백이 도는 건 테스트로 확인했다. 지도 제스처는 `gestureHandling: 'greedy'`로 Google Maps에 맡겨뒀을 뿐 폴백이 없다. 웹뷰 안에서 브리지 쪽·제스처가 도는지는 기기로만 알 수 있다.
 - **토스 웹뷰의 mixed content 정책** — HTTPS로 번들을 서빙한다고 가정했다. 로컬 파일 스킴이면 HTTP 직접 호출이 될 수도 있다. 다만 쿼터 때문에 프록시는 어차피 필요해서 설계는 안 바뀐다.
 - **명소 이름의 정확한 공백** — 위 "명소 이름 검증" 참고. 실제 호출로만 확정된다.
 - **`REPLACE_YN`을 안 읽는다** — 대체 데이터 여부를 알려주는 필드인데 무시하고 있다. 대체값과 실측을 화면이 구분하지 않는다.
 - **위치 정확도** — `Accuracy.Balanced`(수백 m)를 쓴다. 거리순 정렬과 2km 추천에는 충분하다고 봤지만, 사용자가 "가까운 순이 이상하다"고 느끼는지는 기기에서 봐야 안다.
 - **한글 폰트** — 폰트 스택이 `Hanken Grotesk → Pretendard → system-ui`인데 Hanken Grotesk에는 한글 글리프가 없고 Pretendard는 로드하지 않는다. 즉 **화면의 한글은 전부 기기 기본 폰트로 그려진다.** 숫자·라틴만 시안대로다. 시안과 한글 자모가 달라 보이면 이게 원인이다.
+- **앱인토스가 서드파티 SDK의 동적 스크립트 로딩을 허용하는지 확정하지 못했다** — 심사 체크리스트의 "외부에서 전달받은 코드를 실행하는 기능은 사용할 수 없어요(예: `eval` 등)"가 Google Maps JS API의 스크립트 주입에도 걸리는지 문서로 확인되지 않는다. 같은 체크리스트가 지도를 제스처 확대·축소의 예외로 인정하고 있고 이미 Google Fonts를 CDN에서 받고 있어서 대상이 아니라고 읽었지만, 확정은 심사로만 된다. 걸리면 대안은 Static Maps API다(설계 문서 §3).
+- **지도 화면의 높이 계산** — `MapScreen`이 `h-[calc(100dvh-7.5rem)]`을 쓴다(상단바 3.5rem + 하단 탭바 3.5rem + 여유). `<Map>`은 부모가 크기를 정한다고 가정하므로 이 값이 틀리면 지도가 잘리거나 접힌다. iOS 안전 영역을 포함한 실제 값은 실기기로만 확인된다.
 
 ## 진행하며 실제로 잡은 문제
 
@@ -180,12 +189,13 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 
 ## 1차에서 의도적으로 뺀 것
 
+**지도 화면은 완료(2026-08-05)됐다** — 카카오·네이버가 아니라 Google Maps JavaScript API로 붙였다. 설계와 근거는 `docs/superpowers/specs/2026-08-04-map-tab-design.md`.
+
 | 항목 | 이유 |
 | --- | --- |
-| 지도 화면 | 카카오/네이버 지도 키 발급과 도메인 등록이 선행돼야 함 |
 | 도시정보(더보기) 화면 | ~~API 5종 추가 필요~~ → `citydata` 하나에 다 있다. 추가 호출 없이 가능하므로 2차 우선순위를 올려도 된다 |
 | 요일×시간 히트맵 | 서울 API는 현재와 예측만 준다. 과거 데이터 누적용 저장소 필요 |
 | 어제 대비 비교 | 위와 같은 이유 |
 | CCTV 영상 | 별도 API, 웹뷰 재생 제약 검증 필요 |
 
-하단 탭은 4개를 노출하되 지도·더보기는 비활성으로 둔다.
+하단 탭은 4개를 노출한다. 지도는 이제 활성이고, 더보기만 비활성으로 둔다.

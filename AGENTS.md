@@ -65,6 +65,10 @@ npm run deploy       # ait deploy
 
 `"AREA_PPLTN_MIN": "42000"` 형태다. 시각도 `"2026-08-03 16:00"`이라는 비표준 형식이다(ISO 아님, 타임존 없음). 둘 다 `src/data/schema.ts`가 흡수한다.
 
+### 앱인토스는 iframe을 금지한다
+
+"iframe을 사용하면 앱인토스 기능이 정상 동작하지 않고, 내부 보안 심사에서도 반려돼요. 단, YouTube 영상 콘텐츠를 삽입하는 용도는 예외." 지도에 Google Maps **Embed API**를 쓸 수 없는 이유이고, JavaScript API를 쓰는 이유다. CCTV 영상 같은 후속 기능을 검토할 때도 이 조항이 먼저다.
+
 ## 레이어 규칙
 
 ```text
@@ -83,6 +87,8 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 - **위치는 `src/app/LocationProvider`가 앱 수준에서 한 번만 잡는다.** 화면 안에서 `useCurrentLocation`을 직접 부르지 마라 — 화면이 언마운트될 때마다 GPS가 다시 켜지고, 권한을 아직 안 정한 사용자에게는 팝업이 반복해서 뜬다. 화면은 `useLocation()`으로 받아 쓴다.
 - 목업↔실데이터 분기는 `src/data/client.ts` **한 곳에서만** 일어난다.
 - `api/`는 정규화하지 않는다. 원본을 그대로 넘기고 클라이언트가 파싱한다. 정규화 로직이 두 곳에 생기는 것을 막으려는 것이다.
+- **Google Maps SDK는 `src/screens/MapScreen.tsx`에서만 import 한다.** 키·Map ID는 `src/platform/googleMaps.ts`가 유일하게 안다. 토스 브리지와 같은 이유다 — jsdom에도 없고 키가 없는 환경에도 없어서, 흩어지면 "키가 없으면 무슨 일이 나는가"를 화면마다 따로 처리하게 된다. `CongestionMarker`가 SDK를 import하지 않는 것도 같은 이유다 — 그래야 색상·라벨 규칙을 지도 목업 없이 테스트할 수 있다.
+- **바텀시트는 진입 시 열려 있으면 안 된다.** 앱인토스 심사 항목이다("미니앱에 진입하자마자 바텀시트가 자동으로 나타나지 않아요"). 시안 `stitch_ui/_1`은 열린 채로 그려져 있으니 그대로 옮기지 마라. `AreaSheet`는 선택된 명소가 없으면 `null`을 돌려준다.
 
 ## 혼잡도 4단계
 
@@ -107,6 +113,7 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 - **불변성.** 객체를 변경하지 말고 새로 만든다. 배열은 `.sort()` 대신 `.toSorted()`를 쓴다 — TanStack Query 캐시 배열을 제자리 정렬하면 캐시가 오염된다.
 - **파일은 작게.** 200~400줄이 보통, 800줄이 상한.
 - **인증키를 코드에 넣지 마라.** 서버는 `process.env.SEOUL_API_KEY`, 클라이언트는 프록시를 통해서만 접근한다. 에러 메시지에 원본 예외를 담지 마라 — 키가 샐 수 있다.
+- **예외: Google Maps 키는 클라이언트에 있는 게 정상이다.** 지도 타일과 스크립트를 브라우저가 직접 받아야 해서 프록시 뒤로 옮길 수 없다. 이걸 결함으로 오인해 서버로 옮기려 하지 마라 — 옮기면 지도가 아예 뜨지 않는다. 보호는 은닉이 아니라 Google Cloud 콘솔의 HTTP 리퍼러 제한(`*.web.tossmini.com`)과 API 제한으로 한다. 근거는 `docs/superpowers/specs/2026-08-04-map-tab-design.md` §2.3.
 - **`console.log` 금지.** 진단이 필요하면 `console.error`를 쓴다.
 
 ## 계획 문서를 다룰 때
