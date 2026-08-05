@@ -92,7 +92,11 @@ export function MapScreen({ onSelectArea }: Props) {
     <div className={`relative w-full ${MAP_HEIGHT_CLASS}`}>
       <APIProvider
         apiKey={googleMapsApiKey()}
-        onError={() => setLoadFailed(true)}
+        onError={(error) => {
+          // 사용자에게는 일반 문구를 보여주지만 원인은 남겨야 한다.
+          console.error('지도 스크립트를 불러오지 못했습니다:', error)
+          setLoadFailed(true)
+        }}
       >
         <Map
           mapId={googleMapsMapId()}
