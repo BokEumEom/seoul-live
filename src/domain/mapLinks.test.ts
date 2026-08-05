@@ -22,11 +22,11 @@ describe('kakaoMapSearchUrl', () => {
     )
   })
 
-  it('encodeURI가 아니라 encodeURIComponent로 인코딩한다', () => {
-    // 위 두 테스트의 문자열(한글, 가운뎃점, 괄호)은 encodeURI와
-    // encodeURIComponent가 우연히 같은 결과를 낸다 — 두 함수는 `; , / ? : @ & = + $ #`
-    // 에서만 갈린다. 그래서 그 문자들만으로는 구현이 encodeURI로 바뀌어도
-    // 못 잡는다. 갈리는 문자를 직접 넣어 실제로 구분되는 함수를 검증한다.
+  it('URL 예약 문자가 든 이름도 안전하게 인코딩한다', () => {
+    // 카탈로그 30곳에는 이런 이름이 없다 — encodeURI로 바꿔도 30곳은 결과가
+    // 같아서 안 잡힌다. 이 단언은 함수의 계약을 고정하는 쪽이다: 임의의
+    // 문자열을 받으므로 121곳 확장이나 사용자 입력에서 `&`가 들어와도
+    // 경로가 깨지지 않아야 한다.
     expect(kakaoMapSearchUrl('a&b')).toBe(
       'https://map.kakao.com/link/search/a%26b',
     )
