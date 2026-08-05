@@ -57,7 +57,7 @@ export function AreaSheet({ area, onClose, onOpenForecast }: Props) {
           aria-label="닫기"
           className="grid size-10 shrink-0 place-items-center rounded-full text-on-surface-variant"
         >
-          <Icon name="back" className="size-5 rotate-90" />
+          <Icon name="back" className="size-5 -rotate-90" />
         </button>
       </div>
 

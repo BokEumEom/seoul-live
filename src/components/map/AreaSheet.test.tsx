@@ -106,6 +106,17 @@ describe('AreaSheet', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('닫기 아이콘이 아래를 가리킨다', () => {
+    // 위 화살표는 바텀시트에서 "펼치기"로 읽힌다. 실제 동작은 닫기이므로
+    // 화살표도 시트가 사라지는 방향을 가리켜야 한다.
+    render(
+      <AreaSheet area={area()} onClose={vi.fn()} onOpenForecast={vi.fn()} />,
+    )
+
+    const icon = screen.getByRole('button', { name: '닫기' }).querySelector('svg')
+    expect(icon).toHaveClass('-rotate-90')
+  })
+
   it('혼잡예보 보기를 누르면 명소 이름을 넘긴다', async () => {
     const onOpenForecast = vi.fn()
     render(
