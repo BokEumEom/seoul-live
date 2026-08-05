@@ -245,7 +245,7 @@ describe('MapScreen', () => {
     // 앱인토스 심사 항목이다.
     render(<MapScreen onSelectArea={vi.fn()} />)
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
   })
 
   it('마커를 누르면 그 명소의 바텀시트가 열린다', async () => {
@@ -253,7 +253,7 @@ describe('MapScreen', () => {
 
     await userEvent.click(screen.getByRole('img', { name: /강남역/ }))
 
-    expect(screen.getByRole('dialog', { name: '강남역 요약' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '강남역 요약' })).toBeInTheDocument()
   })
 
   it('바텀시트에서 혼잡예보를 열면 명소 이름을 올려보낸다', async () => {

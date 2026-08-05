@@ -23,8 +23,11 @@ export function AreaSheet({ area, onClose, onOpenForecast }: Props) {
   const directionsUrl = kakaoMapSearchUrl(entry.name)
 
   return (
+    // role="dialog"가 아니다. 이 시트는 의도적으로 모달이 아니라서 — 뒤의 지도가
+    // 계속 동작한다 — 대화상자라고 알리면 스크린리더 사용자는 포커스 이동과
+    // 포커스 가둠을 기대하는데 둘 다 없다. 실제 성격에 맞게 region으로 알린다.
     <section
-      role="dialog"
+      role="region"
       aria-label={`${entry.name} 요약`}
       className="pointer-events-auto absolute inset-x-4 bottom-4 z-20 rounded-card border border-outline-variant bg-surface p-4 shadow-floating"
     >
