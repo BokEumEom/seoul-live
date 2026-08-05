@@ -286,6 +286,24 @@ describe('MapScreen', () => {
     ).not.toBeDisabled()
   })
 
+  it('좌표가 있으면 현재 위치를 지도에 표시한다', () => {
+    useLocation.mockReturnValue({
+      coords: { lat: 37.5709, lng: 126.9769 },
+      status: 'granted',
+      retry: vi.fn(),
+    })
+
+    render(<MapScreen onSelectArea={vi.fn()} />)
+
+    expect(screen.getByRole('img', { name: '현재 위치' })).toBeInTheDocument()
+  })
+
+  it('좌표가 없으면 현재 위치 표시가 없다', () => {
+    render(<MapScreen onSelectArea={vi.fn()} />)
+
+    expect(screen.queryByRole('img', { name: '현재 위치' })).not.toBeInTheDocument()
+  })
+
   it('지도를 움직이면 카메라 상태가 따라온다', async () => {
     // 이 배선이 끊기면 라이브러리가 매 렌더 우리 center/zoom으로 되돌려서
     // 팬·줌이 제자리로 튕긴다. 화면은 멀쩡해 보이는데 지도가 얼어붙는다.

@@ -116,6 +116,18 @@ export function MapScreen({ onSelectArea }: Props) {
           disableDefaultUI
           className="size-full"
         >
+          {location.coords !== null && (
+            <AdvancedMarker position={location.coords}>
+              {/* disableDefaultUI라 JS API의 기본 파란 점이 없다. 이게 없으면
+                  재조정을 눌러도 "내가 여기 있다"는 표시가 전혀 없다. */}
+              <span
+                role="img"
+                aria-label="현재 위치"
+                className="block size-4 rounded-full border-2 border-white bg-primary shadow-floating"
+              />
+            </AdvancedMarker>
+          )}
+
           {markers.map((marker) => (
             <AdvancedMarker
               key={marker.entry.code}
