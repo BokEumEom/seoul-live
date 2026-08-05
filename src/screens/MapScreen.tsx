@@ -133,6 +133,7 @@ export function MapScreen({ onSelectArea }: Props) {
 
       <RecenterButton
         disabled={location.coords === null}
+        raised={selected !== null}
         onClick={handleRecenter}
       />
 
