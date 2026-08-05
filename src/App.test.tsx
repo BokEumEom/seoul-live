@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
 // 위치는 목업으로 고정한다. jsdom에는 토스 네이티브 브리지가 없어서, 목업이
@@ -17,6 +18,25 @@ vi.mock('@apps-in-toss/web-framework', () => {
     GetCurrentLocationPermissionError,
   }
 })
+
+// jsdom에는 Google Maps가 없다. 토스 SDK와 같은 이유로 목업한다.
+vi.mock('@vis.gl/react-google-maps', () => ({
+  APIProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Map: ({ children }: { children: ReactNode }) => (
+    <div data-testid="google-map">{children}</div>
+  ),
+  AdvancedMarker: ({
+    children,
+    onClick,
+  }: {
+    children: ReactNode
+    onClick?: () => void
+  }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  ),
+}))
 
 const framework = await import('@apps-in-toss/web-framework')
 const getLocation = vi.mocked(framework.Device.getLocation)
@@ -195,11 +215,54 @@ describe('App', () => {
     expect(getLocation).toHaveBeenCalledTimes(1)
   })
 
-  it('지도·더보기 탭은 비활성이다', async () => {
+  it('더보기 탭은 비활성이다', async () => {
+    // 지도 탭은 활성화됐다 — 아래 '탭 전환' describe에서 다룬다.
     render(<App />)
     await waitFor(() => expect(screen.getByText('강남역')).toBeInTheDocument())
 
-    expect(screen.getByRole('button', { name: /지도/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /더보기/ })).toBeDisabled()
+  })
+})
+
+describe('탭 전환', () => {
+  // 저장소의 .env에 실제 키가 들어 있어서, 명시하지 않으면 로컬 환경에 따라
+  // 통과 여부가 달라진다. 테스트가 던져도 풀리도록 afterEach에 둔다.
+  beforeEach(() => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'demo-key-1234')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('지도 탭을 누르면 지도가 뜬다', async () => {
+    grantLocation()
+    render(<App />)
+
+    await userEvent.click(screen.getByRole('button', { name: /지도/ }))
+
+    expect(await screen.findByTestId('google-map')).toBeInTheDocument()
+  })
+
+  it('지도에서 명소를 열고 뒤로 가면 지도로 돌아온다', async () => {
+    // 예전에는 뒤로 가기가 무조건 「내 주변」으로 보냈다. 지도에서 들어온
+    // 사용자는 보고 있던 지도 위치를 잃는다.
+    grantLocation()
+    render(<App />)
+
+    await userEvent.click(screen.getByRole('button', { name: /지도/ }))
+    await userEvent.click(await screen.findByRole('img', { name: /강남역/ }))
+    await userEvent.click(screen.getByRole('button', { name: '혼잡예보 보기' }))
+
+    await userEvent.click(await screen.findByRole('button', { name: '뒤로 가기' }))
+
+    expect(await screen.findByTestId('google-map')).toBeInTheDocument()
+  })
+
+  it('더보기 탭은 아직 비활성이다', () => {
+    grantLocation()
+    render(<App />)
+
     expect(screen.getByRole('button', { name: /더보기/ })).toBeDisabled()
   })
 })

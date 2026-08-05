@@ -9,9 +9,9 @@ interface Tab {
   readonly enabled: boolean
 }
 
-// 지도와 더보기는 1차 범위 밖이다. 시안의 4탭 구조는 유지하되 비활성으로 둔다.
+// 더보기는 아직 범위 밖이다. 시안의 4탭 구조는 유지하되 비활성으로 둔다.
 const TABS: readonly Tab[] = [
-  { key: 'map', label: '지도', icon: 'map', enabled: false },
+  { key: 'map', label: '지도', icon: 'map', enabled: true },
   { key: 'nearby', label: '내 주변', icon: 'near', enabled: true },
   { key: 'forecast', label: '혼잡예보', icon: 'forecast', enabled: true },
   { key: 'more', label: '더보기', icon: 'more', enabled: false },
