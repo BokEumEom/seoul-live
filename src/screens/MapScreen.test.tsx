@@ -194,6 +194,21 @@ describe('MapScreen', () => {
     expect(screen.queryByTestId('google-map')).not.toBeInTheDocument()
   })
 
+  it('불러오는 중에는 마커 대신 안내를 띄운다', () => {
+    // "정보 없음" 마커 30개는 "아직 안 왔다"가 아니라 "데이터가 없다"로 읽힌다.
+    useAreaSnapshots.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+
+    render(<MapScreen onSelectArea={vi.fn()} />)
+
+    expect(screen.queryAllByRole('img')).toHaveLength(0)
+    expect(screen.getByText('혼잡도를 불러오는 중')).toBeInTheDocument()
+  })
+
   it('조회에 실패한 명소도 마커가 남는다', () => {
     // 「내 주변」은 "정보 없음"으로 보여준다. 지도에서만 사라지면 사용자는
     // 그 명소가 존재하지 않는다고 오인한다.

@@ -30,6 +30,8 @@ import {
 /** 재조정 버튼을 눌렀을 때의 줌. 주변 명소가 몇 곳 들어오는 정도다. */
 const RECENTER_ZOOM = 14
 
+const LOADING_LABEL = '혼잡도를 불러오는 중'
+
 // 상단바(3.5rem)와 하단 탭바(3.5rem), 안전 영역 여유를 뺀 높이. <Map>은 컨테이너를
 // width:100%/height:100%로 채우고 "부모가 크기를 정한다"고 가정하므로, 여기서
 // 명시적인 높이를 주지 않으면 지도가 0px로 접힌다.
@@ -73,7 +75,9 @@ export function MapScreen({ onSelectArea }: Props) {
     return <MapUnavailableNotice reason="load-failed" />
   }
 
-  const markers = toMapMarkers(list)
+  // 로딩 중에는 마커를 세우지 않는다. 스냅샷이 없는 명소는 회색 "정보 없음"으로
+  // 그려지는데(toMapMarkers), 아직 안 온 것과 없는 것은 사용자에게 다른 말이다.
+  const markers = snapshots.isPending ? [] : toMapMarkers(list)
   const showLabel = shouldShowMarkerLabel(zoom)
   const selected = list.find((area) => area.entry.name === selectedName) ?? null
 
@@ -128,6 +132,14 @@ export function MapScreen({ onSelectArea }: Props) {
           ))}
         </Map>
       </APIProvider>
+
+      {snapshots.isPending && (
+        <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center">
+          <span className="rounded-full bg-surface px-3 py-1.5 text-label-sm text-on-surface-variant shadow-floating">
+            {LOADING_LABEL}
+          </span>
+        </div>
+      )}
 
       {snapshots.isError && (
         <div className="pointer-events-none absolute inset-x-4 top-4 z-20">
