@@ -39,7 +39,9 @@ describe('CongestionMarker', () => {
     )
 
     expect(screen.getByText('정보 없음')).toBeInTheDocument()
-    expect(screen.getByText('정보 없음')).not.toHaveClass('bg-crowded')
+    expect(screen.getByText('정보 없음')).toHaveClass(
+      'bg-surface-container-high',
+    )
   })
 
   it('줌이 낮으면 라벨을 감추고 핀만 남긴다', () => {
@@ -68,16 +70,12 @@ describe('CongestionMarker', () => {
   })
 
   it('선택된 마커는 핀이 더 크다', () => {
-    const { rerender } = render(
+    const { rerender, container } = render(
       <CongestionMarker name="강남역" level="붐빔" showLabel selected={false} />,
     )
-    const before = screen.getByRole('img', { name: '강남역 붐빔' }).innerHTML
+    expect(container.querySelector('svg')).toHaveClass('size-7')
 
-    rerender(
-      <CongestionMarker name="강남역" level="붐빔" showLabel selected />,
-    )
-    const after = screen.getByRole('img', { name: '강남역 붐빔' }).innerHTML
-
-    expect(after).not.toBe(before)
+    rerender(<CongestionMarker name="강남역" level="붐빔" showLabel selected />)
+    expect(container.querySelector('svg')).toHaveClass('size-9')
   })
 })
