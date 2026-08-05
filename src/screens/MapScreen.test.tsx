@@ -37,16 +37,29 @@ vi.mock('@vis.gl/react-google-maps', () => ({
     children,
     center,
     zoom,
+    onCameraChanged,
   }: {
     children: ReactNode
     center: { lat: number; lng: number }
     zoom: number
+    onCameraChanged?: (event: { detail: { center: { lat: number; lng: number }; zoom: number } }) => void
   }) => (
     <div
       data-testid="google-map"
       data-center={`${center.lat},${center.lng}`}
       data-zoom={String(zoom)}
     >
+      {/* 제어 카메라의 왕복을 실제로 밟아보려면 트리거가 필요하다. 목업이
+          받지 않는 prop은 존재 자체가 검증되지 않는다. */}
+      <button
+        type="button"
+        aria-label="테스트: 카메라 이동"
+        onClick={() =>
+          onCameraChanged?.({
+            detail: { center: { lat: 37.4979, lng: 127.0276 }, zoom: 14 },
+          })
+        }
+      />
       {children}
     </div>
   ),
@@ -236,5 +249,32 @@ describe('MapScreen', () => {
     expect(
       screen.getByRole('button', { name: '내 위치로 이동' }),
     ).not.toBeDisabled()
+  })
+
+  it('지도를 움직이면 카메라 상태가 따라온다', async () => {
+    // 이 배선이 끊기면 라이브러리가 매 렌더 우리 center/zoom으로 되돌려서
+    // 팬·줌이 제자리로 튕긴다. 화면은 멀쩡해 보이는데 지도가 얼어붙는다.
+    render(<MapScreen onSelectArea={vi.fn()} />)
+
+    await userEvent.click(
+      screen.getByRole('button', { name: '테스트: 카메라 이동' }),
+    )
+
+    const map = screen.getByTestId('google-map')
+    expect(map).toHaveAttribute('data-zoom', '14')
+    expect(map).toHaveAttribute('data-center', '37.4979,127.0276')
+  })
+
+  it('확대하면 마커에 혼잡도 라벨이 나타난다', async () => {
+    // 줌이 상태로 돌아오지 않으면 shouldShowMarkerLabel이 초기값에 굳어
+    // 아무리 확대해도 라벨이 안 뜬다.
+    render(<MapScreen onSelectArea={vi.fn()} />)
+    expect(screen.queryByText('붐빔')).not.toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: '테스트: 카메라 이동' }),
+    )
+
+    expect(screen.getAllByText('붐빔').length).toBeGreaterThan(0)
   })
 })
