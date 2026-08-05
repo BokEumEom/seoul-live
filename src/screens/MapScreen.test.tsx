@@ -177,10 +177,11 @@ describe('MapScreen', () => {
     render(<MapScreen onSelectArea={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: '내 위치로 이동' }))
 
-    expect(screen.getByTestId('google-map')).toHaveAttribute(
-      'data-center',
-      '37.5709,126.9769',
-    )
+    const map = screen.getByTestId('google-map')
+    expect(map).toHaveAttribute('data-center', '37.5709,126.9769')
+    // 중심만 옮기고 줌을 그대로 두면 서울 전역 축척에서 점 하나로 이동할 뿐이라
+    // "내 위치로 왔다"가 화면에 드러나지 않는다.
+    expect(map).toHaveAttribute('data-zoom', '14')
   })
 
   it('지도 스크립트가 실패하면 키 문제와 다른 안내를 띄운다', async () => {
