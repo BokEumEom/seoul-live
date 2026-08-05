@@ -265,4 +265,22 @@ describe('탭 전환', () => {
 
     expect(screen.getByRole('button', { name: /더보기/ })).toBeDisabled()
   })
+
+  it('혼잡예보 화면에서 지도 탭을 누르면 상세가 닫히고 지도가 뜬다', async () => {
+    // 하단 탭바는 상세 화면에서도 계속 보인다(App.tsx에서 main 바깥에 있다).
+    // 그래서 handleTab의 setSelectedArea(null)은 방어적 코드가 아니라 이 경로를
+    // 실제로 떠받친다 — 지우면 상세가 닫히지 않아 지도가 영영 안 뜬다.
+    grantLocation()
+    render(<App />)
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /강남역/ }),
+    )
+    await screen.findByRole('button', { name: '뒤로 가기' })
+
+    await userEvent.click(screen.getByRole('button', { name: /지도/ }))
+
+    expect(await screen.findByTestId('google-map')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '뒤로 가기' })).not.toBeInTheDocument()
+  })
 })
