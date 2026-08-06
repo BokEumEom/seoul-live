@@ -10,6 +10,7 @@ import { ErrorState } from '../components/common/ErrorState'
 import { AreaSheet } from '../components/map/AreaSheet'
 import { CongestionMarker } from '../components/map/CongestionMarker'
 import { MapUnavailableNotice } from '../components/map/MapUnavailableNotice'
+import { PresetFilter } from '../components/map/PresetFilter'
 import { RecenterButton } from '../components/map/RecenterButton'
 import { AREA_CATALOG, AREA_NAMES } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
@@ -19,6 +20,11 @@ import {
   shouldShowMarkerLabel,
   toMapMarkers,
 } from '../domain/map'
+import {
+  filterByPreset,
+  presetCounts,
+  type PresetKey,
+} from '../domain/presets'
 import type { Coords } from '../domain/types'
 import { buildNearbyList } from '../hooks/useNearbyAreas'
 import {
@@ -51,6 +57,7 @@ export function MapScreen({ onSelectArea }: Props) {
   const [center, setCenter] = useState<Coords>(SEOUL_CENTER)
   const [zoom, setZoom] = useState<number>(DEFAULT_ZOOM)
   const [loadFailed, setLoadFailed] = useState(false)
+  const [preset, setPreset] = useState<PresetKey | null>(null)
 
   // 「내 주변」과 같은 조립을 쓴다. 거리는 바텀시트에서 보여주므로 필요하다.
   const list = useMemo(
@@ -77,7 +84,12 @@ export function MapScreen({ onSelectArea }: Props) {
 
   // 로딩 중에는 마커를 세우지 않는다. 스냅샷이 없는 명소는 회색 "정보 없음"으로
   // 그려지는데(toMapMarkers), 아직 안 온 것과 없는 것은 사용자에게 다른 말이다.
-  const markers = snapshots.isPending ? [] : toMapMarkers(list)
+  // 개수는 visible이 아니라 list로 센다. 걸러진 목록으로 세면 프리셋 하나를
+  // 고르는 순간 나머지 두 칩이 0이 되어 비활성으로 굳고, 다른 목적으로
+  // 갈아탈 방법이 사라진다.
+  const counts = presetCounts(list)
+  const visible = filterByPreset(list, preset)
+  const markers = snapshots.isPending ? [] : toMapMarkers(visible)
   const showLabel = shouldShowMarkerLabel(zoom)
   const selected = list.find((area) => area.entry.name === selectedName) ?? null
 
@@ -90,6 +102,13 @@ export function MapScreen({ onSelectArea }: Props) {
     if (location.coords === null) return
     setCenter(location.coords)
     setZoom(RECENTER_ZOOM)
+  }
+
+  function handlePreset(next: PresetKey | null): void {
+    setPreset(next)
+    // 걸러져 사라진 명소의 요약이 지도 위에 남지 않게 한다. 프리셋을 바꾼
+    // 사람은 다시 고를 준비가 돼 있다.
+    setSelectedName(null)
   }
 
   return (
@@ -145,8 +164,10 @@ export function MapScreen({ onSelectArea }: Props) {
         </Map>
       </APIProvider>
 
+      <PresetFilter counts={counts} value={preset} onChange={handlePreset} />
+
       {snapshots.isPending && (
-        <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center">
+        <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex justify-center">
           <span className="rounded-full bg-surface px-3 py-1.5 text-label-sm text-on-surface-variant shadow-floating">
             {LOADING_LABEL}
           </span>
@@ -156,7 +177,7 @@ export function MapScreen({ onSelectArea }: Props) {
       {snapshots.isError && (
         // 바깥은 pointer-events-none으로 둬야 지도 드래그를 막지 않는다. 안쪽
         // 박스만 되살려서 재시도 버튼이 실제로 눌리게 한다.
-        <div className="pointer-events-none absolute inset-x-4 top-4 z-20">
+        <div className="pointer-events-none absolute inset-x-4 top-20 z-20">
           <div className="pointer-events-auto">
             <ErrorState
               message="혼잡도 정보를 가져오지 못했어요."

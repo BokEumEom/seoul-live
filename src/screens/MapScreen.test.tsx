@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { AREA_CATALOG } from '../data/areas'
 import { DEFAULT_ZOOM, SEOUL_CENTER } from '../domain/map'
-import type { AreaSnapshot } from '../domain/types'
+import type { AreaSnapshot, CongestionLevel } from '../domain/types'
 import { MapScreen } from './MapScreen'
 
 // jsdom에는 Google Maps가 없다. 라이브러리를 그대로 두면 스크립트를 받으러 나가
@@ -106,6 +106,31 @@ function snapshotFor(name: string): AreaSnapshot {
 /** 카탈로그 순서에 맞춘 스냅샷 배열. buildNearbyList가 인덱스로 짝짓는다. */
 function allSnapshots(): readonly (AreaSnapshot | null)[] {
   return AREA_CATALOG.map((entry) => snapshotFor(entry.name))
+}
+
+function snapshotOf(name: string, congestion: CongestionLevel): AreaSnapshot {
+  return {
+    code: 'POI000',
+    name,
+    congestion,
+    message: '사람이 많아 붐빕니다.',
+    populationMin: 42_000,
+    populationMax: 44_000,
+    observedAt: '2026-08-06 14:35',
+    observedAtLabel: '14:35',
+    forecasts: [],
+  }
+}
+
+/**
+ * 공원 10곳은 여유, 나머지 20곳은 붐빔.
+ * 프리셋별 기대값 — 아이와 나들이 10, 데이트 10(공원만; 카페·문화재는 붐빔),
+ * 지금 핫플 20. 셋이 서로 다른 수라 어느 술어가 잘못됐는지 구분된다.
+ */
+function mixedSnapshots(): readonly (AreaSnapshot | null)[] {
+  return AREA_CATALOG.map((entry) =>
+    snapshotOf(entry.name, entry.category === '공원' ? '여유' : '붐빔'),
+  )
 }
 
 function mockSnapshots(data: readonly (AreaSnapshot | null)[]): void {
@@ -330,5 +355,78 @@ describe('MapScreen', () => {
     )
 
     expect(screen.getAllByText('붐빔').length).toBeGreaterThan(0)
+  })
+
+  it('프리셋 칩에 해당 개수를 보여준다', () => {
+    mockSnapshots(mixedSnapshots())
+
+    render(<MapScreen onSelectArea={vi.fn()} />)
+
+    expect(screen.getByRole('tab', { name: '아이와 나들이 10' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '데이트 10' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '지금 핫플 20' })).toBeInTheDocument()
+  })
+
+  it('프리셋을 고르면 해당 명소만 남는다', async () => {
+    mockSnapshots(mixedSnapshots())
+
+    render(<MapScreen onSelectArea={vi.fn()} />)
+    expect(screen.getAllByRole('img')).toHaveLength(AREA_CATALOG.length)
+
+    await userEvent.click(screen.getByRole('tab', { name: '아이와 나들이 10' }))
+
+    expect(screen.getAllByRole('img')).toHaveLength(10)
+  })
+
+  it('개수는 걸러진 목록이 아니라 전체로 센다', async () => {
+    // visible로 세면 하나를 고르는 순간 나머지 두 칩이 0이 되어 비활성으로
+    // 굳고, 다른 목적으로 갈아탈 방법이 사라진다.
+    mockSnapshots(mixedSnapshots())
+
+    render(<MapScreen onSelectArea={vi.fn()} />)
+    await userEvent.click(screen.getByRole('tab', { name: '아이와 나들이 10' }))
+
+    expect(screen.getByRole('tab', { name: '지금 핫플 20' })).not.toBeDisabled()
+  })
+
+  it('프리셋을 바꾸면 열려 있던 바텀시트가 닫힌다', async () => {
+    // 걸러져 사라진 명소의 요약이 지도 위에 남으면, 지도에 없는 곳의 정보를
+    // 보고 있는 상태가 된다.
+    mockSnapshots(mixedSnapshots())
+
+    render(<MapScreen onSelectArea={vi.fn()} />)
+    await userEvent.click(screen.getByRole('img', { name: /강남역/ }))
+    expect(screen.getByRole('region', { name: '강남역 요약' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: '아이와 나들이 10' }))
+
+    expect(screen.queryByRole('region', { name: '강남역 요약' })).not.toBeInTheDocument()
+  })
+
+  it('프리셋을 해제하면 전체가 돌아온다', async () => {
+    mockSnapshots(mixedSnapshots())
+
+    render(<MapScreen onSelectArea={vi.fn()} />)
+    const chip = screen.getByRole('tab', { name: '아이와 나들이 10' })
+
+    await userEvent.click(chip)
+    expect(screen.getAllByRole('img')).toHaveLength(10)
+
+    await userEvent.click(chip)
+    expect(screen.getAllByRole('img')).toHaveLength(AREA_CATALOG.length)
+  })
+
+  it('현재 위치 표시는 프리셋의 영향을 받지 않는다', async () => {
+    useLocation.mockReturnValue({
+      coords: { lat: 37.5709, lng: 126.9769 },
+      status: 'granted',
+      retry: vi.fn(),
+    })
+    mockSnapshots(mixedSnapshots())
+
+    render(<MapScreen onSelectArea={vi.fn()} />)
+    await userEvent.click(screen.getByRole('tab', { name: '지금 핫플 20' }))
+
+    expect(screen.getByRole('img', { name: '현재 위치' })).toBeInTheDocument()
   })
 })
