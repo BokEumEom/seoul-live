@@ -2,13 +2,13 @@
 
 현재 진행 상황. 세션이 바뀌어도 여기만 읽으면 이어서 작업할 수 있게 유지한다.
 
-**최종 갱신:** 2026-08-05
+**최종 갱신:** 2026-08-06
 **작업 브랜치:** `feat/nearby-forecast` — master에 아직 병합하지 않았다
-**마지막 커밋:** `73b08d4 test: 재조정 줌을 고정하고 탭 보존 범위 주석을 사실에 맞춘다`
+**마지막 커밋:** `0397e72 feat: 지도에 목적 프리셋 필터 연결`
 
 ## 한 줄 요약
 
-1차 범위 20개 태스크 **전부 완료**. 「내 주변」·「혼잡예보」 두 화면에 더해 **「지도」 화면**을 얹었다 — Google Maps로 명소 30곳의 혼잡도 마커를 보여준다. 셋 다 목업 데이터로 동작하고 시안 디자인이 반영돼 있다. 실데이터로 넘어가려면 **인증키가 필요한데 아직 없다.**
+1차 범위 20개 태스크 **전부 완료**. 「내 주변」·「혼잡예보」 두 화면에 더해 **「지도」 화면**을 얹었다 — Google Maps로 명소 30곳의 혼잡도 마커를 보여준다. 지도에는 **목적 프리셋**(아이와 나들이 / 데이트 / 지금 핫플) 칩도 붙어 카테고리와 실시간 혼잡도로 마커를 거른다. 셋 다 목업 데이터로 동작하고 시안 디자인이 반영돼 있다. 실데이터로 넘어가려면 **인증키가 필요한데 아직 없다.**
 
 ## 다음에 할 일
 
@@ -19,8 +19,9 @@
 1. **`REPLACE_YN` 처리** — 서울 API가 "이 수치는 실측이 아니라 대체값"이라고 알려주는 필드인데 우리는 읽지 않는다. 지금 화면은 대체값과 실측을 똑같이 보여준다. 스키마에 추가하고 화면에 표시하는 작업. 목업으로 검증 가능하다.
 2. **master 병합 여부 결정** — 1차가 끝났는데 브랜치가 떠 있다. PR을 낼지 그냥 합칠지 사용자 결정이 필요하다.
 3. **Pretendard self-host 결정** — 아래 "한글 폰트" 참고. 지금은 한글이 기기 기본 폰트로 나온다.
-4. **2차 「더보기」 화면** — `citydata` 서비스 하나로 주차장·따릉이·날씨·문화행사·재난문자가 전부 온다(아래 "2차 계획의 전제가 틀렸다"). 호출 횟수가 늘지 않아서 쿼터 부담 없이 붙일 수 있다.
-5. **명소 30 → 121곳 확장** — 목록은 `src/data/official-areas.ts`에 이미 있다. 좌표와 카테고리만 채우면 된다. 단 쿼터 때문에 갤러리 등록 전에는 30곳을 유지해야 한다.
+4. **3차 「더보기」 화면** — `citydata` 서비스 하나로 주차장·따릉이·날씨·문화행사·재난문자가 전부 온다(아래 "2차 계획의 전제가 틀렸다"). 호출 횟수가 늘지 않아서 쿼터 부담 없이 붙일 수 있다.
+5. **즐겨찾기** — 2차 남은 항목. 저장소(로컬 vs 서버) 결정이 선행된다.
+6. **명소 30 → 121곳 확장** — 목록은 `src/data/official-areas.ts`에 이미 있다. 좌표와 카테고리만 채우면 된다. 단 쿼터 때문에 갤러리 등록 전에는 30곳을 유지해야 한다.
 
 ### 사람이 해야 하는 것 (코드로 못 푼다)
 
@@ -63,14 +64,14 @@
 
 ### 검증 수치
 
-테스트 **230개 + todo 1개** 통과 (테스트 파일 26개).
-커버리지 — 라인 97.91% / 브랜치 92.93% / 함수 98.05% / 구문 97.01% (임계값 라인·구문·함수 80%, 브랜치 75%).
+테스트 **261개 + todo 1개** 통과 (테스트 파일 28개).
+커버리지 — 라인 98% / 브랜치 92.57% / 함수 98.18% / 구문 97.13% (임계값 라인·구문·함수 80%, 브랜치 75%).
 `npx tsc -b`·`npm run lint`·`npm run build:vite` 전부 통과.
 
 ### 파일 구조
 
 ```text
-src/domain/     types, congestion, distance, forecast, map, mapLinks   순수 함수. React도 네트워크도 모른다
+src/domain/     types, congestion, distance, forecast, map, mapLinks, presets   순수 함수. React도 네트워크도 모른다
 src/data/       areas, official-areas, schema, mock, client, queries
 src/platform/   links, googleMaps                             토스 브리지 + 브라우저 폴백, Google Maps SDK 경계
 src/hooks/      useCurrentLocation, useNearbyAreas
@@ -79,7 +80,7 @@ src/components/ common(Icon, CongestionBadge, ErrorState, SkeletonCard)
                 layout(TopAppBar, BottomTabBar)
                 nearby(AreaListItem, RecommendationCard, CategoryFilter, SortSelect, LocationNotice)
                 forecast(ForecastChart, ActionButtons)
-                map(CongestionMarker, AreaSheet, MapUnavailableNotice, RecenterButton)
+                map(CongestionMarker, AreaSheet, MapUnavailableNotice, RecenterButton, PresetFilter)
 src/screens/    NearbyScreen, ForecastScreen, MapScreen
 api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, citydata-bulk
 ```
@@ -170,6 +171,7 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 - **마커 `position` 객체가 렌더마다 새로 만들어진다** — `MapScreen`이 `position={{ lat, lng }}`를 인라인으로 넘긴다. 라이브러리의 `usePropBinding`이 값을 의존성으로 쓰므로 카메라가 움직일 때마다 마커 30개의 position이 다시 쓰인다. 팬 한 번에 `bounds_changed`가 초당 여러 번 오는 걸 감안하면 저사양 안드로이드 웹뷰에서 팬이 끊길 수 있다. 실기기에서 실제로 끊기는지 보고 판단한다 — 안 끊기면 `toMapMarkers`가 `position`까지 만들고 마커를 `React.memo`로 감싸는 게 수정 방향이다.
 - **지도 카메라가 상세를 다녀오면 초기화된다** — 상세로 들어가면 `MapScreen`이 언마운트되므로 `center`·`zoom`·선택 상태가 서울 전역으로 돌아간다. 탭은 보존된다. 지키려면 카메라 상태를 `App.tsx`로 끌어올려야 하는데, 그러면 지도 상태가 셸로 새어나온다. 사용자가 실제로 불편해하는지 보고 결정한다.
 - **`MapUnavailableNotice`가 사용자에게 환경변수 이름을 보여준다** — 키 미설정 문구에 `VITE_GOOGLE_MAPS_API_KEY`가 그대로 들어간다. 개발 중 원인을 즉시 알려주는 값어치가 커서 의도적으로 남겼다. 출시 빌드에서 키가 어긋나면 사용자가 이 문자열을 보게 되므로, 출시 전 점검에서 키 설정을 확인하는 것으로 갈음한다.
+- **프리셋 정의가 사용자 기대와 맞는지 확인되지 않았다** — 「데이트」를 카페·문화재·공원으로 잡은 것은 가정이다(쇼핑몰을 기대할 수도 있다). 「지금 핫플」도 `붐빔`만이라 좁을 수 있는데, 실데이터에서 `붐빔`이 하루 중 몇 시간이나 나오는지 봐야 `약간 붐빔`까지 넓힐지 정할 수 있다. 목업으로는 판단할 수 없다.
 
 ## 진행하며 실제로 잡은 문제
 
