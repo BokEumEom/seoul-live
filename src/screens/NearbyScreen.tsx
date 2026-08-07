@@ -6,7 +6,7 @@ import { AreaListItem } from '../components/nearby/AreaListItem'
 import { CategoryFilter } from '../components/nearby/CategoryFilter'
 import { LocationNotice } from '../components/nearby/LocationNotice'
 import { RecommendationCard } from '../components/nearby/RecommendationCard'
-import { SortSelect } from '../components/nearby/SortSelect'
+import { SortSegmented } from '../components/nearby/SortSegmented'
 import { useLocation } from '../app/locationContext'
 import { AREA_NAMES } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
@@ -15,6 +15,15 @@ import {
   type CategoryFilterValue,
   type SortMode,
 } from '../hooks/useNearbyAreas'
+
+// 좌표가 없을 때 거리순을 고르면 목록은 여유한 순으로 내려간다. 제목도
+// 실제 정렬을 따라가야 한다 — "거리순"이라고 써놓고 다르게 정렬하면
+// 사용자가 목록을 잘못 읽는다.
+const SORT_HEADING: Readonly<Record<SortMode, string>> = {
+  distance: '거리순 주변 장소',
+  calm: '여유한 순 주변 장소',
+  busy: '붐비는 순 주변 장소',
+}
 
 interface Props {
   readonly onSelectArea: (name: string) => void
@@ -91,14 +100,14 @@ export function NearbyScreen({ onSelectArea }: Props) {
           <section className="px-4">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-headline-sm text-on-surface">
-                {hasLocation && sort === 'distance'
-                  ? '거리순 주변 장소'
-                  : '혼잡도순 주변 장소'}
+                {SORT_HEADING[
+                  sort === 'distance' && !hasLocation ? 'calm' : sort
+                ]}
               </h3>
-              <SortSelect
+              <SortSegmented
                 value={sort}
                 onChange={setSort}
-                distanceAvailable={hasLocation}
+                canSortByDistance={hasLocation}
               />
             </div>
 

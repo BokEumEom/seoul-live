@@ -13,7 +13,9 @@ import type {
 /** 카탈로그의 카테고리 + 필터를 걸지 않은 상태. */
 export type CategoryFilterValue = AreaCategory | '전체'
 
-export type SortMode = 'distance' | 'congestion'
+// 'calm'은 예전 'congestion'이다. 셋이 되면서 "혼잡도순"이 어느 방향인지
+// 이름만으로는 알 수 없게 됐다.
+export type SortMode = 'distance' | 'calm' | 'busy'
 
 /** 도보 30분. 시안의 "800m · 도보 12분"이 시속 4km 기준이므로 그에 맞춘다. */
 const RECOMMENDATION_RADIUS_METERS = 2_000
@@ -44,9 +46,17 @@ function compareByDistance(a: NearbyArea, b: NearbyArea): number {
   return a.distanceMeters - b.distanceMeters
 }
 
+// 붐비는 순은 여유로운 순을 단순히 뒤집은 게 아니다. 스냅샷이 없는 명소는
+// 양쪽 모두 뒤로 가야 한다 — "모름"은 붐비는 쪽에도 여유로운 쪽에도 속하지
+// 않는다. 그래서 null 처리는 그대로 두고 rank 비교만 뒤집는다.
+function compareByBusiest(a: NearbyArea, b: NearbyArea): number {
+  if (a.snapshot === null) return 1
+  if (b.snapshot === null) return -1
+  return -compareByCongestion(a, b)
+}
+
 export function buildNearbyList(input: BuildInput): readonly NearbyArea[] {
   const { entries, snapshots, coords, category, sort = 'distance' } = input
-  const byDistance = sort === 'distance' && coords !== null
 
   const combined = entries
     .map(
@@ -59,7 +69,15 @@ export function buildNearbyList(input: BuildInput): readonly NearbyArea[] {
     .filter((item) => category === '전체' || item.entry.category === category)
 
   // toSorted를 쓴다. TanStack Query 캐시에서 온 배열을 제자리 정렬하면 캐시가 오염된다.
-  return combined.toSorted(byDistance ? compareByDistance : compareByCongestion)
+  //
+  // 좌표가 없으면 거리순을 고를 수 없다. 여유로운 순으로 내려간다.
+  if (sort === 'distance' && coords !== null) {
+    return combined.toSorted(compareByDistance)
+  }
+  if (sort === 'busy') {
+    return combined.toSorted(compareByBusiest)
+  }
+  return combined.toSorted(compareByCongestion)
 }
 
 export function pickRecommendations(

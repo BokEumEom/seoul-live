@@ -119,12 +119,14 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: '내 주변 명소' })).toBeInTheDocument()
   })
 
-  it('위치를 거부하면 혼잡도순으로 내려가고 허용 안내가 뜬다', async () => {
+  it('위치를 거부하면 여유한 순으로 내려가고 허용 안내가 뜬다', async () => {
     render(<App />)
     await waitFor(() => expect(screen.getByText('강남역')).toBeInTheDocument())
 
+    // 고른 값은 여전히 'distance'지만 실제 정렬은 여유한 순이다. 제목이
+    // 고른 값이 아니라 실제 정렬을 따라간다.
     expect(
-      screen.getByRole('heading', { name: '혼잡도순 주변 장소' }),
+      screen.getByRole('heading', { name: '여유한 순 주변 장소' }),
     ).toBeInTheDocument()
     expect(
       screen.getByText('위치를 허용하면 가까운 곳부터 볼 수 있어요.'),
@@ -174,11 +176,15 @@ describe('App', () => {
       ).toBeInTheDocument(),
     )
 
-    await userEvent.click(screen.getByRole('button', { name: /정렬 기준/ }))
+    await userEvent.click(screen.getByRole('tab', { name: '붐비는 순' }))
 
     expect(
-      screen.getByRole('heading', { name: '혼잡도순 주변 장소' }),
+      screen.getByRole('heading', { name: '붐비는 순 주변 장소' }),
     ).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '붐비는 순' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
   it('거부한 뒤 허용하기를 누르면 권한 다이얼로그를 연다', async () => {
