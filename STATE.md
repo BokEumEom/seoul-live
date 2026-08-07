@@ -5,7 +5,7 @@
 **최종 갱신:** 2026-08-07
 **작업 브랜치:** `feat/nearby-forecast` — master에 아직 병합하지 않았다
 **마지막 기능 커밋:** `0946761 feat: 「더보기」 도시 정보 화면 추가` (뒤에 작업 트리 정리 커밋 몇 개가 더 있다)
-**푸시는 안 했다.** 브랜치가 로컬에만 있다 — `git log origin/master..HEAD`로 밀린 분량을 본다.
+**원격:** <https://github.com/BokEumEom/seoul-live.git> — 2026-08-07에 `master`와 `feat/nearby-forecast`를 처음 푸시했다. 둘 다 추적 설정이 돼 있다. `feat/nearby-forecast`가 `master`보다 83커밋 앞서 있고 **아직 병합하지 않았다**(PR이냐 직접 병합이냐가 미결이다 — 위 "다음에 할 일" 5번).
 
 작업 트리는 깨끗하다. 예전에 떠 있던 `.grok/`·`.hermes/`·`.kiro/`·`.windsurf/`·`OPEN_API/` 삭제분은 2026-08-07에 정리해서 커밋했다(아래 "정리한 것" 참고).
 
