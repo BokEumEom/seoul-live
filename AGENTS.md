@@ -19,8 +19,6 @@ npm run deploy       # ait deploy
 
 작업을 마쳤다고 보고하기 전에 `npm test`와 `npx tsc -b`를 반드시 통과시킬 것.
 
-**npm 명령은 PowerShell에서 실행한다.** Git Bash로 돌리면 POSIX 형식 PATH(`/c/Program Files/nodejs`)가 npm이 생성하는 `cmd.exe` 서브셸로 넘어가는데 cmd가 이걸 해석하지 못한다. esbuild처럼 postinstall에서 `node`를 부르는 패키지가 전부 `'node'은(는) 내부 또는 외부 명령... 이 아닙니다`로 실패하고, `npm ci`가 통째로 깨진다. 2026-08-07에 실제로 겪었다.
-
 **npm 명령을 파이프로 넘기지 마라.** `npm ci | tail -30`처럼 쓰면 종료 코드가 `tail`의 것으로 잡혀 **실패가 성공으로 보고된다.** 같은 날 이것도 겪었다.
 
 ## 반드시 알아야 할 제약

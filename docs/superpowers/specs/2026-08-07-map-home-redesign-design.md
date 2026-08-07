@@ -227,9 +227,7 @@ CDN 캐시가 명소·TTL 단위로 묶으므로 **최악은 여전히 30곳 × 
 | `README.md` | 화면 표 넷 → 셋. 「혼잡예보」 항목 제거 |
 | `PLAN.md` | 3차 「더보기」 서술, 2차 즐겨찾기를 완료로 |
 | `STATE.md` | 화면 구성, 파일 구조, 해소된 미해결 항목(지도 카메라 초기화), 새 미해결 항목(드래그·지도 제스처 충돌) |
-| `AGENTS.md` | 레이어 규칙의 화면 목록, 바텀시트 조항(시트가 없어짐), **npm 스크립트는 PowerShell로 실행** |
-
-`AGENTS.md`의 PowerShell 항목은 이번 세션에서 실제로 막힌 것이다. Git Bash의 POSIX PATH가 npm이 생성하는 `cmd.exe` 서브셸로 넘어가면서 `C:\Program Files\nodejs`를 잃어, esbuild처럼 postinstall에서 `node`를 부르는 패키지가 전부 실패한다.
+| `AGENTS.md` | 레이어 규칙의 화면 목록, 바텀시트 조항(시트가 없어짐) |
 
 ## 7. 미해결 가정
 

@@ -145,9 +145,7 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 
 ## 알아둬야 할 동작
 
-### npm 명령은 PowerShell에서 실행한다 (2026-08-07 확인)
-
-Bash 도구로 `npm ci`·`npm run dev`를 돌리면 깨진다. Git Bash의 POSIX 형식 PATH(`/c/Program Files/nodejs`)가 npm이 생성하는 `cmd.exe` 서브셸로 넘어가면서 cmd가 해석하지 못해, esbuild처럼 postinstall에서 `node`를 부르는 패키지가 전부 `'node'은(는) 내부 또는 외부 명령... 이 아닙니다`로 실패한다. PowerShell에서는 정상이다.
+### npm 명령은 파이프 없이 돌린다
 
 `| tail`로 파이프하면 종료 코드가 tail의 것으로 잡혀 **실패가 성공으로 보인다.** npm 명령은 파이프 없이 돌린다.
 
