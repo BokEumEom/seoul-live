@@ -9,7 +9,7 @@ import {
 import type { AreaCatalogEntry, AreaSnapshot, NearbyArea } from './types'
 
 function entry(name: string, code: string): AreaCatalogEntry {
-  return { code, name, lat: 37.5, lng: 127, category: '기타' }
+  return { code, name, lat: 37.5, lng: 127, category: '인구밀집지역' }
 }
 
 function snapshot(name: string): AreaSnapshot {

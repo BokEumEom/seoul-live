@@ -31,7 +31,7 @@ function area(overrides: Partial<NearbyArea> = {}): NearbyArea {
       name: '강남역',
       lat: 37.498,
       lng: 127.0276,
-      category: '기타',
+      category: '인구밀집지역',
     },
     snapshot: snapshot(),
     distanceMeters: 800,

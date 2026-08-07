@@ -16,7 +16,7 @@ const ENTRIES: readonly AreaCatalogEntry[] = [
     name: '가까운붐빔',
     lat: 37.5675,
     lng: 126.979,
-    category: '카페',
+    category: '발달상권',
   },
   { code: 'C', name: '먼여유', lat: 37.65, lng: 127.05, category: '공원' },
 ]

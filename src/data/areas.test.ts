@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { AreaCategory } from '../domain/types'
+import { AREA_CATEGORIES, CATEGORY_LABEL } from '../domain/types'
 import { AREA_CATALOG, findAreaByName } from './areas'
 import { OFFICIAL_AREA_NAMES } from './official-areas'
-
-const ALL_CATEGORIES: readonly AreaCategory[] = ['공원', '쇼핑몰', '카페', '문화재', '기타']
 
 describe('AREA_CATALOG', () => {
   it('1차 목표인 30곳을 담는다', () => {
@@ -34,7 +32,7 @@ describe('AREA_CATALOG', () => {
     // 실제로 값어치 있는 건 필터 탭이 빈 화면이 되지 않는지 — 5개 카테고리 전부가
     // 카탈로그에 최소 하나씩 있는지다.
     const categories = new Set(AREA_CATALOG.map((area) => area.category))
-    for (const category of ALL_CATEGORIES) {
+    for (const category of AREA_CATEGORIES) {
       expect(categories.has(category)).toBe(true)
     }
   })
@@ -55,9 +53,52 @@ describe('AREA_CATALOG', () => {
   it.todo('인증키 발급 후 30곳을 실제 호출해 공백까지 일치하는지 확인한다')
 })
 
+describe('공식 카테고리 마이그레이션', () => {
+  it('카탈로그 30곳이 공식 분류로만 이루어진다', () => {
+    const counts = AREA_CATALOG.reduce<Record<string, number>>((acc, entry) => {
+      acc[entry.category] = (acc[entry.category] ?? 0) + 1
+      return acc
+    }, {})
+
+    expect(counts).toEqual({
+      발달상권: 12,
+      공원: 10,
+      관광특구: 3,
+      '고궁·문화유산': 3,
+      인구밀집지역: 2,
+    })
+  })
+
+  it('「기타」가 사라진다', () => {
+    expect(AREA_CATALOG.some((e) => (e.category as string) === '기타')).toBe(false)
+  })
+
+  it('이름에 관광특구가 든 명소는 관광특구로 분류된다', () => {
+    const specials = AREA_CATALOG.filter((e) => e.name.includes('관광특구'))
+    expect(specials).toHaveLength(3)
+    for (const entry of specials) {
+      expect(entry.category).toBe('관광특구')
+    }
+  })
+
+  it('목적 태그가 이전 프리셋 범위를 그대로 옮긴다', () => {
+    const kids = AREA_CATALOG.filter((e) => e.purposes?.includes('kids'))
+    const date = AREA_CATALOG.filter((e) => e.purposes?.includes('date'))
+    // 이전 정의: kids = 공원(10), date = 카페(3) ∪ 문화재(6) ∪ 공원(10) = 19
+    expect(kids).toHaveLength(10)
+    expect(date).toHaveLength(19)
+  })
+
+  it('모든 공식 분류에 화면 라벨이 있다', () => {
+    for (const entry of AREA_CATALOG) {
+      expect(CATEGORY_LABEL[entry.category]).toBeTruthy()
+    }
+  })
+})
+
 describe('findAreaByName', () => {
   it('이름으로 명소를 찾는다', () => {
-    expect(findAreaByName('강남역')?.category).toBe('기타')
+    expect(findAreaByName('강남역')?.category).toBe('인구밀집지역')
   })
 
   it('없는 이름은 undefined를 준다', () => {

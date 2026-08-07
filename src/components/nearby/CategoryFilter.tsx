@@ -1,13 +1,13 @@
+import { AREA_CATEGORIES, CATEGORY_LABEL } from '../../domain/types'
 import type { CategoryFilterValue } from '../../hooks/useNearbyAreas'
 
-const OPTIONS: readonly CategoryFilterValue[] = [
-  '전체',
-  '공원',
-  '쇼핑몰',
-  '카페',
-  '문화재',
-  '기타',
-]
+const OPTIONS: readonly CategoryFilterValue[] = ['전체', ...AREA_CATEGORIES]
+
+// 「인구밀집지역」·「발달상권」은 행정 용어라 화면에 그대로 쓰지 않는다.
+// 필터가 올려보내는 값은 공식 분류 그대로다 — 표시만 바꾼다.
+function labelOf(option: CategoryFilterValue): string {
+  return option === '전체' ? '전체' : CATEGORY_LABEL[option]
+}
 
 interface Props {
   readonly value: CategoryFilterValue
@@ -30,7 +30,7 @@ export function CategoryFilter({ value, onChange }: Props) {
               : 'bg-surface-container text-on-surface-variant'
           }`}
         >
-          {option}
+          {labelOf(option)}
         </button>
       ))}
     </div>

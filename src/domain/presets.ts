@@ -1,5 +1,5 @@
 import { isUncrowded } from './congestion'
-import type { AreaCategory, NearbyArea } from './types'
+import type { NearbyArea, Purpose } from './types'
 
 export type PresetKey = 'kids' | 'date' | 'hot'
 
@@ -9,11 +9,9 @@ export interface Preset {
   readonly matches: (area: NearbyArea) => boolean
 }
 
-const DATE_CATEGORIES: ReadonlySet<AreaCategory> = new Set([
-  '카페',
-  '문화재',
-  '공원',
-])
+function hasPurpose(area: NearbyArea, purpose: Purpose): boolean {
+  return area.entry.purposes?.includes(purpose) ?? false
+}
 
 // 스냅샷이 없는 명소는 어느 프리셋에도 걸리지 않는다. 혼잡도를 모르는데
 // "한산하다"고 말할 수 없다. 지도 전체 보기에서는 회색 "정보 없음" 마커로
@@ -23,18 +21,18 @@ export const PRESETS: readonly Preset[] = [
     key: 'kids',
     label: '아이와 나들이',
     matches: (area) =>
-      area.entry.category === '공원' &&
+      hasPurpose(area, 'kids') &&
       area.snapshot !== null &&
       isUncrowded(area.snapshot.congestion),
   },
   {
     key: 'date',
     label: '데이트',
-    // 붐빔을 뺀다. 카테고리만으로 잡으면 카탈로그상 항상 19곳으로 고정돼,
+    // 붐빔을 뺀다. 태그만으로 잡으면 카탈로그상 항상 19곳으로 고정돼,
     // 옆의 두 칩이 시간대마다 바뀌는 사이에서 혼자 죽은 숫자가 된다.
     // 데이트에 붐빔은 실제로 나쁜 조건이기도 하다.
     matches: (area) =>
-      DATE_CATEGORIES.has(area.entry.category) &&
+      hasPurpose(area, 'date') &&
       area.snapshot !== null &&
       area.snapshot.congestion !== '붐빔',
   },
