@@ -15,40 +15,37 @@
 
 ## 한 줄 요약
 
-1차 범위 20개 태스크 **전부 완료**. 화면이 **넷**이다 — 「내 주변」·「혼잡예보」·「지도」에 더해 **「더보기」(도시 정보)** 를 얹었다. 더보기는 `citydata` 서비스로 명소 한 곳의 주차장·따릉이·날씨·대기·문화행사·재난문자를 보여준다. 지도에는 **목적 프리셋**(아이와 나들이 / 데이트 / 지금 핫플) 칩도 붙어 있다. 넷 다 목업 데이터로 동작하고 시안 디자인이 반영돼 있다. 하단 탭 4개가 전부 활성이다. 실데이터로 넘어가려면 **인증키가 필요한데 아직 없다.**
+**지도 홈 개편 완료(2026-08-07).** 화면이 **셋**이고 **지도가 홈**이다 — 지도 / 즐겨찾기 / 더보기(오늘의 서울).
+
+지도 홈이 지도(위)와 목록(아래)을 드래그 손잡이로 나눠 갖는다. 명소를 누르면 지도는 남고 목록 자리만 상세로 바뀐다. 옛 「내 주변」은 지도 위 버튼과 정렬 기준으로, 「혼잡예보」는 그 상세로, 「더보기」의 도시 정보는 상세 안 접이식 섹션으로 녹았다. 비워진 더보기 탭은 「오늘의 서울」이 됐다(추가 API 호출 0).
+
+즐겨찾기가 새로 생겼고 기기에 저장된다. 카테고리는 서울시 공식 5종으로 바뀌었고 목적 프리셋은 카테고리에서 분리돼 독립 태그(`purposes`)가 됐다.
+
+셋 다 목업 데이터로 동작하고 시안 디자인이 반영돼 있다. 실데이터로 넘어가려면 **인증키가 필요한데 아직 없다.**
 
 ## 다음에 할 일
 
-### 지도 홈 개편 — 설계·계획 완료, 구현 대기 (2026-08-07)
+### 지도 홈 개편 — **완료 (2026-08-07)**
 
-**다음 작업은 이것이다.** 레퍼런스 「서울 인파레이더」(<https://gjdong.vercel.app/crowd>)를 조사해 화면 구조를 재설계했다. 문서가 둘 다 나와 있으니 새 세션은 계획서 Task 1부터 시작하면 된다.
+15개 태스크 전부 구현했다. 브랜치는 `feat/map-home-redesign`.
 
 | 문서 | 경로 |
 | --- | --- |
 | 설계 | `docs/superpowers/specs/2026-08-07-map-home-redesign-design.md` |
 | 구현 계획 (15개 태스크) | `docs/superpowers/plans/2026-08-07-map-home-redesign.md` |
 
-바뀌는 것 요약:
+### 다음 후보 (우선순위 순)
 
-- **화면 넷 → 셋.** 지도(홈) / 즐겨찾기 / 더보기
-- **지도가 홈**이고 목록과 **인플레이스 상세**를 흡수한다. 「내 주변」은 버튼과 정렬 기준으로, 「혼잡예보」는 상세로 녹는다
-- **드래그 분할** — 지도·목록 비율을 손잡이로 조절(기본 35%, 15~75%, 스냅 3단계)
-- **「더보기」는 「오늘의 서울」**이 된다 — 혼잡도 분포, 붐빔·여유 TOP, 카테고리별 평균, 재난문자 모음, 추천. **추가 API 호출 0**
-- **카테고리를 서울시 공식 5종으로 교체** — 관광특구·고궁·문화유산·인구밀집지역·발달상권·공원. 화면 라벨은 사용자 언어로
-- **프리셋을 카테고리에서 분리** — 독립 목적 태그(`purposes`)
-- **즐겨찾기 추가** — 기기 로컬 저장으로 확정
-- `AreaSheet`(바텀시트)와 `AreaPicker` 삭제
+1. **도로소통·사고통제 섹션 추가** — 명소 상세의 접이식 도시 정보에 붙인다. `ROAD_TRAFFIC_STTS`·`ACDNT_CNTRL_STTS`로 **추가 호출 없이** 같은 응답에서 읽는다. 구조가 서 있어 붙이기 쉽다.
+2. **`REPLACE_YN` 처리** — 서울 API가 "이 수치는 실측이 아니라 대체값"이라고 알려주는 필드인데 우리는 읽지 않는다. 지금 화면은 대체값과 실측을 똑같이 보여준다. 목업으로 검증 가능하다.
+3. **Pretendard self-host 여부** — 아래 "한글 폰트" 참고. 지금은 한글이 기기 기본 폰트로 나온다.
+4. **명소 30 → 121곳 확장** — **활용갤러리 등록이 조건이라 지금은 막혀 있다.** 이름 목록은 `src/data/official-areas.ts`에 있고, **카테고리는 매뉴얼 PDF p9~10에 121곳 전부 실려 있다**(고궁·문화유산 5 / 관광특구 7 / 공원 33 / 발달상권 28 / 인구밀집지역 48). 좌표와 `purposes` 태그만 채우면 된다. 카테고리 값이 이미 공식 5종이라 그대로 옮길 수 있다.
 
-### 이번 개편 범위 밖 (근거는 설계 문서 §1)
+### 개편으로 해소된 것
 
-1. **`REPLACE_YN` 처리** — 서울 API가 "이 수치는 실측이 아니라 대체값"이라고 알려주는 필드인데 우리는 읽지 않는다. 지금 화면은 대체값과 실측을 똑같이 보여준다. 목업으로 검증 가능하다.
-2. **상세 화면 섹션 확장** — `citydata`에 아직 안 쓰는 필드: 도로소통(`ROAD_TRAFFIC_STTS`), 사고통제(`ACDNT_CNTRL_STTS`), 지하철 도착(`SUB_STTS`), 버스정류소(`BUS_STN_STTS`), 전기차충전소(`CHARGER_STTS`), 상권(`LIVE_CMRCL_STTS`), 연합뉴스(`LIVE_YNA_NEWS`). **추가 호출 없이** 같은 응답에서 읽는다. 개편으로 구조가 서면 붙이기 쉬워진다.
-3. **더보기 TTL과 쿼터 배분** — 아래 "더보기는 호출량을 늘린다". 실데이터 전환 전에 정해야 한다. 개편에서 도시 정보를 **접어두고 펼칠 때 조회**하도록 바꾸므로 압력이 줄어든다.
-4. **Pretendard self-host 여부** — 아래 "한글 폰트" 참고. 지금은 한글이 기기 기본 폰트로 나온다.
-
-지금은 막혀 있는 것:
-
-5. **명소 30 → 121곳 확장** — **활용갤러리 등록이 조건이다.** 이름 목록은 `src/data/official-areas.ts`에 있고, **카테고리는 매뉴얼 PDF p9~10에 121곳 전부 실려 있다**(고궁·문화유산 5 / 관광특구 7 / 공원 33 / 발달상권 28 / 인구밀집지역 48). 좌표만 채우면 된다. 쿼터 때문에 등록 전에는 30곳을 유지한다.
+- ~~**더보기 TTL과 쿼터 배분**~~ — 도시 정보가 **접힌 채로 시작하고 펼칠 때만 조회**하도록 바뀌어 압력이 크게 줄었다. `CITYINFO_CACHE_TTL_SECONDS`는 그대로 있고 실데이터 전환 시 값만 정하면 된다.
+- ~~**지도 카메라가 상세를 다녀오면 초기화된다**~~ — `App.tsx`가 홈을 `hidden`으로 남겨 언마운트하지 않는다. 상세는 목록 자리만 차지하므로 지도는 애초에 사라지지 않는다.
+- ~~**`AreaSheet` 진입 시 자동 노출**~~ — 바텀시트 자체가 없어졌다.
 
 ### 사람이 해야 하는 것 (코드로 못 푼다)
 
@@ -92,31 +89,38 @@
 
 ### 검증 수치
 
-테스트 **367개 + todo 1개** 통과 (테스트 파일 35개).
-커버리지 — 라인 98.47% / 브랜치 92.97% / 함수 98.73% / 구문 97.87% (임계값 라인·구문·함수 80%, 브랜치 75%).
+테스트 **434개 + todo 1개** 통과 (테스트 파일 48개).
+커버리지 — 라인 94.71% / 브랜치 84.20% / 함수 91.55% / 구문 94.08% (임계값 라인·구문·함수 80%, 브랜치 75%).
 `npx tsc -b`·`npm run lint`·`npm run build:vite` 전부 통과. `npm run dev`도 실제로 뜬다.
+
+개편 전(367개, 라인 98.47%)보다 커버리지가 내려갔다. 화면 셋이 새로 생기면서 조립 코드가 늘었고 그 분기(로딩·에러·빈 상태 조합)를 전부 태우지는 않았다. 임계값은 모두 여유 있게 넘는다.
 
 ### 파일 구조
 
 ```text
-src/domain/     types, cityInfo, congestion, distance, forecast, map, mapLinks, presets   순수 함수. React도 네트워크도 모른다
+src/domain/     types, cityInfo, congestion, distance, forecast, map, mapLinks,
+                presets, search, split, summary                순수 함수. React도 네트워크도 모른다
 src/data/       areas, official-areas, schema, cityInfoSchema, mock, mockCityInfo, client, queries
-src/platform/   links, googleMaps                             토스 브리지 + 브라우저 폴백, Google Maps SDK 경계
-src/hooks/      useCurrentLocation, useNearbyAreas
+src/platform/   links, googleMaps, favorites                   토스 브리지 + 폴백, Google Maps SDK 경계
+src/hooks/      useCurrentLocation, useNearbyAreas, useFavorites, useHomeFilters, useCachedCityAlerts
 src/app/        QueryProvider, LocationProvider, locationContext
 src/components/ common(Icon, CongestionBadge, ToneBadge, toneClass, ErrorState, SkeletonCard)
                 layout(TopAppBar, BottomTabBar)
-                nearby(AreaListItem, RecommendationCard, CategoryFilter, SortSelect, LocationNotice)
+                home(SplitPane, SearchBar, AreaDetail)         홈 전용
+                list(AreaListItem, CategoryFilter, LocationNotice, SortSegmented)
+                map(CongestionMarker, MapUnavailableNotice, RecenterButton, PresetFilter)
                 forecast(ForecastChart, ActionButtons)
-                map(CongestionMarker, AreaSheet, MapUnavailableNotice, RecenterButton, PresetFilter)
-                more(AreaPicker, AlertBanner, WeatherCard, ParkingList, BikeList, EventList, InfoSection)
-src/screens/    NearbyScreen, ForecastScreen, MapScreen, MoreScreen
+                cityinfo(AlertBanner, WeatherCard, ParkingList, BikeList, EventList, InfoSection)
+                today(SummaryCard, RankList, CategoryAverages, AlertDigest, RecommendationCard)
+src/screens/    HomeScreen, FavoritesScreen, TodayScreen
 api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, citydata-bulk, cityinfo
 ```
 
-`npm run dev` → <http://localhost:5173/> 에서 네 화면이 실제로 뜬다. 라우터는 없다 — `App.tsx`가 `tab`과 `selectedArea` 상태를 실제로 들고 전환한다(이전에는 `selectedArea`로 탭을 유추했는데, 탭이 셋이 되면서 그 유추가 깨져 상태를 분리했다). 탭별 화면 선택은 `App.tsx`의 `TabScreen`이 맡는다.
+`npm run dev` → <http://localhost:5173/> 에서 세 화면이 실제로 뜬다. 라우터는 없다 — `App.tsx`가 `tab`과 `focusArea` 상태를 들고 전환한다.
 
-하단 탭에서 「혼잡예보」를 눌러도 화면이 바뀌지 않는다. **의도된 동작이다** — 혼잡예보는 명소를 골라야 성립하는 상세 화면이라 단독 진입점이 없다. `handleTab`이 `'forecast'`를 그냥 무시한다.
+**홈은 언제나 마운트된 채로 둔다.** `App.tsx`가 `<div hidden={tab !== 'home'}>`으로 감싼다. 탭을 오갈 때마다 새로 만들면 `google.maps.Map`이 다시 생성돼 타일을 다시 받고 카메라가 서울 전역으로 돌아간다. 검색어·선택·분할 비율도 함께 날아간다. `App.test.tsx`가 검색어 보존으로 이걸 고정한다.
+
+**즐겨찾기·오늘의 서울에서 명소를 누르면 `focusArea`로 홈에 넘긴다.** `App`이 아는 건 "어디로 보낼 것인가"뿐이고 홈의 필터·카메라 상태는 `HomeScreen` 안에 남는다.
 
 ### 설계 문서
 
@@ -128,7 +132,7 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 | 지도 화면 | `docs/superpowers/specs/2026-08-04-map-tab-design.md` | `docs/superpowers/plans/2026-08-05-map-tab.md` |
 | 목적 프리셋 | `docs/superpowers/specs/2026-08-06-purpose-presets-design.md` | `docs/superpowers/plans/2026-08-06-purpose-presets.md` |
 | 더보기(도시 정보) | 없음 — 사용자가 문서 단계를 생략하고 바로 구현하기로 정했다(2026-08-07) | 없음 |
-| **지도 홈 개편 (구현 대기)** | `docs/superpowers/specs/2026-08-07-map-home-redesign-design.md` | `docs/superpowers/plans/2026-08-07-map-home-redesign.md` |
+| **지도 홈 개편 (완료)** | `docs/superpowers/specs/2026-08-07-map-home-redesign-design.md` | `docs/superpowers/plans/2026-08-07-map-home-redesign.md` |
 
 **더보기에는 설계 문서가 없다.** 사용자가 속도를 위해 spec/plan 문서 단계를 건너뛰기로 결정했다. 결정의 근거는 코드 주석에 남겼다 — `cityInfoSchema.ts` 머리말(왜 관대한 파싱인가), `seoul.ts`의 `cityInfoCacheTtlSeconds`(쿼터 배분), `AreaPicker.tsx`(왜 네이티브 select인가), `BikeList.tsx`(왜 주차장 톤을 재사용하지 않는가).
 
@@ -171,26 +175,38 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 
 위치는 `LocationProvider`가 앱 수준에서 **한 번만** 잡는다. 화면 안에 두면 상세에서 뒤로 갈 때마다 GPS를 다시 켠다.
 
-### 더보기(도시 정보) 화면
+### 명소 상세의 도시 정보 (옛 「더보기」)
 
-**명소 하나를 기준으로만 성립한다.** `citydata`가 장소 단위 API라 다른 방법이 없다. 기본값은 현재 위치에서 가장 가까운 카탈로그 명소, 위치가 없으면 `광화문·덕수궁`이다. 상단의 네이티브 `<select>`로 바꿀 수 있고, **사용자가 한 번 고르면 위치가 뒤늦게 잡혀도 선택이 유지된다**(늦게 온 좌표가 선택을 덮으면 스크롤하던 화면이 통째로 바뀐다).
+**명소 하나를 기준으로만 성립한다.** `citydata`가 장소 단위 API라 다른 방법이 없다. 개편 전에는 탭 안에서 명소를 골라야 했지만(`AreaPicker`), 지금은 상세가 이미 명소가 정해진 자리라 고르는 단계가 통째로 없어졌다.
+
+**접힌 채로 시작하고 펼칠 때 조회한다.** `useCityInfo(cityInfoOpen ? areaName : undefined)`로 `enabled`를 끈다. 상세를 열 때마다 부르면 쿼터 압력이 그대로 는다 — `AreaDetail.test.tsx`의 변이 확인이 이걸 고정한다.
 
 섹션은 재난문자 배너 → 날씨·대기 → 주차장 → 따릉이 → 문화행사 순이다. 재난문자만 `role="alert"`로 올린다 — 나머지는 찾아 읽는 정보지만 이건 지금 알아야 하는 내용이다.
+
+**도시 정보가 실패해도 위쪽 혼잡도·예측·길찾기는 그대로 남는다.** 반대로 혼잡도가 실패해도 도시 정보는 펼칠 수 있다. 둘은 다른 엔드포인트다.
 
 **"정보 없음"과 "만차"를 구분한다.** 주차장이 실시간 정보를 주지 않으면(`CUR_PRK_YN`이 `N`) "실시간 미제공"이라고 쓴다. 둘을 묶으면 실시간을 안 주는 주차장이 전부 만차로 보이는데, 그 앞을 지나가는 사용자에게는 정반대의 안내다.
 
 **따릉이는 주차장과 톤이 반대다.** 주차장은 빈 자리가 많아야 좋고 대여소는 자전거가 남아 있어야 좋다. `parkingTone`을 재사용하지 않는 이유이고, `BikeList.test.tsx`가 이걸 고정한다.
 
-### 더보기는 호출량을 늘린다
+### 오늘의 서울은 추가 호출이 0이다
+
+이 화면의 존재 근거다. `useAreaSnapshots`로 이미 받아둔 30곳 스냅샷을 `domain/summary.ts`가 다르게 집계할 뿐이다.
+
+**재난문자는 캐시에 있는 것만 모은다.** `useCachedCityAlerts`가 `queryClient.getQueryData(['cityInfo', name])`를 읽고, 없으면 조회하지 않는다. 사용자가 상세에서 도시 정보를 펼친 명소만 여기 잡힌다. 30곳의 `cityInfo`를 새로 부르면 하루 720회가 그대로 더해진다.
+
+**같은 경보가 여러 명소에 실려 온다.** `AlertDigest`가 문구로 중복을 지운다 — 안 지우면 폭염 경보 하나가 30줄이 된다.
+
+### 도시 정보는 호출량을 늘린다
 
 PLAN.md와 이전 STATE는 "`citydata` 하나로 다 오니 호출이 늘지 않는다"고 적었지만, **그건 `citydata_ppltn`을 `citydata`로 교체할 때 이야기다.** 실제 구현은 `/api/cityinfo`라는 **별도 엔드포인트**를 얹었으므로 호출이 더해진다.
 
 | | 서비스 | 하루 호출량 |
 | --- | --- | --- |
 | 혼잡도(전 화면) | `citydata_ppltn` | 30곳 ÷ TTL 1시간 = **720회** (고정) |
-| 더보기 | `citydata` | 사용자가 연 명소 수 ÷ TTL. 최악 30곳 매시간 = **720회** |
+| 도시 정보 | `citydata` | 사용자가 **펼친** 명소 수 ÷ TTL. 최악 30곳 매시간 = **720회** |
 
-합치면 1,440회로 하루 1,000회를 넘는다. 실제로 30곳을 매시간 여는 일은 없어서 훨씬 적겠지만 **"안 넘는다"고 단정할 근거는 없다.**
+합치면 1,440회로 하루 1,000회를 넘는다. **개편으로 압력이 크게 줄었다** — 도시 정보가 접힌 채로 시작하므로, 상세를 열기만 해서는 호출이 나가지 않고 「이곳의 도시 정보」를 펼쳐야 나간다. 그래도 최악의 경우는 그대로라 **"안 넘는다"고 단정할 근거는 없다.**
 
 교체하지 않고 나눈 이유: `citydata`는 응답이 훨씬 크다. 30곳을 한 번에 받는 `citydata-bulk`에 그걸 얹으면 인구 목록만 필요한 「내 주변」·「지도」까지 매번 큰 응답을 받는다.
 
@@ -281,20 +297,22 @@ PLAN.md와 이전 STATE는 "`citydata` 하나로 다 오니 호출이 늘지 않
 - **토스 웹뷰의 mixed content 정책** — HTTPS로 번들을 서빙한다고 가정했다. 로컬 파일 스킴이면 HTTP 직접 호출이 될 수도 있다. 다만 쿼터 때문에 프록시는 어차피 필요해서 설계는 안 바뀐다.
 - **명소 이름의 정확한 공백** — 위 "명소 이름 검증" 참고. 실제 호출로만 확정된다.
 - **`REPLACE_YN`을 안 읽는다** — 대체 데이터 여부를 알려주는 필드인데 무시하고 있다. 대체값과 실측을 화면이 구분하지 않는다.
-- **더보기의 목록 상한이 5곳이라는 게 맞는지** — 주차장·따릉이를 여유 많은 순 5곳까지만 보여주고 나머지는 "외 N곳"으로 접는다. 실제 응답에 한 명소당 몇 곳이 오는지 모르는 채로 정한 수다. 3곳이면 접을 이유가 없고 50곳이면 5곳도 부족할 수 있다.
+- **드래그 손잡이와 지도 팬 제스처가 충돌하는지** — `SplitPane`은 `touch-none`으로 손잡이 위 터치를 가로채고 지도는 `gestureHandling: 'greedy'`로 모든 제스처를 먹는다. 둘의 경계에서 손가락이 어느 쪽으로 잡히는지는 실기기로만 안다. 손잡이를 잡으려다 지도가 팬되면 비율 조절이 사실상 불가능해진다.
+- **도시 정보의 목록 상한이 5곳이라는 게 맞는지** — 주차장·따릉이를 여유 많은 순 5곳까지만 보여주고 나머지는 "외 N곳"으로 접는다. 실제 응답에 한 명소당 몇 곳이 오는지 모르는 채로 정한 수다. 3곳이면 접을 이유가 없고 50곳이면 5곳도 부족할 수 있다.
 - **위치 정확도** — `Accuracy.Balanced`(수백 m)를 쓴다. 거리순 정렬과 2km 추천에는 충분하다고 봤지만, 사용자가 "가까운 순이 이상하다"고 느끼는지는 기기에서 봐야 안다.
 - **한글 폰트** — 폰트 스택이 `Hanken Grotesk → Pretendard → system-ui`인데 Hanken Grotesk에는 한글 글리프가 없고 Pretendard는 로드하지 않는다. 즉 **화면의 한글은 전부 기기 기본 폰트로 그려진다.** 숫자·라틴만 시안대로다. 시안과 한글 자모가 달라 보이면 이게 원인이다.
 - **앱인토스가 서드파티 SDK의 동적 스크립트 로딩을 허용하는지 확정하지 못했다** — 심사 체크리스트의 "외부에서 전달받은 코드를 실행하는 기능은 사용할 수 없어요(예: `eval` 등)"가 Google Maps JS API의 스크립트 주입에도 걸리는지 문서로 확인되지 않는다. 같은 체크리스트가 지도를 제스처 확대·축소의 예외로 인정하고 있고 이미 Google Fonts를 CDN에서 받고 있어서 대상이 아니라고 읽었지만, 확정은 심사로만 된다. 걸리면 대안은 Static Maps API다(설계 문서 §3).
-- **지도 화면의 높이 계산** — `MapScreen`이 `h-[calc(100dvh-7.5rem)]`을 쓴다(상단바 3.5rem + 하단 탭바 3.5rem + 여유). `<Map>`은 부모가 크기를 정한다고 가정하므로 이 값이 틀리면 지도가 잘리거나 접힌다. iOS 안전 영역을 포함한 실제 값은 실기기로만 확인된다.
+- **지도 홈의 높이 계산** — `HomeScreen`이 `h-[calc(100dvh-7.5rem)]`을 쓰고(상단바 3.5rem + 하단 탭바 3.5rem + 여유), 그 안에서 검색 바 몫 `4rem`을 다시 뺀 자리를 `SplitPane`이 나눠 갖는다. `<Map>`은 부모가 크기를 정한다고 가정하므로 이 값이 틀리면 지도가 잘리거나 접힌다. **검색 바의 실제 높이가 4rem과 다르면 목록 아래가 잘린다** — 개편으로 중첩이 한 겹 늘어 더 예민해졌다. iOS 안전 영역을 포함한 실제 값은 실기기로만 확인된다.
 
 ## 알고 있지만 아직 안 고친 것 (지도)
 
 코드 리뷰에서 나왔고 근거를 따져 미룬 것들이다. 몰라서 남긴 게 아니다.
 
-- **마커 `position` 객체가 렌더마다 새로 만들어진다** — `MapScreen`이 `position={{ lat, lng }}`를 인라인으로 넘긴다. 라이브러리의 `usePropBinding`이 값을 의존성으로 쓰므로 카메라가 움직일 때마다 마커 30개의 position이 다시 쓰인다. 팬 한 번에 `bounds_changed`가 초당 여러 번 오는 걸 감안하면 저사양 안드로이드 웹뷰에서 팬이 끊길 수 있다. 실기기에서 실제로 끊기는지 보고 판단한다 — 안 끊기면 `toMapMarkers`가 `position`까지 만들고 마커를 `React.memo`로 감싸는 게 수정 방향이다.
-- **지도 카메라가 상세를 다녀오면 초기화된다** — 상세로 들어가면 `MapScreen`이 언마운트되므로 `center`·`zoom`·선택 상태가 서울 전역으로 돌아간다. 탭은 보존된다. 지키려면 카메라 상태를 `App.tsx`로 끌어올려야 하는데, 그러면 지도 상태가 셸로 새어나온다. 사용자가 실제로 불편해하는지 보고 결정한다.
+- **마커 `position` 객체가 렌더마다 새로 만들어진다** — `HomeScreen`이 `position={{ lat, lng }}`를 인라인으로 넘긴다. 라이브러리의 `usePropBinding`이 값을 의존성으로 쓰므로 카메라가 움직일 때마다 마커 30개의 position이 다시 쓰인다. 팬 한 번에 `bounds_changed`가 초당 여러 번 오는 걸 감안하면 저사양 안드로이드 웹뷰에서 팬이 끊길 수 있다. 실기기에서 실제로 끊기는지 보고 판단한다 — 안 끊기면 `toMapMarkers`가 `position`까지 만들고 마커를 `React.memo`로 감싸는 게 수정 방향이다.
+- ~~**지도 카메라가 상세를 다녀오면 초기화된다**~~ — **개편으로 해소.** 상세가 목록 자리만 차지하고 홈은 `hidden`으로 남으므로 카메라가 유지된다.
+- **별 아이콘의 채움 상태가 테스트로 안 덮인다** — `aria-pressed`·`aria-label`은 고정돼 있지만 `star`/`starFilled` 중 어느 SVG가 그려지는지는 확인하지 않는다. 변이 테스트로 확인했고, 잡으려면 path 문자열을 비교해야 해서 아이콘 모양이 바뀔 때마다 깨진다. 라벨이 맞으면 상태는 맞으므로 남는 결함은 "라벨은 맞는데 아이콘만 틀린" 경우뿐이다.
 - **`MapUnavailableNotice`가 사용자에게 환경변수 이름을 보여준다** — 키 미설정 문구에 `VITE_GOOGLE_MAPS_API_KEY`가 그대로 들어간다. 개발 중 원인을 즉시 알려주는 값어치가 커서 의도적으로 남겼다. 출시 빌드에서 키가 어긋나면 사용자가 이 문자열을 보게 되므로, 출시 전 점검에서 키 설정을 확인하는 것으로 갈음한다.
-- **프리셋 정의가 사용자 기대와 맞는지 확인되지 않았다** — 「데이트」를 카페·문화재·공원으로 잡은 것은 가정이다(쇼핑몰을 기대할 수도 있다). 「지금 핫플」도 `붐빔`만이라 좁을 수 있는데, 실데이터에서 `붐빔`이 하루 중 몇 시간이나 나오는지 봐야 `약간 붐빔`까지 넓힐지 정할 수 있다. 목업으로는 판단할 수 없다.
+- **프리셋 정의가 사용자 기대와 맞는지 확인되지 않았다** — 「데이트」 태그를 19곳에 붙인 것은 가정이다(청담동 명품거리를 기대할 수도 있다). 「지금 핫플」도 `붐빔`만이라 좁을 수 있는데, 실데이터에서 `붐빔`이 하루 중 몇 시간이나 나오는지 봐야 `약간 붐빔`까지 넓힐지 정할 수 있다. 목업으로는 판단할 수 없다.
 
 ## 진행하며 실제로 잡은 문제
 
@@ -321,6 +339,22 @@ PLAN.md와 이전 STATE는 "`citydata` 하나로 다 오니 호출이 늘지 않
 | 시안을 참고하지 않고 계획서만 따름 | DESIGN.md 색상 47개 중 17개만 반영, 타이포 스케일 0개. 화면이 시안이 아니라 평범한 목록처럼 보임 | 토큰 전량 이관 + 컴포넌트의 raw Tailwind 크기 전부 교체 |
 | 항상 참인 테스트 3번째 | 원소 2개짜리 정렬 테스트가 "null을 뒤로"의 반대 가지를 태우지 않아, 정렬 방향을 뒤집어도 통과 | 원소를 5개로 늘려 비교 함수가 양방향으로 호출되게 함 |
 | 더보기 쿼터 계산 오류 | "호출이 안 는다"는 전제가 교체 방식일 때만 맞는데, 실제로는 추가 엔드포인트라 최악 1,440회/일 | `CITYINFO_CACHE_TTL_SECONDS`로 분리하고 STATE에 명시 |
+
+### 지도 홈 개편에서 잡은 것 (2026-08-07)
+
+계획서의 코드 블록을 그대로 옮겼다면 전부 통과했을 것들이다. AGENTS.md의 "계획 문서를 다룰 때"가 왜 있는지를 다시 보여준다.
+
+| 문제 | 영향 | 처리 |
+| --- | --- | --- |
+| 계획서 Task 6의 "붐비는 순 = 여유로운 순의 역순" 테스트 | 픽스처에 동점(여유 2곳)이 있어 **구현이 옳아도 실패**한다. 안정 정렬이 동점의 원래 순서를 지키므로 목록을 통째로 뒤집은 것과는 절대 같아지지 않는다 | 이름 순서 대신 혼잡도 수열로 비교 |
+| 계획서 Task 6의 "스냅샷 없는 항목이 뒤로" 테스트 | 픽스처에 스냅샷 없는 항목이 아예 없어 `at(-1)`이 항상 non-null | 전용 픽스처를 따로 만들고 동점·null을 일부러 넣음 |
+| 계획서 Task 2의 변이 지시 | "빈 문자열 분기를 지우면 실패한다"고 했지만 통과했다. `''.includes('')`가 항상 참이라 `toEqual`로는 못 가른다 | `toBe`로 참조 동등성을 고정 — 분기의 실제 값어치가 그것이다 |
+| `snapRatio` 안의 `clampRatio`가 미검증 | 범위 밖 값은 스냅 계산이 이미 처리해서 clamp를 지워도 통과. 실제로 갈리는 건 `NaN` 하나뿐 | NaN이 최소가 아니라 기본값으로 떨어지는 테스트 추가 |
+| 계획서가 즐겨찾기 저장소를 `localStorage`로 한정 | SDK에 `Storage.getItem/setItem`이 실제로 있다(앱 종료 후에도 유지). 계획서는 "문서에서 확인 안 되면"이라는 조건부였는데 확인이 됐다 | `links.ts`와 같은 브리지 우선 폴백으로 구현 |
+| `useFavorites`의 경쟁 상태 | 초기 읽기가 끝나기 전에 별을 누르면 늦게 온 저장 목록이 그 토글을 덮는다. 사용자에겐 별이 눌렸다 저절로 풀리는 것으로 보인다 | `touchedRef` 가드. 「더보기」의 늦은 좌표 문제와 같은 종류다 |
+| `TopAppBar`와 화면 제목이 둘 다 "오늘의 서울" | 같은 제목이 두 줄로 겹쳐 보인다 | 상단바는 앱 이름만, 제목은 각 화면이 든다 |
+| 프리셋 개수 규칙이 홈에서 미검증 | 옛 `MapScreen.test.tsx`가 지켜주던 규칙인데 그 파일이 삭제된다. 걸러진 목록으로 세면 칩 하나를 고르는 순간 나머지가 0으로 굳는다 | 테스트를 `HomeScreen.test.tsx`로 옮김 |
+| 붐빔 TOP과 여유 TOP을 바꿔치기해도 통과 | 제목만 확인하는 테스트라 두 목록의 내용이 서로 바뀌어도 못 잡는다 | 첫 줄의 혼잡도 배지를 고정 |
 
 ## 1차에서 의도적으로 뺀 것
 
