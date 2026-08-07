@@ -1,6 +1,6 @@
 import { Icon, type IconName } from '../common/Icon'
 
-export type TabKey = 'map' | 'nearby' | 'forecast' | 'more'
+export type TabKey = 'home' | 'favorites' | 'more'
 
 interface Tab {
   readonly key: TabKey
@@ -9,12 +9,14 @@ interface Tab {
   readonly enabled: boolean
 }
 
-// 시안의 4탭이 전부 활성이다. `enabled`는 남겨둔다 — 탭이 늘어날 때 준비 중인
-// 화면을 비활성으로 두는 경로가 다시 필요해진다.
+// 탭이 셋이다. 「내 주변」은 지도 위의 버튼이 됐고 「혼잡예보」는 명소 상세로
+// 녹아들었다 — 둘 다 갈 곳이 아니라 지도에 대고 하는 일이었다.
+//
+// `enabled`는 남겨둔다 — 탭이 늘어날 때 준비 중인 화면을 비활성으로 두는
+// 경로가 다시 필요해진다.
 const TABS: readonly Tab[] = [
-  { key: 'map', label: '지도', icon: 'map', enabled: true },
-  { key: 'nearby', label: '내 주변', icon: 'near', enabled: true },
-  { key: 'forecast', label: '혼잡예보', icon: 'forecast', enabled: true },
+  { key: 'home', label: '지도', icon: 'map', enabled: true },
+  { key: 'favorites', label: '즐겨찾기', icon: 'star', enabled: true },
   { key: 'more', label: '더보기', icon: 'more', enabled: true },
 ]
 
