@@ -6,7 +6,7 @@
 **작업 브랜치:** `feat/nearby-forecast` — master에 아직 병합하지 않았다
 **마지막 커밋:** `0946761 feat: 「더보기」 도시 정보 화면 추가` — 커밋만 했고 **푸시는 안 했다**
 
-**작업 트리에 손대면 안 되는 변경이 섞여 있다.** `git status`에 `.gitignore` 수정과 `.grok/`·`.hermes/`·`.kiro/`·`.windsurf/`·`OPEN_API/` 삭제가 떠 있는데 **이 프로젝트 작업과 무관하다.** 스테이징도 커밋도 되돌리기도 하지 마라.
+작업 트리는 깨끗하다. 예전에 떠 있던 `.grok/`·`.hermes/`·`.kiro/`·`.windsurf/`·`OPEN_API/` 삭제분은 2026-08-07에 정리해서 커밋했다(아래 "정리한 것" 참고).
 
 ## 한 줄 요약
 
@@ -114,6 +114,17 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 | 더보기(도시 정보) | 없음 — 사용자가 문서 단계를 생략하고 바로 구현하기로 정했다(2026-08-07) | 없음 |
 
 **더보기에는 설계 문서가 없다.** 사용자가 속도를 위해 spec/plan 문서 단계를 건너뛰기로 결정했다. 결정의 근거는 코드 주석에 남겼다 — `cityInfoSchema.ts` 머리말(왜 관대한 파싱인가), `seoul.ts`의 `cityInfoCacheTtlSeconds`(쿼터 배분), `AreaPicker.tsx`(왜 네이티브 select인가), `BikeList.tsx`(왜 주차장 톤을 재사용하지 않는가).
+
+### 정리한 것 (2026-08-07)
+
+오래 떠 있던 작업 트리 변경을 커밋했다. 되살릴 일이 생기면 삭제 직전 커밋에서 꺼낼 수 있다.
+
+| 대상 | 처리 |
+| --- | --- |
+| `.grok/`·`.hermes/`·`.kiro/`·`.windsurf/` | 삭제. `.claude/skills/apps-in-toss/`의 사본이었다 — 정본 한 벌만 남긴다 |
+| `OPEN_API/` | 삭제. 서울 열린데이터광장 샘플 코드(Java·JSP)였고 우리 구현과 무관하다. AGENTS.md의 참고 문서 표에서도 뺐다 |
+| `.gitignore` | `.gstack/` 추가 |
+| `.claude/skills/apple-design/` | 추가 |
 
 ## 알아둬야 할 동작
 
