@@ -19,6 +19,10 @@ npm run deploy       # ait deploy
 
 작업을 마쳤다고 보고하기 전에 `npm test`와 `npx tsc -b`를 반드시 통과시킬 것.
 
+**npm 명령은 PowerShell에서 실행한다.** Git Bash로 돌리면 POSIX 형식 PATH(`/c/Program Files/nodejs`)가 npm이 생성하는 `cmd.exe` 서브셸로 넘어가는데 cmd가 이걸 해석하지 못한다. esbuild처럼 postinstall에서 `node`를 부르는 패키지가 전부 `'node'은(는) 내부 또는 외부 명령... 이 아닙니다`로 실패하고, `npm ci`가 통째로 깨진다. 2026-08-07에 실제로 겪었다.
+
+**npm 명령을 파이프로 넘기지 마라.** `npm ci | tail -30`처럼 쓰면 종료 코드가 `tail`의 것으로 잡혀 **실패가 성공으로 보고된다.** 같은 날 이것도 겪었다.
+
 ## 반드시 알아야 할 제약
 
 이 제약들이 아키텍처를 결정했다. 모르고 코드를 고치면 되돌리게 된다.
@@ -134,6 +138,7 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 | `docs/superpowers/specs/` | 설계 문서 (아키텍처 결정과 근거) |
 | `docs/superpowers/plans/` | 태스크 단위 구현 계획 |
 | `서울시+실시간+도시데이터.xls` | `citydata` 서비스 공식 명세. 확장자와 달리 실제로는 HTML이다 — `pandas.read_excel`이 아니라 HTML 테이블로 파싱할 것. 출력 필드 전체 목록과 에러 코드 표가 여기 있다 |
+| `실시간 도시데이터 매뉴얼.pdf` | 주요장소 121곳의 **공식 이름과 카테고리**가 p9~10에 있다(고궁·문화유산 5 / 관광특구 7 / 공원 33 / 발달상권 28 / 인구밀집지역 48). `official-areas.ts`는 여기서 이름만 뽑은 것이라 카테고리는 아직 안 들어와 있다 — 121곳 확장 때 여기서 가져온다. 추출은 `pypdf`로 한다(`pdftotext`·`pdftoppm`은 이 환경에 없다) |
 | `stitch_ui/` | 화면 시안 4종 + 디자인 토큰 |
 
 앱인토스 플랫폼 문서는 세션마다 새로 받아야 한다. `.claude/skills/apps-in-toss/`의 라우팅 규칙을 따를 것. 예전에 받아둔 사본을 믿지 마라.
