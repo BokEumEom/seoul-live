@@ -133,7 +133,6 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 | `PLAN.md` | 제품 방향과 차수별 기능 |
 | `docs/superpowers/specs/` | 설계 문서 (아키텍처 결정과 근거) |
 | `docs/superpowers/plans/` | 태스크 단위 구현 계획 |
-| `OPEN_API/` | 서울 열린데이터광장 공식 샘플 코드 |
 | `서울시+실시간+도시데이터.xls` | `citydata` 서비스 공식 명세. 확장자와 달리 실제로는 HTML이다 — `pandas.read_excel`이 아니라 HTML 테이블로 파싱할 것. 출력 필드 전체 목록과 에러 코드 표가 여기 있다 |
 | `stitch_ui/` | 화면 시안 4종 + 디자인 토큰 |
 
