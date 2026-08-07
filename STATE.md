@@ -3,11 +3,13 @@
 현재 진행 상황. 세션이 바뀌어도 여기만 읽으면 이어서 작업할 수 있게 유지한다.
 
 **최종 갱신:** 2026-08-07
-**작업 브랜치:** `feat/nearby-forecast`
-**마지막 기능 커밋:** `0946761 feat: 「더보기」 도시 정보 화면 추가` (뒤에 작업 트리 정리 커밋 몇 개가 더 있다)
-**원격:** <https://github.com/BokEumEom/seoul-live.git> — 2026-08-07에 처음 푸시했고 추적 설정이 돼 있다. `origin/master`와 `origin/feat/nearby-forecast`가 **같은 커밋**(`be27cc6`)이라 앞뒤 차이가 없다 — 병합할 것이 남아 있지 않다. GitHub 기본 브랜치는 `master`다(한때 `feat/nearby-forecast`로 잡혀 있던 것을 2026-08-07에 되돌렸다).
+**작업 브랜치:** `master` — 유일한 브랜치다
+**마지막 기능 커밋:** `0946761 feat: 「더보기」 도시 정보 화면 추가` (뒤에 문서 커밋이 몇 개 더 있다)
+**원격:** <https://github.com/BokEumEom/seoul-live.git> — GitHub 기본 브랜치는 `master`다.
 
-**로컬에 `master` 브랜치는 없다.** 원격에만 있어서 `git branch`에는 작업 브랜치 하나만 뜬다. 두 브랜치 내용이 같아 급하지 않지만, 필요하면 `git branch master origin/master`로 만든다.
+**`feat/nearby-forecast`는 2026-08-07에 지웠다.** 내용이 `master`에 전부 들어 있어 고유 커밋이 하나도 없었다. 지금 브랜치는 `master` 하나뿐이다.
+
+**작업 방식:** `master`가 기준선이다. 문서 수정 같은 건 `master`에 직접 올리고, 새 기능만 브랜치를 딴다(2026-08-07 사용자 결정).
 
 작업 트리는 깨끗하다. 예전에 떠 있던 `.grok/`·`.hermes/`·`.kiro/`·`.windsurf/`·`OPEN_API/` 삭제분은 2026-08-07에 정리해서 커밋했다(아래 "정리한 것" 참고).
 
@@ -17,24 +19,36 @@
 
 ## 다음에 할 일
 
-### 지금 코드로 할 수 있는 것 (인증키 없이)
+### 지도 홈 개편 — 설계·계획 완료, 구현 대기 (2026-08-07)
 
-**다음 작업이 정해지지 않은 상태다.** 새 세션은 임의로 고르지 말고 아래에서 다시 물어볼 것.
+**다음 작업은 이것이다.** 레퍼런스 「서울 인파레이더」(<https://gjdong.vercel.app/crowd>)를 조사해 화면 구조를 재설계했다. 문서가 둘 다 나와 있으니 새 세션은 계획서 Task 1부터 시작하면 된다.
 
-바로 착수 가능:
+| 문서 | 경로 |
+| --- | --- |
+| 설계 | `docs/superpowers/specs/2026-08-07-map-home-redesign-design.md` |
+| 구현 계획 (15개 태스크) | `docs/superpowers/plans/2026-08-07-map-home-redesign.md` |
 
-1. **`REPLACE_YN` 처리** — 서울 API가 "이 수치는 실측이 아니라 대체값"이라고 알려주는 필드인데 우리는 읽지 않는다. 지금 화면은 대체값과 실측을 똑같이 보여준다. 스키마에 추가하고 화면에 표시하는 작업. 목업으로 검증 가능하다.
-2. **더보기 화면 확장** — `citydata`에는 아직 안 쓰는 필드가 더 있다: 지하철 실시간 도착(`SUB_STTS`), 버스정류소(`BUS_STN_STTS`), 도로소통(`ROAD_TRAFFIC_STTS`), 전기차충전소(`CHARGER_STTS`), 상권(`LIVE_CMRCL_STTS`), 연합뉴스(`LIVE_YNA_NEWS`). **추가 호출 없이** 같은 응답에서 읽는다. 파서(`cityInfoSchema.ts`)에 섹션을 더하고 컴포넌트를 붙이면 된다.
+바뀌는 것 요약:
 
-결정이 먼저 필요한 것:
+- **화면 넷 → 셋.** 지도(홈) / 즐겨찾기 / 더보기
+- **지도가 홈**이고 목록과 **인플레이스 상세**를 흡수한다. 「내 주변」은 버튼과 정렬 기준으로, 「혼잡예보」는 상세로 녹는다
+- **드래그 분할** — 지도·목록 비율을 손잡이로 조절(기본 35%, 15~75%, 스냅 3단계)
+- **「더보기」는 「오늘의 서울」**이 된다 — 혼잡도 분포, 붐빔·여유 TOP, 카테고리별 평균, 재난문자 모음, 추천. **추가 API 호출 0**
+- **카테고리를 서울시 공식 5종으로 교체** — 관광특구·고궁·문화유산·인구밀집지역·발달상권·공원. 화면 라벨은 사용자 언어로
+- **프리셋을 카테고리에서 분리** — 독립 목적 태그(`purposes`)
+- **즐겨찾기 추가** — 기기 로컬 저장으로 확정
+- `AreaSheet`(바텀시트)와 `AreaPicker` 삭제
 
-3. **더보기 TTL과 쿼터 배분** — 아래 "더보기는 호출량을 늘린다". 실데이터 전환 전에 정해야 한다.
-4. **즐겨찾기** — 2차 남은 항목. **저장소를 로컬(앱인토스 스토리지)로 할지 서버로 할지** 정해야 시작할 수 있다.
-5. **Pretendard self-host 여부** — 아래 "한글 폰트" 참고. 지금은 한글이 기기 기본 폰트로 나온다.
+### 이번 개편 범위 밖 (근거는 설계 문서 §1)
+
+1. **`REPLACE_YN` 처리** — 서울 API가 "이 수치는 실측이 아니라 대체값"이라고 알려주는 필드인데 우리는 읽지 않는다. 지금 화면은 대체값과 실측을 똑같이 보여준다. 목업으로 검증 가능하다.
+2. **상세 화면 섹션 확장** — `citydata`에 아직 안 쓰는 필드: 도로소통(`ROAD_TRAFFIC_STTS`), 사고통제(`ACDNT_CNTRL_STTS`), 지하철 도착(`SUB_STTS`), 버스정류소(`BUS_STN_STTS`), 전기차충전소(`CHARGER_STTS`), 상권(`LIVE_CMRCL_STTS`), 연합뉴스(`LIVE_YNA_NEWS`). **추가 호출 없이** 같은 응답에서 읽는다. 개편으로 구조가 서면 붙이기 쉬워진다.
+3. **더보기 TTL과 쿼터 배분** — 아래 "더보기는 호출량을 늘린다". 실데이터 전환 전에 정해야 한다. 개편에서 도시 정보를 **접어두고 펼칠 때 조회**하도록 바꾸므로 압력이 줄어든다.
+4. **Pretendard self-host 여부** — 아래 "한글 폰트" 참고. 지금은 한글이 기기 기본 폰트로 나온다.
 
 지금은 막혀 있는 것:
 
-6. **명소 30 → 121곳 확장** — 2차 남은 항목이지만 **활용갤러리 등록이 조건이다.** 목록은 `src/data/official-areas.ts`에 이미 있고 좌표와 카테고리만 채우면 되는데, 쿼터 때문에 등록 전에는 30곳을 유지해야 한다.
+5. **명소 30 → 121곳 확장** — **활용갤러리 등록이 조건이다.** 이름 목록은 `src/data/official-areas.ts`에 있고, **카테고리는 매뉴얼 PDF p9~10에 121곳 전부 실려 있다**(고궁·문화유산 5 / 관광특구 7 / 공원 33 / 발달상권 28 / 인구밀집지역 48). 좌표만 채우면 된다. 쿼터 때문에 등록 전에는 30곳을 유지한다.
 
 ### 사람이 해야 하는 것 (코드로 못 푼다)
 
@@ -114,6 +128,7 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 | 지도 화면 | `docs/superpowers/specs/2026-08-04-map-tab-design.md` | `docs/superpowers/plans/2026-08-05-map-tab.md` |
 | 목적 프리셋 | `docs/superpowers/specs/2026-08-06-purpose-presets-design.md` | `docs/superpowers/plans/2026-08-06-purpose-presets.md` |
 | 더보기(도시 정보) | 없음 — 사용자가 문서 단계를 생략하고 바로 구현하기로 정했다(2026-08-07) | 없음 |
+| **지도 홈 개편 (구현 대기)** | `docs/superpowers/specs/2026-08-07-map-home-redesign-design.md` | `docs/superpowers/plans/2026-08-07-map-home-redesign.md` |
 
 **더보기에는 설계 문서가 없다.** 사용자가 속도를 위해 spec/plan 문서 단계를 건너뛰기로 결정했다. 결정의 근거는 코드 주석에 남겼다 — `cityInfoSchema.ts` 머리말(왜 관대한 파싱인가), `seoul.ts`의 `cityInfoCacheTtlSeconds`(쿼터 배분), `AreaPicker.tsx`(왜 네이티브 select인가), `BikeList.tsx`(왜 주차장 톤을 재사용하지 않는가).
 
@@ -130,9 +145,17 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 
 ## 알아둬야 할 동작
 
+### npm 명령은 PowerShell에서 실행한다 (2026-08-07 확인)
+
+Bash 도구로 `npm ci`·`npm run dev`를 돌리면 깨진다. Git Bash의 POSIX 형식 PATH(`/c/Program Files/nodejs`)가 npm이 생성하는 `cmd.exe` 서브셸로 넘어가면서 cmd가 해석하지 못해, esbuild처럼 postinstall에서 `node`를 부르는 패키지가 전부 `'node'은(는) 내부 또는 외부 명령... 이 아닙니다`로 실패한다. PowerShell에서는 정상이다.
+
+`| tail`로 파이프하면 종료 코드가 tail의 것으로 잡혀 **실패가 성공으로 보인다.** npm 명령은 파이프 없이 돌린다.
+
 ### 로컬 `.env` 상태
 
 `.env`는 gitignore 대상이라 저장소에 없다. **현재 로컬 파일에는 `VITE_GOOGLE_MAPS_API_KEY`가 채워져 있어서 `npm run dev`를 돌리면 지도가 실제로 뜬다.** 사용자가 직접 붙여넣은 데모 키다 — 값을 읽어 로그·문서·커밋에 남기지 마라.
+
+**2026-08-07에 이 키가 `.env.example`(추적 대상)에 들어가 있는 것을 발견했다.** `.env`는 사라져 있었다. 커밋·히스토리에는 들어가지 않았음을 `git log -S`로 확인했고, `.env`를 복구한 뒤 `.env.example`을 되돌렸다. 원인은 불명이다 — 세션 밖에서 파일이 정리된 정황이다. **`.env.example`을 고칠 때 실제 키가 섞이지 않았는지 커밋 전에 확인할 것.**
 
 `VITE_GOOGLE_MAPS_MAP_ID`는 비어 있고, 그 경우 `googleMaps.ts`가 `DEMO_MAP_ID`로 떨어진다. 출시 전 교체 대상이다.
 
