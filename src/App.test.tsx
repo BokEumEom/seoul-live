@@ -215,12 +215,14 @@ describe('App', () => {
     expect(getLocation).toHaveBeenCalledTimes(1)
   })
 
-  it('더보기 탭은 비활성이다', async () => {
-    // 지도 탭은 활성화됐다 — 아래 '탭 전환' describe에서 다룬다.
+  it('네 탭이 모두 활성이다', async () => {
+    // 더보기까지 붙으면서 비활성 탭이 없어졌다. 화면 전환은 아래 '탭 전환'에서 다룬다.
     render(<App />)
     await waitFor(() => expect(screen.getByText('강남역')).toBeInTheDocument())
 
-    expect(screen.getByRole('button', { name: /더보기/ })).toBeDisabled()
+    for (const label of [/지도/, /내 주변/, /혼잡예보/, /더보기/]) {
+      expect(screen.getByRole('button', { name: label })).not.toBeDisabled()
+    }
   })
 })
 
@@ -259,11 +261,50 @@ describe('탭 전환', () => {
     expect(await screen.findByTestId('google-map')).toBeInTheDocument()
   })
 
-  it('더보기 탭은 아직 비활성이다', () => {
+  it('더보기 탭을 누르면 도시 정보가 목업 데이터로 채워진다', async () => {
     grantLocation()
     render(<App />)
 
-    expect(screen.getByRole('button', { name: /더보기/ })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: /더보기/ }))
+
+    expect(
+      await screen.findByRole('heading', { name: '도시 정보' }),
+    ).toBeInTheDocument()
+
+    // 제목만 뜨고 본문이 비면 사용자에겐 고장이다. 데이터가 실제로 흘러
+    // 들어왔는지 섹션 내용까지 확인한다.
+    expect(await screen.findByText('미세먼지')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '주차장' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '따릉이' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '문화행사' })).toBeInTheDocument()
+  })
+
+  it('더보기는 위치가 있으면 가장 가까운 명소로 시작한다', async () => {
+    // 광화문 한복판을 준다.
+    grantLocation()
+    render(<App />)
+
+    await userEvent.click(screen.getByRole('button', { name: /더보기/ }))
+
+    expect(await screen.findByLabelText('명소 선택')).toHaveValue('광화문·덕수궁')
+  })
+
+  it('더보기에서 명소를 바꾸면 그 명소 정보로 갈아탄다', async () => {
+    grantLocation()
+    render(<App />)
+
+    await userEvent.click(screen.getByRole('button', { name: /더보기/ }))
+    const picker = await screen.findByLabelText('명소 선택')
+    await userEvent.selectOptions(picker, '서울숲공원')
+
+    expect(picker).toHaveValue('서울숲공원')
+    // 갈아탄 뒤에도 화면이 서 있어야 한다 — 빈 명소를 고르면 안내 문구가 뜬다.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: '주차장' }) ??
+          screen.getByText(/제공되는 도시 정보가 없어요/),
+      ).toBeInTheDocument(),
+    )
   })
 
   it('혼잡예보 탭을 눌러도 강조와 화면이 어긋나지 않는다', async () => {

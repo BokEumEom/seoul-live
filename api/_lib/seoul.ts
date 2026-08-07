@@ -1,6 +1,10 @@
 const SEOUL_API_BASE = 'http://openapi.seoul.go.kr:8088'
-const SERVICE = 'citydata_ppltn'
 const FETCH_TIMEOUT_MS = 8_000
+
+// 우리가 쓰는 두 서비스. `citydata`는 인구·주차장·따릉이·날씨·문화행사·재난문자를
+// 한 번에 주고, `citydata_ppltn`은 그중 인구만 준다. 명소당 호출 1회는 어느 쪽이든
+// 같지만 응답 크기가 크게 달라, 인구만 필요한 목록 화면은 계속 좁은 쪽을 쓴다.
+export type SeoulService = 'citydata_ppltn' | 'citydata'
 
 export function cacheTtlSeconds(): number {
   const raw = Number(process.env.CACHE_TTL_SECONDS)
@@ -10,6 +14,22 @@ export function cacheTtlSeconds(): number {
   // 꺼진다. 쿼터 전략 전체가 이 헤더 하나에 걸려 있고 사람이 대시보드에 손으로 넣는
   // 값이라 실수하기 쉬우므로 정수만 받는다.
   return Number.isInteger(raw) && raw > 0 ? raw : 3_600
+}
+
+// 「더보기」(citydata)용 TTL을 혼잡도와 따로 둔다. 두 서비스가 같은 하루 1,000회
+// 한도를 나눠 쓰기 때문이다.
+//
+//   혼잡도  30곳 ÷ TTL 1시간 = 720회/일 (고정)
+//   더보기  사용자가 본 명소 수 ÷ TTL. 최악의 경우(30곳을 매시간) 또 720회/일
+//
+// 둘을 더하면 1,440회로 한도를 넘는다. 실제로는 더보기를 30곳 전부 매시간 여는
+// 일이 없어 훨씬 적지만, "안 넘는다"고 단정할 근거는 없다. 이 값을 늘리면 더보기
+// 쪽 호출량이 그만큼 준다 — 대신 주차 여유 면수가 그만큼 묵은 값이 된다.
+// 활용갤러리에 등록해 한도가 풀리면 이 손잡이는 의미가 없어진다.
+export function cityInfoCacheTtlSeconds(): number {
+  const raw = Number(process.env.CITYINFO_CACHE_TTL_SECONDS)
+  // 정수만 받는 이유는 cacheTtlSeconds와 같다(RFC 9111 §1.2.2).
+  return Number.isInteger(raw) && raw > 0 ? raw : cacheTtlSeconds()
 }
 
 export function apiKey(): string {
@@ -38,9 +58,12 @@ export function redactApiKey(message: string, key: string): string {
   return message.split(key).join('[REDACTED]').split(encodeURIComponent(key)).join('[REDACTED]')
 }
 
-export async function fetchArea(areaName: string): Promise<unknown> {
+export async function fetchArea(
+  areaName: string,
+  service: SeoulService = 'citydata_ppltn',
+): Promise<unknown> {
   const key = apiKey()
-  const url = `${SEOUL_API_BASE}/${key}/json/${SERVICE}/1/5/` + encodeURIComponent(areaName)
+  const url = `${SEOUL_API_BASE}/${key}/json/${service}/1/5/` + encodeURIComponent(areaName)
 
   try {
     const response = await fetch(url, {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchAreaSnapshot, fetchAreaSnapshots } from './client'
+import { fetchAreaSnapshot, fetchAreaSnapshots, fetchCityInfo } from './client'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -84,6 +84,72 @@ describe('fetchAreaSnapshot', () => {
 
     const snapshot = await fetchAreaSnapshot('강남역')
     expect(snapshot.name).toBe('강남역')
+  })
+})
+
+describe('fetchCityInfo', () => {
+  const CITY_PAYLOAD = {
+    CITYDATA: {
+      AREA_NM: '강남역',
+      AREA_CD: 'POI014',
+      WEATHER_STTS: [{ TEMP: '29.1', AIR_IDX: '보통' }],
+    },
+  }
+
+  it('목업 모드에서는 네트워크를 타지 않는다', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'true')
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const info = await fetchCityInfo('강남역')
+
+    expect(info.areaName).toBe('강남역')
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('실데이터 모드에서는 혼잡도와 다른 엔드포인트를 호출한다', async () => {
+    // citydata와 citydata_ppltn은 응답 크기가 크게 달라 캐시 TTL도 따로 잡는다.
+    // 같은 엔드포인트에 얹으면 인구만 필요한 목록 화면까지 큰 응답을 받는다.
+    vi.stubEnv('VITE_USE_MOCK', 'false')
+    vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => CITY_PAYLOAD }),
+    )
+
+    const info = await fetchCityInfo('강남역')
+
+    expect(info.weather?.temperature).toBe(29.1)
+    expect(fetch).toHaveBeenCalledWith(
+      'https://proxy.example.com/api/cityinfo?area=%EA%B0%95%EB%82%A8%EC%97%AD',
+      expect.anything(),
+    )
+  })
+
+  it('HTTP 실패는 도시정보용 메시지로 바꾼다', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'false')
+    vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 502 }))
+
+    await expect(fetchCityInfo('강남역')).rejects.toThrow('도시 정보를 가져오지 못했어요')
+  })
+
+  it('다른 명소 응답이 오면 그대로 던진다', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'false')
+    vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => CITY_PAYLOAD }),
+    )
+
+    await expect(fetchCityInfo('경복궁')).rejects.toThrow()
+  })
+
+  it('VITE_MOCK_FAIL_AREAS에 있는 명소는 목업 모드에서도 실패한다', async () => {
+    vi.stubEnv('VITE_USE_MOCK', 'true')
+    vi.stubEnv('VITE_MOCK_FAIL_AREAS', '강남역')
+
+    await expect(fetchCityInfo('강남역')).rejects.toThrow()
   })
 })
 

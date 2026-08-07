@@ -1,8 +1,42 @@
 import { describe, expect, it } from 'vitest'
-import { formatDistance, haversineMeters, walkingMinutes } from './distance'
+import {
+  formatDistance,
+  haversineMeters,
+  nearestEntry,
+  walkingMinutes,
+} from './distance'
 
 const CITY_HALL = { lat: 37.5665, lng: 126.978 }
 const GANGNAM = { lat: 37.498, lng: 127.0276 }
+
+describe('nearestEntry', () => {
+  const entries = [
+    { name: '강남', ...GANGNAM },
+    { name: '시청', ...CITY_HALL },
+    { name: '부산', lat: 35.1796, lng: 129.0756 },
+  ]
+
+  it('가장 가까운 항목을 돌려준다', () => {
+    expect(nearestEntry(entries, { lat: 37.5709, lng: 126.9769 })?.name).toBe('시청')
+    expect(nearestEntry(entries, { lat: 37.4979, lng: 127.0276 })?.name).toBe('강남')
+  })
+
+  it('좌표가 없으면 null이다', () => {
+    // 위치를 거부한 사용자에게 "가장 가까운 곳"을 지어내면 안 된다. 호출부가
+    // 기본 명소를 고르게 두려면 여기서 없다고 말해야 한다.
+    expect(nearestEntry(entries, null)).toBeNull()
+  })
+
+  it('후보가 없으면 null이다', () => {
+    expect(nearestEntry([], CITY_HALL)).toBeNull()
+  })
+
+  it('입력 배열을 건드리지 않는다', () => {
+    const input = [...entries]
+    nearestEntry(input, CITY_HALL)
+    expect(input.map((entry) => entry.name)).toEqual(['강남', '시청', '부산'])
+  })
+})
 
 describe('haversineMeters', () => {
   it('같은 지점은 0이다', () => {

@@ -30,6 +30,28 @@ export function formatDistance(meters: number): string {
   return `${(rounded / 1000).toFixed(1)}km`
 }
 
+// 「더보기」는 명소를 하나 골라야 성립하는 화면이라 기본값이 필요하다. 정렬 대신
+// 한 번 훑어 최소값만 고른다 — 목록 전체를 정렬할 이유가 없고, 정렬하면 입력
+// 배열을 건드리지 않으려고 복사부터 해야 한다.
+export function nearestEntry<T extends Coords>(
+  entries: readonly T[],
+  from: Coords | null,
+): T | null {
+  if (from === null) {
+    return null
+  }
+  let nearest: T | null = null
+  let shortest = Number.POSITIVE_INFINITY
+  for (const entry of entries) {
+    const meters = haversineMeters(from, entry)
+    if (meters < shortest) {
+      shortest = meters
+      nearest = entry
+    }
+  }
+  return nearest
+}
+
 export function walkingMinutes(meters: number): number {
   const minutes = Math.round((meters / 1000 / WALKING_SPEED_KM_PER_HOUR) * 60)
   return Math.max(1, minutes)

@@ -5,9 +5,27 @@ import { BottomTabBar, type TabKey } from './components/layout/BottomTabBar'
 import { TopAppBar } from './components/layout/TopAppBar'
 import { ForecastScreen } from './screens/ForecastScreen'
 import { MapScreen } from './screens/MapScreen'
+import { MoreScreen } from './screens/MoreScreen'
 import { NearbyScreen } from './screens/NearbyScreen'
 
-// 화면이 셋이라 라우터 대신 상태로 전환한다. 라우터를 넣으면 토스 웹뷰의
+// 탭에 걸린 화면 셋. 'forecast'는 여기 오지 않는다 — handleTab이 걸러낸다.
+function TabScreen({
+  tab,
+  onSelectArea,
+}: {
+  readonly tab: TabKey
+  readonly onSelectArea: (name: string) => void
+}) {
+  if (tab === 'map') {
+    return <MapScreen onSelectArea={onSelectArea} />
+  }
+  if (tab === 'more') {
+    return <MoreScreen />
+  }
+  return <NearbyScreen onSelectArea={onSelectArea} />
+}
+
+// 화면이 넷이라 라우터 대신 상태로 전환한다. 라우터를 넣으면 토스 웹뷰의
 // 딥링크 처리까지 검증해야 하는데 아직 범위 밖이다.
 function AppShell() {
   const [tab, setTab] = useState<TabKey>('nearby')
@@ -46,11 +64,7 @@ function AppShell() {
         ) : (
           <>
             <TopAppBar title="Seoul Live" />
-            {tab === 'map' ? (
-              <MapScreen onSelectArea={setSelectedArea} />
-            ) : (
-              <NearbyScreen onSelectArea={setSelectedArea} />
-            )}
+            <TabScreen tab={tab} onSelectArea={setSelectedArea} />
           </>
         )}
       </main>

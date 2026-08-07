@@ -10,7 +10,9 @@ const MESSAGES: Readonly<Record<CongestionLevel, string>> = {
   붐빔: '사람들이 마주칠 정도로 매우 붐벼요. 안전사고에 주의하세요.',
 }
 
-function hash(value: string): number {
+// mockCityInfo.ts도 같은 씨앗을 쓴다. 목업이 둘로 갈라져 각자 다른 해시를 쓰면
+// 같은 명소인데 화면마다 다른 성격의 가짜 데이터가 나온다.
+export function hashAreaName(value: string): number {
   let result = 0
   for (let i = 0; i < value.length; i += 1) {
     result = (result * 31 + value.charCodeAt(i)) % 100_000
@@ -23,7 +25,7 @@ function hash(value: string): number {
 // mod 4에서 지나치게 고르게 섞이는 바람에 30곳 전부가 12시간 안에 반드시 '여유'를
 // 한 번은 지나가 버렸다 — "한산해지는 시각이 아예 없음" 빈 상태를 목업으로 재현할 수
 // 없었다. 정수 비트 믹싱(xorshift 계열)으로 바꿔 실제 이런 구간이 나오게 했다.
-function mixForecastIndex(seed: number, index: number): number {
+export function mixSeed(seed: number, index: number): number {
   let x = (seed + index * 2_654_435_761) >>> 0
   x ^= x << 13
   x >>>= 0
@@ -37,7 +39,8 @@ function pad(value: number): string {
   return String(value).padStart(2, '0')
 }
 
-function formatTime(date: Date): string {
+/** 서울 API의 비표준 시각 형식(`"2026-08-03 16:00"`). ISO가 아니고 타임존도 없다. */
+export function formatSeoulTime(date: Date): string {
   return (
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
     ` ${pad(date.getHours())}:${pad(date.getMinutes())}`
@@ -59,7 +62,7 @@ function topOfHourAfter(base: Date, hoursAhead: number): Date {
 }
 
 export function buildMockSnapshot(areaName: string, now: Date = new Date()): unknown {
-  const seed = hash(areaName)
+  const seed = hashAreaName(areaName)
   const level = CONGESTION_LEVELS[seed % CONGESTION_LEVELS.length]
   const base = 8_000 + (seed % 40) * 1_000
   // 실제 응답은 카탈로그에 등록된 코드를 그대로 돌려준다 — 목업도 같은 값을 줘야
@@ -68,9 +71,9 @@ export function buildMockSnapshot(areaName: string, now: Date = new Date()): unk
 
   const forecasts = Array.from({ length: 12 }, (_, index) => {
     const at = topOfHourAfter(now, index + 1)
-    const shifted = CONGESTION_LEVELS[mixForecastIndex(seed, index) % CONGESTION_LEVELS.length]
+    const shifted = CONGESTION_LEVELS[mixSeed(seed, index) % CONGESTION_LEVELS.length]
     return {
-      FCST_TIME: formatTime(at),
+      FCST_TIME: formatSeoulTime(at),
       FCST_CONGEST_LVL: shifted,
       FCST_PPLTN_MIN: String(base + index * 500),
       FCST_PPLTN_MAX: String(base + index * 500 + 2_000),
@@ -86,7 +89,7 @@ export function buildMockSnapshot(areaName: string, now: Date = new Date()): unk
         AREA_CONGEST_MSG: MESSAGES[level],
         AREA_PPLTN_MIN: String(base),
         AREA_PPLTN_MAX: String(base + 2_000),
-        PPLTN_TIME: formatTime(now),
+        PPLTN_TIME: formatSeoulTime(now),
         FCST_YN: 'Y',
         FCST_PPLTN: forecasts,
       },

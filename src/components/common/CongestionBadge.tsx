@@ -1,14 +1,6 @@
-import { congestionTone, type CongestionTone } from '../../domain/congestion'
+import { congestionTone } from '../../domain/congestion'
 import type { CongestionLevel } from '../../domain/types'
-
-// Tailwind v4는 클래스명을 정적으로 추출한다. `bg-${tone}-container` 같은 동적 조합은
-// 빌드에서 사라지므로 전체 클래스명을 리터럴로 적어야 한다.
-const TONE_CLASS: Readonly<Record<CongestionTone, string>> = {
-  calm: 'bg-calm-container text-calm',
-  normal: 'bg-normal-container text-normal',
-  busy: 'bg-busy-container text-busy',
-  crowded: 'bg-crowded-container text-crowded',
-}
+import { TONE_CLASS } from './toneClass'
 
 interface Props {
   readonly level: CongestionLevel | null

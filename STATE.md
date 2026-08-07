@@ -2,36 +2,37 @@
 
 현재 진행 상황. 세션이 바뀌어도 여기만 읽으면 이어서 작업할 수 있게 유지한다.
 
-**최종 갱신:** 2026-08-06
+**최종 갱신:** 2026-08-07
 **작업 브랜치:** `feat/nearby-forecast` — master에 아직 병합하지 않았다
-**마지막 커밋:** `245c9c5 docs: 목적 프리셋 완료 반영`
+**마지막 커밋:** `21c0d63 docs: 새 세션이 이어받을 수 있게 STATE 갱신` (더보기 화면은 아직 커밋 안 됨)
 
 **작업 트리에 손대면 안 되는 변경이 섞여 있다.** `git status`에 `.gitignore` 수정과 `.grok/`·`.hermes/`·`.kiro/`·`.windsurf/`·`OPEN_API/` 삭제가 떠 있는데 **이 프로젝트 작업과 무관하다.** 스테이징도 커밋도 되돌리기도 하지 마라.
 
 ## 한 줄 요약
 
-1차 범위 20개 태스크 **전부 완료**. 「내 주변」·「혼잡예보」 두 화면에 더해 **「지도」 화면**을 얹었다 — Google Maps로 명소 30곳의 혼잡도 마커를 보여준다. 지도에는 **목적 프리셋**(아이와 나들이 / 데이트 / 지금 핫플) 칩도 붙어 카테고리와 실시간 혼잡도로 마커를 거른다. 셋 다 목업 데이터로 동작하고 시안 디자인이 반영돼 있다. 실데이터로 넘어가려면 **인증키가 필요한데 아직 없다.**
+1차 범위 20개 태스크 **전부 완료**. 화면이 **넷**이다 — 「내 주변」·「혼잡예보」·「지도」에 더해 **「더보기」(도시 정보)** 를 얹었다. 더보기는 `citydata` 서비스로 명소 한 곳의 주차장·따릉이·날씨·대기·문화행사·재난문자를 보여준다. 지도에는 **목적 프리셋**(아이와 나들이 / 데이트 / 지금 핫플) 칩도 붙어 있다. 넷 다 목업 데이터로 동작하고 시안 디자인이 반영돼 있다. 하단 탭 4개가 전부 활성이다. 실데이터로 넘어가려면 **인증키가 필요한데 아직 없다.**
 
 ## 다음에 할 일
 
 ### 지금 코드로 할 수 있는 것 (인증키 없이)
 
-**다음 작업이 정해지지 않은 상태다.** 프리셋을 끝낸 뒤 어느 쪽으로 갈지 사용자에게 물었고 답을 받지 못했다. 새 세션은 임의로 고르지 말고 아래에서 다시 물어볼 것.
+**다음 작업이 정해지지 않은 상태다.** 새 세션은 임의로 고르지 말고 아래에서 다시 물어볼 것.
 
 바로 착수 가능:
 
-1. **3차 「더보기」 화면** — `citydata` 서비스 하나로 주차장·따릉이·날씨·문화행사·재난문자가 전부 온다(아래 "2차 계획의 전제가 틀렸다"). 호출 횟수가 늘지 않아서 쿼터 부담 없이 붙일 수 있다. 2차가 아니라 3차 항목이지만 PLAN.md가 순서를 앞당겨도 된다고 적어뒀다.
-2. **`REPLACE_YN` 처리** — 서울 API가 "이 수치는 실측이 아니라 대체값"이라고 알려주는 필드인데 우리는 읽지 않는다. 지금 화면은 대체값과 실측을 똑같이 보여준다. 스키마에 추가하고 화면에 표시하는 작업. 목업으로 검증 가능하다.
+1. **`REPLACE_YN` 처리** — 서울 API가 "이 수치는 실측이 아니라 대체값"이라고 알려주는 필드인데 우리는 읽지 않는다. 지금 화면은 대체값과 실측을 똑같이 보여준다. 스키마에 추가하고 화면에 표시하는 작업. 목업으로 검증 가능하다.
+2. **더보기 화면 확장** — `citydata`에는 아직 안 쓰는 필드가 더 있다: 지하철 실시간 도착(`SUB_STTS`), 버스정류소(`BUS_STN_STTS`), 도로소통(`ROAD_TRAFFIC_STTS`), 전기차충전소(`CHARGER_STTS`), 상권(`LIVE_CMRCL_STTS`), 연합뉴스(`LIVE_YNA_NEWS`). **추가 호출 없이** 같은 응답에서 읽는다. 파서(`cityInfoSchema.ts`)에 섹션을 더하고 컴포넌트를 붙이면 된다.
 
 결정이 먼저 필요한 것:
 
-3. **즐겨찾기** — 2차 남은 항목. **저장소를 로컬(앱인토스 스토리지)로 할지 서버로 할지** 정해야 시작할 수 있다.
-4. **master 병합 여부** — 1차가 끝났는데 브랜치가 떠 있다. PR을 낼지 그냥 합칠지 사용자 결정이 필요하다.
-5. **Pretendard self-host 여부** — 아래 "한글 폰트" 참고. 지금은 한글이 기기 기본 폰트로 나온다.
+3. **더보기 TTL과 쿼터 배분** — 아래 "더보기는 호출량을 늘린다". 실데이터 전환 전에 정해야 한다.
+4. **즐겨찾기** — 2차 남은 항목. **저장소를 로컬(앱인토스 스토리지)로 할지 서버로 할지** 정해야 시작할 수 있다.
+5. **master 병합 여부** — 1차가 끝났는데 브랜치가 떠 있다. PR을 낼지 그냥 합칠지 사용자 결정이 필요하다.
+6. **Pretendard self-host 여부** — 아래 "한글 폰트" 참고. 지금은 한글이 기기 기본 폰트로 나온다.
 
 지금은 막혀 있는 것:
 
-6. **명소 30 → 121곳 확장** — 2차 남은 항목이지만 **활용갤러리 등록이 조건이다.** 목록은 `src/data/official-areas.ts`에 이미 있고 좌표와 카테고리만 채우면 되는데, 쿼터 때문에 등록 전에는 30곳을 유지해야 한다.
+7. **명소 30 → 121곳 확장** — 2차 남은 항목이지만 **활용갤러리 등록이 조건이다.** 목록은 `src/data/official-areas.ts`에 이미 있고 좌표와 카테고리만 채우면 되는데, 쿼터 때문에 등록 전에는 30곳을 유지해야 한다.
 
 ### 사람이 해야 하는 것 (코드로 못 푼다)
 
@@ -50,11 +51,12 @@
 
 1. **명소 이름의 공백 확인** — 30곳을 실제 호출한다. `광장(전통)시장`처럼 괄호가 든 이름이 위험하다. `areas.test.ts`의 `it.todo`가 이 작업을 가리킨다.
 2. **`AREA_CD` 대조** — 응답에 실려 오는 공식 코드로 `areas.ts`의 손으로 적은 `POI0xx` 값을 검증한다.
-3. **Google Cloud 프로젝트에서 Maps JavaScript API 활성화**
-4. **API 키에 HTTP 리퍼러 제한 적용** — `https://seoul-live.web.tossmini.com/*`, `https://seoul-live.private-web.tossmini.com/*`, `http://localhost:5173/*`
-5. **API 키에 API 제한 적용** — Maps JavaScript API 하나만
-6. **결제 예산 알림 설정**
-7. **`DEMO_MAP_ID` → 자체 Map ID로 교체** — 없으면 마커가 아예 렌더되지 않는다
+3. **`citydata` 응답의 실제 키 확인** — 더보기 화면 전체가 여기 걸려 있다. 아래 "더보기의 확인 안 된 가정" 참고. `/api/cityinfo?area=광화문·덕수궁`을 한 번 호출해 응답을 그대로 저장해두면 나머지가 다 풀린다.
+4. **Google Cloud 프로젝트에서 Maps JavaScript API 활성화**
+5. **API 키에 HTTP 리퍼러 제한 적용** — `https://seoul-live.web.tossmini.com/*`, `https://seoul-live.private-web.tossmini.com/*`, `http://localhost:5173/*`
+6. **API 키에 API 제한 적용** — Maps JavaScript API 하나만
+7. **결제 예산 알림 설정**
+8. **`DEMO_MAP_ID` → 자체 Map ID로 교체** — 없으면 마커가 아예 렌더되지 않는다
 
 ## 현재 상태
 
@@ -70,32 +72,33 @@
 | T19 | 앱 조립 | 완료 |
 | T20 | 커버리지·문서 | 완료 |
 
-이후 시안 반영과 명세 대조로 추가 작업이 더 들어갔다(아래 참고).
+이후 시안 반영과 명세 대조, 지도·프리셋·더보기 화면으로 추가 작업이 더 들어갔다(아래 참고).
 
 ### 검증 수치
 
-테스트 **261개 + todo 1개** 통과 (테스트 파일 28개).
-커버리지 — 라인 98% / 브랜치 92.57% / 함수 98.18% / 구문 97.13% (임계값 라인·구문·함수 80%, 브랜치 75%).
-`npx tsc -b`·`npm run lint`·`npm run build:vite` 전부 통과.
+테스트 **367개 + todo 1개** 통과 (테스트 파일 35개).
+커버리지 — 라인 98.47% / 브랜치 92.97% / 함수 98.73% / 구문 97.87% (임계값 라인·구문·함수 80%, 브랜치 75%).
+`npx tsc -b`·`npm run lint`·`npm run build:vite` 전부 통과. `npm run dev`도 실제로 뜬다.
 
 ### 파일 구조
 
 ```text
-src/domain/     types, congestion, distance, forecast, map, mapLinks, presets   순수 함수. React도 네트워크도 모른다
-src/data/       areas, official-areas, schema, mock, client, queries
+src/domain/     types, cityInfo, congestion, distance, forecast, map, mapLinks, presets   순수 함수. React도 네트워크도 모른다
+src/data/       areas, official-areas, schema, cityInfoSchema, mock, mockCityInfo, client, queries
 src/platform/   links, googleMaps                             토스 브리지 + 브라우저 폴백, Google Maps SDK 경계
 src/hooks/      useCurrentLocation, useNearbyAreas
 src/app/        QueryProvider, LocationProvider, locationContext
-src/components/ common(Icon, CongestionBadge, ErrorState, SkeletonCard)
+src/components/ common(Icon, CongestionBadge, ToneBadge, toneClass, ErrorState, SkeletonCard)
                 layout(TopAppBar, BottomTabBar)
                 nearby(AreaListItem, RecommendationCard, CategoryFilter, SortSelect, LocationNotice)
                 forecast(ForecastChart, ActionButtons)
                 map(CongestionMarker, AreaSheet, MapUnavailableNotice, RecenterButton, PresetFilter)
-src/screens/    NearbyScreen, ForecastScreen, MapScreen
-api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, citydata-bulk
+                more(AreaPicker, AlertBanner, WeatherCard, ParkingList, BikeList, EventList, InfoSection)
+src/screens/    NearbyScreen, ForecastScreen, MapScreen, MoreScreen
+api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, citydata-bulk, cityinfo
 ```
 
-`npm run dev` → <http://localhost:5173/> 에서 세 화면이 실제로 뜬다. 라우터는 없다 — `App.tsx`가 `tab`과 `selectedArea` 상태를 실제로 들고 전환한다(이전에는 `selectedArea`로 탭을 유추했는데, 탭이 셋이 되면서 그 유추가 깨져 상태를 분리했다).
+`npm run dev` → <http://localhost:5173/> 에서 네 화면이 실제로 뜬다. 라우터는 없다 — `App.tsx`가 `tab`과 `selectedArea` 상태를 실제로 들고 전환한다(이전에는 `selectedArea`로 탭을 유추했는데, 탭이 셋이 되면서 그 유추가 깨져 상태를 분리했다). 탭별 화면 선택은 `App.tsx`의 `TabScreen`이 맡는다.
 
 하단 탭에서 「혼잡예보」를 눌러도 화면이 바뀌지 않는다. **의도된 동작이다** — 혼잡예보는 명소를 골라야 성립하는 상세 화면이라 단독 진입점이 없다. `handleTab`이 `'forecast'`를 그냥 무시한다.
 
@@ -108,6 +111,9 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 | 1차 (내 주변·혼잡예보) | `docs/superpowers/specs/2026-08-03-seoul-live-design.md` | `docs/superpowers/plans/2026-08-03-seoul-live-1차.md` |
 | 지도 화면 | `docs/superpowers/specs/2026-08-04-map-tab-design.md` | `docs/superpowers/plans/2026-08-05-map-tab.md` |
 | 목적 프리셋 | `docs/superpowers/specs/2026-08-06-purpose-presets-design.md` | `docs/superpowers/plans/2026-08-06-purpose-presets.md` |
+| 더보기(도시 정보) | 없음 — 사용자가 문서 단계를 생략하고 바로 구현하기로 정했다(2026-08-07) | 없음 |
+
+**더보기에는 설계 문서가 없다.** 사용자가 속도를 위해 spec/plan 문서 단계를 건너뛰기로 결정했다. 결정의 근거는 코드 주석에 남겼다 — `cityInfoSchema.ts` 머리말(왜 관대한 파싱인가), `seoul.ts`의 `cityInfoCacheTtlSeconds`(쿼터 배분), `AreaPicker.tsx`(왜 네이티브 select인가), `BikeList.tsx`(왜 주차장 톤을 재사용하지 않는가).
 
 ## 알아둬야 할 동작
 
@@ -119,7 +125,9 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 
 **`.env`는 전체를 덮어쓰지 말고 Edit/append로만 고친다.** git이 추적하지 않아서 잘못 쓰면 복구가 안 된다.
 
-`SEOUL_API_KEY`와 `CACHE_TTL_SECONDS`는 서버 전용이라 `.env`에 없다. Vercel 프로젝트 환경변수에 넣는다.
+`SEOUL_API_KEY`·`CACHE_TTL_SECONDS`·`CITYINFO_CACHE_TTL_SECONDS`는 서버 전용이라 `.env`에 없다. Vercel 프로젝트 환경변수에 넣는다.
+
+`VITE_MOCK_FAIL_AREAS`는 목업 모드에서 특정 명소의 조회 실패를 흉내 낸다. 혼잡도와 도시정보 **양쪽에** 적용된다 — 「더보기」의 에러 상태도 이걸로 볼 수 있다.
 
 ### 위치 권한이 없어도 화면은 선다
 
@@ -128,6 +136,31 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 권한 다이얼로그 재요청은 사용자가 「허용하기」를 누를 때만 연다. 화면에 들어오자마자 팝업이 연달아 뜨는 걸 막는다.
 
 위치는 `LocationProvider`가 앱 수준에서 **한 번만** 잡는다. 화면 안에 두면 상세에서 뒤로 갈 때마다 GPS를 다시 켠다.
+
+### 더보기(도시 정보) 화면
+
+**명소 하나를 기준으로만 성립한다.** `citydata`가 장소 단위 API라 다른 방법이 없다. 기본값은 현재 위치에서 가장 가까운 카탈로그 명소, 위치가 없으면 `광화문·덕수궁`이다. 상단의 네이티브 `<select>`로 바꿀 수 있고, **사용자가 한 번 고르면 위치가 뒤늦게 잡혀도 선택이 유지된다**(늦게 온 좌표가 선택을 덮으면 스크롤하던 화면이 통째로 바뀐다).
+
+섹션은 재난문자 배너 → 날씨·대기 → 주차장 → 따릉이 → 문화행사 순이다. 재난문자만 `role="alert"`로 올린다 — 나머지는 찾아 읽는 정보지만 이건 지금 알아야 하는 내용이다.
+
+**"정보 없음"과 "만차"를 구분한다.** 주차장이 실시간 정보를 주지 않으면(`CUR_PRK_YN`이 `N`) "실시간 미제공"이라고 쓴다. 둘을 묶으면 실시간을 안 주는 주차장이 전부 만차로 보이는데, 그 앞을 지나가는 사용자에게는 정반대의 안내다.
+
+**따릉이는 주차장과 톤이 반대다.** 주차장은 빈 자리가 많아야 좋고 대여소는 자전거가 남아 있어야 좋다. `parkingTone`을 재사용하지 않는 이유이고, `BikeList.test.tsx`가 이걸 고정한다.
+
+### 더보기는 호출량을 늘린다
+
+PLAN.md와 이전 STATE는 "`citydata` 하나로 다 오니 호출이 늘지 않는다"고 적었지만, **그건 `citydata_ppltn`을 `citydata`로 교체할 때 이야기다.** 실제 구현은 `/api/cityinfo`라는 **별도 엔드포인트**를 얹었으므로 호출이 더해진다.
+
+| | 서비스 | 하루 호출량 |
+| --- | --- | --- |
+| 혼잡도(전 화면) | `citydata_ppltn` | 30곳 ÷ TTL 1시간 = **720회** (고정) |
+| 더보기 | `citydata` | 사용자가 연 명소 수 ÷ TTL. 최악 30곳 매시간 = **720회** |
+
+합치면 1,440회로 하루 1,000회를 넘는다. 실제로 30곳을 매시간 여는 일은 없어서 훨씬 적겠지만 **"안 넘는다"고 단정할 근거는 없다.**
+
+교체하지 않고 나눈 이유: `citydata`는 응답이 훨씬 크다. 30곳을 한 번에 받는 `citydata-bulk`에 그걸 얹으면 인구 목록만 필요한 「내 주변」·「지도」까지 매번 큰 응답을 받는다.
+
+손잡이는 **`CITYINFO_CACHE_TTL_SECONDS`** 환경변수다(Vercel에 넣는다). 비워두면 `CACHE_TTL_SECONDS`와 같은 값으로 떨어진다. 늘리면 더보기 호출이 그만큼 줄고, 대신 주차 여유 면수가 그만큼 묵는다. **활용갤러리에 등록해 한도가 풀리면 이 손잡이는 의미가 없어진다** — 등록이 근본 해결책이다.
 
 ### 시안(stitch_ui) 반영 상태
 
@@ -181,9 +214,9 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 
 ### 2차 계획의 전제가 틀렸다
 
-"도시정보(더보기) 화면에는 API 5종을 추가로 붙여야 한다"고 적어뒀는데, **`citydata` 하나에 전부 들어 있다.** 주차장·따릉이·도로소통·지하철·버스·문화행사·날씨·미세먼지·전기차충전소·사고통제·상권·재난문자·연합뉴스가 모두 같은 응답의 필드다.
+"도시정보(더보기) 화면에는 API 5종을 추가로 붙여야 한다"고 적어뒀는데, **`citydata` 하나에 전부 들어 있다.** 주차장·따릉이·도로소통·지하철·버스·문화행사·날씨·미세먼지·전기차충전소·사고통제·상권·재난문자·연합뉴스가 모두 같은 응답의 필드다. 그래서 더보기에 섹션을 더 붙여도 호출은 늘지 않는다(위 "다음에 할 일" 2번).
 
-쿼터 관점에서 중요하다 — 더보기 화면을 붙여도 **호출 횟수는 늘지 않는다.** `citydata_ppltn` 대신 `citydata`를 부르면 같은 1회로 전부 온다. 대신 응답이 커져 CDN 캐시 항목과 전송량이 는다. 1차는 인구만 쓰므로 `citydata_ppltn`이 맞다.
+~~"호출 횟수는 늘지 않는다"~~ — **이 결론은 절반만 맞았다.** 한 화면 안에서는 맞지만, `citydata_ppltn`을 그대로 두고 `citydata`를 **추가로** 부르면 호출이 더해진다. 실제 구현이 그쪽이다. 위 "더보기는 호출량을 늘린다" 참고.
 
 ### Toss Design System은 쓰지 않는다 (2026-08-06 결정)
 
@@ -193,12 +226,28 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 
 사용자가 「디자인은 유지합니다」로 확정했다. 다음 세션에서 "토스 앱이니까 TDS를 써야 하지 않나"로 되돌아가지 마라.
 
+## 더보기의 확인 안 된 가정
+
+**더보기 화면 전체가 "본 적 없는 응답"에 기대고 있다.** 필드 이름은 전부 `서울시+실시간+도시데이터.xls`의 출력명 표에서 읽었고, 실제 JSON을 한 번도 못 봤다. 그래서 `cityInfoSchema.ts`는 혼잡도 쪽(`schema.ts`)과 **반대로 관대하게** 파싱한다 — 값이 없거나 모양이 다르면 던지지 않고 `null`·빈 배열로 떨어진다. 최악의 경우 화면이 "제공되는 도시 정보가 없어요"로만 뜨고 아무것도 깨지지 않는다.
+
+인증키가 나오면 확인할 것:
+
+- **최상위 키가 `CITYDATA`인가.** 아니면 전부 빈 화면이 된다.
+- **문화행사 섹션의 키.** 명세 출력명은 `CULTURALEVENTINFO`인데 응답은 `EVENT_STTS`라는 보고가 있어 **둘 다 받게** 해뒀다. 어느 쪽인지 확인되면 하나로 줄일 것.
+- **`PAY_YN`의 값 형태.** `Y`/`N`인지 `유료`/`무료`인지 명세가 말하지 않는다. 지금은 넷 다 받는다. 주차장과 문화행사가 같은 필드명을 쓰는데 값 형태가 서로 다를 수도 있다.
+- **섹션이 배열인가 객체인가.** 항목이 하나면 객체로 온다는 보고가 있어 양쪽을 받는다.
+- **`WEATHER_STTS`가 배열의 첫 항목인가.** 지금은 첫 항목만 읽는다. 여러 관측소가 실려 오면 어느 것을 쓸지 정해야 한다.
+- **`REPLACE_YN`** — 더보기에서도 안 읽는다. 아래 참고.
+
+확인 방법은 간단하다. `/api/cityinfo?area=광화문·덕수궁`을 한 번 호출해 응답 JSON을 저장소에 저장해두면 위가 전부 풀리고, 그걸 목업의 기준으로도 쓸 수 있다.
+
 ## 미해결 / 확인 안 된 가정
 
 - **실기기로만 확인되는 것 4가지** — `Device.getLocation`의 권한 흐름(첫 호출이 네이티브 팝업을 띄우는지), `Device.openURL`로 카카오맵·네이버지도가 실제로 열리는지, `Share.sendMessage` 공유 시트, **지도 제스처(핀치 줌·팬)가 토스 웹뷰 안에서 정상 동작하는지**. 앞의 셋은 브리지가 없으면 웹 표준(`window.open`·클립보드)으로 떨어지게 해뒀고(`src/platform/links.ts`) 폴백이 도는 건 테스트로 확인했다. 지도 제스처는 `gestureHandling: 'greedy'`로 Google Maps에 맡겨뒀을 뿐 폴백이 없다. 웹뷰 안에서 브리지 쪽·제스처가 도는지는 기기로만 알 수 있다.
 - **토스 웹뷰의 mixed content 정책** — HTTPS로 번들을 서빙한다고 가정했다. 로컬 파일 스킴이면 HTTP 직접 호출이 될 수도 있다. 다만 쿼터 때문에 프록시는 어차피 필요해서 설계는 안 바뀐다.
 - **명소 이름의 정확한 공백** — 위 "명소 이름 검증" 참고. 실제 호출로만 확정된다.
 - **`REPLACE_YN`을 안 읽는다** — 대체 데이터 여부를 알려주는 필드인데 무시하고 있다. 대체값과 실측을 화면이 구분하지 않는다.
+- **더보기의 목록 상한이 5곳이라는 게 맞는지** — 주차장·따릉이를 여유 많은 순 5곳까지만 보여주고 나머지는 "외 N곳"으로 접는다. 실제 응답에 한 명소당 몇 곳이 오는지 모르는 채로 정한 수다. 3곳이면 접을 이유가 없고 50곳이면 5곳도 부족할 수 있다.
 - **위치 정확도** — `Accuracy.Balanced`(수백 m)를 쓴다. 거리순 정렬과 2km 추천에는 충분하다고 봤지만, 사용자가 "가까운 순이 이상하다"고 느끼는지는 기기에서 봐야 안다.
 - **한글 폰트** — 폰트 스택이 `Hanken Grotesk → Pretendard → system-ui`인데 Hanken Grotesk에는 한글 글리프가 없고 Pretendard는 로드하지 않는다. 즉 **화면의 한글은 전부 기기 기본 폰트로 그려진다.** 숫자·라틴만 시안대로다. 시안과 한글 자모가 달라 보이면 이게 원인이다.
 - **앱인토스가 서드파티 SDK의 동적 스크립트 로딩을 허용하는지 확정하지 못했다** — 심사 체크리스트의 "외부에서 전달받은 코드를 실행하는 기능은 사용할 수 없어요(예: `eval` 등)"가 Google Maps JS API의 스크립트 주입에도 걸리는지 문서로 확인되지 않는다. 같은 체크리스트가 지도를 제스처 확대·축소의 예외로 인정하고 있고 이미 Google Fonts를 CDN에서 받고 있어서 대상이 아니라고 읽었지만, 확정은 심사로만 된다. 걸리면 대안은 Static Maps API다(설계 문서 §3).
@@ -236,6 +285,8 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 | `SeoulApiError`를 전부 재시도 불가로 묶음 | `ERROR-500`·`ERROR-600`은 잠시 뒤 성공할 수 있는데, 서울 API가 1초 삐끗한 것만으로 "정보 없음"이 뜸 | 두 코드만 재시도. `ERROR-601`(SQL 오류)은 결정적 버그라 제외 |
 | 위치 훅이 화면 안에 있었음 | 상세에서 뒤로 갈 때마다 GPS를 새로 켬. 권한 미정 사용자에겐 팝업이 반복 | `LocationProvider`로 앱 수준에 한 번만 |
 | 시안을 참고하지 않고 계획서만 따름 | DESIGN.md 색상 47개 중 17개만 반영, 타이포 스케일 0개. 화면이 시안이 아니라 평범한 목록처럼 보임 | 토큰 전량 이관 + 컴포넌트의 raw Tailwind 크기 전부 교체 |
+| 항상 참인 테스트 3번째 | 원소 2개짜리 정렬 테스트가 "null을 뒤로"의 반대 가지를 태우지 않아, 정렬 방향을 뒤집어도 통과 | 원소를 5개로 늘려 비교 함수가 양방향으로 호출되게 함 |
+| 더보기 쿼터 계산 오류 | "호출이 안 는다"는 전제가 교체 방식일 때만 맞는데, 실제로는 추가 엔드포인트라 최악 1,440회/일 | `CITYINFO_CACHE_TTL_SECONDS`로 분리하고 STATE에 명시 |
 
 ## 1차에서 의도적으로 뺀 것
 
@@ -243,9 +294,9 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 
 | 항목 | 이유 |
 | --- | --- |
-| 도시정보(더보기) 화면 | ~~API 5종 추가 필요~~ → `citydata` 하나에 다 있다. 추가 호출 없이 가능하므로 2차 우선순위를 올려도 된다 |
+| ~~도시정보(더보기) 화면~~ | **완료(2026-08-07).** `citydata` 한 서비스로 붙였다 |
 | 요일×시간 히트맵 | 서울 API는 현재와 예측만 준다. 과거 데이터 누적용 저장소 필요 |
 | 어제 대비 비교 | 위와 같은 이유 |
 | CCTV 영상 | 별도 API, 웹뷰 재생 제약 검증 필요 |
 
-하단 탭은 4개를 노출한다. 지도는 이제 활성이고, 더보기만 비활성으로 둔다.
+하단 탭 4개가 전부 활성이다. 비활성 탭은 없다.

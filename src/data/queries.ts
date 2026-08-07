@@ -1,7 +1,13 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { z } from 'zod'
+import type { CityInfo } from '../domain/cityInfo'
 import type { AreaSnapshot } from '../domain/types'
-import { fetchAreaSnapshot, fetchAreaSnapshots, ProxyResponseError } from './client'
+import {
+  fetchAreaSnapshot,
+  fetchAreaSnapshots,
+  fetchCityInfo,
+  ProxyResponseError,
+} from './client'
 import { AreaNameMismatchError, SeoulApiError } from './schema'
 
 const FIVE_MINUTES = 5 * 60 * 1_000
@@ -60,6 +66,26 @@ export function useAreaSnapshot(
     },
     enabled: Boolean(areaName),
     staleTime: FIVE_MINUTES,
+    retry: shouldRetry,
+  })
+}
+
+// 도시정보는 인구보다 느리게 변한다(날씨는 정시, 문화행사는 하루 단위). 혼잡도와
+// 같은 5분을 쓰면 사실상 바뀌지 않는 값을 계속 다시 받는다.
+const THIRTY_MINUTES = 30 * 60 * 1_000
+
+export function useCityInfo(areaName: string | undefined): UseQueryResult<CityInfo> {
+  return useQuery({
+    queryKey: ['cityInfo', areaName],
+    // useAreaSnapshot과 같은 이유로 enabled에만 기대지 않고 가드를 둔다.
+    queryFn: () => {
+      if (!areaName) {
+        return Promise.reject(new Error('areaName이 없어 조회할 수 없습니다.'))
+      }
+      return fetchCityInfo(areaName)
+    },
+    enabled: Boolean(areaName),
+    staleTime: THIRTY_MINUTES,
     retry: shouldRetry,
   })
 }

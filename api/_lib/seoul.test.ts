@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { apiKey, cacheTtlSeconds, fetchArea, redactApiKey } from './seoul.js'
+import {
+  apiKey,
+  cacheTtlSeconds,
+  cityInfoCacheTtlSeconds,
+  fetchArea,
+  redactApiKey,
+} from './seoul.js'
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -36,6 +42,32 @@ describe('cacheTtlSeconds', () => {
   it('소수는 3600을 돌려준다 (delta-seconds는 정수만 유효하다)', () => {
     vi.stubEnv('CACHE_TTL_SECONDS', '300.5')
     expect(cacheTtlSeconds()).toBe(3_600)
+  })
+})
+
+// 「더보기」와 혼잡도가 같은 하루 1,000회를 나눠 쓴다. 더보기 쪽 TTL을 따로
+// 늘려 호출량을 줄일 수 있어야 한다 — 근거는 seoul.ts의 주석.
+describe('cityInfoCacheTtlSeconds', () => {
+  it('전용 환경변수가 있으면 그 값을 쓴다', () => {
+    vi.stubEnv('CACHE_TTL_SECONDS', '3600')
+    vi.stubEnv('CITYINFO_CACHE_TTL_SECONDS', '10800')
+    expect(cityInfoCacheTtlSeconds()).toBe(10_800)
+  })
+
+  it('전용 환경변수가 없으면 혼잡도와 같은 TTL로 떨어진다', () => {
+    vi.stubEnv('CACHE_TTL_SECONDS', '600')
+    vi.stubEnv('CITYINFO_CACHE_TTL_SECONDS', undefined)
+    expect(cityInfoCacheTtlSeconds()).toBe(600)
+  })
+
+  it('소수·0 이하는 무시한다 (delta-seconds는 양의 정수만 유효하다)', () => {
+    vi.stubEnv('CACHE_TTL_SECONDS', '600')
+
+    vi.stubEnv('CITYINFO_CACHE_TTL_SECONDS', '300.5')
+    expect(cityInfoCacheTtlSeconds()).toBe(600)
+
+    vi.stubEnv('CITYINFO_CACHE_TTL_SECONDS', '-1')
+    expect(cityInfoCacheTtlSeconds()).toBe(600)
   })
 })
 

@@ -9,12 +9,13 @@ interface Tab {
   readonly enabled: boolean
 }
 
-// 더보기는 아직 범위 밖이다. 시안의 4탭 구조는 유지하되 비활성으로 둔다.
+// 시안의 4탭이 전부 활성이다. `enabled`는 남겨둔다 — 탭이 늘어날 때 준비 중인
+// 화면을 비활성으로 두는 경로가 다시 필요해진다.
 const TABS: readonly Tab[] = [
   { key: 'map', label: '지도', icon: 'map', enabled: true },
   { key: 'nearby', label: '내 주변', icon: 'near', enabled: true },
   { key: 'forecast', label: '혼잡예보', icon: 'forecast', enabled: true },
-  { key: 'more', label: '더보기', icon: 'more', enabled: false },
+  { key: 'more', label: '더보기', icon: 'more', enabled: true },
 ]
 
 interface Props {

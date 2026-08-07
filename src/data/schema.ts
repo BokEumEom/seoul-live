@@ -126,6 +126,22 @@ const errorEnvelopeSchema = z.object({
   }),
 })
 
+/** 응답이 `RESULT` 봉투를 달고 있으면 그 에러를, 아니면 `null`을 돌려준다.
+ *
+ * 성공 응답에도 `RESULT`(INFO-000)가 실려 오므로 **본 파싱이 실패한 뒤에만** 부른다.
+ * 먼저 부르면 정상 응답을 에러로 오탐한다. `citydata_ppltn`(아래)과
+ * `citydata`(cityInfoSchema.ts)가 같은 봉투를 쓰므로 판별을 한 곳에 둔다. */
+export function seoulApiErrorFrom(payload: unknown): SeoulApiError | null {
+  const envelope = errorEnvelopeSchema.safeParse(payload)
+  if (!envelope.success) {
+    return null
+  }
+  return new SeoulApiError(
+    envelope.data.RESULT['RESULT.CODE'],
+    envelope.data.RESULT['RESULT.MESSAGE'],
+  )
+}
+
 function toForecast(raw: z.infer<typeof forecastSchema>): Forecast {
   return {
     time: raw.FCST_TIME.raw,
@@ -139,9 +155,9 @@ function toForecast(raw: z.infer<typeof forecastSchema>): Forecast {
 export function parseCitydataResponse(payload: unknown, expectedName: string): AreaSnapshot {
   const result = responseSchema.safeParse(payload)
   if (!result.success) {
-    const envelope = errorEnvelopeSchema.safeParse(payload)
-    if (envelope.success) {
-      throw new SeoulApiError(envelope.data.RESULT['RESULT.CODE'], envelope.data.RESULT['RESULT.MESSAGE'])
+    const apiError = seoulApiErrorFrom(payload)
+    if (apiError !== null) {
+      throw apiError
     }
     throw result.error
   }

@@ -1,5 +1,8 @@
+import type { CityInfo } from '../domain/cityInfo'
 import type { AreaSnapshot } from '../domain/types'
+import { parseCityInfoResponse } from './cityInfoSchema'
 import { buildMockSnapshot } from './mock'
+import { buildMockCityInfo } from './mockCityInfo'
 import { parseBulkEnvelope, parseCitydataResponse } from './schema'
 
 // 단일 명소 타임아웃. 프록시(api/citydata.ts)는 서울 API 호출 자체를 8초에서 끊으므로,
@@ -59,7 +62,14 @@ export class ProxyResponseError extends Error {
   }
 }
 
-async function requestJson(url: string, timeoutMs: number): Promise<unknown> {
+// `subject`는 사용자에게 보이는 문구에 들어간다. 「더보기」가 붙으면서 같은 함수가
+// 혼잡도와 도시정보 두 가지를 나르게 됐는데, 문구를 하나로 고정해두면 날씨를
+// 못 받아온 화면이 "혼잡도 정보를 가져오지 못했어요"라고 말한다.
+async function requestJson(
+  url: string,
+  timeoutMs: number,
+  subject = '혼잡도 정보',
+): Promise<unknown> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -67,7 +77,7 @@ async function requestJson(url: string, timeoutMs: number): Promise<unknown> {
     const response = await fetch(url, { signal: controller.signal })
     if (!response.ok) {
       const proxyError = new ProxyResponseError(
-        '혼잡도 정보를 가져오지 못했어요. 잠시 후 다시 시도해주세요.',
+        `${subject}를 가져오지 못했어요. 잠시 후 다시 시도해주세요.`,
         response.status,
       )
       // ProxyResponseError를 여기서 바로 로그로 남긴다. 예전에는 이 분기 없이 곧장
@@ -75,7 +85,7 @@ async function requestJson(url: string, timeoutMs: number): Promise<unknown> {
       // HTTP 실패(상태 코드, 요청 URL)가 콘솔 어디에도 남지 않았다 — 네트워크 실패만
       // 로그가 있고 HTTP 실패는 진단할 방법이 없었다. status와 url을 남기면 이후
       // 502(상류 실패)와 400(잘못된 요청)을 로그만 보고 구분할 수 있다.
-      console.error(`혼잡도 정보 요청 실패 (status=${response.status}):`, url)
+      console.error(`${subject} 요청 실패 (status=${response.status}):`, url)
       throw proxyError
     }
     return await response.json()
@@ -90,8 +100,8 @@ async function requestJson(url: string, timeoutMs: number): Promise<unknown> {
     // 않는 일반적인 문구로 둔다. 원본 메시지를 그대로 사용자에게 보여주면 안 되지만
     // — 진단이 안 되면 원인을 구분할 수 없으므로 콘솔에는 남기고, cause로도 원본을
     // 붙여 상위에서 필요하면 꺼내 쓸 수 있게 한다.
-    console.error('혼잡도 정보 요청 실패:', error)
-    throw new Error('혼잡도 정보를 가져오지 못했어요. 잠시 후 다시 시도해주세요.', {
+    console.error(`${subject} 요청 실패:`, error)
+    throw new Error(`${subject}를 가져오지 못했어요. 잠시 후 다시 시도해주세요.`, {
       cause: error,
     })
   } finally {
@@ -111,6 +121,25 @@ export async function fetchAreaSnapshot(areaName: string): Promise<AreaSnapshot>
 
   const url = `${baseUrl()}/api/citydata?area=${encodeURIComponent(areaName)}`
   return parseCitydataResponse(await requestJson(url, SINGLE_AREA_TIMEOUT_MS), areaName)
+}
+
+// 「더보기」(도시정보). `citydata_ppltn`이 아니라 `citydata`를 부르므로 주차장·따릉이·
+// 날씨·문화행사·재난문자가 한 응답에 전부 온다 — 명소당 호출 횟수는 그대로 1회다.
+export async function fetchCityInfo(areaName: string): Promise<CityInfo> {
+  if (isMockMode()) {
+    if (mockFailureAreaNames().has(areaName)) {
+      throw new Error(
+        `[목업] ${areaName} 도시정보 조회 실패를 시뮬레이션합니다. (VITE_MOCK_FAIL_AREAS)`,
+      )
+    }
+    return parseCityInfoResponse(buildMockCityInfo(areaName), areaName)
+  }
+
+  const url = `${baseUrl()}/api/cityinfo?area=${encodeURIComponent(areaName)}`
+  return parseCityInfoResponse(
+    await requestJson(url, SINGLE_AREA_TIMEOUT_MS, '도시 정보'),
+    areaName,
+  )
 }
 
 export async function fetchAreaSnapshots(
