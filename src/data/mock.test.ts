@@ -78,6 +78,57 @@ describe('buildMockSnapshot', () => {
     expect(hasAreaWithoutCalmHour).toBe(true)
   })
 
+  describe('인구 구성', () => {
+    it('목업에도 인구 구성이 실려 온다', () => {
+      // 목업에 없으면 개발 중에 인구 구성 섹션을 한 번도 볼 수 없다.
+      const composition = parseCitydataResponse(buildMockSnapshot('강남역'), '강남역').composition
+      expect(composition).not.toBeNull()
+      expect(composition?.ageRates).toHaveLength(8)
+    })
+
+    it('연령대 비율의 합이 100에 가깝다', () => {
+      // 화면은 합을 가정하지 않지만, 목업이 실제 응답과 동떨어진 분포를 주면
+      // 막대 그래프의 눈금을 잘못 잡아도 개발 중에 티가 나지 않는다.
+      const composition = parseCitydataResponse(buildMockSnapshot('경복궁'), '경복궁').composition
+      const total = (composition?.ageRates ?? []).reduce((sum, value) => sum + value, 0)
+      expect(total).toBeCloseTo(100, 0)
+    })
+
+    it('남녀 비율을 더하면 100이다', () => {
+      for (const area of AREA_CATALOG) {
+        const c = parseCitydataResponse(buildMockSnapshot(area.name), area.name).composition
+        expect((c?.maleRate ?? 0) + (c?.femaleRate ?? 0)).toBe(100)
+      }
+    })
+
+    it('비상주 비율이 높은 곳과 낮은 곳이 카탈로그 안에 둘 다 있다', () => {
+      // residentLabel의 두 문구를 목업만으로 전부 볼 수 있어야 한다.
+      const rates = AREA_CATALOG.map(
+        (area) =>
+          parseCitydataResponse(buildMockSnapshot(area.name), area.name).composition
+            ?.nonResidentRate ?? 0,
+      )
+      expect(rates.some((rate) => rate > 60)).toBe(true)
+      expect(rates.some((rate) => rate <= 60)).toBe(true)
+    })
+
+    it('같은 명소는 항상 같은 인구 구성을 준다', () => {
+      const first = parseCitydataResponse(buildMockSnapshot('강남역'), '강남역').composition
+      const second = parseCitydataResponse(buildMockSnapshot('강남역'), '강남역').composition
+      expect(first).toEqual(second)
+    })
+
+    it('명소마다 인구 구성이 다르다', () => {
+      const keys = new Set(
+        AREA_CATALOG.map((area) => {
+          const c = parseCitydataResponse(buildMockSnapshot(area.name), area.name).composition
+          return `${c?.maleRate}:${c?.nonResidentRate}:${c?.ageRates.join(',')}`
+        }),
+      )
+      expect(keys.size).toBe(AREA_CATALOG.length)
+    })
+  })
+
   describe('자정을 넘기는 시각', () => {
     it('23시 기준으로 만든 예측도 다음날로 굴러가며 스키마를 통과한다', () => {
       // 가짜 타이머 없이 `now`를 직접 주입한다 — buildMockSnapshot(areaName, now)가

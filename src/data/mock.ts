@@ -69,6 +69,13 @@ export function buildMockSnapshot(areaName: string, now: Date = new Date()): unk
   // `snapshot.code === entry.code` 대조(2차 오타 탐지기)나 React key로 안전하게 쓸 수 있다.
   const areaCode = findAreaByName(areaName)?.code ?? 'POI000'
 
+  // 인구 구성. `mixSeed(seed, n)`의 `n`은 예측이 쓰지 않는 큰 번호대(100~117)를 쓴다 —
+  // 겹치면 같은 명소의 예측과 인구 구성이 상관관계를 갖는다.
+  const male = 35 + (mixSeed(seed, 100) % 30)
+  const nonResident = 20 + (mixSeed(seed, 101) % 70)
+  const rawAges = Array.from({ length: 8 }, (_, i) => 1 + (mixSeed(seed, 110 + i) % 40))
+  const ageTotal = rawAges.reduce((sum, value) => sum + value, 0)
+
   const forecasts = Array.from({ length: 12 }, (_, index) => {
     const at = topOfHourAfter(now, index + 1)
     const shifted = CONGESTION_LEVELS[mixSeed(seed, index) % CONGESTION_LEVELS.length]
@@ -90,6 +97,16 @@ export function buildMockSnapshot(areaName: string, now: Date = new Date()): unk
         AREA_PPLTN_MIN: String(base),
         AREA_PPLTN_MAX: String(base + 2_000),
         PPLTN_TIME: formatSeoulTime(now),
+        MALE_PPLTN_RATE: String(male),
+        FEMALE_PPLTN_RATE: String(100 - male),
+        NON_RESNT_PPLTN_RATE: String(nonResident),
+        RESNT_PPLTN_RATE: String(100 - nonResident),
+        ...Object.fromEntries(
+          rawAges.map((value, i) => [
+            `PPLTN_RATE_${i * 10}`,
+            ((value / ageTotal) * 100).toFixed(1),
+          ]),
+        ),
         FCST_YN: 'Y',
         FCST_PPLTN: forecasts,
       },

@@ -1,3 +1,8 @@
+// 확장자 `.js`는 오타가 아니다. 이 파일은 `api/_lib/allowed-areas.ts` → `src/data/areas.ts`를
+// 거쳐 tsconfig.node.json(`moduleResolution: nodenext`) 프로그램에도 들어간다. 거기서는
+// 상대 경로에 확장자가 없으면 TS2835로 막힌다. `areas.ts`의 `../domain/types.js`와 같은 이유다.
+import type { PopulationComposition } from './composition.js'
+
 export interface Coords {
   readonly lat: number
   readonly lng: number
@@ -71,6 +76,8 @@ export interface AreaSnapshot {
   /** `observedAt`에서 뽑은 "HH:MM". 화면이 원본 형식을 파싱하지 않게 하려는 것 */
   readonly observedAtLabel: string
   readonly forecasts: readonly Forecast[]
+  /** 없을 수 있다. 이 값이 없어도 혼잡도 화면은 그대로 선다. */
+  readonly composition: PopulationComposition | null
 }
 
 export interface NearbyArea {

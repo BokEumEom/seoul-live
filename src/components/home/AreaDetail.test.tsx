@@ -30,6 +30,7 @@ const SNAPSHOT: AreaSnapshot = {
   observedAt: '2026-08-07 11:00',
   observedAtLabel: '11:00',
   forecasts: [],
+  composition: null,
 }
 
 const EMPTY_CITY_INFO: CityInfo = {

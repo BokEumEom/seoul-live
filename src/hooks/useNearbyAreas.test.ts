@@ -39,6 +39,7 @@ function snapshot(
     observedAt: '2026-08-03 14:00',
     observedAtLabel: '14:00',
     forecasts: [],
+    composition: null,
   }
 }
 

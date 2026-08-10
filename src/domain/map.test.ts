@@ -23,6 +23,7 @@ function snapshot(name: string): AreaSnapshot {
     observedAt: '2026-08-05 14:00',
     observedAtLabel: '14:00',
     forecasts: [],
+    composition: null,
   }
 }
 

@@ -17,6 +17,7 @@ function area(name: string): NearbyArea {
       observedAt: '2026-08-07 11:00',
       observedAtLabel: '11:00',
       forecasts: [],
+      composition: null,
     },
     distanceMeters: null,
   }
