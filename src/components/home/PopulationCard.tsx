@@ -14,8 +14,12 @@ const LABEL_THRESHOLD = 10
  * 실제 합으로만 정규화하면 절반만 읽힌 구성에서 남은 두 칸이 100%를 나눠 가져
  * 「10대와 30대가 이 장소의 전부」라고 그린다 — 바로 아래 글자는 25%·15%라고
  * 적으니 두 줄이 모순되고 막대 쪽이 거짓이다. 못 읽은 칸의 빈자리는 그대로 둔다.
- * 합이 99면 눈에 안 띄는 1% 여백만 남고, 100을 넘으면 실제 합으로 되돌아가
- * 막대가 넘치지 않는다. */
+ * 합이 99면 눈에 안 띄는 1% 여백만 남고, 100을 넘으면 실제 합으로 되돌아간다.
+ *
+ * 넘칠 때의 이득은 **지금은 화면에 안 보인다.** flex 기본 shrink가 폭 합이
+ * 100%를 넘으면 basis에 비례해 압축해서 `value/total`과 같은 픽셀을 낸다 —
+ * 브라우저로 재서 확인했다. 이 분기가 값을 갖는 건 막대에 `shrink-0`이나
+ * `flex-none`이 붙는 순간이다. 그때는 이것만이 넘침을 막는다. */
 const MIN_DENOMINATOR = 100
 
 // 동적 클래스 금지라 리터럴 맵으로 둔다. 20~30대를 진하게 해서 어느 층이
@@ -57,7 +61,9 @@ export function PopulationCard({ composition }: Props) {
   const total = composition.ageRates.reduce((sum, value) => sum + value, 0)
   const label = residentLabel(composition)
   const showGender = hasGenderSplit(composition)
-  const showChips = showGender || composition.nonResidentRate > 0
+  // 세 알약의 조건이 한 줄로 읽힌다. residentLabel은 nonResidentRate가 0일 때만
+  // null이라 비상주 알약과 조건이 같다 — 같은 술어를 두 번 쓰지 않는다.
+  const showChips = showGender || label !== null
 
   // 막대 여덟 칸은 글자가 없어서 스크린리더에 아무것도 남기지 않고, 아래
   // 텍스트 라벨은 LABEL_THRESHOLD 미만을 뺀다. 이름이 없으면 작은 연령대는

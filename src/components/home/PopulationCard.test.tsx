@@ -66,13 +66,6 @@ describe('PopulationCard', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
   })
 
-  it('비중이 큰 연령대만 라벨로 적는다', () => {
-    // 여덟 칸을 다 적으면 좁은 시트에서 두 줄을 먹는다.
-    render(<PopulationCard composition={composition()} />)
-    expect(screen.getByText('20대')).toBeInTheDocument()
-    expect(screen.queryByText('70대+')).toBeNull()
-  })
-
   // 임계값을 경계에서 잠근다. 이게 없으면 >= 를 > 로 바꿔도, 10을 5로 바꿔도
   // 통과한다 — 픽스처에 정확히 10인 값도, 5~9인 값도 없기 때문이다.
   it('정확히 10%면 적고 9%면 적지 않는다', () => {
@@ -174,11 +167,22 @@ describe('PopulationCard', () => {
 
   // 분모가 100 고정이면 합이 100을 넘는 응답에서 폭 합계가 100%를 넘어 막대가
   // 잘린다. 명세상 합이 100이라는 보장이 없다(domain/composition.ts 주석).
+  // 이 단언은 화면에 드러나지 않는 계산을 잠근다 — flex 기본 shrink가 폭 합이
+  // 넘칠 때 비례 압축해서, 분모를 100으로 고정해도 픽셀은 같다(브라우저로 확인).
+  // 그래도 남기는 이유는 막대에 shrink-0이 붙는 순간 이 분기만이 넘침을 막기
+  // 때문이다. 분모 고정 변이가 실제로 이 테스트를 죽인다.
   it('합이 100을 넘으면 실제 합으로 나눈다', () => {
     const { container } = render(
       <PopulationCard composition={composition({ ageRates: [40, 40, 40, 40, 0, 0, 0, 0] })} />,
     )
     expect(widths(container).slice(0, 4)).toEqual(['25%', '25%', '25%', '25%'])
+  })
+
+  // jsdom은 WebKit의 list-style:none 시맨틱 제거를 모형화하지 않는다. 실기기
+  // 동작을 재현할 수 없으니 결정 자체를 잠근다 — font-bold와 같은 이유다.
+  it('목록 시맨틱을 명시한다', () => {
+    const { container } = render(<PopulationCard composition={composition()} />)
+    expect(container.querySelector('ul')).toHaveAttribute('role', 'list')
   })
 
   // 색 배열은 AGE_LABELS와 길이가 묶여 있지 않다. 연령 구간이 아홉 개가 되면
