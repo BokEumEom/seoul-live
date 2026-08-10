@@ -47,20 +47,30 @@ describe('FilterChips', () => {
     expect(screen.getByRole('tab', { name: '지금 핫플 7' })).toBeEnabled()
   })
 
-  it('고르면 값을 올려보낸다', async () => {
+  // 클릭 경로는 칩마다 따로 확인한다. 「내 장소」 하나로만 보면 어떤 칩을 눌러도
+  // 'fav'를 올려보내는 구현이나, 즐겨찾기만 해제되고 프리셋은 안 꺼지는 구현이
+  // 그대로 통과한다. 없어진 PresetFilter.test가 프리셋 쪽을 잡고 있었다.
+  const CHIP_CASES = [
+    { key: 'fav', name: '내 장소 3' },
+    { key: 'kids', name: '아이와 나들이 10' },
+    { key: 'date', name: '데이트 19' },
+    { key: 'hot', name: '지금 핫플 7' },
+  ] as const
+
+  it.each(CHIP_CASES)('「$name」을 고르면 $key를 올려보낸다', async ({ key, name }) => {
     const onChange = vi.fn()
     render(<FilterChips counts={COUNTS} value={null} onChange={onChange} />)
 
-    await userEvent.click(screen.getByRole('tab', { name: '내 장소 3' }))
+    await userEvent.click(screen.getByRole('tab', { name }))
 
-    expect(onChange).toHaveBeenCalledWith('fav')
+    expect(onChange).toHaveBeenCalledWith(key)
   })
 
-  it('선택된 칩을 다시 누르면 해제된다', async () => {
+  it.each(CHIP_CASES)('선택된 「$name」을 다시 누르면 해제된다', async ({ key, name }) => {
     const onChange = vi.fn()
-    render(<FilterChips counts={COUNTS} value="fav" onChange={onChange} />)
+    render(<FilterChips counts={COUNTS} value={key} onChange={onChange} />)
 
-    await userEvent.click(screen.getByRole('tab', { name: '내 장소 3' }))
+    await userEvent.click(screen.getByRole('tab', { name }))
 
     expect(onChange).toHaveBeenCalledWith(null)
   })
