@@ -19,7 +19,7 @@ export function AreaListItem({ area, favorite = false, onSelect }: Props) {
     <button
       type="button"
       onClick={() => onSelect(entry.name)}
-      className="flex min-h-12 w-full items-center justify-between gap-3 border-b border-outline-variant py-2 text-left"
+      className="flex min-h-12 w-full items-center justify-between gap-3 border-b border-outline-variant py-2 text-left last:border-b-0"
     >
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">

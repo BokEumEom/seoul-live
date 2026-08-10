@@ -230,7 +230,7 @@ export function HomeScreen({ focusArea = null }: Props) {
           </p>
         )}
 
-        <div className="flex flex-col gap-3 px-4">
+        <div className="flex flex-col px-4">
           {visible.map((area) => (
             <AreaListItem
               key={area.entry.code}

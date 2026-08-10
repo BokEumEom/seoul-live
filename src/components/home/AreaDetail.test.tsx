@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -140,6 +140,37 @@ describe('AreaDetail', () => {
     )
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
     expect(onBack).toHaveBeenCalledTimes(1)
+  })
+
+  // 「근처 쾌적한 장소」는 좌표와 캐시가 둘 다 있어야 열린다. 기본 픽스처는
+  // 좌표가 없어 이 가지에 닿지 않으므로 여기서만 채운다.
+  it('근처 쾌적한 장소의 구분선 목록에 행 간격을 두지 않는다', async () => {
+    const { AREA_NAMES } = await import('../../data/areas')
+    useLocation.mockReturnValue({
+      // 경복궁 좌표. 2km 안에 서촌·북촌한옥마을 등이 들어온다.
+      coords: { lat: 37.5796, lng: 126.977 },
+      status: 'granted',
+      retry: vi.fn(),
+    } as unknown as ReturnType<typeof locationContext.useLocation>)
+    useAreaSnapshots.mockReturnValue(
+      ok<readonly (AreaSnapshot | null)[]>(
+        AREA_NAMES.map((name) => ({
+          ...SNAPSHOT,
+          code: name,
+          name,
+          congestion: '여유' as const,
+        })),
+      ) as UseQueryResult<readonly (AreaSnapshot | null)[]>,
+    )
+
+    renderDetail('경복궁')
+
+    const section = screen
+      .getByRole('heading', { name: '근처 쾌적한 장소' })
+      .closest('section') as HTMLElement
+    const rows = within(section).getAllByRole('button')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].parentElement?.className).not.toMatch(/\bgap-/)
   })
 
   it('즐겨찾기를 토글한다', async () => {

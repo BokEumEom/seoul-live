@@ -238,7 +238,7 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
           <p className="mt-1 text-label-md text-on-surface-variant">
             여기가 너무 붐비나요? 2km 안에서 한산한 곳이에요.
           </p>
-          <div className="mt-3 flex flex-col gap-3">
+          <div className="mt-3 flex flex-col">
             {alternatives.map((area) => (
               <AreaListItem
                 key={area.entry.code}

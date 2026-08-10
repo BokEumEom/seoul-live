@@ -88,20 +88,30 @@ describe('AreaListItem', () => {
 
   // jsdom은 높이를 재지 못한다. 실제 밀도를 정하는 건 py-2와 두 줄짜리 본문이고
   // 여기서 고정할 수 있는 건 "카드가 아니라 구분선"이라는 스타일 계약뿐이다.
+  //
+  // `className.toContain`은 부분 문자열이라 `border-b`가 `last:border-b-0`에도
+  // 걸린다 — `border-b`를 지워도 통과한다. 클래스 토큰 단위로 보는
+  // `toHaveClass`를 쓴다.
   it('카드 테두리가 아니라 아래 구분선을 쓴다', () => {
     render(<AreaListItem area={area()} onSelect={() => {}} />)
     const row = screen.getByRole('button')
-    expect(row.className).toContain('border-b')
-    expect(row.className).not.toContain('rounded-card')
+    expect(row).toHaveClass('border-b')
+    expect(row).not.toHaveClass('rounded-card')
+  })
+
+  // 마지막 행 아래는 비어 있어 구분선이 허공에 남는다.
+  it('마지막 행은 구분선을 지운다', () => {
+    render(<AreaListItem area={area()} onSelect={() => {}} />)
+    expect(screen.getByRole('button')).toHaveClass('last:border-b-0')
   })
 
   it('행이 최소 탭 영역 48px을 지킨다', () => {
     render(<AreaListItem area={area()} onSelect={() => {}} />)
-    expect(screen.getByRole('button').className).toContain('min-h-12')
+    expect(screen.getByRole('button')).toHaveClass('min-h-12')
   })
 
   it('이름을 제목이 아니라 본문 크기로 그린다', () => {
     render(<AreaListItem area={area()} onSelect={() => {}} />)
-    expect(screen.getByText('강남역').className).toContain('text-body-md')
+    expect(screen.getByText('강남역')).toHaveClass('text-body-md')
   })
 })

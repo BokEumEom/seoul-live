@@ -211,6 +211,15 @@ describe('HomeScreen', () => {
     expect(screen.queryByRole('tab', { name: '여유한 순' })).toBeNull()
   })
 
+  // 행이 아래 구분선으로 갈리므로 컨테이너가 간격을 주면 구분선이 허공에 뜬다.
+  // 지도를 끄면 같은 이름의 마커 버튼이 없어져 목록 행이 유일해진다.
+  it('구분선 목록에 행 간격을 두지 않는다', () => {
+    isMapAvailable.mockReturnValue(false)
+    render(<HomeScreen />)
+    const row = screen.getByRole('button', { name: /강남역/ })
+    expect(row.parentElement?.className).not.toMatch(/\bgap-/)
+  })
+
   it('상세가 열린 채로 검색하면 목록으로 돌아간다', async () => {
     render(<HomeScreen />)
     await userEvent.click(listItem(/강남역/)[0])

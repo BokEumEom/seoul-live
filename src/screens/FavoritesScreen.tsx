@@ -71,7 +71,7 @@ export function FavoritesScreen({ onSelectArea, onGoHome }: Props) {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-3 px-4">
+        <div className="flex flex-col px-4">
           {starred.map((area) => (
             <AreaListItem
               key={area.entry.code}

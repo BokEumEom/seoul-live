@@ -93,6 +93,17 @@ describe('FavoritesScreen', () => {
     expect(screen.queryByRole('button', { name: /부산역/ })).toBeNull()
   })
 
+  // 행이 아래 구분선으로 갈리므로 컨테이너가 간격을 주면 구분선이 허공에 뜬다.
+  it('구분선 목록에 행 간격을 두지 않는다', async () => {
+    localStorage.setItem(
+      'seoul-live:favorites',
+      JSON.stringify(['경복궁', '남산공원']),
+    )
+    render(<FavoritesScreen onSelectArea={() => {}} onGoHome={() => {}} />)
+    const row = await screen.findByRole('button', { name: /경복궁/ })
+    expect(row.parentElement?.className).not.toMatch(/\bgap-/)
+  })
+
   it('혼잡도 조회가 실패해도 담은 목록은 보여준다', async () => {
     localStorage.setItem('seoul-live:favorites', JSON.stringify(['경복궁']))
     useAreaSnapshots.mockReturnValue({
