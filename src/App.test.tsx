@@ -170,7 +170,7 @@ describe('App', () => {
     expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
   })
 
-  it('별을 누르면 즐겨찾기 탭에 나타난다', async () => {
+  it('저장을 누르면 즐겨찾기 탭에 나타난다', async () => {
     render(<App />)
     await waitFor(() =>
       expect(
@@ -179,7 +179,7 @@ describe('App', () => {
     )
 
     await userEvent.click(screen.getAllByRole('button', { name: /광화문·덕수궁/ })[0])
-    await userEvent.click(screen.getByRole('button', { name: '즐겨찾기에 추가' }))
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
     await userEvent.click(tab('즐겨찾기'))
 
     expect(

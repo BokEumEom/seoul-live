@@ -14,11 +14,14 @@ import { ActionButtons } from '../forecast/ActionButtons'
 import { ForecastChart } from '../forecast/ForecastChart'
 import { AreaList } from '../list/AreaList'
 import { AreaListItem } from '../list/AreaListItem'
+import { PopulationCard } from './PopulationCard'
 import { AREA_NAMES, findAreaByName } from '../../data/areas'
 import { useAreaSnapshot, useAreaSnapshots, useCityInfo } from '../../data/queries'
 import { hasAnyCityInfo } from '../../domain/cityInfo'
 import { congestionHeadline } from '../../domain/congestion'
+import { formatDistance, haversineMeters, walkingMinutes } from '../../domain/distance'
 import { findQuietTime } from '../../domain/forecast'
+import { CATEGORY_LABEL } from '../../domain/types'
 import { useFavorites } from '../../hooks/useFavorites'
 import { useNearbyAreas } from '../../hooks/useNearbyAreas'
 
@@ -56,26 +59,18 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
   const snapshot = query.data
   const info = cityInfo.data
 
+  // 별은 여기 없다. 아이콘뿐인 별은 무엇인지 알 수 없어서 액션 행의 「저장」이
+  // 됐다(설계 §2.6). w-fit이 없으면 flex 열의 자식이라 폭 전체가 뒤로가기
+  // 타깃이 된다.
   const header = (
-    <div className="flex items-center justify-between px-4 py-2">
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex min-h-12 items-center gap-1 text-label-md font-semibold text-primary"
-      >
-        <Icon name="back" className="size-4" />
-        목록으로
-      </button>
-      <button
-        type="button"
-        aria-label={starred ? '즐겨찾기에서 빼기' : '즐겨찾기에 추가'}
-        aria-pressed={starred}
-        onClick={() => toggle(areaName)}
-        className="min-h-12 px-2 text-primary"
-      >
-        <Icon name={starred ? 'starFilled' : 'star'} className="size-5" />
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onBack}
+      className="flex min-h-12 w-fit items-center gap-1 px-4 text-label-md font-semibold text-primary"
+    >
+      <Icon name="back" className="size-4" />
+      목록으로
+    </button>
   )
 
   if (entry === undefined) {
@@ -94,6 +89,29 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
       ? null
       : findQuietTime(snapshot.congestion, snapshot.forecasts)
 
+  // 위치를 아직 못 잡았거나 거부하면 거리 구간만 빠지고 카테고리는 남는다.
+  // AreaListItem과 같은 처리다.
+  const distanceMeters =
+    location.coords === null ? null : haversineMeters(location.coords, entry)
+
+  // 별 아이콘만 있던 헤더 버튼을 글자 있는 버튼으로 옮긴 것이다. 라벨이
+  // 상태를 말하므로 aria-pressed는 쓰지 않는다 — 함께 쓰면 스크린리더가
+  // "저장됨, 선택됨"처럼 같은 상태를 두 번 읽는다.
+  const saveButton = (
+    <button
+      type="button"
+      onClick={() => toggle(areaName)}
+      className={`flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-action border text-label-md font-semibold text-primary ${
+        starred
+          ? 'border-secondary-container bg-secondary-container'
+          : 'border-outline-variant bg-surface-container-lowest'
+      }`}
+    >
+      <Icon name={starred ? 'starFilled' : 'star'} className="size-5" />
+      {starred ? '저장됨' : '저장'}
+    </button>
+  )
+
   // 지금 보고 있는 곳은 "다른 데 가보라"는 추천에서 뺀다.
   const alternatives = recommended
     .filter((area) => area.entry.name !== entry.name)
@@ -103,7 +121,23 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
     <div className="flex flex-col gap-3 pb-6">
       {header}
 
-      <h2 className="px-4 text-headline-md text-on-surface">{entry.name}</h2>
+      {/* Google Maps 장소 카드의 히어로 순서다 — 이름, 카테고리·거리·도보 시간,
+          그리고 오른쪽에 상태 배지. 도보 시간은 domain/distance의
+          walkingMinutes가 유일한 출처다. 여기서 다시 환산하면
+          RecommendationCard와 조용히 갈린다. */}
+      <div className="flex items-start justify-between gap-3 px-4">
+        <div className="min-w-0">
+          <h2 className="truncate text-headline-md text-on-surface">{entry.name}</h2>
+          {/* `!== null`이지 truthy 검사가 아니다. 명소 위에 서 있으면 거리가
+              0이라 `distanceMeters &&`로 쓰면 이 줄이 카테고리만 남는다. */}
+          <p className="mt-0.5 text-label-sm text-on-surface-variant">
+            {CATEGORY_LABEL[entry.category]}
+            {distanceMeters !== null &&
+              ` · ${formatDistance(distanceMeters)} · 도보 ${walkingMinutes(distanceMeters)}분`}
+          </p>
+        </div>
+        {snapshot !== undefined && <CongestionBadge level={snapshot.congestion} />}
+      </div>
 
       {query.isPending && (
         <div className="px-4">
@@ -122,9 +156,11 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
 
       {snapshot !== undefined && (
         <>
+          {/* 배지는 히어로가 갖는다. 여기 한 번 더 두면 「약간 붐빔」이 바로
+              아래 제목("다소 혼잡")까지 셋이 같은 말을 하고, 그 36px이
+              인구 구성을 폴드 밖으로 민다. */}
           <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-            <CongestionBadge level={snapshot.congestion} emphasis />
-            <p className="mt-2 text-display-lg text-on-surface">
+            <p className="text-display-lg text-on-surface">
               {congestionHeadline(snapshot.congestion)}
             </p>
             <p className="mt-1 text-label-sm text-outline">
@@ -150,18 +186,34 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
               추정 인구 {snapshot.populationMin.toLocaleString()}~
               {snapshot.populationMax.toLocaleString()}명
             </p>
+
+            {/* 설계 §2.6은 이 카드를 예측 다음에 놓지만 여기로 올렸다. 390px
+                실측에서 예측 섹션이 262px이라, 그 아래면 720~740px급
+                안드로이드(시트 full이 가용 약 640px)에서 제목만 보이고 막대는
+                폴드 밖으로 나간다. 「인파레이더 대신 쓸 이유」를 만드는 카드를
+                보이지 않는 자리에 두지 않는다.
+                감싸는 <div>를 두지 않는 이유도 같다 — PopulationCard는 읽을 수
+                있는 값이 하나도 없으면 null을 돌려주므로, 이 카드 안에 직접
+                넣어야 사라진 자리에 빈 칸이 남지 않는다. mt-4 border-t는 그
+                카드가 이미 갖고 있어 여기서는 여백을 더하지 않는다. */}
+            {snapshot.composition !== null && (
+              <PopulationCard composition={snapshot.composition} />
+            )}
           </section>
 
           <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-            <h3 className="text-headline-sm text-on-surface">시간별 예측</h3>
+            {/* "예측"은 시스템 용어에 가깝다. Google Maps의 「인기 시간대」 자리다. */}
+            <h3 className="text-headline-sm text-on-surface">시간대별 예상</h3>
             <div className="mt-3">
               <ForecastChart forecasts={snapshot.forecasts} />
             </div>
           </section>
-
-          <ActionButtons entry={entry} />
         </>
       )}
+
+      {/* 액션 행은 카탈로그만 있으면 성립한다. 혼잡도 응답 안에 두면 API가
+          흔들린 날 저장·길찾기·공유가 통째로 사라진다. */}
+      <ActionButtons entry={entry}>{saveButton}</ActionButtons>
 
       {/* 도시 정보는 접힌 채로 시작한다. 여기가 쿼터를 지키는 자리다. */}
       <section className="mx-4 rounded-card border border-outline-variant">

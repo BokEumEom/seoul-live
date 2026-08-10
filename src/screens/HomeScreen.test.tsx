@@ -233,20 +233,20 @@ describe('HomeScreen', () => {
     expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeDisabled()
   })
 
-  it('상세에서 별을 누르면 내 장소 칩이 곧바로 는다', async () => {
-    // 칩과 별이 각자 useFavorites를 부른다. 둘이 따로 놀면 방금 담은 곳이
+  it('상세에서 저장을 누르면 내 장소 칩이 곧바로 는다', async () => {
+    // 칩과 저장 버튼이 각자 useFavorites를 부른다. 둘이 따로 놀면 방금 담은 곳이
     // 칩에 안 잡히고, 0인 칩은 비활성이라 필터를 켤 방법이 없어진다.
     render(<HomeScreen />)
     expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeDisabled()
 
     await userEvent.click(listItem(/강남역/)[0])
-    await userEvent.click(screen.getByRole('button', { name: '즐겨찾기에 추가' }))
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
 
     expect(await screen.findByRole('tab', { name: '내 장소 1' })).toBeEnabled()
   })
 
-  it('저장이 막혀도 칩과 별이 같은 것을 말한다', async () => {
-    // 브리지도 localStorage도 막힌 상태다. 저장 실패가 별을 막지 않는 이상
+  it('저장소가 막혀도 칩과 저장 버튼이 같은 것을 말한다', async () => {
+    // 브리지도 localStorage도 막힌 상태다. 저장 실패가 버튼을 막지 않는 이상
     // 그 뒤에 열리는 화면들이 서로 다른 말을 하면 안 된다. 명소를 다시 열면
     // AreaDetail이 새로 마운트되는데, 저장소만 읽으면 방금 담은 것을 못 본다.
     // window.Storage는 DOM 쪽이다(위에서 목업한 토스 SDK의 Storage가 아니다).
@@ -258,14 +258,12 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
 
     await userEvent.click(listItem(/강남역/)[0])
-    await userEvent.click(screen.getByRole('button', { name: '즐겨찾기에 추가' }))
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
     await userEvent.click(listItem(/강남역/)[0])
 
     expect(screen.getByRole('tab', { name: '내 장소 1' })).toBeEnabled()
-    expect(
-      screen.getByRole('button', { name: '즐겨찾기에서 빼기' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '저장됨' })).toBeInTheDocument()
   })
 
   it('카테고리를 고르면 목록이 그 분류만 남는다', async () => {
