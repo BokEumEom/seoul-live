@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { reset } from './hooks/favoritesStore'
 
 // 위치는 목업으로 고정한다. jsdom에는 토스 네이티브 브리지가 없어서, 목업이
 // 없으면 SDK가 던지는지 매달리는지에 따라 정렬 순서가 달라진다.
@@ -70,6 +71,7 @@ beforeEach(() => {
   vi.stubEnv('VITE_USE_MOCK', 'true')
   vi.clearAllMocks()
   localStorage.clear()
+  reset()
   // 기본값은 권한 거부. 위치 없이도 화면이 서는지가 기본 경로다.
   getLocation.mockRejectedValue(new framework.GetCurrentLocationPermissionError())
 })

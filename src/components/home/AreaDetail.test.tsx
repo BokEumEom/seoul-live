@@ -4,6 +4,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CityInfo } from '../../domain/cityInfo'
 import type { AreaSnapshot } from '../../domain/types'
+import { reset } from '../../hooks/favoritesStore'
 import { AreaDetail } from './AreaDetail'
 
 vi.mock('../../data/queries', () => ({
@@ -51,6 +52,7 @@ function failed<T>(): UseQueryResult<T> {
 }
 
 beforeEach(() => {
+  reset()
   localStorage.clear()
   vi.clearAllMocks()
   useAreaSnapshot.mockReturnValue(ok(SNAPSHOT))

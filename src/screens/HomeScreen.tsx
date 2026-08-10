@@ -99,10 +99,14 @@ export function HomeScreen({ focusArea = null }: Props) {
   // 「내 장소」 개수를 favorites.length로 따로 세지 않는다. 그러면 카테고리로
   // 좁혔거나 카탈로그에서 이름이 바뀐 곳까지 세어 칩의 숫자와 목록이 갈린다.
   // filterCounts는 filterAreas를 그대로 부른다.
-  const counts = filterCounts(list, favorites)
-  const visible = searchAreas(
-    filterAreas(list, filters.filter, favorites),
-    filters.query,
+  //
+  // list와 같이 memo한다. 지도를 팬할 때마다 onCameraChanged가 center·zoom을
+  // 바꿔 이 화면이 다시 그려지는데, 그때마다 30곳을 네 번 훑을 이유가 없다.
+  // favorites는 스토어의 배열을 그대로 받으므로 참조가 안정적이다.
+  const counts = useMemo(() => filterCounts(list, favorites), [list, favorites])
+  const visible = useMemo(
+    () => searchAreas(filterAreas(list, filters.filter, favorites), filters.query),
+    [list, filters.filter, filters.query, favorites],
   )
 
   // 로딩 중에는 마커를 세우지 않는다. 스냅샷이 없는 명소는 회색 "정보 없음"으로

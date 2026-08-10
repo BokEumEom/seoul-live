@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reset } from './favoritesStore'
 import { useFavorites } from './useFavorites'
 
 vi.mock('../platform/favorites', () => ({
@@ -12,6 +13,8 @@ const loadFavorites = vi.mocked(favorites.loadFavorites)
 const saveFavorites = vi.mocked(favorites.saveFavorites)
 
 beforeEach(() => {
+  // 스토어는 모듈에 값을 한 벌 든다. 비우지 않으면 앞 테스트의 즐겨찾기가 샌다.
+  reset()
   vi.clearAllMocks()
   loadFavorites.mockResolvedValue([])
   saveFavorites.mockResolvedValue(undefined)
@@ -52,6 +55,29 @@ describe('useFavorites', () => {
 
     act(() => result.current.toggle('경복궁'))
     await waitFor(() => expect(result.current.isFavorite('경복궁')).toBe(true))
+  })
+
+  it('저장이 막혀도 새로 마운트된 인스턴스가 방금 담은 것을 본다', async () => {
+    // 저장 실패는 별을 막지 않는다고 정해뒀다. 그 대가로 저장소에는 아무것도
+    // 안 남으므로, 새로 마운트되는 쪽이 저장소만 읽으면 옛 값을 본다.
+    // 명소를 다시 열 때마다 AreaDetail이 새로 마운트된다 — 그러면 한 화면에서
+    // 칩은 1이라 하고 별은 안 담겼다고 한다.
+    saveFavorites.mockRejectedValue(new Error('quota'))
+    const chips = renderHook(() => useFavorites())
+    await waitFor(() => expect(chips.result.current.favorites).toEqual([]))
+
+    act(() => chips.result.current.toggle('강남역'))
+
+    const detail = renderHook(() => useFavorites())
+    expect(detail.result.current.isFavorite('강남역')).toBe(true)
+  })
+
+  it('인스턴스가 여럿이어도 저장소는 한 번만 읽는다', async () => {
+    renderHook(() => useFavorites())
+    renderHook(() => useFavorites())
+    renderHook(() => useFavorites())
+
+    await waitFor(() => expect(loadFavorites).toHaveBeenCalledTimes(1))
   })
 
   it('같은 화면의 다른 인스턴스에도 곧바로 반영된다', async () => {

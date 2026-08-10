@@ -5,6 +5,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CityInfo } from '../domain/cityInfo'
 import type { AreaSnapshot } from '../domain/types'
+import { reset } from '../hooks/favoritesStore'
 import { HomeScreen } from './HomeScreen'
 
 // jsdom에 Google Maps가 없다. App.test.tsx가 토스 SDK에 쓰는 방식과 같다.
@@ -79,7 +80,9 @@ function snapshotFor(
 }
 
 beforeEach(async () => {
+  reset()
   localStorage.clear()
+  vi.restoreAllMocks()
   vi.clearAllMocks()
   isMapAvailable.mockReturnValue(true)
   useLocation.mockReturnValue({ coords: null, status: 'unavailable', retry: vi.fn() })
@@ -240,6 +243,29 @@ describe('HomeScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: '즐겨찾기에 추가' }))
 
     expect(await screen.findByRole('tab', { name: '내 장소 1' })).toBeEnabled()
+  })
+
+  it('저장이 막혀도 칩과 별이 같은 것을 말한다', async () => {
+    // 브리지도 localStorage도 막힌 상태다. 저장 실패가 별을 막지 않는 이상
+    // 그 뒤에 열리는 화면들이 서로 다른 말을 하면 안 된다. 명소를 다시 열면
+    // AreaDetail이 새로 마운트되는데, 저장소만 읽으면 방금 담은 것을 못 본다.
+    // window.Storage는 DOM 쪽이다(위에서 목업한 토스 SDK의 Storage가 아니다).
+    // 인스턴스에 스파이를 걸면 jsdom이 조용히 무시해서 저장이 그대로 성공한다 —
+    // 프로토타입이라야 실제로 막힌다.
+    vi.spyOn(window.Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota')
+    })
+    render(<HomeScreen />)
+
+    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(screen.getByRole('button', { name: '즐겨찾기에 추가' }))
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    await userEvent.click(listItem(/강남역/)[0])
+
+    expect(screen.getByRole('tab', { name: '내 장소 1' })).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: '즐겨찾기에서 빼기' }),
+    ).toBeInTheDocument()
   })
 
   it('카테고리를 고르면 목록이 그 분류만 남는다', async () => {

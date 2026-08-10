@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AreaSnapshot } from '../domain/types'
+import { reset } from '../hooks/favoritesStore'
 import { FavoritesScreen } from './FavoritesScreen'
 
 vi.mock('../data/queries', () => ({ useAreaSnapshots: vi.fn() }))
@@ -36,6 +37,7 @@ function snapshotFor(name: string): AreaSnapshot {
 }
 
 beforeEach(async () => {
+  reset()
   localStorage.clear()
   vi.clearAllMocks()
   useLocation.mockReturnValue({ coords: null, status: 'unavailable', retry: vi.fn() })
