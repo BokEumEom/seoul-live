@@ -1461,6 +1461,25 @@ describe('PopulationCard', () => {
     const { container } = render(<PopulationCard composition={composition()} />)
     expect(container.querySelectorAll('[data-age]')).toHaveLength(8)
   })
+
+  it('읽지 못해 전부 0이면 칩도 막대도 그리지 않는다', () => {
+    // 키는 왔는데 내용이 쓰레기인 경우다. 0을 사실처럼 그리면 없는 인구를
+    // 지어낸다 — 균등 8칸 막대는 "연령대가 고르다"는 없는 사실까지 그린다.
+    const { container } = render(
+      <PopulationCard
+        composition={composition({
+          maleRate: 0,
+          femaleRate: 0,
+          nonResidentRate: 0,
+          ageRates: [0, 0, 0, 0, 0, 0, 0, 0],
+        })}
+      />,
+    )
+    expect(screen.getByRole('heading', { name: '지금 누가 있나' })).toBeInTheDocument()
+    expect(screen.queryByText(/남 0%/)).toBeNull()
+    expect(screen.queryByText(/비상주/)).toBeNull()
+    expect(container.querySelectorAll('[data-age]')).toHaveLength(0)
+  })
 })
 ```
 
@@ -1497,45 +1516,64 @@ interface Props {
 
 export function PopulationCard({ composition }: Props) {
   const total = composition.ageRates.reduce((sum, value) => sum + value, 0)
+  const label = residentLabel(composition)
+
+  // 0은 "실제로 0%"가 아니라 "읽지 못함"일 수 있다(compositionSchema.ts의 rate()).
+  // 못 읽은 값을 사실처럼 그리지 않는다 — 칸마다 값이 있을 때만 그린다.
+  // 하나도 못 읽었으면 제목만 남는데, 그건 Task 8이 composition이 null일 때
+  // 섹션을 통째로 숨기는 것과 다른 상태다(키는 왔는데 내용이 쓰레기).
+  const hasGender = composition.maleRate > 0 || composition.femaleRate > 0
 
   return (
     <section className="mt-4 border-t border-outline-variant pt-3">
       <h3 className="text-label-md font-bold text-on-surface">지금 누가 있나</h3>
 
       <div className="mt-2 flex flex-wrap gap-1.5">
-        <span className="rounded-lg bg-surface-container px-2.5 py-1 text-label-sm text-on-surface-variant">
-          남 {Math.round(composition.maleRate)}% · 여 {Math.round(composition.femaleRate)}%
-        </span>
-        <span className="rounded-lg bg-surface-container px-2.5 py-1 text-label-sm text-on-surface-variant">
-          비상주 {Math.round(composition.nonResidentRate)}%
-        </span>
-        <span className="rounded-lg bg-secondary-container px-2.5 py-1 text-label-sm text-primary">
-          {residentLabel(composition)}
-        </span>
-      </div>
-
-      {/* 합이 100이라는 보장이 없다. 실제 합으로 나눠 폭을 낸다. */}
-      <div className="mt-3 flex h-2.5 overflow-hidden rounded-full">
-        {composition.ageRates.map((value, index) => (
-          <span
-            key={AGE_LABELS[index]}
-            data-age={AGE_LABELS[index]}
-            style={{ width: total === 0 ? '12.5%' : `${(value / total) * 100}%` }}
-            className={AGE_CLASS[index]}
-          />
-        ))}
-      </div>
-
-      <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-label-sm text-on-surface-variant">
-        {composition.ageRates.map((value, index) =>
-          value >= LABEL_THRESHOLD ? (
-            <span key={AGE_LABELS[index]}>
-              <b className="font-semibold text-on-surface">{AGE_LABELS[index]}</b>{' '}
-              {Math.round(value)}%
-            </span>
-          ) : null,
+        {hasGender && (
+          <span className="rounded-lg bg-surface-container px-2.5 py-1 text-label-sm text-on-surface-variant">
+            남 {Math.round(composition.maleRate)}% · 여 {Math.round(composition.femaleRate)}%
+          </span>
         )}
-      </p>
+        {composition.nonResidentRate > 0 && (
+          <span className="rounded-lg bg-surface-container px-2.5 py-1 text-label-sm text-on-surface-variant">
+            비상주 {Math.round(composition.nonResidentRate)}%
+          </span>
+        )}
+        {label !== null && (
+          <span className="rounded-lg bg-secondary-container px-2.5 py-1 text-label-sm text-primary">
+            {label}
+          </span>
+        )}
+      </div>
+
+      {/* 합이 100이라는 보장이 없다. 실제 합으로 나눠 폭을 낸다.
+          합이 0이면 균등 8칸을 그리는 대신 막대를 통째로 뺀다 — 균등 막대는
+          "모든 연령대가 고르게 있다"는 없는 사실을 그린다. */}
+      {total > 0 && (
+        <>
+          <div className="mt-3 flex h-2.5 overflow-hidden rounded-full">
+            {composition.ageRates.map((value, index) => (
+              <span
+                key={AGE_LABELS[index]}
+                data-age={AGE_LABELS[index]}
+                style={{ width: `${(value / total) * 100}%` }}
+                className={AGE_CLASS[index]}
+              />
+            ))}
+          </div>
+
+          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-label-sm text-on-surface-variant">
+            {composition.ageRates.map((value, index) =>
+              value >= LABEL_THRESHOLD ? (
+                <span key={AGE_LABELS[index]}>
+                  <b className="font-semibold text-on-surface">{AGE_LABELS[index]}</b>{' '}
+                  {Math.round(value)}%
+                </span>
+              ) : null,
+            )}
+          </p>
+        </>
+      )}
     </section>
   )
 }
