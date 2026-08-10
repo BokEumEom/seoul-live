@@ -2398,11 +2398,28 @@ git commit -m "feat: 하단 탭바를 없애고 단일 화면으로 전환"
 - [ ] **Step 3: `STATE.md`**
 
 - 「한 줄 요약」을 단일 화면 구조로
-- 「파일 구조」를 새 디렉터리로 (`sheet.ts`·`composition.ts`·`compositionSchema.ts` 추가, `split.ts`·`SplitPane`·`FavoritesScreen`·`BottomTabBar`·`PresetFilter` 삭제)
+- 「파일 구조」를 새 디렉터리로. **실행 중 계획서에 없던 파일이 셋 늘었다 — 빠뜨리지 마라:**
+  - 추가: `domain/sheet.ts`, `domain/composition.ts`, `data/compositionSchema.ts`, `components/home/BottomSheet.tsx`, `components/home/SummaryStrip.tsx`, `components/home/FilterChips.tsx`, `components/home/PopulationCard.tsx`, **`components/list/AreaList.tsx`**(Task 4 — 구분선 목록의 행 간격 계약을 소유), **`hooks/favoritesStore.ts`**(Task 6 — 즐겨찾기 단일 출처)
+  - 삭제: `domain/split.ts`, `components/home/SplitPane.tsx`, `components/map/PresetFilter.tsx`, `screens/FavoritesScreen.tsx`, `components/layout/BottomTabBar.tsx`
 - 「검증 수치」 갱신
-- **새 미해결 항목**: 시트 드래그와 지도 팬 제스처 충돌, 시트 내용 스크롤과 시트 드래그 충돌, 인구 구성 필드의 실제 형태
-- **해소된 항목**: 별 아이콘 채움 상태 미검증(라벨 있는 「저장」 버튼이 되면서 사라짐)
-- 「진행하며 실제로 잡은 문제」에 이번 개편 표를 더한다
+- **새 미해결 항목** (실기기로만 확인된다):
+  - 시트 드래그와 지도 팬 제스처 충돌
+  - 시트 내용 스크롤과 시트 드래그 충돌
+  - 인구 구성 필드의 실제 형태 (응답을 아직 본 적이 없다)
+  - **손잡이 히트 영역이 지도 위 20px을 삼킨다** — `peek`에서 화면 84% 지점을 가로지르는 죽은 띠가 된다 (Task 3)
+  - **`full`에서 손잡이가 `z-20` 오버레이 밑에 들어갈 수 있다** — 800px 기준 손잡이 히트 44~88px, 검색 바 열 0~88px (Task 3·9)
+  - **`releasePointerCapture`가 던지는 브라우저가 있는지** — 던지면 손잡이가 영구히 죽는 경로를 `try/catch`로 막아 뒀지만 실제로 던지는지는 미확인 (Task 3)
+  - **즐겨찾기 별의 접근성 이름이 실기기에서 들리는지** — `<span role="img" aria-label>`로 고쳤으나 jsdom은 `generic`의 name-prohibited를 모형화하지 않아 테스트로는 검증 불가 (Task 4)
+  - **필터 칩 높이 `min-h-10`(40px)** — 저장소의 48px 규약을 벗어난 채로 뒀다. Task 9의 오버레이 배치와 함께 정하기로 미룬 결정 (Task 6)
+- **해소된 항목**:
+  - 별 아이콘 채움 상태 미검증 — 라벨 있는 「저장」 버튼이 되면서 사라짐
+  - **`useFavorites`가 인스턴스마다 따로 놀던 것** — `favoritesStore`로 단일 출처가 됐다. 이전에는 홈의 칩과 상세의 별이 서로를 못 봤다
+- 「진행하며 실제로 잡은 문제」에 이번 개편 표를 더한다. **리뷰가 잡은 것 위주로 적어라** — 계획서 코드를 그대로 받아썼으면 남았을 결함들이다:
+  - `residentLabel`이 못 읽은 0으로 「동네 생활권」을 단정하던 것
+  - `Number('0x1f') === 31` — 관대한 파서가 그럴듯한 틀린 값을 만들던 것
+  - `pointercancel`을 확정으로 다뤄 취소된 제스처가 시트를 `full`로 밀어 올리던 것
+  - 목록 개수를 `favorites.length`로 세서 칩에 2, 목록에 0이 뜨던 것
+  - 인구 구성 막대를 실제 합으로 정규화해 없는 분포를 지어내던 것
 
 - [ ] **Step 4: `AGENTS.md`**
 
