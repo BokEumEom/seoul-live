@@ -1196,7 +1196,7 @@ git commit -m "feat: 시트 상단 요약 스트립 추가"
 `HomeScreen`은 Task 9에서 전면 재작성되지만 **그때까지 빌드와 테스트가 서 있어야 한다.** `preset`/`setPreset`이 `filter`/`setFilter`로 바뀌고 `PresetFilter`가 사라지므로 소비처를 함께 고치지 않으면 이 커밋에서 `tsc -b`가 깨진다. `HomeScreen`에는 지금 `useFavorites`가 없다(즐겨찾기는 `FavoritesScreen`에만 있었다) — Step 6에서 들여온다.
 
 **Interfaces:**
-- Consumes: `PRESETS`, `PresetKey`, `presetCounts`
+- Consumes: `PRESETS`, `PresetKey`
 - Produces:
   - `type FilterKey = 'fav' | PresetKey` (in `domain/presets.ts`)
   - `function FilterChips(props: { counts: Readonly<Record<FilterKey, number>>; value: FilterKey | null; onChange: (next: FilterKey | null) => void })`
@@ -1360,27 +1360,38 @@ import type { FilterKey } from '../domain/presets'
 git rm src/components/map/PresetFilter.tsx src/components/map/PresetFilter.test.tsx
 ```
 
-`HomeScreen.tsx`가 `PresetFilter`를 쓰고 있다. Task 9에서 전면 재작성하지만 그때까지 빌드가 서야 하므로, 지금은 `FilterChips`로 갈아 끼우고 `counts`에 `fav`를 더한다:
+`HomeScreen.tsx`가 `PresetFilter`를 쓰고 있다. Task 9에서 전면 재작성하지만 그때까지 빌드가 서야 하므로 `FilterChips`로 갈아 끼우고 `useFavorites`를 `HomeScreen`에서 부른다.
 
-```tsx
-const counts = { ...presetCounts(list), fav: favorites.length }
+- [ ] **Step 7: 개수와 필터를 도메인 함수 하나로 모은다**
+
+> **실행 중 정정.** 이 자리에 원래 적혀 있던 `const counts = { ...presetCounts(list), fav: favorites.length }`와 `filters.filter === 'fav' ? list.filter(...) : filterByPreset(list, ...)`는 **틀렸다.** `list`는 이미 카테고리로 걸러진 목록이라, 「공원」을 고르면 `favorites.length`가 공원이 아닌 즐겨찾기까지 세서 **칩에 2, 목록에 0**이 뜬다. `presetCounts`가 `filterByPreset`을 그대로 불러 지키던 "개수와 필터가 같은 술어를 쓴다"는 구조적 보장이 `fav`에만 없었던 것이다.
+
+`src/domain/presets.ts`에서 `presetCounts`를 지우고 둘로 대체한다. `filterCounts`는 반드시 `filterAreas`를 **불러서** 세라 — 로직을 복사하면 보장이 사라진다.
+
+```ts
+export function filterAreas(
+  areas: readonly NearbyArea[],
+  filter: FilterKey | null,
+  favorites: readonly string[],
+): readonly NearbyArea[]
+
+export function filterCounts(
+  areas: readonly NearbyArea[],
+  favorites: readonly string[],
+): Readonly<Record<FilterKey, number>>
 ```
 
-`useFavorites`를 `HomeScreen`에서 부른다.
-
-- [ ] **Step 7: `visible()` 파이프라인에 fav를 더한다**
-
-`HomeScreen.tsx`의 필터 계산을 바꾼다:
+`HomeScreen`에서는 이렇게 쓴다. `filterAreas`가 `FilterKey | null`을 받으므로 `'fav'` 타입 좁히기 문제가 아예 생기지 않는다.
 
 ```tsx
-const filtered =
-  filters.filter === 'fav'
-    ? list.filter((area) => favorites.includes(area.entry.name))
-    : filterByPreset(list, filters.filter)
-const visible = searchAreas(filtered, filters.query)
+const counts = useMemo(() => filterCounts(list, favorites), [list, favorites])
+const visible = useMemo(
+  () => searchAreas(filterAreas(list, filters.filter, favorites), filters.query),
+  [list, filters.filter, favorites, filters.query],
+)
 ```
 
-`filterByPreset`은 `PresetKey | null`을 받는데 `'fav'`가 들어올 수 있다. `filters.filter === 'fav'`를 먼저 걸러내므로 타입은 좁혀지지만, TypeScript가 좁히지 못하면 지역 변수로 나눈다.
+도메인 테스트로 보장을 잠가라: **모든 `FilterKey`에 대해 `filterCounts(...)[key] === filterAreas(..., key, ...).length`.**
 
 - [ ] **Step 8: 통과를 확인한다**
 
@@ -1940,14 +1951,17 @@ export function HomeScreen() {
 
   // 개수는 걸러지기 전 목록으로 센다. 걸러진 목록으로 세면 칩 하나를 고르는
   // 순간 나머지가 0이 되어 비활성으로 굳는다.
-  const counts = { ...presetCounts(list), fav: favorites.length }
+  //
+  // Task 6이 `presetCounts` + `favorites.length`를 `filterCounts` 하나로 바꿨다.
+  // `fav`를 따로 세면 안 된다 — `list`는 이미 카테고리로 걸러진 목록이라
+  // 「공원」을 고르면 칩에 2, 목록에 0이 뜬다. `filterCounts`는 `filterAreas`를
+  // 그대로 불러 개수와 필터가 같은 술어를 쓰는 것을 구조로 보장한다.
+  const counts = useMemo(() => filterCounts(list, favorites), [list, favorites])
 
-  const chosen = filters.filter
-  const filtered =
-    chosen === 'fav'
-      ? list.filter((area) => favorites.includes(area.entry.name))
-      : filterByPreset(list, chosen)
-  const visible = searchAreas(filtered, filters.query)
+  const visible = useMemo(
+    () => searchAreas(filterAreas(list, filters.filter, favorites), filters.query),
+    [list, filters.filter, favorites, filters.query],
+  )
   const markers = snapshots.isPending ? [] : toMapMarkers(visible)
 
   function openArea(name: string): void {
@@ -2174,7 +2188,9 @@ Expected: 전부 PASS
 
 - [ ] **Step 9: 변이 확인**
 
-`counts`를 걸러진 목록으로 세게 바꾼다(`presetCounts(visible)`) → "프리셋 개수는 걸러진 목록이 아니라 전체로 센다"가 실패해야 한다. 되돌린다.
+`counts`를 걸러진 목록으로 세게 바꾼다(`filterCounts(visible, favorites)`) → "프리셋 개수는 걸러진 목록이 아니라 전체로 센다"가 실패해야 한다. 되돌린다.
+
+두 번째 변이: `filterCounts(list, favorites)`의 `fav`를 `favorites.length`로 되돌린다 → 도메인 쪽 「개수와 필터 결과 길이가 항상 같다」와 화면 쪽 「내 장소 개수는 지금 목록에 있는 것만 센다」가 함께 실패해야 한다. 되돌린다.
 
 - [ ] **Step 10: 커밋**
 
