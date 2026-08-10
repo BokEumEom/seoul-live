@@ -9,7 +9,7 @@ function viewportRect(height: number): DOMRect {
     height,
     bottom: height,
     left: 0,
-    right: 0,
+    right: 400,
     width: 400,
     x: 0,
     y: 0,
@@ -36,6 +36,15 @@ function setup(onDetentChange = vi.fn(), detent: Detent = 'half') {
   return { handle: screen.getByRole('separator'), onDetentChange, sheet, setViewportHeight }
 }
 
+// 한 손가락으로 끌었다 놓는 표준 시퀀스. 포인터 id가 섞이거나 취소가 끼는
+// 테스트는 이걸 쓰지 않는다 — 거기서는 어떤 이벤트가 어떤 id로 오는지가 곧
+// 검증 대상이다.
+function drag(handle: HTMLElement, from: number, to: number, release = to): void {
+  fireEvent.pointerDown(handle, { clientY: from, pointerId: 1 })
+  fireEvent.pointerMove(handle, { clientY: to, pointerId: 1 })
+  fireEvent.pointerUp(handle, { clientY: release, pointerId: 1 })
+}
+
 // 세 단계 모두를 확인한다. 한 단계만 보면 높이를 상수로 박아 둔 구현도 통과한다.
 const HEIGHT: ReadonlyArray<readonly [Detent, string]> = [
   ['peek', '16%'],
@@ -56,18 +65,14 @@ describe('BottomSheet', () => {
 
   it('위로 끌어 놓으면 full이 된다', () => {
     const { handle, onDetentChange } = setup()
-    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
-    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 })
-    fireEvent.pointerUp(handle, { clientY: 100, pointerId: 1 })
+    drag(handle, 430, 100)
     // 아래에서 100px 남은 지점 = 시트 높이 700/800 = 0.875 → full(0.92)에 가장 가깝다
     expect(onDetentChange).toHaveBeenLastCalledWith('full')
   })
 
   it('아래로 끌어 놓으면 peek이 된다', () => {
     const { handle, onDetentChange } = setup()
-    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
-    fireEvent.pointerMove(handle, { clientY: 700, pointerId: 1 })
-    fireEvent.pointerUp(handle, { clientY: 700, pointerId: 1 })
+    drag(handle, 430, 700)
     expect(onDetentChange).toHaveBeenLastCalledWith('peek')
   })
 
@@ -75,9 +80,7 @@ describe('BottomSheet', () => {
     // 위로 끌었다가 마음을 바꿔 도로 내리고 놓은 경우. 지나간 자리가 아니라
     // 손을 뗀 자리가 답이어야 한다.
     const { handle, onDetentChange } = setup()
-    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
-    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 })
-    fireEvent.pointerUp(handle, { clientY: 700, pointerId: 1 })
+    drag(handle, 430, 100, 700)
     expect(onDetentChange).toHaveBeenCalledTimes(1)
     expect(onDetentChange).toHaveBeenLastCalledWith('peek')
   })
@@ -95,6 +98,27 @@ describe('BottomSheet', () => {
     // 리스너 안에서 난 예외를 dispatchEvent 밖으로 내보내지 않아 그 단언은 언제나
     // 통과한다(실제로 확인했다). 핸들러가 터지면 vitest의 unhandled error로 잡혀
     // 실행 자체가 실패하므로, 예외 없음은 그쪽이 지킨다.
+  })
+
+  it('취소되면 단계를 바꾸지 않는다', () => {
+    // pointercancel은 "여기서 놓았다"가 아니라 "이 제스처는 없던 일"이다.
+    // 웹뷰가 제스처를 가져갈 때마다 시트가 확정되면 안 된다.
+    const { handle, onDetentChange } = setup()
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 })
+    fireEvent.pointerCancel(handle, { clientY: 100, pointerId: 1 })
+    expect(onDetentChange).not.toHaveBeenCalled()
+  })
+
+  it('취소된 뒤에도 다시 끌 수 있다', () => {
+    // 취소가 추적 상태를 놓지 않으면 이후 모든 pointerdown이 조용히 삼켜져
+    // 손잡이가 죽는다.
+    const { handle, onDetentChange } = setup()
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
+    fireEvent.pointerCancel(handle, { clientY: 430, pointerId: 1 })
+    drag(handle, 430, 100)
+    expect(onDetentChange).toHaveBeenCalledTimes(1)
+    expect(onDetentChange).toHaveBeenLastCalledWith('full')
   })
 
   it('끌지 않고 누르기만 하면 단계가 안 바뀐다', () => {
@@ -116,6 +140,17 @@ describe('BottomSheet', () => {
     fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
     fireEvent.pointerMove(handle, { clientY: 100, pointerId: 2 })
     fireEvent.pointerUp(handle, { clientY: 100, pointerId: 2 })
+    expect(onDetentChange).not.toHaveBeenCalled()
+  })
+
+  it('다른 포인터가 움직여도 잡은 손가락은 끈 것이 아니다', () => {
+    // 잡은 손가락(1)은 가만있고 다른 손가락(2)만 움직였다. 그러고서 1을 뗀다 —
+    // 2의 움직임이 1의 드래그로 둔갑하면 안 된다. 손을 뗀 것도 1이라 up 쪽
+    // 가드는 여기서 아무것도 걸러 주지 않는다. move 쪽 가드만이 이걸 막는다.
+    const { handle, onDetentChange } = setup()
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 2 })
+    fireEvent.pointerUp(handle, { clientY: 100, pointerId: 1 })
     expect(onDetentChange).not.toHaveBeenCalled()
   })
 
@@ -146,7 +181,10 @@ describe('BottomSheet', () => {
     setup()
     // 손잡이는 고정이고 내용만 흐른다 — full에서 상세를 스크롤할 때
     // 시트가 따라 내려가면 안 된다.
+    //
+    // `min-h-0`·`flex-1`까지 함께 건다. 실제로 넘치는 내용을 줄여 주는 건
+    // 이 둘이고, `overflow-y-auto`만 남으면 시트가 안 줄어든 채 통과한다.
     const scroller = screen.getByText('시트내용').parentElement as HTMLElement
-    expect(scroller.className).toContain('overflow-y-auto')
+    expect(scroller).toHaveClass('overflow-y-auto', 'min-h-0', 'flex-1')
   })
 })
