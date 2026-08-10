@@ -1597,7 +1597,7 @@ export function PopulationCard({ composition }: Props) {
 - [ ] **Step 4: 통과를 확인한다**
 
 Run: `npx vitest run src/components/home/PopulationCard.test.tsx`
-Expected: PASS (5개)
+Expected: PASS (7개)
 
 - [ ] **Step 5: 변이 확인**
 
