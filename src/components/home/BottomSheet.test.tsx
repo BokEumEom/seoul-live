@@ -39,10 +39,16 @@ function setup(onDetentChange = vi.fn(), detent: Detent = 'half') {
 // 한 손가락으로 끌었다 놓는 표준 시퀀스. 포인터 id가 섞이거나 취소가 끼는
 // 테스트는 이걸 쓰지 않는다 — 거기서는 어떤 이벤트가 어떤 id로 오는지가 곧
 // 검증 대상이다.
-function drag(handle: HTMLElement, from: number, to: number, release = to): void {
-  fireEvent.pointerDown(handle, { clientY: from, pointerId: 1 })
-  fireEvent.pointerMove(handle, { clientY: to, pointerId: 1 })
-  fireEvent.pointerUp(handle, { clientY: release, pointerId: 1 })
+function drag(
+  handle: HTMLElement,
+  from: number,
+  to: number,
+  options: { readonly release?: number; readonly pointerId?: number } = {},
+): void {
+  const { release = to, pointerId = 1 } = options
+  fireEvent.pointerDown(handle, { clientY: from, pointerId })
+  fireEvent.pointerMove(handle, { clientY: to, pointerId })
+  fireEvent.pointerUp(handle, { clientY: release, pointerId })
 }
 
 // 세 단계 모두를 확인한다. 한 단계만 보면 높이를 상수로 박아 둔 구현도 통과한다.
@@ -80,7 +86,7 @@ describe('BottomSheet', () => {
     // 위로 끌었다가 마음을 바꿔 도로 내리고 놓은 경우. 지나간 자리가 아니라
     // 손을 뗀 자리가 답이어야 한다.
     const { handle, onDetentChange } = setup()
-    drag(handle, 430, 100, 700)
+    drag(handle, 430, 100, { release: 700 })
     expect(onDetentChange).toHaveBeenCalledTimes(1)
     expect(onDetentChange).toHaveBeenLastCalledWith('peek')
   })
@@ -116,9 +122,28 @@ describe('BottomSheet', () => {
     const { handle, onDetentChange } = setup()
     fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
     fireEvent.pointerCancel(handle, { clientY: 430, pointerId: 1 })
-    drag(handle, 430, 100)
+    // 두 번째 제스처는 반드시 새 id로 와야 한다. 실제 터치는 취소된 포인터의
+    // id를 재사용하지 않고, 같은 id로 끌면 상한 추적 상태(`pointerIdRef`가 1로
+    // 남은 것)를 move·up 가드가 그대로 통과해 버려 결과가 정상과 똑같아진다 —
+    // 일어나지 않는 경우를 검증하면서 일어나는 경우를 놓치게 된다.
+    drag(handle, 430, 100, { pointerId: 2 })
     expect(onDetentChange).toHaveBeenCalledTimes(1)
     expect(onDetentChange).toHaveBeenLastCalledWith('full')
+  })
+
+  it('캡처 해제가 던져도 손잡이는 살아 있다', () => {
+    // 잠그는 것은 try/catch의 존재가 아니라 "정리가 던져도 다음 제스처가
+    // 여전히 먹는다"는 결과다. 목은 던지는 브라우저라는 전제를 공급하는
+    // 픽스처일 뿐 검증 대상이 아니다. 명세상 releasePointerCapture는 pointerId가
+    // 활성 포인터와 맞지 않으면 NotFoundError를 던진다.
+    const { handle, onDetentChange } = setup()
+    handle.releasePointerCapture = () => {
+      throw new DOMException('not an active pointer', 'NotFoundError')
+    }
+    drag(handle, 430, 100)
+    drag(handle, 430, 700, { pointerId: 2 })
+    expect(onDetentChange).toHaveBeenCalledTimes(2)
+    expect(onDetentChange).toHaveBeenLastCalledWith('peek')
   })
 
   it('끌지 않고 누르기만 하면 단계가 안 바뀐다', () => {

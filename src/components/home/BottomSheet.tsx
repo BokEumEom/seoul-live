@@ -130,6 +130,8 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
     <div
       ref={sheetRef}
       style={{ height: `${SHEET_RATIO[detent] * 100}%` }}
+      // 여기에 `overflow-hidden`을 걸지 마라. 손잡이의 히트 영역이 이 상자
+      // 위로 20px 나가 있어서 조용히 잘린다 — 아래 손잡이 주석을 볼 것.
       className="absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-2xl bg-surface-container-lowest shadow-floating transition-[height] duration-200 ease-out"
     >
       <div
@@ -149,6 +151,15 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
         // 영역을 내용 래퍼가 덮는다 — 형제 중 뒤에 있어 hit test에서 이긴다.
         // 늘려도 손에 닿지 않는다. (2) 손잡이 위가 지도라 빗나간 터치는 위로
         // 벗어난다. 그걸 지도 팬이 아니라 시트가 받게 하는 게 목적이다.
+        //
+        // 그 대가로 시트 위 20px 띠에서는 지도가 죽는다 — `touch-none` 상자라
+        // 그 띠의 마커 탭도 지도 팬도 먹지 않는다. 의도한 교환이지만 공짜는
+        // 아니다. peek(16%)에서는 화면 84% 지점을 가로지르는 죽은 띠가 된다.
+        //
+        // 그리고 이 20px은 시트 루트 밖으로 나가 있다. 루트에 `overflow-hidden`을
+        // 걸면 조용히 잘려 히트 영역이 24px로 돌아간다 — 테스트도 못 잡는다.
+        // 상단 요소가 둥근 모서리를 삐져나오거든 루트를 덮지 말고 그 요소를
+        // 깎아라.
         className="-mt-5 flex shrink-0 cursor-row-resize touch-none justify-center pt-7.5 pb-2.5"
       >
         <span className="h-1 w-9 rounded-full bg-outline-variant" />
