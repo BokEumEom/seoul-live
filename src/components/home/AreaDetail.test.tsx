@@ -194,6 +194,13 @@ describe('AreaDetail', () => {
     expect(onBack).toHaveBeenCalledTimes(1)
   })
 
+  // 루트가 flex flex-col(기본 align-items:stretch)이라 w-fit이 없으면 화면 폭
+  // 전체가 뒤로가기 타깃이 된다 — 상세 어디를 눌러도 목록으로 튕긴다.
+  it('목록으로 버튼이 글자 폭만 차지한다', () => {
+    render(<AreaDetail areaName="강남역" onBack={() => {}} onSelectArea={() => {}} />)
+    expect(screen.getByRole('button', { name: '목록으로' })).toHaveClass('w-fit')
+  })
+
   // 「근처 쾌적한 장소」는 좌표와 캐시가 둘 다 있어야 열린다. 기본 픽스처는
   // 좌표가 없어 이 가지에 닿지 않으므로 여기서만 채운다.
   it('근처 쾌적한 장소는 지금 보는 곳을 빼고 두 곳까지 보여준다', async () => {
