@@ -1477,9 +1477,13 @@ describe('PopulationCard', () => {
     expect(container.querySelectorAll('[data-age]')).toHaveLength(8)
   })
 
-  it('읽지 못해 전부 0이면 칩도 막대도 그리지 않는다', () => {
+  it('읽지 못해 전부 0이면 아무것도 그리지 않는다', () => {
     // 키는 왔는데 내용이 쓰레기인 경우다. 0을 사실처럼 그리면 없는 인구를
     // 지어낸다 — 균등 8칸 막대는 "연령대가 고르다"는 없는 사실까지 그린다.
+    //
+    // 제목만 남기지 않는다. 사용자에게 「키는 왔는데 쓰레기」와 「키가 안 왔다」는
+    // 구분할 이유가 없는 같은 상태(= 알 수 있는 게 없다)다. 구분이 필요한 건
+    // 개발자이고 그건 화면이 아니라 로그·스키마의 일이다.
     const { container } = render(
       <PopulationCard
         composition={composition({
@@ -1490,12 +1494,25 @@ describe('PopulationCard', () => {
         })}
       />,
     )
-    expect(screen.getByRole('heading', { name: '지금 누가 있나' })).toBeInTheDocument()
-    expect(screen.queryByText(/남 0%/)).toBeNull()
-    expect(screen.queryByText(/비상주/)).toBeNull()
-    expect(container.querySelectorAll('[data-age]')).toHaveLength(0)
+    expect(container).toBeEmptyDOMElement()
   })
 })
+```
+
+**섹션을 그릴지 말지는 이 카드가 정한다.** `Task 8`은 `composition != null`만 알고, 「읽을 수 있는 값이 하나라도 있나」는 칸마다 `> 0`을 보는 이 카드만 아는 규칙이다. 그 술어를 상세 화면에 복사하면 판정이 두 곳으로 갈라진다. `residentLabel`이 값 하나에 적용한 규칙을 구성 전체로 넓힌 것이므로 도메인에 둔다:
+
+```ts
+// src/domain/composition.ts
+/** 읽을 수 있는 값이 하나도 없으면 false. 0은 "못 읽음"일 수 있어(compositionSchema.ts의
+ *  rate()) 전부 0인 구성으로는 아무 말도 할 수 없다. residentLabel과 같은 규칙이다. */
+export function hasReadableComposition(c: PopulationComposition): boolean {
+  return (
+    c.maleRate > 0 ||
+    c.femaleRate > 0 ||
+    c.nonResidentRate > 0 ||
+    c.ageRates.some((rate) => rate > 0)
+  )
+}
 ```
 
 - [ ] **Step 2: 실패를 확인한다**
@@ -1561,17 +1578,22 @@ export function PopulationCard({ composition }: Props) {
         )}
       </div>
 
-      {/* 합이 100이라는 보장이 없다. 실제 합으로 나눠 폭을 낸다.
-          합이 0이면 균등 8칸을 그리는 대신 막대를 통째로 뺀다 — 균등 막대는
-          "모든 연령대가 고르게 있다"는 없는 사실을 그린다. */}
+      {/* 합이 100이라는 보장이 없다. 그렇다고 실제 합으로 나누면 안 된다 —
+          절반을 못 읽었을 때 남은 두 칸이 각각 50%로 부풀어 "이 둘이 전부"라는
+          없는 분포를 그리고, 바로 아래 글자(25%, 25%)와 모순된다.
+
+          Math.max(total, 100)이면 둘 다 맞는다. 합이 99면 눈에 안 보이는 1%
+          여백만 남고, 절반을 못 읽었으면 그 빈자리가 정직하게 남는다.
+
+          합이 0이면 막대를 통째로 뺀다 — 균등 8칸은 "연령대가 고르게 있다"는
+          없는 사실을 그린다. */}
       {total > 0 && (
         <>
           <div className="mt-3 flex h-2.5 overflow-hidden rounded-full">
             {composition.ageRates.map((value, index) => (
               <span
                 key={AGE_LABELS[index]}
-                data-age={AGE_LABELS[index]}
-                style={{ width: `${(value / total) * 100}%` }}
+                style={{ width: `${(value / Math.max(total, 100)) * 100}%` }}
                 className={AGE_CLASS[index]}
               />
             ))}
@@ -1622,6 +1644,19 @@ git commit -m "feat: 인구 구성 카드 추가"
 - Produces: 같은 컴포넌트. 별 아이콘이 액션 행의 「저장」 버튼이 된다
 
 「근처 쾌적한 장소」의 `AreaListItem` 목록은 이미 Task 4에서 `AreaList`로 감싸 뒀다. 이 태스크에서 그 절을 옮기거나 다시 쓸 일이 있으면 `AreaList`를 유지해라 — 행 간격 계약을 그 컴포넌트가 소유한다.
+
+### Task 7 리뷰에서 이월된 것 둘
+
+**(A) 인구 구성이 폴드 아래로 밀릴 수 있다.** 리뷰어가 HEAD의 `AreaDetail`을 390px 폭으로 실측했다 — 예측 섹션 바닥 y=596, 액션 행 바닥 y=716. 아래 Step 6대로 예측 **다음에** 넣으면 카드가 대략 y=608~735를 차지한다. 시트 `full`은 뷰포트의 92%이므로:
+
+| 기기 | 가용 높이 | 결과 |
+|---|---|---|
+| iPhone 14급(844px) | 약 730~750px | 간신히 걸치거나 아래 절반이 잘린다 |
+| 720~740px급 안드로이드 | 약 640px | **제목만 보이고 막대는 폴드 아래** |
+
+Step 4에서 히어로에 카테고리·거리·도보를 더하면 20~30px 더 내려간다. 이 카드는 **「인파레이더 대신 쓸 이유」를 만드는 자리**다 — 예측 섹션(262px)보다 **위로 올리는 것을 검토하라.** 올린다면 Step 6의 배치와 그 근거 주석을 함께 고쳐라.
+
+**(B) 막대 색이 인접 칸끼리 겹쳐 눈에는 최대 여섯 칸이다.** `AGE_CLASS`의 index 2·3이 둘 다 `bg-primary`, 6·7이 둘 다 `bg-surface-container`라 붙어 있는 칸이 한 덩어리로 보인다. 의도(「20~30대를 진하게」)는 알겠으나, 아래 라벨의 `<b>`가 `text-on-surface`(검정)라 **막대의 어느 색이 어느 연령대인지 이어주는 단서가 없다.** 실기기로 보고 정하라 — 라벨의 `<b>`를 해당 칸 색으로 주거나, 막대를 「가장 많은 층이 어디쯤인가」만 보여주는 장식으로 명시하고 문서화하는 두 길이 있다.
 
 - [ ] **Step 1: 실패 테스트를 더한다**
 
