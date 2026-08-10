@@ -9,6 +9,7 @@ import { useLocation } from '../app/locationContext'
 import { ErrorState } from '../components/common/ErrorState'
 import { SkeletonList } from '../components/common/SkeletonCard'
 import { AreaDetail } from '../components/home/AreaDetail'
+import { FilterChips } from '../components/home/FilterChips'
 import { SearchBar } from '../components/home/SearchBar'
 import { SplitPane } from '../components/home/SplitPane'
 import { AreaList } from '../components/list/AreaList'
@@ -18,7 +19,6 @@ import { LocationNotice } from '../components/list/LocationNotice'
 import { SortSegmented } from '../components/list/SortSegmented'
 import { CongestionMarker } from '../components/map/CongestionMarker'
 import { MapUnavailableNotice } from '../components/map/MapUnavailableNotice'
-import { PresetFilter } from '../components/map/PresetFilter'
 import { RecenterButton } from '../components/map/RecenterButton'
 import { AREA_CATALOG, AREA_NAMES } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
@@ -28,10 +28,11 @@ import {
   shouldShowMarkerLabel,
   toMapMarkers,
 } from '../domain/map'
-import { filterByPreset, presetCounts } from '../domain/presets'
+import { filterAreas, filterCounts } from '../domain/presets'
 import { searchAreas } from '../domain/search'
 import { SHEET_RATIO } from '../domain/sheet'
 import type { Coords } from '../domain/types'
+import { useFavorites } from '../hooks/useFavorites'
 import { useHomeFilters } from '../hooks/useHomeFilters'
 import { buildNearbyList } from '../hooks/useNearbyAreas'
 import {
@@ -60,6 +61,8 @@ export function HomeScreen({ focusArea = null }: Props) {
   const snapshots = useAreaSnapshots(AREA_NAMES)
   const location = useLocation()
   const filters = useHomeFilters()
+  // 즐겨찾기가 탭에서 필터 칩으로 옮겨 오면서 홈의 것이 됐다.
+  const { favorites } = useFavorites()
 
   // 초기 뷰는 위치 권한과 무관하게 서울 전역이다. 내 위치로 자동 이동하면
   // 서울 밖 사용자에게 마커가 하나도 없는 지도가 뜬다.
@@ -89,11 +92,18 @@ export function HomeScreen({ focusArea = null }: Props) {
     [snapshots.data, location.coords, filters.category, filters.sort],
   )
 
-  // 개수는 걸러지기 전 목록으로 센다. 걸러진 목록으로 세면 프리셋 하나를
-  // 고르는 순간 나머지 두 칩이 0이 되어 비활성으로 굳고, 다른 목적으로
-  // 갈아탈 방법이 사라진다.
-  const counts = presetCounts(list)
-  const visible = searchAreas(filterByPreset(list, filters.preset), filters.query)
+  // 개수는 걸러지기 전 목록으로 센다. 걸러진 목록으로 세면 칩 하나를 고르는
+  // 순간 나머지 셋이 0이 되어 비활성으로 굳고, 다른 목적으로 갈아탈 방법이
+  // 사라진다.
+  //
+  // 「내 장소」 개수를 favorites.length로 따로 세지 않는다. 그러면 카테고리로
+  // 좁혔거나 카탈로그에서 이름이 바뀐 곳까지 세어 칩의 숫자와 목록이 갈린다.
+  // filterCounts는 filterAreas를 그대로 부른다.
+  const counts = filterCounts(list, favorites)
+  const visible = searchAreas(
+    filterAreas(list, filters.filter, favorites),
+    filters.query,
+  )
 
   // 로딩 중에는 마커를 세우지 않는다. 스냅샷이 없는 명소는 회색 "정보 없음"으로
   // 그려지는데, 아직 안 온 것과 없는 것은 사용자에게 다른 말이다.
@@ -169,7 +179,15 @@ export function HomeScreen({ focusArea = null }: Props) {
         </Map>
       </APIProvider>
 
-      <PresetFilter counts={counts} value={filters.preset} onChange={filters.setPreset} />
+      {/* 칩 줄은 Task 9에서 시트 위 오버레이로 옮겨간다. 그때까지는
+          PresetFilter가 있던 자리를 그대로 쓴다 — 위치만 이 화면이 정한다. */}
+      <div className="absolute inset-x-0 top-4 z-20">
+        <FilterChips
+          counts={counts}
+          value={filters.filter}
+          onChange={filters.setFilter}
+        />
+      </div>
 
       {snapshots.isPending && (
         <div className="pointer-events-none absolute inset-x-0 top-20 z-20 flex justify-center">

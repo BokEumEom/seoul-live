@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import type { PresetKey } from '../domain/presets'
+import type { FilterKey } from '../domain/presets'
 import { SHEET_RATIO } from '../domain/sheet'
 import type { CategoryFilterValue, SortMode } from './useNearbyAreas'
 
@@ -8,8 +8,9 @@ export interface HomeFilters {
   readonly setQuery: (next: string) => void
   readonly category: CategoryFilterValue
   readonly setCategory: (next: CategoryFilterValue) => void
-  readonly preset: PresetKey | null
-  readonly setPreset: (next: PresetKey | null) => void
+  /** 즐겨찾기와 목적 프리셋이 한 칸을 나눠 쓴다 — 칩 줄이 배타적이다. */
+  readonly filter: FilterKey | null
+  readonly setFilter: (next: FilterKey | null) => void
   readonly sort: SortMode
   readonly setSort: (next: SortMode) => void
   readonly selectedName: string | null
@@ -23,7 +24,7 @@ export interface HomeFilters {
 export function useHomeFilters(): HomeFilters {
   const [query, setQueryRaw] = useState('')
   const [category, setCategoryRaw] = useState<CategoryFilterValue>('전체')
-  const [preset, setPresetRaw] = useState<PresetKey | null>(null)
+  const [filter, setFilterRaw] = useState<FilterKey | null>(null)
   const [sort, setSort] = useState<SortMode>('distance')
   const [selectedName, setSelectedName] = useState<string | null>(null)
   const [mapRatio, setMapRatio] = useState(SHEET_RATIO.half)
@@ -42,8 +43,8 @@ export function useHomeFilters(): HomeFilters {
     setSelectedName(null)
   }, [])
 
-  const setPreset = useCallback((next: PresetKey | null) => {
-    setPresetRaw(next)
+  const setFilter = useCallback((next: FilterKey | null) => {
+    setFilterRaw(next)
     setSelectedName(null)
   }, [])
 
@@ -52,8 +53,8 @@ export function useHomeFilters(): HomeFilters {
     setQuery,
     category,
     setCategory,
-    preset,
-    setPreset,
+    filter,
+    setFilter,
     sort,
     setSort,
     selectedName,

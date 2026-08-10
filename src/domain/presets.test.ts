@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterByPreset, PRESETS, presetCounts } from './presets'
+import { filterAreas, filterByPreset, filterCounts, PRESETS } from './presets'
 import type {
   AreaCategory,
   AreaSnapshot,
@@ -195,8 +195,41 @@ describe('filterByPreset', () => {
   })
 })
 
-describe('presetCounts', () => {
-  it('프리셋별 개수를 센다', () => {
+describe('filterAreas', () => {
+  const areas = [
+    area('남산공원', '공원', '여유', ['kids', 'date']),
+    area('성수카페거리', '발달상권', '붐빔', ['date']),
+    area('강남역', '인구밀집지역', '붐빔'),
+  ]
+
+  it('내 장소는 담아둔 이름만 남긴다', () => {
+    const picked = filterAreas(areas, 'fav', ['강남역', '남산공원'])
+
+    expect(picked.map((item) => item.entry.name)).toEqual(['남산공원', '강남역'])
+  })
+
+  it('담아둔 이름이 목록에 없으면 그냥 빠진다', () => {
+    // 카테고리로 좁혔거나 카탈로그에서 이름이 바뀐 경우다. 저장된 개수를
+    // 그대로 쓰면 칩에 2라고 써놓고 목록에는 1개만 뜬다.
+    const picked = filterAreas(areas, 'fav', ['강남역', '사라진곳'])
+
+    expect(picked.map((item) => item.entry.name)).toEqual(['강남역'])
+  })
+
+  it('프리셋 키는 filterByPreset과 같은 결과를 준다', () => {
+    // 즐겨찾기를 끼워 넣으면서 프리셋 쪽 술어가 갈라지지 않았는지 본다.
+    for (const key of ['kids', 'date', 'hot'] as const) {
+      expect(filterAreas(areas, key, [])).toEqual(filterByPreset(areas, key))
+    }
+  })
+
+  it('필터가 없으면 전체를 그대로 돌려준다', () => {
+    expect(filterAreas(areas, null, ['강남역'])).toBe(areas)
+  })
+})
+
+describe('filterCounts', () => {
+  it('칩 넷의 개수를 센다', () => {
     const areas = [
       area('남산공원', '공원', '여유', ['kids', 'date']),
       area('서울숲공원', '공원', '보통', ['kids', 'date']),
@@ -204,11 +237,17 @@ describe('presetCounts', () => {
       area('강남역', '인구밀집지역', '붐빔'),
     ]
 
-    expect(presetCounts(areas)).toEqual({ kids: 2, date: 2, hot: 2 })
+    expect(filterCounts(areas, ['강남역'])).toEqual({
+      fav: 1,
+      kids: 2,
+      date: 2,
+      hot: 2,
+    })
   })
 
   it('해당 없으면 0이다', () => {
-    expect(presetCounts([area('강남역', '인구밀집지역', '붐빔')])).toEqual({
+    expect(filterCounts([area('강남역', '인구밀집지역', '붐빔')], [])).toEqual({
+      fav: 0,
       kids: 0,
       date: 0,
       hot: 1,
@@ -217,7 +256,8 @@ describe('presetCounts', () => {
 
   it('개수와 필터 결과 길이가 항상 같다', () => {
     // 둘이 어긋나면 칩에 "3"이라고 써놓고 마커는 5개가 뜬다. 같은 술어를
-    // 쓰는지 여기서 고정한다.
+    // 쓰는지 여기서 고정한다. 즐겨찾기도 예외가 아니다 — 「사라진곳」은
+    // 저장돼 있지만 목록에 없다.
     const areas = [
       area('남산공원', '공원', '여유', ['kids', 'date']),
       area('여의도한강공원', '공원', '약간 붐빔', ['kids', 'date']),
@@ -225,10 +265,12 @@ describe('presetCounts', () => {
       area('강남역', '인구밀집지역', '붐빔'),
       area('경복궁', '고궁·문화유산', null, ['date']),
     ]
+    const favorites = ['남산공원', '인사동', '사라진곳']
 
-    const counts = presetCounts(areas)
-    for (const key of ['kids', 'date', 'hot'] as const) {
-      expect(filterByPreset(areas, key)).toHaveLength(counts[key])
+    const counts = filterCounts(areas, favorites)
+    for (const key of ['fav', 'kids', 'date', 'hot'] as const) {
+      expect(filterAreas(areas, key, favorites)).toHaveLength(counts[key])
     }
+    expect(counts.fav).toBe(2)
   })
 })

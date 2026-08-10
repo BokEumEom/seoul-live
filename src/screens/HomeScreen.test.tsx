@@ -28,6 +28,17 @@ vi.mock('@vis.gl/react-google-maps', () => ({
   ),
 }))
 
+// 즐겨찾기 저장소를 고정한다. 브리지가 없는 환경을 흉내 내 localStorage
+// 폴백을 타게 한다 — 실제 SDK에 기대면 결과가 SDK 동작에 묶인다.
+vi.mock('@apps-in-toss/web-framework', () => ({
+  Storage: {
+    getItem: vi.fn(() => Promise.reject(new Error('브리지 없음'))),
+    setItem: vi.fn(() => Promise.reject(new Error('브리지 없음'))),
+  },
+  Device: { openURL: vi.fn(() => Promise.reject(new Error('브리지 없음'))) },
+  Share: { sendMessage: vi.fn(() => Promise.reject(new Error('브리지 없음'))) },
+}))
+
 vi.mock('../data/queries', () => ({
   useAreaSnapshots: vi.fn(),
   useAreaSnapshot: vi.fn(),
@@ -192,6 +203,43 @@ describe('HomeScreen', () => {
     await userEvent.click(kidsChip)
 
     expect(screen.getByRole('tab', { name: /지금 핫플 20/ })).toBeEnabled()
+  })
+
+  it('내 장소 칩이 즐겨찾기만 남긴다', async () => {
+    localStorage.setItem('seoul-live:favorites', JSON.stringify(['경복궁']))
+    render(<HomeScreen />)
+
+    await userEvent.click(await screen.findByRole('tab', { name: '내 장소 1' }))
+
+    expect(listItem(/경복궁/).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: /강남역/ })).toBeNull()
+  })
+
+  it('내 장소 개수는 지금 목록에 있는 것만 센다', async () => {
+    // 저장된 이름을 그대로 세면 칩에 2라고 써놓고 목록에는 1곳만 뜬다.
+    // 카테고리로 좁혔거나 카탈로그에서 이름이 바뀐 경우에 실제로 갈린다.
+    localStorage.setItem(
+      'seoul-live:favorites',
+      JSON.stringify(['강남역', '사라진곳']),
+    )
+    render(<HomeScreen />)
+    expect(await screen.findByRole('tab', { name: '내 장소 1' })).toBeEnabled()
+
+    await userEvent.click(screen.getByRole('tab', { name: '공원' }))
+
+    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeDisabled()
+  })
+
+  it('상세에서 별을 누르면 내 장소 칩이 곧바로 는다', async () => {
+    // 칩과 별이 각자 useFavorites를 부른다. 둘이 따로 놀면 방금 담은 곳이
+    // 칩에 안 잡히고, 0인 칩은 비활성이라 필터를 켤 방법이 없어진다.
+    render(<HomeScreen />)
+    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeDisabled()
+
+    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(screen.getByRole('button', { name: '즐겨찾기에 추가' }))
+
+    expect(await screen.findByRole('tab', { name: '내 장소 1' })).toBeEnabled()
   })
 
   it('카테고리를 고르면 목록이 그 분류만 남는다', async () => {

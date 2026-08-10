@@ -3,6 +3,13 @@ import type { NearbyArea, Purpose } from './types'
 
 export type PresetKey = 'kids' | 'date' | 'hot'
 
+/** 필터 칩 한 줄의 값. 즐겨찾기는 프리셋이 아니지만 같은 줄에서 배타적으로
+ * 동작한다.
+ *
+ * 교집합(내 장소 ∩ 아이와 나들이)을 지원하지 않는 이유는 30곳 규모에서
+ * 결과가 0이 되기 쉬워서다. */
+export type FilterKey = 'fav' | PresetKey
+
 export interface Preset {
   readonly key: PresetKey
   readonly label: string
@@ -57,21 +64,36 @@ export function filterByPreset(
   return found === undefined ? areas : areas.filter(found.matches)
 }
 
-// filterByPreset을 그대로 부른다. 개수와 실제 필터가 같은 술어를 쓴다는 것이
-// 구조로 보장돼야, 칩에 "3"이라고 써놓고 마커가 5개 뜨는 일이 없다.
-function countMatching(
+/** 필터 칩 한 줄이 쓰는 유일한 술어. 즐겨찾기는 사용자 상태(저장된 이름)에
+ * 달려 있어 `PRESETS`의 `matches`로는 표현할 수 없지만, 개수와 목록이 갈라지지
+ * 않으려면 술어가 한 곳에 있어야 한다.
+ *
+ * `favorites`에 있는 이름이라도 `areas`에 없으면 그냥 빠진다 — 카테고리로
+ * 좁혔거나 카탈로그에서 이름이 바뀐 경우다. */
+export function filterAreas(
   areas: readonly NearbyArea[],
-  key: PresetKey,
-): number {
-  return filterByPreset(areas, key).length
+  filter: FilterKey | null,
+  favorites: readonly string[],
+): readonly NearbyArea[] {
+  if (filter === 'fav') {
+    return areas.filter((area) => favorites.includes(area.entry.name))
+  }
+  return filterByPreset(areas, filter)
 }
 
-export function presetCounts(
+// filterAreas를 그대로 부른다. 개수와 실제 필터가 같은 술어를 쓴다는 것이
+// 구조로 보장돼야, 칩에 "3"이라고 써놓고 마커가 5개 뜨는 일이 없다.
+export function filterCounts(
   areas: readonly NearbyArea[],
-): Readonly<Record<PresetKey, number>> {
+  favorites: readonly string[],
+): Readonly<Record<FilterKey, number>> {
+  const count = (key: FilterKey): number =>
+    filterAreas(areas, key, favorites).length
+
   return {
-    kids: countMatching(areas, 'kids'),
-    date: countMatching(areas, 'date'),
-    hot: countMatching(areas, 'hot'),
+    fav: count('fav'),
+    kids: count('kids'),
+    date: count('date'),
+    hot: count('hot'),
   }
 }
