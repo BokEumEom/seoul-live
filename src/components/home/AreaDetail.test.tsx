@@ -285,6 +285,31 @@ describe('AreaDetail', () => {
     expect(screen.getByRole('status')).toHaveTextContent('강남역 저장 해제')
   })
 
+  // 「근처 쾌적한 장소」로 갈아타도 액션 행은 언마운트되지 않는다. key가 없으면
+  // 리전에 앞 명소 문구가 남아, 경복궁을 보는데 「강남역 저장됨」이라 적혀 있다.
+  it('명소를 갈아타면 저장 알림을 비운다', async () => {
+    const { rerender } = renderDetail()
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    expect(screen.getByRole('status')).toHaveTextContent('강남역 저장됨')
+
+    rerender(
+      <AreaDetail areaName="경복궁" onBack={() => {}} onSelectArea={() => {}} />,
+    )
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+
+  // 로딩 중에는 배지를 그리지 않는다. null을 넘기면 CongestionBadge가
+  // 「정보 없음」을 띄우는데, 아직 안 왔을 뿐인 것을 없다고 단정하는 말이다.
+  it('혼잡도가 오기 전에는 배지를 그리지 않는다', () => {
+    useAreaSnapshot.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+    } as UseQueryResult<AreaSnapshot>)
+    renderDetail()
+    expect(screen.queryByText('정보 없음')).toBeNull()
+  })
+
   // Google Maps의 Directions·Save·Share 자리다. 저장을 공유 아래 한 줄로 더
   // 쌓으면 액션 행이 세 줄이 되어 그만큼 아래가 폴드 밖으로 밀린다(계획서 Step 3).
   it('저장이 공유와 같은 줄에 같은 기하로 선다', () => {

@@ -9,7 +9,7 @@ import { useFavorites } from '../../hooks/useFavorites'
 import { ErrorState } from '../common/ErrorState'
 import { Icon } from '../common/Icon'
 import { SkeletonList } from '../common/SkeletonCard'
-import { ActionButtons } from '../forecast/ActionButtons'
+import { ActionButtons } from './ActionButtons'
 import { ForecastChart } from '../forecast/ForecastChart'
 
 interface Props {
@@ -70,8 +70,18 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
           어느 대상 기기에서도 폴드 밖이라, 헤더의 별이 늘 보이던 것보다 못해진다.
           혼잡도 응답 밖인 이유는 카탈로그만 있으면 길찾기·공유·저장이 성립하기
           때문이다 — API가 흔들린 날 이 셋까지 사라지면 안 된다.
-          즐겨찾기라는 사실은 여기 남는다. 넘기는 건 눌림 상태와 콜백뿐이다. */}
-      <ActionButtons entry={entry} saved={starred} onSave={() => toggle(areaName)} />
+          즐겨찾기라는 사실은 여기 남는다. 넘기는 건 눌림 상태와 콜백뿐이다.
+
+          key를 명소 이름으로 두는 이유: 「근처 쾌적한 장소」로 갈아타면 이
+          컴포넌트가 언마운트되지 않아 저장 알림 리전에 앞 명소 문구가 남는다.
+          다시 낭독되지는 않지만 리전을 훑는 사용자에게는 지금 화면과 무관한
+          말이 적혀 있게 된다. */}
+      <ActionButtons
+        key={entry.name}
+        entry={entry}
+        saved={starred}
+        onSave={() => toggle(areaName)}
+      />
 
       {query.isPending && (
         <div className="px-4">
