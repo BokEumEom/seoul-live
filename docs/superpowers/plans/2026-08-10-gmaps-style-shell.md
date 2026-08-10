@@ -40,6 +40,7 @@
 | `src/domain/composition.ts` | 인구 구성 타입과 표시용 파생값 |
 | `src/data/compositionSchema.ts` | 원본 payload에서 인구 구성을 관대하게 읽는다 |
 | `src/components/home/BottomSheet.tsx` | 오버레이 시트 (3단 스냅, 드래그) |
+| `src/components/list/AreaList.tsx` | 구분선 목록 컨테이너. 행 간격 계약을 소유한다 (Task 4) |
 | `src/components/home/SummaryStrip.tsx` | 시트 상단 한 줄 요약 |
 | `src/components/home/FilterChips.tsx` | 「★ 내 장소」 + 목적 프리셋 칩 |
 | `src/components/home/PopulationCard.tsx` | 성별·연령·상주 비율 |
@@ -1606,8 +1607,10 @@ git commit -m "feat: 인구 구성 카드 추가"
 - Modify: `src/components/home/AreaDetail.tsx`, `src/components/home/AreaDetail.test.tsx`
 
 **Interfaces:**
-- Consumes: `PopulationCard` (Task 7), 기존 `ActionButtons`·`ForecastChart`·`cityinfo/*`
+- Consumes: `PopulationCard` (Task 7), `AreaList` (Task 4), 기존 `ActionButtons`·`ForecastChart`·`cityinfo/*`
 - Produces: 같은 컴포넌트. 별 아이콘이 액션 행의 「저장」 버튼이 된다
+
+「근처 쾌적한 장소」의 `AreaListItem` 목록은 이미 Task 4에서 `AreaList`로 감싸 뒀다. 이 태스크에서 그 절을 옮기거나 다시 쓸 일이 있으면 `AreaList`를 유지해라 — 행 간격 계약을 그 컴포넌트가 소유한다.
 
 - [ ] **Step 1: 실패 테스트를 더한다**
 
@@ -1770,6 +1773,8 @@ git commit -m "feat: 상세에 액션 행과 인구 구성을 더한다"
 - Produces: `function HomeScreen(): JSX.Element` — `focusArea` prop이 없어진다
 
 시트 안 내용이 셋으로 갈린다: 목록 / 상세 / 오늘의 서울.
+
+**목록은 `AreaList`로 감싼다**(Task 4에서 만들었다). 행이 아래 구분선으로 갈리므로 컨테이너가 간격을 주면 구분선이 허공에 뜬다 — 그 계약을 컨테이너 컴포넌트가 소유한다. `import { AreaList } from '../components/list/AreaList'`.
 
 ### Task 3 리뷰에서 이월된 결정 사항 세 가지
 
@@ -2055,14 +2060,16 @@ export function HomeScreen() {
         </p>
       )}
 
-      {visible.map((area) => (
-        <AreaListItem
-          key={area.entry.code}
-          area={area}
-          favorite={favorites.includes(area.entry.name)}
-          onSelect={openArea}
-        />
-      ))}
+      <AreaList>
+        {visible.map((area) => (
+          <AreaListItem
+            key={area.entry.code}
+            area={area}
+            favorite={favorites.includes(area.entry.name)}
+            onSelect={openArea}
+          />
+        ))}
+      </AreaList>
     </>
   )
 
