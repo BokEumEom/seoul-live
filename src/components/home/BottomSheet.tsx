@@ -30,6 +30,8 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
   const sheetRef = useRef<HTMLDivElement>(null)
   // 잡고 있는 포인터의 id. 두 손가락이 닿아도 처음 것만 손잡이를 움직인다.
   const pointerIdRef = useRef<number | null>(null)
+  // 끌었는지 여부만 기억한다. 좌표는 손을 떼는 순간에 한 번만 읽으므로,
+  // 이 값이 참이라고 해서 그때 비율을 낼 수 있었다는 뜻은 아니다.
   const movedRef = useRef(false)
 
   function detentFromY(clientY: number): Detent | null {
@@ -56,6 +58,8 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
     if (pointerIdRef.current !== event.pointerId) {
       return
     }
+    // 좌표를 보지 않는다. 끄는 동안 높이가 변하지 않으니 여기서 비율을 낼
+    // 이유가 없다 — 움직였다는 사실만 남긴다.
     movedRef.current = true
   }
 
@@ -74,6 +78,10 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
     }
     movedRef.current = false
     const next = detentFromY(event.clientY)
+    // 놓은 자리를 계산할 수 없으면(끄는 사이에 부모가 접혔다) 단계를 바꾸지
+    // 않는다. 빠뜨린 게 아니라 고른 것이다 — 여기서 쓸 수 있는 다른 값은
+    // 끌던 도중의 낡은 값뿐이고, 그건 손을 뗀 자리에 대한 추측이다. 사용자에게
+    // "끌었는데 안 붙었다"로 보이는 편이 엉뚱한 단계로 튀는 것보다 낫다.
     if (next === null) return
     onDetentChange(next)
   }
