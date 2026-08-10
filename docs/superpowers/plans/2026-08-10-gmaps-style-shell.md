@@ -261,7 +261,7 @@ git commit -m "refactor: 분할 비율을 시트 3단 비율로 교체"
 - Produces:
   - `interface PopulationComposition { maleRate, femaleRate, nonResidentRate, ageRates }`
   - `const AGE_LABELS: readonly string[]` — 8단계
-  - `function residentLabel(c: PopulationComposition): string`
+  - `function residentLabel(c: PopulationComposition): string | null` — 비상주가 0이면 `null`. `rate()`가 못 읽은 값을 0으로 떨어뜨리므로, 0을 근거로 장소를 단정하지 않는다. `PopulationCard`는 JSX에 그대로 넣으면 되고 null은 아무것도 그리지 않는다.
   - `function parseComposition(payload: unknown, expectedName: string): PopulationComposition | null`
   - `AreaSnapshot`에 `readonly composition: PopulationComposition | null` 추가
 
@@ -1440,6 +1440,14 @@ describe('PopulationCard', () => {
   it('비상주가 적으면 동네 생활권이라고 말한다', () => {
     render(<PopulationCard composition={composition({ nonResidentRate: 22 })} />)
     expect(screen.getByText('동네 생활권이에요')).toBeInTheDocument()
+  })
+
+  it('비상주가 0이면 아무 말도 하지 않는다', () => {
+    // rate()가 못 읽은 값을 0으로 떨어뜨린다. 못 읽은 0으로 장소를 단정하지
+    // 않는다 — residentLabel이 null을 주고 JSX는 아무것도 그리지 않는다.
+    render(<PopulationCard composition={composition({ nonResidentRate: 0 })} />)
+    expect(screen.queryByText('동네 생활권이에요')).toBeNull()
+    expect(screen.queryByText('외지인이 많아요')).toBeNull()
   })
 
   it('비중이 큰 연령대만 라벨로 적는다', () => {
