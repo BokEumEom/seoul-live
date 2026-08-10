@@ -1189,7 +1189,10 @@ git commit -m "feat: 시트 상단 요약 스트립 추가"
 **Files:**
 - Create: `src/components/home/FilterChips.tsx`, `src/components/home/FilterChips.test.tsx`
 - Delete: `src/components/map/PresetFilter.tsx`, `src/components/map/PresetFilter.test.tsx`
-- Modify: `src/domain/presets.ts`, `src/hooks/useHomeFilters.ts`
+- Modify: `src/domain/presets.ts`, `src/hooks/useHomeFilters.ts`, `src/hooks/useHomeFilters.test.ts`
+- Modify (전환 배선 — Step 6·7): `src/screens/HomeScreen.tsx`, `src/screens/HomeScreen.test.tsx`
+
+`HomeScreen`은 Task 9에서 전면 재작성되지만 **그때까지 빌드와 테스트가 서 있어야 한다.** `preset`/`setPreset`이 `filter`/`setFilter`로 바뀌고 `PresetFilter`가 사라지므로 소비처를 함께 고치지 않으면 이 커밋에서 `tsc -b`가 깨진다. `HomeScreen`에는 지금 `useFavorites`가 없다(즐겨찾기는 `FavoritesScreen`에만 있었다) — Step 6에서 들여온다.
 
 **Interfaces:**
 - Consumes: `PRESETS`, `PresetKey`, `presetCounts`
