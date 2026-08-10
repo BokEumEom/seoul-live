@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { PresetKey } from '../domain/presets'
-import { DEFAULT_MAP_RATIO } from '../domain/split'
+import { SHEET_RATIO } from '../domain/sheet'
 import type { CategoryFilterValue, SortMode } from './useNearbyAreas'
 
 export interface HomeFilters {
@@ -26,7 +26,7 @@ export function useHomeFilters(): HomeFilters {
   const [preset, setPresetRaw] = useState<PresetKey | null>(null)
   const [sort, setSort] = useState<SortMode>('distance')
   const [selectedName, setSelectedName] = useState<string | null>(null)
-  const [mapRatio, setMapRatio] = useState(DEFAULT_MAP_RATIO)
+  const [mapRatio, setMapRatio] = useState(SHEET_RATIO.half)
 
   // 목록에서 빠질 수 있는 조작은 선택을 해제한다. 걸러져 사라진 명소의
   // 상세가 남으면 목록에 없는 곳의 요약이 떠 있는 상태가 된다.

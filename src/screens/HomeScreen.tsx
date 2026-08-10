@@ -29,7 +29,7 @@ import {
 } from '../domain/map'
 import { filterByPreset, presetCounts } from '../domain/presets'
 import { searchAreas } from '../domain/search'
-import { MIN_MAP_RATIO } from '../domain/split'
+import { SHEET_RATIO } from '../domain/sheet'
 import type { Coords } from '../domain/types'
 import { useHomeFilters } from '../hooks/useHomeFilters'
 import { buildNearbyList } from '../hooks/useNearbyAreas'
@@ -255,7 +255,7 @@ export function HomeScreen({ focusArea = null }: Props) {
           차지할 이유가 없다. */}
       <div className="h-[calc(100%-4rem)]">
         <SplitPane
-          ratio={mapReady ? filters.mapRatio : MIN_MAP_RATIO}
+          ratio={mapReady ? filters.mapRatio : SHEET_RATIO.peek}
           onRatioChange={filters.setMapRatio}
           top={mapPane}
           bottom={listPane}

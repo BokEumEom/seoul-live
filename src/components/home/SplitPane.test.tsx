@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { DEFAULT_MAP_RATIO, MAX_MAP_RATIO, MIN_MAP_RATIO } from '../../domain/split'
+import { SHEET_RATIO } from '../../domain/sheet'
 import { SplitPane } from './SplitPane'
 
-function setup(onRatioChange = vi.fn(), ratio = DEFAULT_MAP_RATIO) {
+function setup(onRatioChange = vi.fn(), ratio = SHEET_RATIO.half) {
   render(
     <SplitPane
       ratio={ratio}
@@ -51,8 +51,8 @@ describe('SplitPane', () => {
   it('손잡이를 끌어 놓으면 스냅점으로 붙는다', () => {
     const { handle, onRatioChange } = setup()
     drag(handle, 280, 560)
-    // 560 / 800 = 0.7 → 가장 가까운 스냅점은 0.75
-    expect(onRatioChange).toHaveBeenLastCalledWith(MAX_MAP_RATIO)
+    // 560 / 800 = 0.7 → half(0.46)보다 full(0.92)이 가깝다
+    expect(onRatioChange).toHaveBeenLastCalledWith(SHEET_RATIO.full)
   })
 
   it('끄는 도중에는 스냅하지 않고 손끝을 따라간다', () => {
@@ -67,9 +67,9 @@ describe('SplitPane', () => {
     const { handle, onRatioChange } = setup()
     fireEvent.pointerDown(handle, { clientY: 280, pointerId: 1 })
     fireEvent.pointerMove(handle, { clientY: 790, pointerId: 1 })
-    expect(onRatioChange).toHaveBeenLastCalledWith(MAX_MAP_RATIO)
+    expect(onRatioChange).toHaveBeenLastCalledWith(SHEET_RATIO.full)
     fireEvent.pointerMove(handle, { clientY: 10, pointerId: 1 })
-    expect(onRatioChange).toHaveBeenLastCalledWith(MIN_MAP_RATIO)
+    expect(onRatioChange).toHaveBeenLastCalledWith(SHEET_RATIO.peek)
   })
 
   it('끌지 않고 누르기만 하면 비율이 안 바뀐다', () => {
@@ -96,7 +96,7 @@ describe('SplitPane', () => {
   it('더블클릭하면 기본값으로 돌아간다', () => {
     const { handle, onRatioChange } = setup()
     fireEvent.doubleClick(handle)
-    expect(onRatioChange).toHaveBeenCalledWith(DEFAULT_MAP_RATIO)
+    expect(onRatioChange).toHaveBeenCalledWith(SHEET_RATIO.half)
   })
 
   it('손잡이에 접근 가능한 이름이 있다', () => {

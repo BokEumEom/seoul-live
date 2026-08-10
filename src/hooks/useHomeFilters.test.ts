@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_MAP_RATIO, MAX_MAP_RATIO } from '../domain/split'
+import { SHEET_RATIO } from '../domain/sheet'
 import { useHomeFilters } from './useHomeFilters'
 
 describe('useHomeFilters', () => {
@@ -11,7 +11,7 @@ describe('useHomeFilters', () => {
     expect(result.current.preset).toBeNull()
     expect(result.current.sort).toBe('distance')
     expect(result.current.selectedName).toBeNull()
-    expect(result.current.mapRatio).toBe(DEFAULT_MAP_RATIO)
+    expect(result.current.mapRatio).toBe(SHEET_RATIO.half)
   })
 
   // 목록에서 빠질 수 있는 조작은 선택을 해제한다. 걸러져 사라진 명소의
@@ -49,8 +49,8 @@ describe('useHomeFilters', () => {
   it('분할 비율을 바꿔도 선택은 유지된다', () => {
     const { result } = renderHook(() => useHomeFilters())
     act(() => result.current.setSelectedName('강남역'))
-    act(() => result.current.setMapRatio(MAX_MAP_RATIO))
-    expect(result.current.mapRatio).toBe(MAX_MAP_RATIO)
+    act(() => result.current.setMapRatio(SHEET_RATIO.full))
+    expect(result.current.mapRatio).toBe(SHEET_RATIO.full)
     expect(result.current.selectedName).toBe('강남역')
   })
 

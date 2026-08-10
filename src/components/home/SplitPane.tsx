@@ -1,5 +1,5 @@
 import { useRef, type PointerEvent, type ReactNode } from 'react'
-import { clampRatio, DEFAULT_MAP_RATIO, snapRatio } from '../../domain/split'
+import { clampSheetRatio, nearestDetent, SHEET_RATIO } from '../../domain/sheet'
 
 interface Props {
   readonly ratio: number
@@ -8,7 +8,7 @@ interface Props {
   readonly bottom: ReactNode
 }
 
-// 드래그 로직은 여기 있고 비율 계산은 domain/split.ts에 있다. 나눠 둔 이유는
+// 드래그 로직은 여기 있고 비율 계산은 domain/sheet.ts에 있다. 나눠 둔 이유는
 // clamp·스냅을 제스처 없이 테스트하려는 것이다.
 //
 // 끄는 동안에는 clamp만 하고 놓을 때 스냅한다. 끄는 중에 붙이면 손잡이가
@@ -27,7 +27,7 @@ export function SplitPane({ ratio, onRatioChange, top, bottom }: Props) {
     if (rect === undefined || rect.height === 0) {
       return null
     }
-    return clampRatio((clientY - rect.top) / rect.height)
+    return clampSheetRatio((clientY - rect.top) / rect.height)
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>): void {
@@ -66,7 +66,7 @@ export function SplitPane({ ratio, onRatioChange, top, bottom }: Props) {
     movedRef.current = false
     const next = ratioFromY(event.clientY)
     if (next === null) return
-    onRatioChange(snapRatio(next))
+    onRatioChange(SHEET_RATIO[nearestDetent(next)])
   }
 
   return (
@@ -83,7 +83,7 @@ export function SplitPane({ ratio, onRatioChange, top, bottom }: Props) {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        onDoubleClick={() => onRatioChange(DEFAULT_MAP_RATIO)}
+        onDoubleClick={() => onRatioChange(SHEET_RATIO.half)}
         className="flex h-5 shrink-0 cursor-row-resize touch-none items-center justify-center border-y border-outline-variant bg-surface-container"
       >
         <span className="h-1 w-9 rounded-full bg-outline" />
