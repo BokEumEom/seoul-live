@@ -197,7 +197,7 @@ export function nearestDetent(ratio: number): Detent {
 - [ ] **Step 4: 통과를 확인한다**
 
 Run: `npx vitest run src/domain/sheet.test.ts`
-Expected: PASS (12개)
+Expected: PASS (11개)
 
 - [ ] **Step 5: `split.ts`를 지우고 소비처를 바꾼다**
 
