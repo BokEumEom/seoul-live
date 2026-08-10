@@ -69,14 +69,28 @@ describe('AreaListItem', () => {
     expect(screen.queryByText(/11:00/)).toBeNull()
   })
 
-  it('즐겨찾기면 별을 붙인다', () => {
+  // 속성이 아니라 계산된 이름을 잠근다. `getByLabelText`는 role과 무관하게
+  // `aria-label` 속성만 보므로, 이름을 받을 수 없는 요소에 붙은 label도
+  // 통과시킨다.
+  //
+  // 한계를 밝혀 둔다: role 없는 `<span>`은 `generic`이고 ARIA 1.2에서 generic은
+  // 이름을 받는 게 금지돼 있다("Name from author: prohibited"). Chromium(토스
+  // 안드로이드 웹뷰)·Firefox는 이 금지를 구현해 `aria-label`을 버리는데,
+  // **jsdom은 이 금지를 모형화하지 않는다** — `role="img"`을 지우고 재봤더니
+  // `toHaveAccessibleName`은 그대로 통과했다. 즉 이 결함 자체를 잡는 건
+  // `getByRole('img', ...)`(role이 없으면 못 찾는다)이고,
+  // `toHaveAccessibleName`은 label이 버튼 이름까지 닿는지만 본다.
+  // 실기기 검증은 여기서 대신할 수 없다.
+  it('즐겨찾기면 이름을 받을 수 있는 별을 붙인다', () => {
     render(<AreaListItem area={area()} favorite onSelect={() => {}} />)
-    expect(screen.getByLabelText('즐겨찾기')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: '즐겨찾기한 곳' })).toBeInTheDocument()
+    expect(screen.getByRole('button')).toHaveAccessibleName(/즐겨찾기한 곳/)
   })
 
   it('즐겨찾기가 아니면 별이 없다', () => {
     render(<AreaListItem area={area()} onSelect={() => {}} />)
-    expect(screen.queryByLabelText('즐겨찾기')).toBeNull()
+    expect(screen.queryByRole('img', { name: '즐겨찾기한 곳' })).toBeNull()
+    expect(screen.getByRole('button')).not.toHaveAccessibleName(/즐겨찾기/)
   })
 
   it('누르면 명소 이름을 올려보낸다', async () => {
@@ -105,9 +119,14 @@ describe('AreaListItem', () => {
     expect(screen.getByRole('button')).toHaveClass('last:border-b-0')
   })
 
-  it('행이 최소 탭 영역 48px을 지킨다', () => {
+  // 59px 피치를 만드는 조합이다: py-2(8+8) + 이름 줄높이 24 + mt-0.5(2) +
+  // 보조 줄높이 16 + 구분선 1. `min-h-12`는 하한일 뿐 실제 높이를 정하지
+  // 않으므로 하한만 단언하면 **59px을 48px로 깎는 변경**(이 컴포넌트의 목적과
+  // 정반대)이 그대로 통과한다. 이름의 `text-body-md`는 아래 테스트가 잠근다.
+  it('행 높이를 만드는 조합을 고정한다', () => {
     render(<AreaListItem area={area()} onSelect={() => {}} />)
-    expect(screen.getByRole('button')).toHaveClass('min-h-12')
+    expect(screen.getByRole('button')).toHaveClass('py-2', 'min-h-12')
+    expect(screen.getByText('1.2km · 역·번화가')).toHaveClass('mt-0.5', 'text-label-sm')
   })
 
   it('이름을 제목이 아니라 본문 크기로 그린다', () => {

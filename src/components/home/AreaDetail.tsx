@@ -12,6 +12,7 @@ import { Icon } from '../common/Icon'
 import { SkeletonList } from '../common/SkeletonCard'
 import { ActionButtons } from '../forecast/ActionButtons'
 import { ForecastChart } from '../forecast/ForecastChart'
+import { AreaList } from '../list/AreaList'
 import { AreaListItem } from '../list/AreaListItem'
 import { AREA_NAMES, findAreaByName } from '../../data/areas'
 import { useAreaSnapshot, useAreaSnapshots, useCityInfo } from '../../data/queries'
@@ -238,14 +239,16 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
           <p className="mt-1 text-label-md text-on-surface-variant">
             여기가 너무 붐비나요? 2km 안에서 한산한 곳이에요.
           </p>
-          <div className="mt-3 flex flex-col">
-            {alternatives.map((area) => (
-              <AreaListItem
-                key={area.entry.code}
-                area={area}
-                onSelect={onSelectArea}
-              />
-            ))}
+          <div className="mt-3">
+            <AreaList>
+              {alternatives.map((area) => (
+                <AreaListItem
+                  key={area.entry.code}
+                  area={area}
+                  onSelect={onSelectArea}
+                />
+              ))}
+            </AreaList>
           </div>
         </section>
       )}

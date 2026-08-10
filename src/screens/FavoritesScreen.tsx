@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useLocation } from '../app/locationContext'
 import { ErrorState } from '../components/common/ErrorState'
 import { SkeletonList } from '../components/common/SkeletonCard'
+import { AreaList } from '../components/list/AreaList'
 import { AreaListItem } from '../components/list/AreaListItem'
 import { AREA_CATALOG, AREA_NAMES } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
@@ -71,14 +72,16 @@ export function FavoritesScreen({ onSelectArea, onGoHome }: Props) {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col px-4">
-          {starred.map((area) => (
-            <AreaListItem
-              key={area.entry.code}
-              area={area}
-              onSelect={onSelectArea}
-            />
-          ))}
+        <div className="px-4">
+          <AreaList>
+            {starred.map((area) => (
+              <AreaListItem
+                key={area.entry.code}
+                area={area}
+                onSelect={onSelectArea}
+              />
+            ))}
+          </AreaList>
         </div>
       )}
     </div>

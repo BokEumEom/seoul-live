@@ -11,6 +11,7 @@ import { SkeletonList } from '../components/common/SkeletonCard'
 import { AreaDetail } from '../components/home/AreaDetail'
 import { SearchBar } from '../components/home/SearchBar'
 import { SplitPane } from '../components/home/SplitPane'
+import { AreaList } from '../components/list/AreaList'
 import { AreaListItem } from '../components/list/AreaListItem'
 import { CategoryFilter } from '../components/list/CategoryFilter'
 import { LocationNotice } from '../components/list/LocationNotice'
@@ -230,14 +231,16 @@ export function HomeScreen({ focusArea = null }: Props) {
           </p>
         )}
 
-        <div className="flex flex-col px-4">
-          {visible.map((area) => (
-            <AreaListItem
-              key={area.entry.code}
-              area={area}
-              onSelect={setSelectedName}
-            />
-          ))}
+        <div className="px-4">
+          <AreaList>
+            {visible.map((area) => (
+              <AreaListItem
+                key={area.entry.code}
+                area={area}
+                onSelect={setSelectedName}
+              />
+            ))}
+          </AreaList>
         </div>
       </div>
     )

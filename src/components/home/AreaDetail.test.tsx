@@ -144,7 +144,7 @@ describe('AreaDetail', () => {
 
   // 「근처 쾌적한 장소」는 좌표와 캐시가 둘 다 있어야 열린다. 기본 픽스처는
   // 좌표가 없어 이 가지에 닿지 않으므로 여기서만 채운다.
-  it('근처 쾌적한 장소의 구분선 목록에 행 간격을 두지 않는다', async () => {
+  it('근처 쾌적한 장소는 지금 보는 곳을 빼고 두 곳까지 보여준다', async () => {
     const { AREA_NAMES } = await import('../../data/areas')
     useLocation.mockReturnValue({
       // 경복궁 좌표. 2km 안에 서촌·북촌한옥마을 등이 들어온다.
@@ -170,7 +170,8 @@ describe('AreaDetail', () => {
       .closest('section') as HTMLElement
     const rows = within(section).getAllByRole('button')
     expect(rows).toHaveLength(2)
-    expect(rows[0].parentElement?.className).not.toMatch(/\bgap-/)
+    // 지금 보고 있는 곳이 "다른 데 가보라"는 추천에 끼면 안 된다.
+    expect(within(section).queryByRole('button', { name: /경복궁/ })).toBeNull()
   })
 
   it('즐겨찾기를 토글한다', async () => {
