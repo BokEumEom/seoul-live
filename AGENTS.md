@@ -47,7 +47,7 @@ npm run deploy       # ait deploy
 
 **명소 상세의 도시 정보가 이 한도를 나눠 쓴다.** `api/cityinfo.ts`는 `citydata` 서비스를 따로 부르므로 혼잡도의 720회/일에 **더해진다**(최악 30곳 × 24 = 720회). 합치면 한도를 넘는다. 전용 손잡이가 `CITYINFO_CACHE_TTL_SECONDS`이고, 비워두면 `CACHE_TTL_SECONDS`로 떨어진다. 근거는 `api/_lib/seoul.ts`의 `cityInfoCacheTtlSeconds` 주석과 STATE.md의 "도시 정보는 호출량을 늘린다".
 
-**도시 정보는 접힌 채로 시작하고 펼칠 때만 조회한다.** `AreaDetail`이 `useCityInfo(cityInfoOpen ? areaName : undefined)`로 `enabled`를 끈다. 이걸 `useCityInfo(areaName)`으로 바꾸면 상세를 열 때마다 호출이 나간다 — 쿼터를 지키는 자리다.
+**도시 정보는 접힌 채로 시작하고 펼칠 때만 조회한다.** `CityInfoPanel`이 `useCityInfo(open ? areaName : undefined)`로 `enabled`를 끈다. 이걸 `useCityInfo(areaName)`으로 바꾸면 상세를 열 때마다 호출이 나간다 — 쿼터를 지키는 자리다. 여는 상태와 조회가 한 파일에 있는 이유가 이것이라, 둘을 갈라 놓지 마라.
 
 **「오늘의 서울」은 추가 호출이 0이어야 한다.** 이미 받아둔 30곳 스냅샷을 `domain/summary.ts`로 다시 집계할 뿐이고, 재난문자는 `useCachedCityAlerts`가 캐시에 있는 것만 읽는다. 여기서 `useCityInfo`를 부르면 이 화면의 존재 근거가 사라진다.
 

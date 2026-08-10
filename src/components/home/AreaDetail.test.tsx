@@ -78,6 +78,14 @@ function standAt(coords: { lat: number; lng: number } | null) {
   } as unknown as ReturnType<typeof locationContext.useLocation>)
 }
 
+/** DOM 순서로 앞서는가. compareDocumentPosition은 비트마스크라 그대로 쓰면
+ *  포함 관계에서 뜻이 흐려진다 — 형제 관계만 보는 이 파일에서는 이걸로 충분하다. */
+function before(first: Element, second: Element): boolean {
+  return Boolean(
+    first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING,
+  )
+}
+
 function renderDetail(areaName = '강남역') {
   return render(
     <AreaDetail areaName={areaName} onBack={() => {}} onSelectArea={() => {}} />,
@@ -91,9 +99,8 @@ describe('AreaDetail', () => {
     // 히어로 배지는 API 원문 4단계, 카드 제목은 교통정보 어조의 요약이다.
     expect(screen.getByText('약간 붐빔')).toBeInTheDocument()
     expect(screen.getByText('다소 혼잡')).toBeInTheDocument()
-    // 같은 사실을 세 번 말하지 않는다. 히어로에 배지를 얹으면서 카드 안의
-    // `emphasis` 배지("지금은 약간 붐빔")를 뺐다 — 바로 아래 제목이 이미 같은
-    // 말을 다른 어조로 하고, 그 36px이 인구 구성의 폴드 예산으로 간다.
+    // 같은 사실을 두 번까지만 말한다. 크기로 한 번 더 말하던 배지를 뺀 근거는
+    // CongestionBadge.tsx의 SIZE 주석에 한 벌 있다.
     expect(screen.getAllByText(/약간 붐빔/)).toHaveLength(1)
   })
 
@@ -113,6 +120,15 @@ describe('AreaDetail', () => {
     standAt({ lat: 37.498, lng: 127.0276 })
     renderDetail()
     expect(screen.getByText('역·번화가 · 0m · 도보 1분')).toBeInTheDocument()
+  })
+
+  // 위도 0.045° 북쪽이면 5,003.8m다 — 도보로 75분. 한 시간을 넘으면 도보
+  // 구간만 빠지고 거리는 남는다. 「도보 160분」(홍대입구역 10.7km)은 이 앱을
+  // 쓸 이유를 만드는 첫 세 줄의 신뢰를 깎는다.
+  it('걸어갈 거리가 아니면 도보 시간을 적지 않는다', () => {
+    standAt({ lat: 37.543, lng: 127.0276 })
+    renderDetail()
+    expect(screen.getByText('역·번화가 · 5.0km')).toBeInTheDocument()
   })
 
   // 좌표가 없으면 거리 구간만 빠지고 카테고리는 남는다. AreaListItem과 같은
@@ -196,6 +212,11 @@ describe('AreaDetail', () => {
 
   // 루트가 flex flex-col(기본 align-items:stretch)이라 w-fit이 없으면 화면 폭
   // 전체가 뒤로가기 타깃이 된다 — 상세 어디를 눌러도 목록으로 튕긴다.
+  //
+  // 한계를 알고 쓴다: jsdom에는 레이아웃이 없어 실제 폭을 잴 수 없고 클래스
+  // 이름만 본다. 그래서 (1) 같은 결과를 내는 `self-start`로 바꾸면 거짓 실패하고,
+  // (2) 부모를 block으로 바꿔 w-fit이 필요 없어져도 거짓 통과한다. 이 테스트가
+  // 지키는 건 "폭이 글자만큼이다"가 아니라 "그 결정을 지웠는가"다.
   it('목록으로 버튼이 글자 폭만 차지한다', () => {
     render(<AreaDetail areaName="강남역" onBack={() => {}} onSelectArea={() => {}} />)
     expect(screen.getByRole('button', { name: '목록으로' })).toHaveClass('w-fit')
@@ -233,16 +254,10 @@ describe('AreaDetail', () => {
     expect(within(section).queryByRole('button', { name: /경복궁/ })).toBeNull()
   })
 
-  it('저장 버튼이 즐겨찾기를 토글한다', async () => {
-    renderDetail()
-    await userEvent.click(screen.getByRole('button', { name: '저장' }))
-    expect(await screen.findByRole('button', { name: '저장됨' })).toBeInTheDocument()
-  })
-
   // 라벨이 상태를 말하므로 aria-pressed를 겹쳐 쓰지 않는다. 둘 다 쓰면
   // 스크린리더가 "저장됨, 선택됨"처럼 같은 상태를 두 번 읽는다. 헤더의 별은
   // 아이콘뿐이라 aria-pressed가 유일한 상태 단서였지만, 글자를 얻으면서
-  // 그 역할이 라벨로 넘어갔다.
+  // 그 역할이 라벨로 넘어갔다. 토글 자체도 이 테스트가 함께 잠근다.
   it('저장 상태를 라벨로만 말한다', async () => {
     renderDetail()
     const save = screen.getByRole('button', { name: '저장' })
@@ -253,13 +268,46 @@ describe('AreaDetail', () => {
     )
   })
 
-  // Google Maps의 Directions·Save·Share 자리다. 저장을 공유 아래 한 줄로
-  // 더 쌓으면 액션 행이 세 줄(약 168px)이 되어 그만큼 아래가 폴드 밖으로 밀린다.
-  it('저장이 공유와 같은 줄에 선다', () => {
+  // 라벨 변경은 포커스가 머문 요소에서 스크린리더가 다시 읽지 않는다. 눌리기
+  // 전 단서였던 aria-pressed도 없으니, 라이브 리전이 없으면 저장 성공 여부를
+  // 알 방법이 사라진다.
+  it('저장 결과를 라이브 리전으로 알린다', async () => {
+    renderDetail()
+    // 마운트 시점에는 비어 있어야 한다. 이미 저장한 곳을 열자마자 "저장됨"이
+    // 낭독되면 사용자가 방금 누른 것으로 오해한다.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    expect(screen.getByRole('status')).toHaveTextContent('강남역 저장됨')
+
+    // 해제도 같은 구멍이다 — 라벨만 바뀌면 아무 소리도 안 난다.
+    await userEvent.click(screen.getByRole('button', { name: '저장됨' }))
+    expect(screen.getByRole('status')).toHaveTextContent('강남역 저장 해제')
+  })
+
+  // Google Maps의 Directions·Save·Share 자리다. 저장을 공유 아래 한 줄로 더
+  // 쌓으면 액션 행이 세 줄이 되어 그만큼 아래가 폴드 밖으로 밀린다(계획서 Step 3).
+  it('저장이 공유와 같은 줄에 같은 기하로 선다', () => {
     renderDetail()
     const save = screen.getByRole('button', { name: '저장' })
-    const share = screen.getByRole('button', { name: '친구에게 공유하기' })
+    const share = screen.getByRole('button', { name: '공유하기' })
     expect(save.parentElement).toBe(share.parentElement)
+    // 한 줄에 나란히 서는 버튼의 높이·반경·간격이 갈리면 줄이 어긋난다.
+    for (const geometry of ['min-h-12', 'flex-1', 'gap-1.5', 'rounded-action']) {
+      expect(save).toHaveClass(geometry)
+      expect(share).toHaveClass(geometry)
+    }
+  })
+
+  // 제목으로 훑는 사용자를 위한 뼈대다. 현재 상태 카드에는 보이는 제목이
+  // 없어서(「다소 혼잡」은 display-lg 문단이다) 제목만 따라가면 혼잡도·추정
+  // 인구·여유 예상이 어느 제목에도 안 속한 채 남았다. sr-only 제목으로 메우고
+  // 그 안의 인구 구성은 한 단 낮춘다.
+  it('제목이 h2 아래로 층을 이룬다', () => {
+    renderDetail()
+    expect(
+      screen.getAllByRole('heading').map((node) => `${node.tagName} ${node.textContent}`),
+    ).toEqual(['H2 강남역', 'H3 지금 얼마나 붐비나', 'H4 지금 누가 있나', 'H3 시간대별 예상'])
   })
 
   it('예측 섹션 제목이 시간대별 예상이다', () => {
@@ -282,15 +330,36 @@ describe('AreaDetail', () => {
     expect(screen.getByText('다소 혼잡')).toBeInTheDocument()
   })
 
-  // 폴드 결정을 잠근다. 390px 폭 실측에서 예측 섹션은 262px이라, 인구 구성을
-  // 그 아래 두면 720~740px급 안드로이드(가용 약 640px)에서 제목만 보이고 막대는
-  // 폴드 아래로 나간다. 이 카드가 「인파레이더 대신 쓸 이유」라 위로 올렸다.
+  // 아래 셋은 폴드 예산 결정을 잠근다. 근거와 실측표는 계획서 Task 8
+  // (「Task 7 리뷰에서 이월된 것 둘」과 Step 3·6의 정정 블록)에 한 벌만 있다 —
+  // 숫자를 여기 옮겨 적으면 한쪽만 고쳐져 거짓말이 된다.
+  it('액션 행이 현재 상태 카드보다 위에 있다', () => {
+    renderDetail()
+    const save = screen.getByRole('button', { name: '저장' })
+    const population = screen.getByText(/추정 인구/)
+    expect(before(save, population)).toBe(true)
+    // 히어로 다음이지 헤더 앞이 아니다.
+    expect(before(screen.getByRole('heading', { name: '강남역' }), save)).toBe(true)
+  })
+
   it('인구 구성이 시간대별 예상보다 위에 있다', () => {
     renderDetail()
     const who = screen.getByRole('heading', { name: '지금 누가 있나' })
-    const forecast = screen.getByRole('heading', { name: '시간대별 예상' })
-    expect(
-      who.compareDocumentPosition(forecast) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
+    expect(before(who, screen.getByRole('heading', { name: '시간대별 예상' }))).toBe(
+      true,
+    )
+  })
+
+  // 순서만 보면 인구 구성을 현재 상태 카드 밖으로 빼 독립 섹션으로 만드는
+  // 되돌림이 초록불로 통과한다. 그러면 테두리·패딩이 이중이 되고 세로 예산이
+  // 늘어 위 배치를 정당화한 계산이 무효가 된다.
+  //
+  // `closest('section')`끼리 비교하면 안 된다 — PopulationCard 자신이 <section>이라
+  // 올바른 구현에서도 둘이 갈린다. 카드가 그것을 품고 있는지를 본다.
+  it('인구 구성이 현재 상태 카드 안에 있다', () => {
+    renderDetail()
+    const who = screen.getByRole('heading', { name: '지금 누가 있나' })
+    const card = screen.getByText(/추정 인구/).closest('section')
+    expect(card?.contains(who)).toBe(true)
   })
 })

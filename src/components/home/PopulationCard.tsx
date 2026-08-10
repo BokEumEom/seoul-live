@@ -80,8 +80,10 @@ export function PopulationCard({ composition }: Props) {
   return (
     <section className="mt-4 border-t border-outline-variant pt-3">
       {/* font-bold(700)는 --text-label-md--font-weight(500)를 덮는다. 같은 값을
-          두 번 쓰는 font-medium과 달리 실제로 무게를 올린다. */}
-      <h3 className="text-label-md font-bold text-on-surface">지금 누가 있나</h3>
+          두 번 쓰는 font-medium과 달리 실제로 무게를 올린다.
+          h4인 이유: 이 카드는 「지금 얼마나 붐비나」 카드 안의 하위 블록이다
+          (AreaDetail). h3로 올리면 제목 층이 한 칸 건너뛴다. */}
+      <h4 className="text-label-md font-bold text-on-surface">지금 누가 있나</h4>
 
       {/* 알약이 없는 칸을 남기지 않으려고 li로 센다. residentLabel이 null일 때
           알약 안에 넣으면 글자 없는 빈 칸이 남는다.
