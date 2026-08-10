@@ -1788,11 +1788,13 @@ it('예측 섹션 제목이 시간대별 예상이다', () => {
 
 「시간대별 예상」 바로 다음, 접이식 도시 정보 앞이다.
 
+**래퍼 `<div>`를 두지 마라.** `PopulationCard`는 `composition`이 non-null이어도 **읽을 수 있는 값이 하나도 없으면 `null`을 돌려준다**(Task 7의 `hasReadableComposition`). 래퍼가 있으면 카드가 사라져도 `<div class="mx-4">`가 플렉스 아이템으로 남아 `AreaDetail` 루트의 `gap-3`이 12px 빈 칸을 하나 더 만든다(실측: 빈 래퍼 있음 24px / 없음 12px). Task 7이 없앤 죽은 공간이 줄어든 채 살아남는다.
+
+`mx-4`는 카드의 `<section>`으로 옮기거나 다른 절과 같은 방식으로 처리해라.
+
 ```tsx
 {snapshot?.composition != null && (
-  <div className="mx-4">
-    <PopulationCard composition={snapshot.composition} />
-  </div>
+  <PopulationCard composition={snapshot.composition} />
 )}
 ```
 
