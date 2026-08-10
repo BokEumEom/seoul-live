@@ -29,6 +29,45 @@ beforeEach(() => {
 })
 
 describe('favoritesStore', () => {
+  // 읽기가 거절돼도 loading이 풀려야 한다. 안 풀리면 current가 영원히 null,
+  // loading이 영원히 true라 세션 내내 빈 목록에 갇히고 재시도 경로도 없다.
+  // 지금은 platform/favorites가 예외를 삼켜 도달하지 않지만, 이 모듈의
+  // 정합성을 남의 파일 내부 구현에 걸어 두지 않는다.
+  it('읽기가 실패해도 다음 시도가 다시 나간다', async () => {
+    loadFavorites.mockRejectedValueOnce(new Error('저장소 없음'))
+    ensureLoaded()
+    await flush()
+    expect(getSnapshot()).toEqual([])
+
+    loadFavorites.mockResolvedValueOnce(['경복궁'])
+    ensureLoaded()
+    await flush()
+    expect(loadFavorites).toHaveBeenCalledTimes(2)
+    expect(getSnapshot()).toEqual(['경복궁'])
+  })
+
+  // reset() 뒤에 앞 테스트의 읽기가 도착해 current를 채우면, 다음 테스트는
+  // current !== null이라 제 읽기를 아예 안 내보내고 앞 값 위에서 돈다.
+  it('reset 뒤에 도착한 앞 세대의 읽기는 버린다', async () => {
+    let deliver: (value: readonly string[]) => void = () => {}
+    loadFavorites.mockReturnValueOnce(
+      new Promise<readonly string[]>((resolve) => {
+        deliver = resolve
+      }),
+    )
+    ensureLoaded()
+
+    reset()
+    deliver(['앞테스트값'])
+    await flush()
+    expect(getSnapshot()).toEqual([])
+
+    loadFavorites.mockResolvedValueOnce(['이번테스트값'])
+    ensureLoaded()
+    await flush()
+    expect(getSnapshot()).toEqual(['이번테스트값'])
+  })
+
   it('구독을 해제하면 더 이상 알림을 받지 않는다', () => {
     // 이 커밋에서 가장 위험한 구조물이 모듈 수준 Set이다. 해제가 빠지면
     // AreaDetail을 열 때마다 리스너가 쌓이고 언마운트된 컴포넌트의 클로저를
