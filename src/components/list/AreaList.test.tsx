@@ -29,8 +29,11 @@ describe('AreaList', () => {
   // `divide-*`, `[&>*]:mt-*`로도 같은 버그가 되살아난다.
   it('행 사이에 간격을 만드는 유틸리티를 쓰지 않는다', () => {
     const { container } = renderList()
+    // 앵커를 준 이유: 앵커 없는 `space-`는 `whitespace-nowrap`을 오탐한다.
+    // 변형자 쪽(`:mt-`·`:pt-`)은 콜론이 앵커 노릇을 하므로 그대로 둔다 —
+    // 변형자 없는 `pt-2`는 정당한 바깥 패딩이라 걸리면 안 된다.
     expect(container.firstElementChild?.className).not.toMatch(
-      /gap-|space-|divide-|:mt-|:pt-/,
+      /(^| )gap-|(^| )space-y-|(^| )divide-|:mt-|:pt-/,
     )
   })
 })

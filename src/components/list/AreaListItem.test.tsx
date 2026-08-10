@@ -127,6 +127,9 @@ describe('AreaListItem', () => {
     render(<AreaListItem area={area()} onSelect={() => {}} />)
     expect(screen.getByRole('button')).toHaveClass('py-2', 'min-h-12')
     expect(screen.getByText('1.2km · 역·번화가')).toHaveClass('mt-0.5', 'text-label-sm')
+    // 행이 스스로 바깥 여백을 가지면 구분선이 행에서 떨어져 허공에 뜬다.
+    // AreaList는 컨테이너 쪽 간격만 막는다 — 이쪽은 여기서 막는다.
+    expect(screen.getByRole('button').className).not.toMatch(/(^| )m[trblxyse]?-/)
   })
 
   it('이름을 제목이 아니라 본문 크기로 그린다', () => {
