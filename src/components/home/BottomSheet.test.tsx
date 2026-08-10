@@ -36,9 +36,13 @@ function setup(onDetentChange = vi.fn(), detent: Detent = 'half') {
   return { handle: screen.getByRole('separator'), onDetentChange, sheet, setViewportHeight }
 }
 
-// 한 손가락으로 끌었다 놓는 표준 시퀀스. 포인터 id가 섞이거나 취소가 끼는
-// 테스트는 이걸 쓰지 않는다 — 거기서는 어떤 이벤트가 어떤 id로 오는지가 곧
-// 검증 대상이다.
+// 한 id로 down→move→up 한 벌이 온전히 오는 표준 시퀀스. 제스처 **사이**에
+// id가 바뀌는 건 `pointerId` 옵션으로 표현한다.
+//
+// 이걸 쓰지 않는 테스트는 셋이다. (a) 일부만 쏘는 것 — 누르기만/지나가기만,
+// 취소로 끝나는 것. (b) 중간에 다른 걸 끼우는 것 — 뷰포트를 접거나 남의
+// 포인터를 떨어뜨리는 것. (c) **한 시퀀스 안에서** id가 섞이는 것. 셋 다
+// 어떤 이벤트가 어떤 id로 오느냐가 곧 검증 대상이라 펼쳐 써야 읽힌다.
 function drag(
   handle: HTMLElement,
   from: number,
