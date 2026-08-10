@@ -16,13 +16,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** 백분율 한 칸. 읽을 수 없으면 0이다 — null로 두면 화면이 칸마다 분기해야 한다. */
-function rate(raw: unknown): number {
-  if (typeof raw !== 'string' && typeof raw !== 'number') {
-    return 0
+// cityInfoSchema.ts의 NUMERIC_PATTERN과 같다. `Number()`를 맨몸으로 쓰면 '0x1f' → 31,
+// '1e1' → 10, '+50' → 50이 되어 "없는 값"이 아니라 **그럴듯한 틀린 값**이 화면에 뜬다.
+// schema.ts의 numericSchema도 같은 이유로 정규식을 세웠다. 여기는 백분율이라 소수점을
+// 받아야 하므로(`'48.2'`) 인구 쪽의 `^\d+$`가 아니라 도시정보 쪽 패턴을 따른다.
+const NUMERIC_PATTERN = /^-?\d+(?:\.\d+)?$/
+
+function numberOrNull(raw: unknown): number | null {
+  if (typeof raw === 'number') {
+    return Number.isFinite(raw) ? raw : null
   }
-  const value = Number(raw)
-  if (!Number.isFinite(value) || value < 0 || value > 100) {
+  if (typeof raw !== 'string') {
+    return null
+  }
+  const trimmed = raw.trim()
+  return NUMERIC_PATTERN.test(trimmed) ? Number(trimmed) : null
+}
+
+/** 백분율 한 칸. 읽을 수 없으면 0이다 — null로 두면 화면이 칸마다 분기해야 한다.
+ *
+ * 대신 0이 "실제로 0%"인지 "읽지 못함"인지 구분되지 않는다. domain/composition.ts의
+ * `residentLabel()`이 0을 근거로 단정하지 않는 것은 이 손실을 아는 채로 다루는 것이다. */
+function rate(raw: unknown): number {
+  const value = numberOrNull(raw)
+  if (value === null || value < 0 || value > 100) {
     return 0
   }
   return value

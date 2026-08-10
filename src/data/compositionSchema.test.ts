@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { AGE_LABELS } from '../domain/composition'
 import { parseComposition } from './compositionSchema'
 
 function payload(area: Record<string, unknown>): unknown {
@@ -71,5 +72,45 @@ describe('parseComposition', () => {
     expect(c?.ageRates).toHaveLength(8)
     expect(c?.ageRates[2]).toBe(40)
     expect(c?.ageRates[0]).toBe(0)
+  })
+
+  it('연령대 칸 수가 AGE_LABELS와 정확히 맞는다', () => {
+    // PopulationCard가 AGE_LABELS[index]를 라벨과 key로 쓴다. AGE_KEYS에 한 칸을 더하고
+    // AGE_LABELS를 안 고치면 undefined 라벨이 된다 — 두 길이를 여기서 묶어 잠근다.
+    const c = parseComposition(payload(FULL), '강남역')
+    expect(c?.ageRates).toHaveLength(AGE_LABELS.length)
+  })
+
+  it('음수는 0으로 떨어뜨린다', () => {
+    // 상한(250)만 막고 하한을 지우면 음수 막대가 반대로 그려진다.
+    const c = parseComposition(payload({ ...FULL, MALE_PPLTN_RATE: '-5' }), '강남역')
+    expect(c?.maleRate).toBe(0)
+  })
+
+  it('문자열이 아니라 숫자로 와도 읽는다', () => {
+    // 서울 API는 숫자를 문자열로 주지만, 프록시나 JSON 파서를 거치며 숫자 타입으로
+    // 바뀔 여지가 있다. 그때 값을 통째로 버리면 안 된다.
+    const c = parseComposition(payload({ ...FULL, MALE_PPLTN_RATE: 48.2 }), '강남역')
+    expect(c?.maleRate).toBe(48.2)
+  })
+
+  it('숫자처럼 생겼지만 아닌 값을 그럴듯한 숫자로 읽지 않는다', () => {
+    // Number()를 맨몸으로 쓰면 '0x1f' → 31, '1e1' → 10, '+50' → 50이 된다.
+    // "없는 값"이 아니라 "틀린 값"이 화면에 뜨는 쪽이 나쁘다.
+    for (const bad of ['0x1f', '1e1', '+50', '5 0', '50%', 'Infinity']) {
+      const c = parseComposition(payload({ ...FULL, MALE_PPLTN_RATE: bad }), '강남역')
+      expect(c?.maleRate).toBe(0)
+    }
+  })
+
+  it('여러 명소가 담긴 payload에서 요청한 명소의 것을 고른다', () => {
+    const multi = {
+      'SeoulRtd.citydata_ppltn': [
+        { AREA_NM: '경복궁', ...FULL, MALE_PPLTN_RATE: '10' },
+        { AREA_NM: '강남역', ...FULL, MALE_PPLTN_RATE: '90' },
+      ],
+    }
+    expect(parseComposition(multi, '강남역')?.maleRate).toBe(90)
+    expect(parseComposition(multi, '경복궁')?.maleRate).toBe(10)
   })
 })
