@@ -28,6 +28,27 @@ export const AGE_LABELS: readonly string[] = [
   '70대+',
 ]
 
+/** 남녀는 한 쌍으로만 말할 수 있다. `rate()`는 칸마다 따로 0을 떨어뜨리므로 한쪽만
+ * 읽히는 일이 둘 다 실패하는 것보다 흔한데, 그 0을 그대로 적으면 「남 100% · 여 0%」처럼
+ * 못 읽은 값을 사실로 적게 된다. `residentLabel`과 같은 규칙이다. */
+export function hasGenderSplit(composition: PopulationComposition): boolean {
+  return composition.maleRate > 0 && composition.femaleRate > 0
+}
+
+/** 말할 수 있는 값이 하나도 없으면 `false`. 0은 "못 읽음"일 수 있어(`compositionSchema.ts`의
+ * `rate()`) 전부 0인 구성으로는 아무 말도 할 수 없다.
+ *
+ * **성별은 `hasGenderSplit`으로 센다** — 한쪽만 읽힌 것은 그릴 수 있는 값이 아니라서,
+ * 여기서 `||`로 세면 소비처가 제목만 있는 빈 카드를 그리게 된다. 이 술어가 「그릴 게
+ * 있나」의 유일한 소유자다. 화면마다 다시 판정하면 판정이 갈린다. */
+export function hasReadableComposition(composition: PopulationComposition): boolean {
+  return (
+    hasGenderSplit(composition) ||
+    composition.nonResidentRate > 0 ||
+    composition.ageRates.some((rate) => rate > 0)
+  )
+}
+
 /** 60%를 넘어야 "외지인이 많다"고 말한다. 반반에 가까운 곳을 단정하지 않으려는 것이다. */
 const NON_RESIDENT_THRESHOLD = 60
 
