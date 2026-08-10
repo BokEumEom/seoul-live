@@ -43,14 +43,12 @@ describe('SummaryStrip', () => {
     render(<SummaryStrip summary={summary()} alertCount={2} onOpen={() => {}} />)
     const strip = screen.getByRole('button')
     expect(screen.getByText('재난문자 2건 · 30곳 중 붐빔 7곳')).toBeInTheDocument()
-    expect(strip).toHaveAttribute('data-alert', 'true')
     expect(strip).toHaveClass('bg-error-container', 'text-on-error-container')
   })
 
   it('재난문자가 없으면 경보 표시가 아니다', () => {
     render(<SummaryStrip summary={summary()} alertCount={0} onOpen={() => {}} />)
     const strip = screen.getByRole('button')
-    expect(strip).toHaveAttribute('data-alert', 'false')
     expect(strip).toHaveClass('bg-secondary-container', 'text-primary')
     expect(strip).not.toHaveClass('bg-error-container')
     expect(screen.queryByText(/재난문자/)).toBeNull()
@@ -88,8 +86,10 @@ describe('SummaryStrip', () => {
   it('무엇이 열리는지 이름에 담고 장식 글리프는 뺀다', () => {
     render(<SummaryStrip summary={summary()} alertCount={2} onOpen={() => {}} />)
     const strip = screen.getByRole('button')
-    expect(strip).toHaveAccessibleName(/재난문자 2건 · 30곳 중 붐빔 7곳/)
-    expect(strip).toHaveAccessibleName(/오늘의 서울 열기/)
+    // 하나의 정규식으로 순서까지 잠근다. 둘로 나눠 단언하면 목적지를 문구
+    // 앞에 두는 구현도 통과하는데, 음성 제어는 이름 앞쪽으로 매칭하므로
+    // 보이는 문구가 앞에 있어야 한다(WCAG 2.5.3).
+    expect(strip).toHaveAccessibleName(/재난문자 2건 · 30곳 중 붐빔 7곳.*오늘의 서울 열기/)
     expect(strip).not.toHaveAccessibleName(/›/)
   })
 
@@ -98,7 +98,9 @@ describe('SummaryStrip', () => {
   it('한 줄을 넘지 않게 자른다', () => {
     render(<SummaryStrip summary={summary()} alertCount={0} onOpen={() => {}} />)
     expect(screen.getByText('30곳 중 붐빔 7곳')).toHaveClass('truncate')
-    expect(screen.getByRole('button')).toHaveClass('text-label-md')
+    // py-2도 함께 잠근다. 이 줄이 목록에서 뺏는 높이가 곧 이 컴포넌트의
+    // 비용이라(36px = 0.61행) 세로 패딩이 늘면 Task 4가 번 밀도를 도로 먹는다.
+    expect(screen.getByRole('button')).toHaveClass('text-label-md', 'py-2')
   })
 
   it('누르면 콜백이 불린다', async () => {

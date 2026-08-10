@@ -29,7 +29,12 @@ export function SummaryStrip({ summary, alertCount, onOpen }: Props) {
     <button
       type="button"
       onClick={onOpen}
-      data-alert={hasAlert}
+      // 높이가 36px이라 이 저장소의 48px 탭 규약(SearchBar·AreaListItem의
+      // min-h-12, BottomSheet 손잡이의 히트 44px)을 혼자 벗어난다. 면제인 이유:
+      // 설계 문서가 이 줄을 "약 40px"로 예산 잡았고, 48px로 올리면 half에서
+      // 목록이 0.2행 줄어든다. 폭이 시트 전체라 명중률 손실도 작다.
+      // WCAG 2.5.8(24px)은 통과한다.
+      //
       // font-medium을 쓰지 않는다 — --text-label-md--font-weight가 이미 500이라
       // 같은 값을 두 번 쓰는 것이고, 나중에 토큰을 고쳐도 여기만 안 따라온다.
       className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-label-md ${
@@ -44,7 +49,7 @@ export function SummaryStrip({ summary, alertCount, onOpen }: Props) {
       {/* 보이는 문구는 상태 읽어주기라 눌러서 무엇이 열리는지 말해주지 않는다.
           aria-label로 덮으면 보이는 글자와 이름이 어긋나므로(음성 제어가 보이는
           문구로 못 부른다) 목적지만 이름 뒤에 덧댄다. */}
-      <span className="sr-only">오늘의 서울 열기</span>
+      <span className="sr-only">, 오늘의 서울 열기</span>
       <span aria-hidden className="shrink-0">
         ›
       </span>
