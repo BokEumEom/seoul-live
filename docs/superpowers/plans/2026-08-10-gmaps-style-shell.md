@@ -1503,12 +1503,22 @@ describe('PopulationCard', () => {
 
 ```ts
 // src/domain/composition.ts
+/** 성별은 둘 다 읽혀야 쓸 수 있다. 한쪽만 읽고 나머지를 0%라고 적으면 못 읽은
+ *  값을 사실로 단정하는 것이다 — 「남 100% · 여 0%」가 그 결과다. */
+export function hasGenderSplit(c: PopulationComposition): boolean {
+  return c.maleRate > 0 && c.femaleRate > 0
+}
+
 /** 읽을 수 있는 값이 하나도 없으면 false. 0은 "못 읽음"일 수 있어(compositionSchema.ts의
- *  rate()) 전부 0인 구성으로는 아무 말도 할 수 없다. residentLabel과 같은 규칙이다. */
+ *  rate()) 전부 0인 구성으로는 아무 말도 할 수 없다. residentLabel과 같은 규칙이다.
+ *
+ *  성별을 `maleRate > 0 || femaleRate > 0`으로 세면 안 된다. 카드가 성별을
+ *  `&&`로 그리므로, (남 48 / 여 0 / 비상주 0 / 연령 전부 0)이면 술어는 true인데
+ *  그릴 것은 하나도 없어 제목만 뜨는 빈 카드가 남는다 — 이 함수가 없애려던
+ *  바로 그 상태다. 두 곳이 같은 규칙을 써야 한다. */
 export function hasReadableComposition(c: PopulationComposition): boolean {
   return (
-    c.maleRate > 0 ||
-    c.femaleRate > 0 ||
+    hasGenderSplit(c) ||
     c.nonResidentRate > 0 ||
     c.ageRates.some((rate) => rate > 0)
   )
