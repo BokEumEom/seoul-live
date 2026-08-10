@@ -1687,13 +1687,11 @@ const header = (
 
 지금은 `<h2>{entry.name}</h2>` 한 줄뿐이다. 설계 §2.6의 1번 항목에 맞춰 카테고리·거리·도보 시간을 붙이고 혼잡도 배지를 오른쪽에 둔다.
 
-```tsx
-import { formatDistance } from '../../domain/distance'
-import { CATEGORY_LABEL } from '../../domain/types'
-import { haversineMeters } from '../../domain/distance'
+**도보 시간을 여기서 계산하지 마라.** `src/domain/distance.ts:55`에 `walkingMinutes(meters)`가 이미 있고 테스트도 있으며 `RecommendationCard.tsx:31`이 쓰고 있다. 상수를 새로 박으면 하드코딩 금지 위반이자 도메인 중복이고, 두 곳의 환산이 조용히 갈린다.
 
-// 도보 4km/h 기준. AreaListItem의 "800m · 도보 12분"과 같은 환산이다.
-const WALK_METERS_PER_MINUTE = 67
+```tsx
+import { formatDistance, haversineMeters, walkingMinutes } from '../../domain/distance'
+import { CATEGORY_LABEL } from '../../domain/types'
 
 // ...컴포넌트 안, entry가 확정된 뒤...
 const distanceMeters =
@@ -1706,7 +1704,7 @@ const distanceMeters =
     <p className="mt-0.5 text-label-sm text-on-surface-variant">
       {CATEGORY_LABEL[entry.category]}
       {distanceMeters !== null &&
-        ` · ${formatDistance(distanceMeters)} · 도보 ${Math.max(1, Math.round(distanceMeters / WALK_METERS_PER_MINUTE))}분`}
+        ` · ${formatDistance(distanceMeters)} · 도보 ${walkingMinutes(distanceMeters)}분`}
     </p>
   </div>
   {snapshot !== undefined && <CongestionBadge level={snapshot.congestion} />}
