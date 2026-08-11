@@ -253,6 +253,10 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
     areaName: expectedName,
     areaCode: container.AREA_CD ?? '',
     weather: weatherRows.length > 0 ? toWeather(weatherRows[0]) : null,
+    // `roadRows[0] ?? {}`로 바꿔도 결과가 같다 — 빈 행이면 `text()`가 두 필드
+    // 모두 ''를 돌려줘 `toRoadTraffic`의 가드에 걸려 null이 된다. 변이가 살아도
+    // 테스트 구멍이 아니라 **동치 변이**이니 쫓지 마라. 바로 위 `weather`와 같은
+    // 모양을 유지하는 쪽을 택했다.
     roadTraffic: roadRows.length > 0 ? toRoadTraffic(roadRows[0]) : null,
     accidents: toAccidents(sectionRows(container, ['ACDNT_CNTRL_STTS'])),
     parking: toParking(sectionRows(container, ['PRK_STTS'])),
