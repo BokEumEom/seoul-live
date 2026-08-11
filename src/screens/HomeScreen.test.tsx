@@ -384,6 +384,40 @@ describe('HomeScreen', () => {
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
   })
 
+  // 사라진 App.test「탭을 오가도 홈의 상태가 남는다」가 잡던 자리다. 탭이
+  // 없어졌으니 언마운트시킬 주체도 없어졌다고 판단했는데 **틀렸다** — 상세나
+  // 오늘의 서울을 열면 `detent`가 full이 되면서 **검색 바와 칩 열이 실제로
+  // 언마운트된다.** 「뷰를 오가도 홈의 상태가 남는가」는 지금도 살아 있는
+  // 질문이고, 답이 사는 곳만 탭에서 시트 안으로 옮겨왔다.
+  //
+  // 상태가 둘이라 테스트도 둘이다. 검색어는 `useHomeFilters`가, 카메라는 이
+  // 화면의 `center`·`zoom`이 들고 있어서 한쪽이 깨져도 다른 쪽은 멀쩡하다.
+  it('시트 안에서 뷰를 오가도 검색어가 남는다', async () => {
+    render(<HomeScreen />)
+    await userEvent.type(screen.getByRole('searchbox'), '경복궁')
+
+    await userEvent.click(sheetRow(/경복궁/))
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+
+    // full에서 검색 바가 물러났다 돌아온 것이라 실제로 마운트가 갈렸다.
+    expect(screen.getByRole('searchbox')).toHaveValue('경복궁')
+  })
+
+  it('시트 안에서 뷰를 오가도 지도 카메라가 남는다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(screen.getByRole('button', { name: '지도 확대' }))
+
+    await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+
+    // 옛 구조에서 탭을 오가면 지도가 다시 만들어져 카메라가 서울 전역으로
+    // 돌아갔다. 시트 안 뷰 전환에서는 지도가 아예 언마운트되지 않아야 한다.
+    expect(screen.getByRole('region', { name: '지도' })).toHaveAttribute(
+      'data-center',
+      '37.6,127.1',
+    )
+  })
+
   it('검색하면 목록이 줄어든다', async () => {
     render(<HomeScreen />)
     await userEvent.type(screen.getByRole('searchbox'), '경복궁')
@@ -532,7 +566,8 @@ describe('HomeScreen', () => {
 
     await userEvent.click(screen.getByRole('tab', { name: '공원' }))
 
-    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeInTheDocument()
+    // 면제 이후의 대칭 단언은 `toBeEnabled()`다 — 위 `내 장소 1`과 짝을 이룬다.
+    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeEnabled()
   })
 
   // FavoritesScreen이 사라지면서 「지도에서 ☆를 눌러 담아보세요」도 함께
@@ -617,11 +652,14 @@ describe('HomeScreen', () => {
   })
 
   it('상세에서 저장을 누르면 내 장소 칩이 곧바로 는다', async () => {
-    // 칩과 저장 버튼이 각자 useFavorites를 부른다. 둘이 따로 놀면 방금 담은 곳이
-    // 칩에 안 잡히고, 0인 칩은 비활성이라 필터를 켤 방법이 없어진다.
+    // 칩과 저장 버튼이 각자 useFavorites를 부른다. 둘이 따로 놀면 방금 담은
+    // 곳이 칩에 안 잡혀 숫자가 0에서 멎는다. Task 10 전에는 「0인 칩은 비활성
+    // 이라 필터를 켤 방법이 없어진다」가 근거였는데, 그 태스크가 「내 장소」를
+    // 0에서도 누를 수 있게 하면서 그 대목은 더 이상 참이 아니다 — 남은 손해는
+    // 담은 곳이 필터에 안 걸린다는 것 자체다.
     // 상세가 열리면 시트가 full이라 칩이 가려지므로 목록으로 돌아와서 본다.
     render(<HomeScreen />)
-    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeEnabled()
 
     await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(screen.getByRole('button', { name: '저장' }))

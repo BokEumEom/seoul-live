@@ -20,10 +20,14 @@ describe('FilterChips', () => {
   })
 
   // 높이가 40px이라는 사실에 오버레이 예산이 걸려 있다. 「검색 바 + 칩 열」이
-  // 0~88px을 차지한다는 계산이 이 값에서 나오고, 그 88px이 full(92%)에서
-  // 손잡이 히트 영역(44~88px)을 통째로 덮는다는 근거가 되어 「full에서는 이
-  // 열을 그리지 않는다」로 이어진다. 48px 규약에 맞추려고 무심코 올리면
+  // 화면 위 0~112px을 차지한다는 계산이 이 값에서 나오고(검색 바 64 + 간격 4 +
+  // 이 줄 44 = 40px 칩 + 줄의 `pb-1`), 그 열이 full(92%)에서 손잡이 히트
+  // 영역(컨테이너 800px 기준 44~88px)을 통째로 덮는다는 근거가 되어 「full에서는
+  // 이 열을 그리지 않는다」로 이어진다. 48px 규약에 맞추려고 무심코 올리면
   // 그 사슬이 조용히 끊긴다.
+  //
+  // 112px은 Task 10에서 헤드리스 크롬으로 실측한 값이다. Task 9는 88px로
+  // 적었는데 검색 바의 세로 패딩을 빠뜨린 오답이었다.
   it('칩 높이가 오버레이 예산에 맞춰 40px로 묶여 있다', () => {
     render(<FilterChips counts={COUNTS} value={null} onChange={vi.fn()} />)
     expect(screen.getByRole('tab', { name: '내 장소 3' })).toHaveClass('min-h-10')
@@ -131,12 +135,17 @@ describe('FilterChips', () => {
   })
 
   it('선택된 칩은 0이 돼도 해제할 수 있다', async () => {
-    // 즐겨찾기를 다 지우거나 카테고리를 좁히면 고른 칩이 0이 된다. 그때도
-    // 비활성으로 굳으면 필터를 풀 방법이 사라져 빈 목록에 갇힌다.
+    // 켜 둔 칩이 카테고리 축소나 시간대 변화로 0이 된다. 그때도 비활성으로
+    // 굳으면 필터를 풀 방법이 사라져 빈 목록에 갇힌다.
+    //
+    // **소재가 `fav`이면 안 된다.** 「내 장소」는 `!selected`와 무관하게
+    // 0에서도 활성이라(Task 10의 면제) 이 테스트가 **다른 이유로** 통과한다.
+    // 실제로 Task 10 전까지 소재가 `fav`였고, 면제를 넣는 순간
+    // `!selected`를 통째로 지워도 잡히지 않는 상태가 됐다.
     const onChange = vi.fn()
-    render(<FilterChips counts={{ ...COUNTS, fav: 0 }} value="fav" onChange={onChange} />)
+    render(<FilterChips counts={{ ...COUNTS, hot: 0 }} value="hot" onChange={onChange} />)
 
-    const chip = screen.getByRole('tab', { name: '내 장소 0' })
+    const chip = screen.getByRole('tab', { name: '지금 핫플 0' })
     expect(chip).toBeEnabled()
 
     await userEvent.click(chip)
