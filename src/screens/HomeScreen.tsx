@@ -175,10 +175,15 @@ export function HomeScreen({ focusArea = null }: Props) {
   const showLabel = shouldShowMarkerLabel(zoom)
   const mapReady = isMapAvailable() && !loadFailed
 
-  // 키가 없으면 시트를 half에 묶는다. 지도 안내가 화면의 92%를 차지할 이유가
-  // 없고, 접을 수 있게 두면 안내가 사라져 더 헷갈린다. 파생 변수로 한 번만
-  // 정하는 이유는 아래 오버레이 규칙이 같은 값을 봐야 해서다 — 두 곳에서
-  // 따로 `mapReady ? detent : 'half'`를 쓰면 한쪽만 고쳐지는 날이 온다.
+  // 지도를 못 쓰면 시트를 half에 묶는다. 지도 안내가 화면의 92%를 차지할 이유가
+  // 없고, 접을 수 있게 두면 안내가 사라져 더 헷갈린다.
+  //
+  // **이 줄이 그 규칙이 사는 유일한 자리다.** 오버레이·FAB·시트가 모두 이 값을
+  // 보므로 규칙을 여러 곳에 흩어 놓으면 한쪽만 고쳐지는 날이 온다.
+  // `onDetentChange`에 noop을 물려 「지도가 죽었으면 단계를 바꾸지 마라」를
+  // 한 번 더 쓰는 길도 있었지만 두지 않았다 — 그건 같은 규칙의 두 번째 사본인
+  // 데다, `mapReady`가 false→true로 돌아오지 않아 숨은 `detent`가 갈려도
+  // 화면에 드러날 길이 없어서 **테스트로 지킬 수도 없다.**
   const sheetDetent: Detent = mapReady ? detent : 'half'
 
   function handleCameraChanged(event: MapCameraChangedEvent): void {
@@ -401,10 +406,16 @@ export function HomeScreen({ focusArea = null }: Props) {
           `opacity-0`이 아니라 조건부 렌더다. 그래야 포인터 이벤트와 접근성
           트리가 함께 정리되고, 사라졌다는 사실을 테스트로 잠글 수 있다.
 
-          `showSearchOverlay` 같은 파생 불리언을 쓰지 않고 여기서 직접 비교하는
-          이유는 **타입 좁히기** 때문이다. 이 비교라야 `sheetDetent`가
-          `RecenterDetent`로 좁혀져, full에 설 자리가 없다는 불변식을 컴파일러가
-          지킨다. 불리언으로 감싸면 그 검사가 사라진다.
+          `sheetDetent`가 여기서 `RecenterDetent`로 좁혀지므로 「FAB은 full에
+          설 자리가 없다」는 불변식을 컴파일러가 지킨다 — 좁혀지지 않은 값을
+          넘기면 `TS2322`가 난다(확인했다).
+
+          **파생 불리언(`const show = sheetDetent !== 'full'`)으로 감싸도 좁혀진다.**
+          TS 4.4의 aliased conditions and discriminants가 처리하고, 이 저장소는
+          TS ~6.0.2다 — 실제로 바꿔 `tsc -b --force`를 돌려 에러 0을 확인했다.
+          여기서 직접 비교하는 것은 타입 때문이 아니라, 조건과 그 조건이 지배하는
+          JSX가 한눈에 붙어 있는 편이 읽기 쉬워서다. 쪼개도 타입 안전은 안 깨지니
+          필요하면 쪼개도 된다.
 
           되돌아올 길은 막히지 않는다: 「목록으로」가 half로 내리고, 손잡이를
           누르면 full→peek으로 굴러간다. 키가 없어 half에 묶인 경우에는 계속
@@ -438,10 +449,7 @@ export function HomeScreen({ focusArea = null }: Props) {
         </>
       )}
 
-      <BottomSheet
-        detent={sheetDetent}
-        onDetentChange={mapReady ? setDetent : () => {}}
-      >
+      <BottomSheet detent={sheetDetent} onDetentChange={setDetent}>
         {sheetContent}
       </BottomSheet>
     </div>

@@ -66,13 +66,16 @@ describe('RecenterButton', () => {
     expect(Number(found![1]) / 100).toBeCloseTo(SHEET_RATIO[detent] + GAP_RATIO, 10)
   })
 
-  // full은 렌더할 수 없다 — 타입에서 빠져 있고, 그 이유는 48px 버튼이 들어갈
-  // 자리(`0.06H`)가 실기기 높이에서 언제나 48px보다 작기 때문이다. 자리가
-  // 없다는 사실 자체는 기하라서 jsdom으로 못 잡지만, **full이 이 표에 없다**는
-  // 것은 잡을 수 있다. 되살리면 이 테스트가 먼저 막는다.
-  it('full 단계의 자리는 아예 두지 않는다', () => {
-    const detents: readonly string[] = DETENTS
-    expect(detents).not.toContain('full')
-    expect(detents).toHaveLength(Object.keys(SHEET_RATIO).length - 1)
+  // 이 버튼이 서는 단계가 시트 단계보다 **정확히 하나 적다**는 것만 본다.
+  //
+  // `not.toContain('full')`은 여기 두지 않는다. `DETENTS`는 이 파일이 손으로
+  // 적은 배열이라 그 단언은 세 줄 위 리터럴에 대한 동어반복이고, full을
+  // 프로덕션에 되살려도 안 깨진다. **진짜 잠금은 이 테스트가 아니다** —
+  // `Record<RecenterDetent, string>`이 컴파일에서 막고(`TS2353`),
+  // 화면 쪽은 `HomeScreen.test.tsx`의 「시트가 전체로 펼쳐지면 내 주변 버튼도
+  // 함께 물러난다」가 막는다. 여기서 지키는 것은 시트 단계가 넷으로 늘 때
+  // 이 표를 같이 손보게 만드는 것뿐이다.
+  it('버튼이 서는 단계가 시트 단계보다 하나 적다', () => {
+    expect(DETENTS).toHaveLength(Object.keys(SHEET_RATIO).length - 1)
   })
 })

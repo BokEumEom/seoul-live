@@ -38,10 +38,14 @@ vi.mock('@vis.gl/react-google-maps', () => ({
     children,
     center,
     zoom,
+    onCameraChanged,
   }: {
     children: ReactNode
     center?: { lat: number; lng: number }
     zoom?: number
+    onCameraChanged?: (event: {
+      detail: { center: { lat: number; lng: number }; zoom: number }
+    }) => void
   }) => (
     <div
       role="region"
@@ -49,6 +53,16 @@ vi.mock('@vis.gl/react-google-maps', () => ({
       data-center={center === undefined ? '' : `${center.lat},${center.lng}`}
       data-zoom={zoom}
     >
+      {/* 실제 지도는 사용자가 팬·줌할 때 이 콜백을 쏜다. 목에 통로가 없으면
+          `handleCameraChanged`가 통째로 미커버가 되고, 줌을 당겨도 마커 라벨이
+          영영 안 뜨는 증상을 아무도 못 잡는다. */}
+      <button
+        type="button"
+        aria-label="지도 확대"
+        onClick={() =>
+          onCameraChanged?.({ detail: { center: { lat: 37.6, lng: 127.1 }, zoom: 15 } })
+        }
+      />
       {children}
     </div>
   ),
@@ -206,6 +220,32 @@ describe('HomeScreen', () => {
     await userEvent.click(mapMarker(/경복궁/))
 
     expect(screen.getByRole('heading', { name: '경복궁' })).toBeInTheDocument()
+  })
+
+  // 지도를 움직이면 그 카메라를 화면이 받아 들고 있어야 한다. 안 받으면
+  // `zoom`이 초기값(11)에 묶여 `shouldShowMarkerLabel`이 영영 false가 되고,
+  // 사용자가 아무리 확대해도 마커 위 혼잡도 라벨이 안 뜬다.
+  it('지도를 확대하면 마커에 혼잡도 라벨이 붙는다', async () => {
+    render(<HomeScreen />)
+    const layer = document.querySelector('[data-map-layer]') as HTMLElement
+    // 초기 줌 11은 라벨 기준(12) 아래다.
+    expect(within(layer).queryByText('보통')).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: '지도 확대' }))
+
+    expect(within(layer).getAllByText('보통').length).toBeGreaterThan(0)
+  })
+
+  it('지도를 움직이면 그 위치를 화면이 이어받는다', async () => {
+    // 카메라를 안 받아두면 다음 렌더에 `center`가 초기값으로 되돌아가
+    // 팬한 자리가 튕겨 돌아온다.
+    render(<HomeScreen />)
+    const map = screen.getByRole('region', { name: '지도' })
+
+    await userEvent.click(screen.getByRole('button', { name: '지도 확대' }))
+
+    expect(map).toHaveAttribute('data-center', '37.6,127.1')
+    expect(map).toHaveAttribute('data-zoom', '15')
   })
 
   it('명소를 누르면 상세가 시트를 가득 채우고 지도는 뒤에 남는다', async () => {
