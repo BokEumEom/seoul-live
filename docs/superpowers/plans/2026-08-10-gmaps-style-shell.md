@@ -1393,16 +1393,15 @@ const visible = useMemo(
 
 도메인 테스트로 보장을 잠가라: **모든 `FilterKey`에 대해 `filterCounts(...)[key] === filterAreas(..., key, ...).length`.**
 
-- [ ] **Step 8: 통과를 확인한다**
+- [x] **Step 8: 통과를 확인한다**
 
-Run: `npm test` 그리고 `npx tsc -b`
-Expected: 전부 PASS
+`npm test`(55파일 597통과 · 1 todo), `npx tsc -b`, `npm run lint`, `npm run build:vite` 전부 통과.
 
-- [ ] **Step 9: 변이 확인**
+- [x] **Step 9: 변이 확인**
 
 `FilterChips`의 `disabled={count === 0}`을 지운다 → "0이면 비활성이다"와 "비활성인 칩을 눌러도"가 실패해야 한다. 되돌린다.
 
-- [ ] **Step 10: 커밋**
+- [x] **Step 10: 커밋**
 
 ```bash
 git add -A src/components src/domain src/hooks src/screens
@@ -1851,15 +1850,40 @@ git commit -m "feat: 상세에 액션 행과 인구 구성을 더한다"
 
 **목록은 `AreaList`로 감싼다**(Task 4에서 만들었다). 행이 아래 구분선으로 갈리므로 컨테이너가 간격을 주면 구분선이 허공에 뜬다 — 그 계약을 컨테이너 컴포넌트가 소유한다. `import { AreaList } from '../components/list/AreaList'`.
 
-### Task 3 리뷰에서 이월된 결정 사항 세 가지
+### Task 3 리뷰에서 이월된 결정 사항 — **전부 결론이 났다**
 
-`BottomSheet`를 만들며 나왔지만 화면을 조립할 때라야 판단할 수 있어 여기로 미룬 것들이다. **Step 1을 시작하기 전에 셋 다 결론을 내라.**
+`BottomSheet`를 만들며 나왔지만 화면을 조립할 때라야 판단할 수 있어 여기로 미룬 것들이다. 아래 각 항목의 **결론** 단락이 실제로 한 것이다.
 
 **(A) 손잡이가 보조기술로는 조작 불가다.** `role="separator"`에 `tabindex`가 없으면 ARIA상 위젯이 아니라 구조적 구분선이다. TalkBack/VoiceOver는 "시트 높이 조절, 구분선"이라 읽고 실행 동작을 주지 않는다. 남은 `onDoubleClick`도 TalkBack의 두 번 탭이 `dblclick`이 아니라 `click`을 쏘므로 닿지 않는다. 결과적으로 **보조기술 사용자는 시트 단계를 바꿀 수단이 전혀 없다.** 명소를 누르면 `full`로 올라가니 내용에는 닿지만 되돌릴 길이 없다.
 
 싼 보완은 손잡이를 포커스 가능한 `button`으로 바꾸고 `onClick`으로 peek→half→full을 순환시키는 것이다. 한 손 조작 사용자에게도 이득이다. 주의할 것 둘: (1) 드래그 뒤에도 `click`이 뒤따라 발생하므로 `movedRef`류의 가드가 필요하다, (2) `BottomSheet.test.tsx`의 `getByRole('separator')`를 쓰는 테스트가 여럿이라 함께 고쳐야 한다. `role="separator"`를 유지한 채 포커스만 주려면 `aria-valuenow`/`min`/`max`가 따라와야 하므로 `button`이 더 정직하다 — 이 컴포넌트에는 splitter가 가르는 "두 pane"이 애초에 없다(`SplitPane`에는 있었다).
 
-**(B) `transition-[height]`가 스크롤 위치를 버린다.** 시트가 줄면 스크롤 컨테이너가 줄고 브라우저가 `scrollTop`을 잘라내는데, 다시 커져도 복원하지 않는다. **full에서 상세를 읽다가 peek으로 내렸다 올리면 읽던 자리를 잃는다.** 또 `height` 애니메이션은 매 프레임 리플로우라 저사양 안드로이드 웹뷰에서 200ms 동안 목록 전체가 재배치된다. Google Maps는 이 지점에서 고정 높이 + `transform: translateY`를 쓴다. 상세를 시트에 올리는 게 이 태스크이므로 **바꾸려면 지금이 가장 싸다.**
+**결론(했다).** 손잡이가 `<button type="button">`이 됐고 누르면 `NEXT_DETENT`(peek→half→full→peek)로 한 칸씩 굴러간다. `onDoubleClick`은 지웠다 — 클릭 순환이 그 역할을 흡수한다.
+
+- **클릭 가드는 `movedRef`로 안 된다.** `handlePointerUp`이 단계를 정하면서 그것을 되돌려 놓아, 뒤따라오는 `click`이 도착할 때는 이미 거짓이다. 별도의 `draggedRef`를 두고 **클릭 핸들러가 소비**한다. 그리고 소비에만 기대면 안 된다 — 드래그 뒤 `click`이 오지 않는 경로가 있으면 가드가 참으로 굳어 다음 탭 한 번이 통째로 먹힌다. `handlePointerDown`에서도 턴다. `handlePointerCancel`에서도 내린다.
+- **`w-full`이 필수다.** `button`은 기본이 inline-block이라 히트 영역이 4px짜리 띠 폭으로 쪼그라든다. `div`였을 때는 공짜로 얻던 것이다. 테스트로 잠갔다.
+- 접근성 이름은 현재 단계를 담는다: `시트 높이 조절, 현재 {살짝 열림|절반|전체}`. 누르면 무엇이 될지는 지금 몇 단계인지 알아야 예측되고, 스크린리더 사용자는 시트 높이를 볼 수 없다. **`HomeScreen.test.tsx`가 시트 단계를 관찰하는 수단도 이 이름이다** — 다른 수단이 없다.
+- 이름이 바뀌었으므로 `getByRole('separator')`뿐 아니라 `toHaveAccessibleName('시트 높이 조절')`도 함께 고쳤다.
+
+**(B) ~~`transition-[height]`가 스크롤 위치를 버린다.~~ — 틀린 주장이었다. 실측으로 정정한다.**
+
+원래 적혀 있던 주장: "시트가 줄면 스크롤 컨테이너가 줄고 브라우저가 `scrollTop`을 잘라내는데, 다시 커져도 복원하지 않는다. full에서 상세를 읽다가 peek으로 내렸다 올리면 읽던 자리를 잃는다." 그래서 고정 높이 + `transform: translateY`로 바꾸자는 제안이 붙어 있었다.
+
+**헤드리스 크롬(145)으로 실제로 쟀다.** 뷰포트 800px, 내용 3000px, 시트 구조·전환값(`transition: height 200ms ease-out`)을 지금 구현 그대로 재현하고 CDP로 몰았다. `--virtual-time-budget`은 CSS 전환 시계를 돌려주지 않아(높이가 92%에 멈춘 채 측정된다) 실시간으로 재야 하고, 매 단계 목표 높이에 닿았는지 확인해 전환이 실제로 끝난 것만 읽었다.
+
+| 시나리오 | scrollTop | clientHeight | maxScrollTop |
+|---|---|---|---|
+| full에서 읽던 자리 | 300 | 712 | 2288 |
+| → peek으로 내린 뒤 | **300** | 104 | 2896 |
+| → 다시 full로 올린 뒤 | **300** | 712 | 2288 |
+
+**보존된다.** 6단 왕복(full 1234px → half → peek → half → full → peek → full)에서도 1234가 그대로 남았다. 이유는 산수다: `maxScrollTop = scrollHeight - clientHeight`이므로 시트가 줄면 `clientHeight`가 **작아져** `maxScrollTop`이 **커진다** — 잘릴 일이 없다. 다시 커질 때 줄어드는 `maxScrollTop`도 원래 full에서 유효했던 값이라 여전히 유효하다.
+
+잘리는 경우는 하나뿐이다: **peek 상태에서 스크롤을 직접 만졌을 때.** peek에서 끝까지 내리면 2896이 되고 full로 올리면 2288로 잘린다. 그건 끝 너머를 보여줄 수 없어서이므로 옳은 동작이다.
+
+**제안됐던 `translateY` 대안이 오히려 더 나쁘다.** 높이를 92%로 고정하고 아래로 밀면 peek에서도 `clientHeight`가 712px(92%)로 남는데 눈에 보이는 창은 104px(16%)뿐이다. 끝까지 스크롤해도 `scrollTop`이 2288에서 멈춰 **608px어치 내용에 영원히 닿지 못한다**(실측값).
+
+**결론: `transition-[height]`를 그대로 둔다.** 남은 논거는 "매 프레임 리플로우라 저사양 안드로이드 웹뷰에서 200ms 동안 목록 전체가 재배치된다"는 성능 쪽 하나뿐인데, **그건 실기기 없이 판단할 수 없다 — 미해결로 남긴다.**
 
 **(C) `full`에서 손잡이가 `z-20` 오버레이 밑에 들어간다.** 아래 Step 3의 검색 바·필터 칩이 `z-20`이라 `z-10` 시트 위에 뜬다. 800px 기준 `full`(92%)에서 숫자는 이렇다:
 
@@ -1870,21 +1894,52 @@ git commit -m "feat: 상세에 액션 행과 인구 구성을 더한다"
 | 띠(보이는 부분) | 74~78px |
 | 검색 바 + 필터 칩 열 | 0 ~ 약 88px |
 
-즉 **겹친다.** `pointer-events-auto`가 걸린 부분이 손잡이를 덮으면 `full`에서 손잡이를 아예 못 잡는다. 실기기에서 숫자로 확인하고, 겹치면 `full`을 낮추든 검색 바를 `full`에서 숨기든 오버레이에 `pointer-events-none`을 깔고 자식에만 되돌리든 정해라.
+즉 **겹친다.** 검색 바 컨테이너와 `FilterChips` 컨테이너 **둘 다** `pointer-events-auto`이고 폭이 화면 전체라, 손잡이 히트 영역이 통째로 그 밑에 깔린다 — `full`에서 손잡이를 아예 못 잡는다.
 
-**(D) 손잡이가 지도 위 20px을 삼킨다.** Task 3에서 히트 영역을 44px로 키우며 `touch-none` 상자가 시트 위로 20px 올라갔다. 그 띠에서는 마커 탭도 지도 팬도 안 먹는다. 의도한 교환이고 Google Maps도 같은 방식이지만, `peek`에서는 화면 84% 지점을 가로지르는 죽은 띠가 된다. 실기기에서 거슬리는지 보라.
+**결론(했다): `detent === 'full'`이면 검색 바 + 필터 칩 열을 조건부로 렌더하지 않는다.** `opacity-0`이 아니라 조건부 렌더다 — 그래야 포인터 이벤트와 접근성 트리가 함께 정리되고 테스트로 잠긴다. `mapReady ? detent : 'half'`를 두 곳에 흩어 놓지 않으려고 `sheetDetent` 파생 변수 하나로 뽑고, `showSearchOverlay = sheetDetent !== 'full'`이 그것을 본다.
+
+근거: `full`에서 지도는 8%짜리 조각이라 검색·필터가 할 일이 거의 없고, `full`에 도달하는 경로는 대부분 상세/오늘의 서울이다. 되돌아올 길은 「목록으로」(half로 내림)와 손잡이 클릭(full→peek) 둘이 남는다. 키가 없어 `half`에 묶인 경우에는 계속 보인다 — 지도가 죽었을 때 검색은 유일하게 남은 길이라 닫으면 안 된다.
+
+**실측으로 확인했다.** 개발 서버를 헤드리스 크롬으로 띄우고 `full`에서 `elementFromPoint`로 손잡이 히트 영역 위쪽 띠를 찍었다(뷰포트 500×713, 시트 상단 103px, 손잡이 83~127px):
+
+| 찍은 x | 잡히는 것 |
+|---|---|
+| 왼쪽 10% | `시트 높이 조절, 현재 전체` |
+| 가운데 | `시트 높이 조절, 현재 전체` |
+| 오른쪽 끝(FAB 자리) | `내 주변` |
+
+즉 손잡이는 `full`에서 실제로 잡힌다.
+
+**`RecenterButton`(FAB)은 함께 감추지 않았다.** 처음엔 같은 규칙에 묶으려 했으나 숫자를 보고 뒤집었다. `BOTTOM_CLASS`의 세 값이 모두 시트 상단보다 2%p 위라 버튼 아래가 시트 상단에서 일정 간격 뜨고, 그 결과 **손잡이와 겹치는 양이 세 단계 모두 같다**(800px에서 4px, 713px에서 8px — `20px − 0.02×컨테이너높이`라 화면이 작을수록 는다). `full`만의 문제가 아니라 이 배치의 성질이다. 겹치는 곳은 폭 48px짜리 오른쪽 구석뿐이고 손잡이의 보이는 띠는 가운데 36px이다. 게다가 FAB은 `full`에서 시트 위에 남는 지도 조각에 서서 「지도를 내 위치로 옮기고 시트를 peek으로 내린다」는 지도에 대한 동작을 그대로 수행한다. 이 결정도 테스트로 잠갔다(감추는 변이를 넣으면 실패한다).
+
+**(D) 손잡이가 지도 위 20px을 삼킨다 — 미해결로 남긴다.** Task 3에서 히트 영역을 44px로 키우며 `touch-none` 상자가 시트 위로 20px 올라갔다. 그 띠에서는 마커 탭도 지도 팬도 안 먹는다. 의도한 교환이고 Google Maps도 같은 방식이지만, `peek`에서는 화면 84% 지점을 가로지르는 죽은 띠가 된다. **실기기 없이는 거슬리는지 알 수 없다.** 여기에 FAB이 그 띠의 오른쪽 끝 48px을 추가로 가져간다는 사실이 더해진다(위 (C) 참고).
 
 **(F) `SummaryStrip`의 빈 상태 문구가 실패와 로딩을 구분하지 못한다.** `혼잡도 정보를 아직 받지 못했어요.`는 로딩을 뜻하는데, 조회가 **영구 실패**해도 같은 문구가 나온다. 그때 아래 목록은 `ErrorState`의 `혼잡도 정보를 가져오지 못했어요.`를 띄워 두 문장이 어긋난다. `CitySummary`에 실패를 표현할 수단이 없어 `SummaryStrip` 혼자서는 못 고친다 — 이 화면이 조회 상태를 알고 있으므로 여기서 정하라(스트립을 아예 감추든, 실패용 문구를 prop으로 넘기든).
 
-같은 맥락으로 **재난문자가 새로 뜬 것이 스크린리더에 안 알려진다**(색과 문구만 바뀐다). 버튼 자체에 `aria-live`를 다는 건 소음이라, 필요하면 이 화면에 별도 라이브 리전을 두는 쪽이 맞다.
+**결론(했다): `snapshots.isError`면 `SummaryStrip`을 렌더하지 않는다.** `ErrorState`가 이미 실패를 말하고 재시도까지 준다. 스트립을 남기면 같은 자리에서 "아직 안 왔다"와 "못 가져왔다"가 동시에 보인다. 반대편(로딩·빈 응답일 때는 스트립이 남는다)도 함께 잠갔다 — 안 그러면 「스트립을 아예 안 그린다」로도 통과한다.
 
-**(G) 빈 목록 문구가 무엇을 풀어야 할지 안 알려준다.** 「★ 내 장소」를 켠 뒤 카테고리를 좁혀 0이 되면(칩은 선택돼 있어 활성이다 — Task 6이 갇힘을 막으려고 그렇게 뒀다) 목록이 비고 `조건에 맞는 명소가 없어요.`가 뜬다. 틀린 말은 아니지만 **어느 조건이 문제인지** 말하지 않는다. 필터가 걸린 상태의 빈 목록에는 무엇을 끄면 되는지 알려주거나, 끄는 버튼을 붙여라.
+같은 항목의 **두 번째 문제(재난문자가 새로 뜬 것이 스크린리더에 안 알려진다)는 하지 않았다.** 코드로 확인한 결과 `useCachedCityAlerts`는 `useQueryClient().getQueryData()`를 렌더 중에 읽을 뿐 **구독하지 않는다.** 즉 캐시에 새 재난문자가 들어와도 그것만으로는 리렌더가 일어나지 않고, 다른 이유로 `HomeScreen`이 다시 그려질 때 우연히 딸려 온다. 이 상태에서 라이브 리전을 달면 "언제 읽힐지 모르는" 알림이 된다 — 고치려면 `useCachedCityAlerts`가 실제로 구독하도록 바꾸는 게 먼저다. **별도 태스크로 뺀다.**
 
-**(E) 시트 루트에 `overflow-hidden`을 걸지 마라.** 걸면 (D)의 위쪽 20px 히트 영역이 조용히 잘린다. 시트 상단에 배경 있는 요소(요약 스트립, 상세 히어로)를 풀블리드로 넣어 `rounded-t-2xl` 모서리가 각져 보이면, 루트가 아니라 **그 요소 쪽에** 반경을 주거나 내용 래퍼에 `overflow-hidden`을 걸어라.
+**(G) 빈 목록 문구가 무엇을 풀어야 할지 안 알려준다.** 「★ 내 장소」를 켠 뒤 카테고리를 좁혀 0이 되면(칩은 선택돼 있어 활성이다 — Task 6이 갇힘을 막으려고 그렇게 뒀다) 목록이 비고 `조건에 맞는 명소가 없어요.`가 뜬다. 틀린 말은 아니지만 **어느 조건이 문제인지** 말하지 않는다.
 
-- [ ] **Step 1: 실패 테스트를 쓴다**
+**결론(했다).** 검색어가 없고 `filters.filter !== null`이면 그 필터 이름을 문구에 넣고(`「내 장소」에 해당하는 명소가 없어요.`) 「필터 해제」 버튼을 붙인다.
 
-`HomeScreen.test.tsx`에 추가한다(기존 목업 설정은 그대로 두고, `focusArea` 테스트는 지운다).
+- 라벨의 정본을 `domain/presets.ts`의 **`filterLabel(key: FilterKey): string`**으로 올렸다. `FilterChips`도 그것을 쓴다 — `CHIPS`가 `{key, label}` 객체 배열에서 `FilterKey[]`로 줄었다. `fav`는 `PRESETS`에 없으므로 `find`가 비고 그대로 즐겨찾기 이름으로 떨어진다(분기를 따로 두지 않는 것은 폴백이 곧 정답인 유일한 키라서다).
+- **검색어가 있으면 검색어를 지목하고 「필터 해제」를 권하지 않는다.** 검색어에는 검색 바의 지우기 버튼이라는 출구가 이미 있고, 두 원인을 한 문장에 담으면 길어진다. 검색어를 지우면 필터만 걸린 상태로 돌아가 그때 필터 문구가 뜬다.
+- **카테고리는 지목하지 않는다.** 카테고리는 언제나 보이는 탭 줄이라 무엇이 골라져 있는지 눈에 있고, 「전체」로 돌아가는 자리가 그 줄 안에 이미 있다. 칩은 스스로 0이 되면 비활성으로 굳을 수 있어 끄는 버튼이 따로 필요했다. 그 경우 문구는 기존 `조건에 맞는 명소가 없어요.`로 남는다.
+
+**(E) 시트 루트에 `overflow-hidden`을 걸지 마라 — 그대로 지켰다.** 걸면 (D)의 위쪽 20px 히트 영역이 조용히 잘린다. 시트 상단에 배경 있는 요소를 풀블리드로 넣어 `rounded-t-2xl` 모서리가 각져 보이면, 루트가 아니라 **그 요소 쪽에** 반경을 줘라.
+
+**(H) 시트의 좌우 여백을 시트가 갖지 않기로 했다 — 계획서와 다르다.** 원래 Step 5는 "바깥 여백(`px-4`)은 시트가 이미 준다"며 `TodayScreen`에서 패딩을 걷으라고 했다. 그런데 시트에 들어가는 뷰 **셋 다** 이미 제 여백을 들고 있다 — `AreaDetail`(헤더 `px-4`, 절마다 `mx-4`)과 그 아래 6개 컴포넌트, `TodayScreen`과 그 아래 4개 컴포넌트, 목록 쪽 `LocationNotice`(`mx-4`)·`CategoryFilter`(`px-4`)까지. 시트가 한 겹 더 주면 전부 32px이 되므로, 고칠 곳은 **컴포넌트 12개가 아니라 시트 한 줄**이다. `BottomSheet` 내용 래퍼에서 `px-4 pb-6`을 걷었다. 덤으로 상세 히어로처럼 가로를 꽉 채워야 하는 요소가 표현 가능해지고, `TodayScreen`이 (Task 10 전까지 남아 있는) 「더보기」 탭에서도 그대로 선다. 실측: 시트 폭 500px에서 요약 스트립·명소 행·정렬 세그먼트 모두 left 16 / right 484 — 겹치지 않는다.
+
+- [x] **Step 1: 실패 테스트를 쓴다**
+
+`HomeScreen.test.tsx`에 추가한다. 아래 목록은 계획서가 적어 둔 것이고, 실제로는 (A)(C)(F)(G)를 잠그는 테스트가 더 붙었다. **총 30개, 전부 변이로 확인했다.**
+
+두 가지가 계획서와 다르다.
+
+1. **`focusArea` 테스트를 지우지 않았다.** 계획서는 이 태스크에서 prop을 없애라고 했지만, 탭바는 Task 10까지 살아 있고 `App`이 「즐겨찾기·오늘의 서울 탭에서 명소를 눌러 홈 상세로 이동」을 표현할 수단이 이 prop뿐이다. 지금 지우면 그 기능과 그것을 잡는 `App.test.tsx`의 테스트가 함께 죽는다. **Task 10에서 탭바와 같이 지운다.** 테스트는 "그 명소의 상세를 **가득 펼친다**"로 강화했다.
+2. **`useCachedCityAlerts`를 목업해야 한다.** 「오늘의 서울」이 시트 안 뷰가 되면서 `HomeScreen`이 이 훅을 부르는데, 실제 훅은 `useQueryClient()`를 요구해 `QueryClientProvider` 없이 `render`하는 이 파일의 테스트를 **전부** 깨뜨린다. `TodayScreen.test.tsx`와 같은 방식으로 목업한다.
 
 ```tsx
 it('지도가 시트 뒤에 전체 크기로 깔린다', () => {
@@ -1940,12 +1995,12 @@ it('지도 키가 없어도 목록과 검색이 동작한다', async () => {
 })
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npx vitest run src/screens/HomeScreen.test.tsx`
-Expected: FAIL — `data-map-layer`가 없고 요약 스트립이 없다
+결과: 14 failed | 15 passed — `data-map-layer`가 없고 요약 스트립이 없다
 
-- [ ] **Step 3: `SearchBar`에서 「내 주변」을 뺀다**
+- [x] **Step 3: `SearchBar`에서 「내 주변」을 뺀다**
 
 「내 주변」은 FAB으로 합친다. `SearchBar`는 검색만 한다.
 
@@ -1956,9 +2011,13 @@ interface Props {
 }
 ```
 
-`onRecenter`·`canRecenter`와 그 버튼 JSX를 지운다. `SearchBar.test.tsx`에서 「내 주변」 관련 테스트 셋도 지운다.
+`onRecenter`·`canRecenter`와 그 버튼 JSX를 지운다.
 
-- [ ] **Step 4: `RecenterButton`의 위치를 시트에 맞춘다**
+`SearchBar.test.tsx`의 「내 주변」 테스트 셋이 지키던 것은 `RecenterButton.test.tsx`의 「누르면 콜백을 부른다」·「좌표가 없으면 비활성이고 눌러도 반응하지 않는다」가 그대로 잡는다 — 확인하고 지웠다. 대신 **「검색 말고 다른 버튼은 두지 않는다」**를 새로 넣었다(`getAllByRole('button')`이 지우기 버튼 하나뿐). 지도에 대고 하는 동작이 검색 줄에 다시 붙는 것을 막는 자리다.
+
+버튼이 빠지면서 `gap-2`가 할 일이 없어져 걷었고, 지도 위에 홀로 뜨므로 입력 상자에 `shadow-floating`을 줬다.
+
+- [x] **Step 4: `RecenterButton`의 위치를 시트에 맞춘다**
 
 `raised` 불리언 대신 시트 단계를 받는다.
 
@@ -1979,13 +2038,19 @@ const BOTTOM_CLASS: Readonly<Record<Detent, string>> = {
 }
 ```
 
-`className`의 `${raised ? 'bottom-64' : 'bottom-28'}`를 `${BOTTOM_CLASS[detent]}`로 바꾸고, `aria-label`을 `'내 위치로 이동'`에서 `'내 주변'`으로 바꾼다(「내 주변」 버튼을 흡수했으므로). `RecenterButton.test.tsx`도 함께 고친다.
+`className`의 `${raised ? 'bottom-64' : 'bottom-28'}`를 `${BOTTOM_CLASS[detent]}`로 바꾸고, `aria-label`을 `'내 위치로 이동'`에서 `'내 주변'`으로 바꾼다(「내 주변」 버튼을 흡수했으므로). `RecenterButton.test.tsx`는 세 단계를 모두 확인하도록 `it.each`로 고쳤다 — 한 단계만 보면 위치를 상수로 박아 둔 구현도 통과한다.
 
-- [ ] **Step 5: `TodayScreen`을 시트 안 뷰로 바꾼다**
+이름 변경 덕에 `App.test.tsx`의 「내 주변」 관련 테스트 둘이 그대로 산다(예전에는 `SearchBar`의 버튼을 잡던 것이 이제 FAB을 잡는다).
 
-바깥 여백(`px-4`)은 시트가 이미 준다. `TodayScreen`의 최상위 `div`에서 좌우 패딩을 걷어내고, 각 섹션의 `mx-4`도 뺀다. props는 그대로(`onSelectArea`).
+`full`에서 감출지는 위 (C)에서 숫자를 보고 **감추지 않기로** 정했다.
 
-- [ ] **Step 6: `HomeScreen`을 재작성한다**
+- [x] **Step 5: `TodayScreen`을 시트 안 뷰로 바꾼다**
+
+**패딩은 걷지 않았다 — 대신 시트 쪽을 걷었다.** 근거는 위 (H). `TodayScreen`에서 실제로 한 것은 `onBack`을 더하고 「목록으로」 버튼을 최상단에 놓은 것, 그리고 첫 섹션의 `pt-4`를 버튼이 그 자리를 차지하므로 뺀 것뿐이다.
+
+**「목록으로」 버튼은 조회 상태 분기 밖에 둔다.** 로딩·실패 분기 안에 넣으면 느린 응답을 기다리는 동안 이 뷰가 시트의 92%를 덮은 채 나갈 길이 없다. 테스트로 잠갔다(「로딩 중에도 목록으로 돌아갈 수 있다」).
+
+- [x] **Step 6: `HomeScreen`을 재작성한다**
 
 ```tsx
 export function HomeScreen() {
@@ -2239,13 +2304,31 @@ interface Props {
 </button>
 ```
 
-`TodayScreen.test.tsx`의 모든 `render(<TodayScreen onSelectArea={...} />)`에 `onBack={() => {}}`를 더한다.
+`TodayScreen.test.tsx`의 모든 `render(<TodayScreen onSelectArea={...} />)`에 `onBack={() => {}}`를 더한다. **`App.tsx`의 「더보기」 탭에도 더해야 한다** — 그 탭은 Task 10까지 살아 있다. `onBack={() => setTab('home')}`으로 뒀다.
 
-- [ ] **Step 7: `SplitPane`을 지운다**
+`AreaDetail`도 「목록으로」 버튼을 갖고 있지만, 시트 내용은 셋 중 하나만 그려지므로 두 버튼이 동시에 뜨지 않는다(`selectedName !== null`이 `view === 'today'`보다 앞선다 — 오늘의 서울에서 명소를 누르면 그 상세로 가야 하기 때문이다). `getByRole('button', { name: '목록으로' })`가 모호해지지 않는다.
+
+### 계획서 코드에서 실제로 고친 것
+
+- **(C)(F)(G)가 반영돼 있지 않았다.** 위 결정 사항대로 넣었다.
+- **`HOME_HEIGHT_CLASS`를 지우지 않았다.** 계획서는 루트를 `size-full`로 바꿨는데, `App.tsx`가 이 화면을 `<div hidden={tab !== 'home'}>`로 감싸고 그 div에 높이를 주지 않는다 — `height: 100%`가 auto인 부모를 만나 **지도가 0px로 접힌다.** Task 10에서 셸이 `h-dvh`가 될 때 지운다. 임시 조치임을 상수 주석에 적었다. 실측(개발 서버 + 헤드리스 크롬): 뷰포트 713px에서 `[data-map-layer]` 높이 593px = `calc(100dvh − 7.5rem)`. 접히지 않는다.
+- **`openArea`를 `useCallback`으로 감쌌다.** 지도를 팬할 때마다 `onCameraChanged`가 상태를 바꿔 리렌더가 나는데 마커가 30개다. 의존성은 `setSelectedName` 하나뿐이고 그것은 `useHomeFilters`가 돌려주는 `useState` 세터라 참조가 고정이다 — `filters` 객체를 넣으면 매 렌더 새것이라 memo가 통째로 무의미해진다.
+- **`focusArea`는 effect가 아니라 렌더 중 상태 조정으로 처리한다.** `useEffect` 안에서 `setDetent`/`setView`를 부르면 `react-hooks/set-state-in-effect`가 막는다(`npm run lint` 실패). 함수로 감싸도 규칙이 따라 들어온다. React가 「prop이 바뀔 때 상태 맞추기」에 권하는 형태로 바꾸고 직전에 연 이름을 `openedFocus`로 들고 있는다 — 그 상세를 닫아도 `focusArea`는 그대로라 매 렌더 다시 열리기 때문이다.
+- **`listPane`의 절 순서를 계획서와 다르게 뒀다.** 계획서는 `SortSegmented` → `CategoryFilter` 순인데 기존 코드가 `CategoryFilter` → `SortSegmented`였다. 이 태스크에서 바꿀 이유가 없어 기존 순서를 지켰다.
+- **로딩 알약(`LOADING_LABEL = '혼잡도를 불러오는 중'`)을 지웠다.** 검사하는 테스트가 없음을 확인했고(`grep`), 시트 안 `SkeletonList`가 같은 말을 한다. 상수도 함께 지웠다.
+- **`useHomeFilters`에서 `mapRatio`/`setMapRatio`를 걷었다.** `SplitPane` 전용이라 죽은 코드가 된다. `SHEET_RATIO` import와 해당 테스트 둘도 함께 지웠다.
+
+- [x] **Step 7: `SplitPane`을 지운다**
 
 ```bash
 git rm src/components/home/SplitPane.tsx src/components/home/SplitPane.test.tsx
 ```
+
+지우기 전에 `SplitPane.test.tsx`가 잡던 열 가지를 세어 봤다. 여덟은 `BottomSheet.test.tsx`에 같은 것이 있다. 나머지 둘은 잃은 게 아니다:
+
+- 「범위 밖으로 끌어도 한계 안에 머문다」 → `domain/sheet.test.ts`의 「범위 밖도 단계 하나로 떨어진다」가 잡는다.
+- 「끄는 도중에는 스냅하지 않고 손끝을 따라간다」 → `BottomSheet`는 **의도적으로** 그렇게 하지 않는다(Task 3에서 결정, 컴포넌트 주석에 근거가 있다). 잃을 보호가 아니라 사라진 요구사항이다.
+- 「더블클릭하면 기본값으로 돌아간다」 → 클릭 순환이 흡수했다((A) 참고).
 
 - [ ] **Step 8: 통과를 확인한다**
 
@@ -2254,9 +2337,19 @@ Expected: 전부 PASS
 
 - [ ] **Step 9: 변이 확인**
 
-`counts`를 걸러진 목록으로 세게 바꾼다(`filterCounts(visible, favorites)`) → "프리셋 개수는 걸러진 목록이 아니라 전체로 센다"가 실패해야 한다. 되돌린다.
+**23개를 돌렸고 전부 죽었다(죽은 테스트 0).** 필수 둘:
 
-두 번째 변이: `filterCounts(list, favorites)`의 `fav`를 `favorites.length`로 되돌린다 → 도메인 쪽 「개수와 필터 결과 길이가 항상 같다」와 화면 쪽 「내 장소 개수는 지금 목록에 있는 것만 센다」가 함께 실패해야 한다. 되돌린다.
+1. `counts`를 걸러진 목록으로 센다 → 「프리셋 개수는 걸러진 목록이 아니라 전체로 센다」 1개 실패. ✅
+   주의: `filterCounts(visible, ...)`로 그냥 바꾸면 `visible`이 아래에 선언돼 TDZ로 **30개 전부** 터진다 — 변이가 아니라 컴파일 실패다. `visible`의 정의를 인라인해 유효한 코드로 만들어야 판별력이 있다.
+2. `filterCounts`의 `fav`를 `favorites.length`로 되돌린다 → 도메인 「개수와 필터 결과 길이가 항상 같다」 + 화면 「내 장소 개수는 지금 목록에 있는 것만 센다」 2개가 **함께** 실패. ✅
+
+(A) 손잡이 6개 — button→separator 되돌리기 / 순환 방향 뒤집기 / 클릭 가드 제거 / 가드를 pointerdown에서 안 털기 / 이름에서 단계 빼기 / `w-full` 빼기.
+(C) 3개 — 오버레이 항상 표시 / 아예 미표시 / `sheetDetent`에서 `mapReady` 무시. 추가로 **FAB을 full에서 감추는 변이**(내가 내린 결정을 뒤집는 쪽)도 「전체로 펼쳐져도 내 주변 버튼은 남는다」가 잡는다.
+(F) 2개 — 실패해도 스트립 표시 / 스트립 항상 미표시.
+(G) 6개 — `filterLabel` 오답 / 항상 즐겨찾기 이름 / 옛 문구로 되돌리기 / 「필터 해제」 미표시 / 버튼이 아무 일도 안 함 / 검색어가 있어도 필터 지목.
+그 밖 — `TodayScreen` 뒤로가기 제거, 오늘의 서울·상세에서 돌아올 때 시트 안 내리기, `RecenterButton` 이름·위치, `SearchBar`에 버튼 되살리기, 명소를 열어도 full로 안 올리기, `data-map-layer` 표식 제거.
+
+`vitest --reporter=basic`은 vitest 4에서 없어졌다(리포터 로드 실패로 조용히 0건 보고된다). 기본 리포터의 `FAIL ... > 이름` 줄을 파싱해야 한다.
 
 - [ ] **Step 10: 커밋**
 
@@ -2264,6 +2357,20 @@ Expected: 전부 PASS
 git add -A src
 git commit -m "feat: 지도를 전체 배경으로 깔고 오버레이 시트로 전환"
 ```
+
+### Task 9가 Task 10에 넘기는 것
+
+- **`HomeScreen`의 `focusArea` prop과 `openedFocus` 상태.** 탭바가 사라지면 부르는 곳이 없어진다. `HomeScreen.test.tsx`의 「focusArea가 주어지면 그 명소의 상세를 가득 펼친다」도 함께 지운다.
+- **`HOME_HEIGHT_CLASS`.** 셸이 `h-dvh`가 되고 `<main className="min-h-0 flex-1">`이 되면 루트를 `relative size-full overflow-hidden`으로 바꾸고 이 상수를 지운다.
+- **`App.tsx`의 「더보기」 탭.** `TodayScreen`은 이미 시트 안에서 돌고 있으므로 탭 쪽만 걷어내면 된다.
+
+### 실기기 없이는 확정 못 하는 것들 (STATE.md 미해결)
+
+1. **(B)의 성능 논거** — `transition-[height]`가 매 프레임 리플로우를 일으킨다. 스크롤 보존은 실측으로 문제없음이 확인됐고, 남은 건 저사양 안드로이드 웹뷰에서 200ms 동안 목록이 재배치되는 체감뿐이다.
+2. **(D)의 죽은 띠** — 시트 위 20px에서 마커 탭도 지도 팬도 안 먹는다. `peek`에서는 화면 84% 지점을 가로지른다.
+3. **FAB과 손잡이의 구석 겹침** — `20px − 0.02×컨테이너높이`. 800px에서 4px, 713px에서 8px. 화면이 작을수록 는다.
+4. **시트 드래그와 지도 팬 제스처 충돌** (Task 3에서 이월).
+5. **iOS 안전 영역을 포함한 실제 높이.**
 
 ---
 
