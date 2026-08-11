@@ -12,7 +12,9 @@ interface Props {
 }
 
 // 지도 위에 떠 있으므로 바깥 컨테이너에 pointer-events-auto가 필요하다.
-// RecenterButton과 같은 제약이다.
+// HomeScreen의 오버레이 컨테이너가 `pointer-events-none`이라(칩 줄과 검색 바
+// 사이의 빈 곳에서 지도를 끌 수 있어야 한다) 여기서 되살리지 않으면 칩이
+// 아예 안 눌린다.
 export function FilterChips({ counts, value, onChange }: Props) {
   return (
     <div

@@ -19,6 +19,16 @@ describe('FilterChips', () => {
     ])
   })
 
+  // 높이가 40px이라는 사실에 오버레이 예산이 걸려 있다. 「검색 바 + 칩 열」이
+  // 0~88px을 차지한다는 계산이 이 값에서 나오고, 그 88px이 full(92%)에서
+  // 손잡이 히트 영역(44~88px)을 통째로 덮는다는 근거가 되어 「full에서는 이
+  // 열을 그리지 않는다」로 이어진다. 48px 규약에 맞추려고 무심코 올리면
+  // 그 사슬이 조용히 끊긴다.
+  it('칩 높이가 오버레이 예산에 맞춰 40px로 묶여 있다', () => {
+    render(<FilterChips counts={COUNTS} value={null} onChange={vi.fn()} />)
+    expect(screen.getByRole('tab', { name: '내 장소 3' })).toHaveClass('min-h-10')
+  })
+
   it('개수를 함께 보여준다', () => {
     render(<FilterChips counts={COUNTS} value={null} onChange={vi.fn()} />)
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
@@ -10,9 +10,45 @@ import { HomeScreen } from './HomeScreen'
 
 // jsdom에 Google Maps가 없다. App.test.tsx가 토스 SDK에 쓰는 방식과 같다.
 vi.mock('@vis.gl/react-google-maps', () => ({
-  APIProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  Map: ({ children }: { children: ReactNode }) => (
-    <div role="region" aria-label="지도">
+  // 실제 APIProvider는 스크립트 로드가 깨졌을 때 내부에서 `onError`를 부른다.
+  // 목에는 그 경로가 없어서 `loadFailed` 분기가 통째로 미커버였다 — 설계 §4가
+  // "가장 중요한 실패 경로"라 부른 둘 중 하나다. 버튼 하나로 그 통로를 낸다.
+  // 이름을 붙여 뒀으므로 다른 테스트의 이름 기반 쿼리에는 걸리지 않는다.
+  APIProvider: ({
+    children,
+    onError,
+  }: {
+    children: ReactNode
+    onError?: (error: unknown) => void
+  }) => (
+    <div>
+      <button
+        type="button"
+        aria-label="지도 스크립트 로드 실패"
+        onClick={() => onError?.(new Error('스크립트를 받지 못했다'))}
+      />
+      {children}
+    </div>
+  ),
+  // 카메라(center·zoom)를 DOM에 실어 둔다. 목이 이 둘을 버리면 「내 주변을
+  // 누르면 지도가 내 위치로 간다」를 잡을 방법이 없어진다 — 실제 지도가 없는
+  // 환경에서 그 계약을 관찰할 수 있는 유일한 통로다. 검증 대상은 목이 아니라
+  // **HomeScreen이 무엇을 넘기는가**이고, 그건 이 화면의 진짜 책임이다.
+  Map: ({
+    children,
+    center,
+    zoom,
+  }: {
+    children: ReactNode
+    center?: { lat: number; lng: number }
+    zoom?: number
+  }) => (
+    <div
+      role="region"
+      aria-label="지도"
+      data-center={center === undefined ? '' : `${center.lat},${center.lng}`}
+      data-zoom={zoom}
+    >
       {children}
     </div>
   ),
@@ -110,9 +146,27 @@ beforeEach(async () => {
   } as unknown as UseQueryResult<CityInfo>)
 })
 
-/** 목록 쪽 항목만 고른다 — 지도 마커도 같은 이름의 버튼이라서. */
-function listItem(name: string | RegExp) {
+/**
+ * 그 이름의 명소 버튼 전부. **거르지 않는다** — 지도 마커와 목록 행이 같은
+ * 이름이라 둘 다 잡히고, DOM 순서상 `[0]`은 마커다(`data-map-layer`가 시트보다
+ * 앞이라서). 개수만 보는 단언에는 그걸로 충분하고, 실제로 그렇게 쓴다.
+ *
+ * 어느 쪽을 눌렀는지가 중요한 곳에서는 `mapMarker`·`sheetRow`를 써라.
+ */
+function areaButtons(name: string | RegExp) {
   return screen.getAllByRole('button', { name })
+}
+
+/** 지도 마커. 지도 레이어 안으로 좁힌다. */
+function mapMarker(name: string | RegExp): HTMLElement {
+  const layer = document.querySelector('[data-map-layer]') as HTMLElement
+  return within(layer).getAllByRole('button', { name })[0]
+}
+
+/** 시트 안 목록 행. 마커가 아니라 `AreaListItem`을 누른다. */
+function sheetRow(name: string | RegExp): HTMLElement {
+  const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
+  return within(sheet).getAllByRole('button', { name })[0]
 }
 
 /** 시트 손잡이. 이름에 현재 단계가 붙어 있어 정규식으로 잡는다. */
@@ -134,9 +188,29 @@ describe('HomeScreen', () => {
     expect(screen.getByRole('tablist', { name: '필터' })).toBeInTheDocument()
   })
 
+  // 지도가 살아 있는 상태에서 **목록 행**을 누르는 경로다. 다른 테스트들이
+  // 쓰는 `areaButtons(...)[0]`은 DOM 순서상 전부 지도 마커라, 이 테스트가
+  // 없으면 `AreaListItem` → 상세가 한 번도 검증되지 않는다.
+  it('목록 행을 눌러도 그 명소의 상세가 열린다', async () => {
+    render(<HomeScreen />)
+
+    await userEvent.click(sheetRow(/경복궁/))
+
+    expect(screen.getByRole('heading', { name: '경복궁' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+  })
+
+  it('지도 마커를 눌러도 그 명소의 상세가 열린다', async () => {
+    render(<HomeScreen />)
+
+    await userEvent.click(mapMarker(/경복궁/))
+
+    expect(screen.getByRole('heading', { name: '경복궁' })).toBeInTheDocument()
+  })
+
   it('명소를 누르면 상세가 시트를 가득 채우고 지도는 뒤에 남는다', async () => {
     render(<HomeScreen />)
-    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(areaButtons(/강남역/)[0])
     expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
     expect(sheetHandle()).toHaveAccessibleName(/현재 전체/)
     // 핵심: 지도가 사라지지 않는다. 예전 구조에서는 상세로 가면 사라졌다.
@@ -151,26 +225,73 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
     expect(screen.getByRole('searchbox')).toBeInTheDocument()
 
-    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(areaButtons(/강남역/)[0])
 
     expect(screen.queryByRole('searchbox')).toBeNull()
     expect(screen.queryByRole('tablist', { name: '필터' })).toBeNull()
   })
 
-  it('전체로 펼쳐져도 내 주변 버튼은 남는다', async () => {
-    // FAB은 폭 48px에 시트 위 16px로 떠서 손잡이를 가리지 않는다(겹치는 4px은
-    // peek·half에서도 같다). 지도에 대고 하는 동작이라 지도가 조각으로 남은
-    // full에서도 뜻이 살아 있고, 누르면 시트가 peek으로 내려간다.
+  it('시트가 전체로 펼쳐지면 내 주변 버튼도 함께 물러난다', async () => {
+    // full에서는 48px 버튼이 들어갈 자리가 없다. 시트 위 지도 조각에서 버튼
+    // 몫이 `0.06H`라 `H ≥ 800px`이라야 안 잘리는데, 컨테이너는
+    // `100dvh − 7.5rem`이라 실기기에서는 언제나 그보다 작다 — 루트의
+    // `overflow-hidden`이 버튼 위쪽을 잘라낸다.
+    //
+    // 잘림 자체는 기하라서 jsdom이 못 잡는다. 잡을 수 있는 것은 「full에서는
+    // 그리지 않는다」는 결정이고, 그래서 그것을 잠근다.
     render(<HomeScreen />)
-    await userEvent.click(listItem(/강남역/)[0])
     expect(screen.getByRole('button', { name: '내 주변' })).toBeInTheDocument()
+
+    await userEvent.click(areaButtons(/강남역/)[0])
+
+    expect(screen.queryByRole('button', { name: '내 주변' })).toBeNull()
+  })
+
+  // 「내 주변」이 검색 줄에서 FAB으로 넘어오며 **하던 일도 함께 왔다**는 것이
+  // 이 태스크의 서사인데, 콜백이 불린다는 것만 옮겨지고 콜백이 **무엇을 하는지**는
+  // 안 옮겨져 있었다. SearchBar.test.tsx에서 지운 테스트가 잡던 자리다.
+  it('내 주변을 누르면 목록이 거리순이 되고 시트가 내려간다', async () => {
+    useLocation.mockReturnValue({
+      coords: { lat: 37.5, lng: 127 },
+      status: 'granted',
+      retry: vi.fn(),
+    })
+    render(<HomeScreen />)
+    await userEvent.click(screen.getByRole('tab', { name: '붐비는 순' }))
+
+    await userEvent.click(screen.getByRole('button', { name: '내 주변' }))
+
+    expect(sheetHandle()).toHaveAccessibleName(/현재 살짝 열림/)
+    expect(screen.getByRole('tab', { name: '거리순' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  it('내 주변을 누르면 지도가 내 위치로 옮겨간다', async () => {
+    // 버튼 이름이 약속하는 바로 그 동작이다. 목록 정렬만 바뀌고 지도가 그대로면
+    // 「내 주변」이라는 이름이 거짓말이 된다.
+    useLocation.mockReturnValue({
+      coords: { lat: 37.5, lng: 127 },
+      status: 'granted',
+      retry: vi.fn(),
+    })
+    render(<HomeScreen />)
+    const map = screen.getByRole('region', { name: '지도' })
+    expect(map).toHaveAttribute('data-center', '37.5665,126.978') // 서울 전역
+
+    await userEvent.click(screen.getByRole('button', { name: '내 주변' }))
+
+    expect(map).toHaveAttribute('data-center', '37.5,127')
+    // 줌도 함께 당긴다. 서울 전역 줌 그대로 옮기면 내 주변이 안 보인다.
+    expect(map).toHaveAttribute('data-zoom', '14')
   })
 
   it('시트를 내리면 오버레이가 돌아온다', async () => {
     // 손잡이가 full에서 peek으로 굴러간다. 되돌아올 길이 막히지 않는다는 것이
     // 위 규칙을 감당 가능하게 만드는 조건이다.
     render(<HomeScreen />)
-    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(sheetHandle())
     expect(screen.getByRole('searchbox')).toBeInTheDocument()
   })
@@ -180,11 +301,11 @@ describe('HomeScreen', () => {
     // 푸는 규칙 자체는 그대로다 — 걸러져 사라진 명소의 상세가 남으면 목록에
     // 없는 곳의 요약이 떠 있는 상태가 된다.
     render(<HomeScreen />)
-    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(sheetHandle())
     await userEvent.type(screen.getByRole('searchbox'), '경복궁')
     expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
-    expect(listItem(/경복궁/).length).toBeGreaterThan(0)
+    expect(areaButtons(/경복궁/).length).toBeGreaterThan(0)
   })
 
   it('요약 스트립을 누르면 오늘의 서울이 열린다', async () => {
@@ -208,7 +329,7 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
     await userEvent.click(screen.getByRole('button', { name: /곳 중 붐빔/ }))
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
-    expect(listItem(/강남역/).length).toBeGreaterThan(0)
+    expect(areaButtons(/강남역/).length).toBeGreaterThan(0)
     // half로 내려와야 목록 뒤의 지도가 다시 보인다.
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
   })
@@ -217,9 +338,9 @@ describe('HomeScreen', () => {
     // 목록만 돌려놓고 시트를 full에 두면 목록이 화면의 92%를 덮은 채 남아
     // 지도가 안 보인다 — 상세를 닫는다는 건 지도로 돌아온다는 뜻이다.
     render(<HomeScreen />)
-    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
-    expect(listItem(/경복궁/).length).toBeGreaterThan(0)
+    expect(areaButtons(/경복궁/).length).toBeGreaterThan(0)
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
   })
 
@@ -227,7 +348,7 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
     await userEvent.type(screen.getByRole('searchbox'), '경복궁')
     expect(screen.queryByRole('button', { name: /강남역/ })).toBeNull()
-    expect(listItem(/경복궁/).length).toBeGreaterThan(0)
+    expect(areaButtons(/경복궁/).length).toBeGreaterThan(0)
   })
 
   it('검색 결과가 없으면 찾은 말을 되돌려 보여준다', async () => {
@@ -240,7 +361,7 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
     await userEvent.type(screen.getByRole('searchbox'), '경복궁')
     await userEvent.click(screen.getByRole('button', { name: '검색어 지우기' }))
-    expect(listItem(/강남역/).length).toBeGreaterThan(0)
+    expect(areaButtons(/강남역/).length).toBeGreaterThan(0)
   })
 
   // 설계 §4가 가장 중요하다고 한 실패 경로다. 예전에는 지도가 독립 탭이라
@@ -249,9 +370,38 @@ describe('HomeScreen', () => {
     isMapAvailable.mockReturnValue(false)
     render(<HomeScreen />)
     expect(screen.queryByRole('region', { name: '지도' })).toBeNull()
-    expect(listItem(/강남역/).length).toBeGreaterThan(0)
+    expect(areaButtons(/강남역/).length).toBeGreaterThan(0)
     await userEvent.type(screen.getByRole('searchbox'), '경복궁')
     expect(screen.queryByRole('button', { name: /강남역/ })).toBeNull()
+  })
+
+  // 설계 §4가 꼽은 두 실패 경로 중 나머지 하나다. 키는 있는데 스크립트를 못
+  // 받은 경우(오프라인·차단·잘못된 키)라 키 미설정과 문구가 달라야 한다 —
+  // 개발자와 사용자가 각각 맞는 곳을 의심해야 하기 때문이다.
+  it('지도 스크립트를 못 받으면 그 사실을 말하고 목록은 남는다', async () => {
+    // 이 경로는 console.error로 원인을 남긴다(이 저장소가 허용한 유일한 용례다).
+    // 테스트 출력에 섞이지 않게 막고, 실제로 남기는지도 함께 본다.
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<HomeScreen />)
+
+    await userEvent.click(screen.getByRole('button', { name: '지도 스크립트 로드 실패' }))
+
+    expect(screen.queryByRole('region', { name: '지도' })).toBeNull()
+    expect(screen.getByText(/불러오지 못했어요/)).toBeInTheDocument()
+    expect(screen.queryByText(/VITE_GOOGLE_MAPS_API_KEY/)).toBeNull()
+    expect(areaButtons(/강남역/).length).toBeGreaterThan(0)
+    expect(logged).toHaveBeenCalled()
+  })
+
+  it('지도 스크립트를 못 받으면 시트가 half에 묶인다', async () => {
+    // 키가 없을 때와 같은 이유다. 지도 안내가 화면의 92%를 차지할 이유가 없다.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<HomeScreen />)
+    await userEvent.click(screen.getByRole('button', { name: '지도 스크립트 로드 실패' }))
+
+    await userEvent.click(sheetHandle())
+
+    expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
   })
 
   it('지도 키가 없으면 상세를 열어도 시트가 half에 묶인다', async () => {
@@ -260,7 +410,7 @@ describe('HomeScreen', () => {
     // 남은 길인 상황에서 그 길까지 닫으면 안 된다.
     isMapAvailable.mockReturnValue(false)
     render(<HomeScreen />)
-    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(areaButtons(/강남역/)[0])
     expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
     expect(screen.getByRole('searchbox')).toBeInTheDocument()
@@ -314,7 +464,7 @@ describe('HomeScreen', () => {
 
     await userEvent.click(await screen.findByRole('tab', { name: '내 장소 1' }))
 
-    expect(listItem(/경복궁/).length).toBeGreaterThan(0)
+    expect(areaButtons(/경복궁/).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: /강남역/ })).toBeNull()
   })
 
@@ -354,7 +504,7 @@ describe('HomeScreen', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '필터 해제' }))
 
-    expect(listItem(/남산공원/).length).toBeGreaterThan(0)
+    expect(areaButtons(/남산공원/).length).toBeGreaterThan(0)
   })
 
   it('검색 결과가 비었을 때는 필터 해제를 권하지 않는다', async () => {
@@ -378,7 +528,7 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
     expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeDisabled()
 
-    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
 
@@ -397,26 +547,26 @@ describe('HomeScreen', () => {
     })
     render(<HomeScreen />)
 
-    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
 
     expect(screen.getByRole('tab', { name: '내 장소 1' })).toBeEnabled()
 
-    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(areaButtons(/강남역/)[0])
     expect(screen.getByRole('button', { name: '저장됨' })).toBeInTheDocument()
   })
 
   it('카테고리를 고르면 목록이 그 분류만 남는다', async () => {
     render(<HomeScreen />)
     await userEvent.click(screen.getByRole('tab', { name: '고궁·유적' }))
-    expect(listItem(/경복궁/).length).toBeGreaterThan(0)
+    expect(areaButtons(/경복궁/).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: /강남역/ })).toBeNull()
   })
 
   it('상세를 열면 카테고리와 정렬은 목록과 함께 물러난다', async () => {
     render(<HomeScreen />)
-    await userEvent.click(listItem(/강남역/)[0])
+    await userEvent.click(areaButtons(/강남역/)[0])
     expect(screen.queryByRole('tab', { name: '공원' })).toBeNull()
     expect(screen.queryByRole('tab', { name: '여유한 순' })).toBeNull()
   })

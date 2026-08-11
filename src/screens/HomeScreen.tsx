@@ -98,9 +98,16 @@ export function HomeScreen({ focusArea = null }: Props) {
   // 그리고 아래 focusArea 조정이 모두 여기로 들어온다 — 어디서 열든 시트가
   // 상세로 가득 차야 같은 화면이 된다.
   //
-  // useCallback인 이유는 지도를 팬할 때마다 onCameraChanged가 center·zoom을
-  // 바꿔 이 화면이 다시 그려지는데, 그때마다 마커 30개의 onClick이 전부 새
-  // 함수가 되기 때문이다. 의존성 `setSelectedName`은 useHomeFilters가 돌려주는
+  // useCallback은 **성능 때문이 아니다.** 마커의 `onClick`은
+  // `() => openArea(...)` 인라인 화살표라 이 함수가 안정적이든 아니든 매 렌더
+  // 새것이고, 닿았더라도 소용이 없다 — vis.gl의 `useDomEventListener`가
+  // 리스너를 다는 effect의 의존성이 `[target, name, isCallbackDefined]`라
+  // **콜백 신원을 아예 보지 않는다**(node_modules에서 확인했다). 목록·상세·
+  // 오늘의 서울도 `memo`가 아니다.
+  //
+  // 남는 이유는 하나다: 아래 focusArea 조정이 이 함수를 렌더 중에 부르므로
+  // 매 렌더 새 함수면 그 자리에서 무엇이 바뀌었는지 읽기 어려워진다. 비용이
+  // 0이라 그대로 둔다. 의존성 `setSelectedName`은 useHomeFilters가 돌려주는
   // useState 세터라 참조가 고정이다 — `filters` 객체 쪽은 매 렌더 새것이라
   // 넣으면 memo가 통째로 무의미해진다.
   const openArea = useCallback(
@@ -156,7 +163,15 @@ export function HomeScreen({ focusArea = null }: Props) {
 
   // 로딩 중에는 마커를 세우지 않는다. 스냅샷이 없는 명소는 회색 "정보 없음"으로
   // 그려지는데, 아직 안 온 것과 없는 것은 사용자에게 다른 말이다.
-  const markers = snapshots.isPending ? [] : toMapMarkers(visible)
+  //
+  // memo하는 이유가 `visible`·`counts`와 같다. vis.gl의 `usePropBinding`이
+  // `useEffect(..., [object, prop, value])`로 `marker.position = value`를 거는데,
+  // 매 렌더 새 배열이면 그 안의 `position`도 새 객체라 지도를 팬할 때마다
+  // 마커 30개에 대입이 나간다. 팬 중에는 카메라 이벤트가 연속으로 들어온다.
+  const markers = useMemo(
+    () => (snapshots.isPending ? [] : toMapMarkers(visible)),
+    [snapshots.isPending, visible],
+  )
   const showLabel = shouldShowMarkerLabel(zoom)
   const mapReady = isMapAvailable() && !loadFailed
 
@@ -165,27 +180,6 @@ export function HomeScreen({ focusArea = null }: Props) {
   // 정하는 이유는 아래 오버레이 규칙이 같은 값을 봐야 해서다 — 두 곳에서
   // 따로 `mapReady ? detent : 'half'`를 쓰면 한쪽만 고쳐지는 날이 온다.
   const sheetDetent: Detent = mapReady ? detent : 'half'
-
-  // full에서는 검색 바와 필터 칩 열을 아예 그리지 않는다.
-  //
-  // 800px 기준으로 full(92%)의 시트 상단은 64px이고 손잡이 히트 영역은
-  // 44~88px인데, 검색 바 + 칩 열이 0~88px을 덮는다. 둘 다 `pointer-events-auto`이고
-  // 화면 폭 전체라 손잡이를 **통째로** 가려, full에서는 시트를 잡을 수가 없다.
-  // 게다가 full에서 지도는 8%짜리 조각이라 검색·필터가 할 일도 거의 없다.
-  //
-  // `opacity-0`이 아니라 조건부 렌더다. 그래야 포인터 이벤트와 접근성 트리가
-  // 함께 정리되고, 사라졌다는 사실을 테스트로 잠글 수 있다.
-  //
-  // 되돌아올 길은 막히지 않는다: 「목록으로」가 half로 내리고, 손잡이(버튼이다)를
-  // 누르면 full→peek으로 굴러간다. 키가 없어 half에 묶인 경우에는 계속 보인다 —
-  // 지도가 죽었을 때 검색은 유일하게 남은 길이라 닫으면 안 된다.
-  //
-  // `RecenterButton`은 여기 딸려 가지 않는다. 폭이 48px인 데다 시트 위 16px에
-  // 떠 있어 손잡이를 가리지 않고(겹치는 것은 오른쪽 끝 4px뿐인데 그 겹침은
-  // peek·half에서도 똑같다 — full만의 문제가 아니다), full에서 시트 위로
-  // 남는 지도 조각에 서서 「지도를 내 위치로 옮기고 시트를 내린다」는
-  // 지도에 대한 동작을 그대로 수행한다.
-  const showSearchOverlay = sheetDetent !== 'full'
 
   function handleCameraChanged(event: MapCameraChangedEvent): void {
     setCenter(event.detail.center)
@@ -242,7 +236,9 @@ export function HomeScreen({ focusArea = null }: Props) {
         {markers.map((marker) => (
           <AdvancedMarker
             key={marker.entry.code}
-            position={{ lat: marker.entry.lat, lng: marker.entry.lng }}
+            // `toMapMarkers`가 만들어 둔 객체를 그대로 넘긴다. 여기서
+            // `{{ lat, lng }}`로 새로 만들면 위 memo가 통째로 무의미해진다.
+            position={marker.position}
             onClick={() => openArea(marker.entry.name)}
           >
             <CongestionMarker
@@ -380,35 +376,67 @@ export function HomeScreen({ focusArea = null }: Props) {
   return (
     <div className={`relative w-full overflow-hidden ${HOME_HEIGHT_CLASS}`}>
       {/* 지도가 뷰포트를 꽉 채우고 시트가 그 위를 덮는다. 공간을 나눠 갖지
-          않으므로 상세를 열어도 지도는 뒤에서 온전한 크기로 살아 있다. */}
+          않으므로 상세를 열어도 지도는 뒤에서 온전한 크기로 살아 있다.
+
+          `data-map-layer`는 테스트 손잡이다. 「지도가 시트 **뒤에** 전체
+          크기로 깔린다」는 것은 지도가 어느 레이어에 속하는지로만 확인되는데,
+          jsdom에는 레이아웃이 없어 위치로는 못 잡는다. 마커를 목록 행과
+          구별해 집는 데도 이 표식을 쓴다. */}
       <div data-map-layer className="absolute inset-0">
         {mapPane}
       </div>
 
-      {showSearchOverlay && (
-        <div
-          data-overlay
-          // 컨테이너는 이벤트를 통과시킨다. 칩 줄과 검색 바 사이의 빈 곳에서
-          // 지도를 끌 수 있어야 한다 — 되살리는 것은 자식 쪽이다.
-          className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1"
-        >
-          <div className="pointer-events-auto">
-            <SearchBar value={filters.query} onChange={filters.setQuery} />
+      {/* **전체로 펼치면 지도 위 조작부가 통째로 물러난다.** 이유가 조작부마다
+          다르지만 결론이 같아서 한 조건으로 묶었다.
+
+          검색 바 + 칩 열: 800px 기준 full(92%)의 시트 상단이 64px이고 손잡이
+          히트 영역이 44~88px인데 이 열이 0~88px을 덮는다. 둘 다
+          `pointer-events-auto`이고 폭이 화면 전체라 손잡이를 **통째로** 가려
+          full에서는 시트를 잡을 수가 없다.
+
+          FAB: full에서는 48px가 들어갈 자리가 아예 없다 — 버튼 몫이 `0.06H`라
+          `H ≥ 800px`이라야 안 잘리는데 컨테이너는 `100dvh − 7.5rem`이다.
+          자세한 산식은 `RecenterButton`에 있다.
+
+          `opacity-0`이 아니라 조건부 렌더다. 그래야 포인터 이벤트와 접근성
+          트리가 함께 정리되고, 사라졌다는 사실을 테스트로 잠글 수 있다.
+
+          `showSearchOverlay` 같은 파생 불리언을 쓰지 않고 여기서 직접 비교하는
+          이유는 **타입 좁히기** 때문이다. 이 비교라야 `sheetDetent`가
+          `RecenterDetent`로 좁혀져, full에 설 자리가 없다는 불변식을 컴파일러가
+          지킨다. 불리언으로 감싸면 그 검사가 사라진다.
+
+          되돌아올 길은 막히지 않는다: 「목록으로」가 half로 내리고, 손잡이를
+          누르면 full→peek으로 굴러간다. 키가 없어 half에 묶인 경우에는 계속
+          보인다 — 지도가 죽었을 때 검색은 유일하게 남은 길이라 닫으면 안 된다. */}
+      {sheetDetent !== 'full' && (
+        <>
+          <div
+            // `data-overlay`도 테스트 손잡이다. 검색 바가 **지도 위에 떠 있다**는
+            // 것은 어느 컨테이너에 속하는지로만 확인된다 — 시트 안으로
+            // 옮겨져도 `getByRole('searchbox')`는 그대로 찾아내기 때문이다.
+            data-overlay
+            // 컨테이너는 이벤트를 통과시킨다. 칩 줄과 검색 바 사이의 빈 곳에서
+            // 지도를 끌 수 있어야 한다 — 되살리는 것은 자식 쪽이다.
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1"
+          >
+            <div className="pointer-events-auto">
+              <SearchBar value={filters.query} onChange={filters.setQuery} />
+            </div>
+            <FilterChips
+              counts={counts}
+              value={filters.filter}
+              onChange={filters.setFilter}
+            />
           </div>
-          <FilterChips
-            counts={counts}
-            value={filters.filter}
-            onChange={filters.setFilter}
+
+          <RecenterButton
+            disabled={location.coords === null}
+            detent={sheetDetent}
+            onClick={handleRecenter}
           />
-        </div>
+        </>
       )}
-
-      <RecenterButton
-        disabled={location.coords === null}
-        detent={sheetDetent}
-        onClick={handleRecenter}
-      />
-
 
       <BottomSheet
         detent={sheetDetent}

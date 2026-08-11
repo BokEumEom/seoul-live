@@ -77,7 +77,13 @@ describe('toMapMarkers', () => {
     const markers = toMapMarkers([area('강남역', 'POI014', true)])
 
     expect(markers).toEqual([
-      { entry: entry('강남역', 'POI014'), level: '붐빔' },
+      {
+        entry: entry('강남역', 'POI014'),
+        level: '붐빔',
+        // 지도에 넘길 좌표를 여기서 한 번 만든다 — 호출부에서 만들면 매 렌더
+        // 신원이 바뀌어 vis.gl이 마커마다 position을 다시 대입한다.
+        position: { lat: 37.5, lng: 127 },
+      },
     ])
   })
 

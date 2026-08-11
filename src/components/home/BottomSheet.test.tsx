@@ -207,6 +207,44 @@ describe('BottomSheet', () => {
     expect(onDetentChange).not.toHaveBeenCalled()
   })
 
+  it('두 번째 손가락이 닿아도 손잡이는 첫 손가락을 따른다', () => {
+    // "두 손가락이 닿아도 처음 것만 손잡이를 움직인다"는 규칙에 정작 두 번째
+    // pointerdown을 쏘는 테스트가 없었다. 가드를 빼도 아무도 못 잡았다.
+    const { handle, onDetentChange } = setup()
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
+    fireEvent.pointerDown(handle, { clientY: 600, pointerId: 2 })
+    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 })
+    fireEvent.pointerUp(handle, { clientY: 100, pointerId: 1 })
+    expect(onDetentChange).toHaveBeenCalledTimes(1)
+    expect(onDetentChange).toHaveBeenLastCalledWith('full')
+  })
+
+  it('다른 포인터가 취소돼도 잡고 있던 손가락은 계속 끈다', () => {
+    // 웹뷰가 두 번째 손가락의 제스처만 가져가는 경우다. 그걸 내 취소로 받으면
+    // 잡고 있던 손가락이 손끝 아래에서 죽는다. up 쪽에는 같은 뜻의 테스트가
+    // 있었지만 cancel 쪽에는 없었다.
+    const { handle, onDetentChange } = setup()
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
+    fireEvent.pointerCancel(handle, { clientY: 700, pointerId: 2 })
+    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 })
+    fireEvent.pointerUp(handle, { clientY: 100, pointerId: 1 })
+    expect(onDetentChange).toHaveBeenCalledTimes(1)
+    expect(onDetentChange).toHaveBeenLastCalledWith('full')
+  })
+
+  it('캡처를 못 잡으면 드래그를 시작하지 않는다', () => {
+    // setPointerCapture가 던지면(연결이 끊긴 엘리먼트면 InvalidStateError다)
+    // 캡처 없이 추적만 남는다 — 손가락이 손잡이를 벗어나는 순간 이벤트가 끊겨
+    // 드래그가 반쯤 살아 있게 된다. 시작하지 않은 것으로 되돌려야 한다.
+    // 위 「캡처 해제가 던져도」와 대칭이다.
+    const { handle, onDetentChange } = setup()
+    handle.setPointerCapture = () => {
+      throw new DOMException('detached', 'InvalidStateError')
+    }
+    drag(handle, 430, 100)
+    expect(onDetentChange).not.toHaveBeenCalled()
+  })
+
   it('다른 포인터가 떨어져도 잡고 있던 손가락은 계속 끈다', () => {
     // 두 번째 손가락이 먼저 떨어졌다고 첫 손가락의 드래그를 놓아버리면
     // 손잡이가 손끝 아래에서 죽는다.

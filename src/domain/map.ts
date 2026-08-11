@@ -24,6 +24,17 @@ export const LABEL_MIN_ZOOM = 12
 export interface MapMarker {
   readonly entry: AreaCatalogEntry
   readonly level: CongestionLevel | null
+  /**
+   * 지도에 넘길 좌표. `entry`에 lat·lng이 이미 있는데 따로 두는 이유는
+   * **객체 신원** 때문이다.
+   *
+   * vis.gl의 `usePropBinding`은 `useEffect(..., [object, prop, value])`로
+   * `marker.position = value`를 건다. 호출부에서 `position={{ lat, lng }}`처럼
+   * 새 객체를 만들면 매 렌더 `value`의 신원이 바뀌어 effect가 다시 돌고,
+   * 지도를 팬할 때마다 마커 30개에 대입이 나간다. 여기서 한 번 만들어 두면
+   * `toMapMarkers`의 결과가 memo되는 한 신원이 유지된다.
+   */
+  readonly position: Coords
 }
 
 export function shouldShowMarkerLabel(zoom: number): boolean {
@@ -42,5 +53,6 @@ export function toMapMarkers(
   return areas.map((area) => ({
     entry: area.entry,
     level: area.snapshot?.congestion ?? null,
+    position: { lat: area.entry.lat, lng: area.entry.lng },
   }))
 }
