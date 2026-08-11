@@ -88,30 +88,40 @@ export function HomeScreen() {
   // 칩을 눌러 선택이 풀릴 때도 마찬가지로 손이 칩 줄에 있다.
   //
   // 그래서 상태를 비교하는 대신 **옮겨 달라고 말한 조작만** 옮긴다.
-  // `document.activeElement`가 입력인지 보는 길도 있었지만 그건 원인이 아니라
-  // 증상을 보는 것이라, 지도 마커를 눌러 상세를 여는 순간 포커스가 아직
-  // 검색창에 있으면 처방이 통째로 건너뛰어진다.
   //
-  // 의존성 배열이 없다. 신호가 ref라 렌더 결과에 안 남으므로 매 커밋 확인하는
-  // 것이 맞고, 하는 일은 불리언 하나 읽기다. 첫 렌더에서 안 뺏는 것도 공짜로
-  // 따라온다 — 아무도 요청하지 않았으니 false다.
+  // `document.activeElement`가 입력인지 보고 건너뛰는 길도 있었다. 타이핑은
+  // 그것으로도 고쳐지지만 **칩 경로는 못 고친다** — 칩은 입력이 아니라서
+  // 포커스를 그대로 뺏긴다. 원인이 아니라 증상을 보기 때문이다.
+  // (한때 「마커로 상세를 열 때 포커스가 검색창에 남아 있으면 처방이
+  // 건너뛰어진다」도 근거로 적었는데 **이 화면에서는 거짓이다.** 확인했다:
+  // `openArea`가 `setDetent('full')`을 부르면 같은 커밋에서 검색 바가
+  // 언마운트돼, effect가 도는 시점의 `activeElement`는 이미 `body`다.)
   //
   // `preventScroll`이 필요한 이유: 이 상자의 부모가 시트의 스크롤 컨테이너라
   // 기본 동작의 scrollIntoView가 끼면 방금 연 뷰가 맨 위가 아닌 곳에서
   // 시작한다. jsdom에는 레이아웃이 없어 이 옵션은 테스트로 확인되지 않는다.
   const viewRef = useRef<HTMLDivElement>(null)
-  const moveFocusRef = useRef(false)
+  // **ref가 아니라 상태다.** ref로 들면 「요청했는데 렌더가 안 일어나는」 경우에
+  // 신호가 굳어 있다가 **나중에 엉뚱한 렌더에서 터진다.** 실제로 그랬다: 상세를
+  // 연 뒤 시트 위로 남은 지도 조각에서 **같은 마커**를 다시 누르면 세 setter가
+  // 전부 같은 값이라 React가 렌더를 건너뛰는데, 신호만 세워져 있다가 그다음
+  // 아무 렌더(지도 팬·시트 조작·창 복귀 refetch)에서 포커스를 훔쳤다.
+  //
+  // 카운터인 이유는 **불리언이면 같은 병을 앓기 때문**이다 — 이미 참인데 참을
+  // 넣으면 React가 또 건너뛴다. 증가값은 언제나 새 값이라 「요청했으면 반드시
+  // 한 번 돈다」가 보장된다. 0은 「아직 아무도 요청하지 않았다」이고, 첫 렌더
+  // 침묵이 거기서 공짜로 나온다.
+  const [focusRequest, setFocusRequest] = useState(0)
 
   /** 시트 내용을 바꾸는 조작이 「포커스도 따라와라」를 말하는 유일한 통로다. */
   function requestSheetFocus(): void {
-    moveFocusRef.current = true
+    setFocusRequest((count) => count + 1)
   }
 
   useEffect(() => {
-    if (!moveFocusRef.current) return
-    moveFocusRef.current = false
+    if (focusRequest === 0) return
     viewRef.current?.focus({ preventScroll: true })
-  })
+  }, [focusRequest])
 
   // 명소를 여는 유일한 경로다. 목록 행·지도 마커·「오늘의 서울」의 순위 목록이
   // 모두 여기로 들어온다 — 어디서 열든 시트가 상세로 가득 차야 같은 화면이 된다.

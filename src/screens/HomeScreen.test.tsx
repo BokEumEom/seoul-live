@@ -560,6 +560,26 @@ describe('HomeScreen', () => {
     expect(document.activeElement).toBe(chip)
   })
 
+  // 포커스 요청을 ref로 들면 **굳는다.** 이미 열린 명소의 마커를 다시 누르면
+  // `openArea`의 세 setter가 전부 같은 값이라(선택 동일·view 동일·detent 동일)
+  // React가 렌더를 건너뛴다. 그러면 effect도 안 돌아 신호가 남아 있다가
+  // **그다음 아무 렌더에서** 포커스를 훔친다 — 지도를 팬하거나, 시트를
+  // 만지거나, 창에 돌아와 refetch가 도는 순간이다(`refetchOnWindowFocus`).
+  //
+  // 눈에는 안 보이지만 키보드·스위치·스크린리더 사용자는 맥락을 잃는다.
+  it('같은 명소를 다시 눌러도 포커스 요청이 남지 않는다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(mapMarker(/경복궁/))
+    // 두 번째 클릭이 렌더를 일으키지 않는 그 지점이다.
+    await userEvent.click(mapMarker(/경복궁/))
+
+    const camera = screen.getByRole('button', { name: '지도 카메라 변경' })
+    await userEvent.click(camera)
+
+    // 카메라를 움직였을 뿐인데 포커스가 시트로 튀면 안 된다.
+    expect(document.activeElement).toBe(camera)
+  })
+
   it('좌표가 없으면 내 주변 버튼이 비활성이다', () => {
     render(<HomeScreen />)
     expect(screen.getByRole('button', { name: '내 주변' })).toBeDisabled()
