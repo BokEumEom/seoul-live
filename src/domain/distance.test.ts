@@ -3,6 +3,7 @@ import {
   formatDistance,
   haversineMeters,
   nearestEntry,
+  walkableMinutes,
   walkingMinutes,
 } from './distance'
 
@@ -85,5 +86,23 @@ describe('walkingMinutes', () => {
 
   it('0m도 최소 1분으로 본다', () => {
     expect(walkingMinutes(0)).toBe(1)
+  })
+})
+
+// 상한이 필요한 이유: 명소 상세 히어로는 거리와 무관하게 이 값을 쓰는 첫
+// 자리다. 홍대입구역 10.7km에서 「도보 160분」이 그대로 나오면 첫 세 줄이
+// 실없어진다. 2km 반경만 보던 RecommendationCard에서는 드러나지 않던 결함이다.
+describe('walkableMinutes', () => {
+  // 경계를 양쪽에서 잠근다. 4km가 정확히 60분이라 여기가 갈림길이다.
+  it('한 시간까지는 그대로 준다', () => {
+    expect(walkableMinutes(4000)).toBe(60)
+  })
+
+  it('한 시간을 넘으면 걸어갈 거리로 보지 않는다', () => {
+    expect(walkableMinutes(4100)).toBeNull()
+  })
+
+  it('가까운 거리는 walkingMinutes와 같은 값이다', () => {
+    expect(walkableMinutes(800)).toBe(walkingMinutes(800))
   })
 })

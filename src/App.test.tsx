@@ -1,8 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import { AREA_NAMES } from './data/areas'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { reset } from './hooks/favoritesStore'
 
 // 위치는 목업으로 고정한다. jsdom에는 토스 네이티브 브리지가 없어서, 목업이
 // 없으면 SDK가 던지는지 매달리는지에 따라 정렬 순서가 달라진다.
@@ -16,6 +18,12 @@ vi.mock('@apps-in-toss/web-framework', () => {
     Accuracy: { Balanced: 3 },
     Device: { getLocation },
     GetCurrentLocationPermissionError,
+    // 즐겨찾기 저장소도 같은 이유로 고정한다. 브리지가 없는 환경을 흉내 내
+    // localStorage 폴백을 타게 한다.
+    Storage: {
+      getItem: vi.fn(() => Promise.reject(new Error('브리지 없음'))),
+      setItem: vi.fn(() => Promise.reject(new Error('브리지 없음'))),
+    },
   }
 })
 
@@ -23,7 +31,9 @@ vi.mock('@apps-in-toss/web-framework', () => {
 vi.mock('@vis.gl/react-google-maps', () => ({
   APIProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Map: ({ children }: { children: ReactNode }) => (
-    <div data-testid="google-map">{children}</div>
+    <div role="region" aria-label="지도">
+      {children}
+    </div>
   ),
   AdvancedMarker: ({
     children,
@@ -61,284 +71,220 @@ function grantLocation(lat = 37.5709, lng = 126.9769): void {
 beforeEach(() => {
   vi.stubEnv('VITE_USE_MOCK', 'true')
   vi.clearAllMocks()
+  localStorage.clear()
+  reset()
   // 기본값은 권한 거부. 위치 없이도 화면이 서는지가 기본 경로다.
-  getLocation.mockRejectedValue(
-    new framework.GetCurrentLocationPermissionError(),
-  )
+  getLocation.mockRejectedValue(new framework.GetCurrentLocationPermissionError())
 })
 
+/**
+ * 시트 안 목록 행. 지도 마커가 같은 이름을 갖고 있고 DOM 순서상 마커가
+ * 앞서므로(`data-map-layer`가 시트보다 앞이다) `getAllByRole(...)[0]`은
+ * 마커다. 「목록에서 열었다」를 뜻하려면 시트 안으로 좁혀야 한다.
+ */
+function sheetRow(name: string | RegExp): HTMLElement {
+  const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
+  return within(sheet).getAllByRole('button', { name })[0]
+}
+
 describe('App', () => {
-  it('내 주변 화면이 뜨고 명소 목록이 채워진다', async () => {
+  it('첫 화면이 지도이고 목록이 함께 채워진다', async () => {
     render(<App />)
 
-    expect(screen.getByRole('heading', { name: '내 주변 명소' })).toBeInTheDocument()
-
-    await waitFor(() =>
-      expect(screen.getByText('광화문·덕수궁')).toBeInTheDocument(),
-    )
-    expect(screen.getByText('성수카페거리')).toBeInTheDocument()
-  })
-
-  it('혼잡도 배지가 실제 값으로 그려진다', async () => {
-    render(<App />)
-
-    await waitFor(() => expect(screen.getByText('광화문·덕수궁')).toBeInTheDocument())
-
-    // 목업은 카탈로그 전체에서 4단계가 모두 나오도록 만들어져 있다.
-    for (const level of ['여유', '보통', '약간 붐빔', '붐빔']) {
-      expect(screen.getAllByText(level).length).toBeGreaterThan(0)
-    }
-  })
-
-  it('카테고리를 고르면 목록이 걸러진다', async () => {
-    render(<App />)
-    await waitFor(() => expect(screen.getByText('강남역')).toBeInTheDocument())
-
-    await userEvent.click(screen.getByRole('tab', { name: '공원' }))
-
-    expect(screen.queryByText('강남역')).not.toBeInTheDocument()
-    expect(screen.getByText('남산공원')).toBeInTheDocument()
-  })
-
-  it('명소를 누르면 상세로 넘어가고 뒤로 돌아온다', async () => {
-    render(<App />)
-    await waitFor(() => expect(screen.getByText('경복궁')).toBeInTheDocument())
-
-    await userEvent.click(screen.getByText('경복궁'))
-    expect(screen.getByRole('heading', { name: '경복궁' })).toBeInTheDocument()
-
-    // 헤더만 바뀌고 본문이 비면 사용자에겐 고장이다. 실제 예보 내용까지 확인한다.
+    expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
     await waitFor(() =>
       expect(
-        screen.getByRole('img', { name: '시간별 혼잡도 예측' }),
-      ).toBeInTheDocument(),
+        screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length,
+      ).toBeGreaterThan(0),
     )
-    expect(screen.getByRole('heading', { name: '시간별 예측' })).toBeInTheDocument()
-
-    await userEvent.click(screen.getByRole('button', { name: '뒤로 가기' }))
-    expect(screen.getByRole('heading', { name: '내 주변 명소' })).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', { name: /성수카페거리/ }).length,
+    ).toBeGreaterThan(0)
   })
 
-  it('위치를 거부하면 혼잡도순으로 내려가고 허용 안내가 뜬다', async () => {
+  it('갈 곳을 고르는 탭바가 없다', async () => {
+    // 「탭바 안으로 좁혀서 묻는다」가 이제 불가능하다 — `<nav>`가 통째로
+    // 사라지기 때문이다. 이름만 물으면 무엇이 있든 통과하는 공허한 단언이
+    // 되므로(Task 9에서 실제로 그런 단언이 있었다) **랜드마크가 없다**는 것과
+    // **옛 탭이 가던 곳을 지금 무엇이 대신하는가**를 함께 잠근다. 탭바를
+    // 되살리면 첫 단언이 곧바로 깨진다.
     render(<App />)
-    await waitFor(() => expect(screen.getByText('강남역')).toBeInTheDocument())
+
+    expect(screen.queryAllByRole('navigation')).toHaveLength(0)
+    expect(screen.queryByRole('button', { name: '즐겨찾기' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '더보기' })).toBeNull()
+    // 즐겨찾기 탭의 자리는 필터 칩이, 더보기 탭의 자리는 요약 스트립이 받았다.
+    expect(await screen.findByRole('tab', { name: /내 장소/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /오늘의 서울 열기/ })).toBeInTheDocument()
+  })
+
+  it('앱이 자체 헤더를 두지 않고 제목은 보조기술에만 남는다', () => {
+    // 지도 위에 뜬 검색 바가 이미 상단바의 자리를 쓰고 있어 같은 층이 두 겹
+    // 이었고, 토스가 미니앱에 주는 네이티브 헤더까지 치면 세 겹이었다.
+    // 오버레이 시트를 쓰는 이상 세로 3.5rem은 시트가 계속 손해 보는 값이다.
+    render(<App />)
+    expect(screen.queryByRole('banner')).toBeNull()
+
+    // 그래도 제목 트리의 뿌리는 남긴다. TopAppBar의 h1이 앱의 유일한 h1이었고
+    // 없애면 시트 안 h2부터 시작하는 뿌리 없는 트리가 된다. 이름은
+    // index.html의 <title>과 같은 「서울 라이브」다 — TopAppBar는 「Seoul Live」라
+    // 둘이 어긋나 있었다.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveAccessibleName(
+      '서울 라이브',
+    )
+    // 랜드마크까지 함께 잃지는 않는다.
+    expect(screen.getByRole('main')).toBeInTheDocument()
+  })
+
+  it('명소를 누르면 상세가 열리고 지도는 남는다', async () => {
+    render(<App />)
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length,
+      ).toBeGreaterThan(0),
+    )
+
+    await userEvent.click(sheetRow(/광화문·덕수궁/))
+
+    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+    // 예전 구조에서는 상세로 가면 지도가 통째로 사라졌다.
+    expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+  })
+
+  it('오늘의 서울은 탭이 아니라 시트 안 뷰다', async () => {
+    render(<App />)
+
+    await userEvent.click(await screen.findByRole('button', { name: /오늘의 서울 열기/ }))
 
     expect(
-      screen.getByRole('heading', { name: '혼잡도순 주변 장소' }),
+      await screen.findByRole('heading', { name: '지금 가장 붐비는 곳' }),
     ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '오늘의 서울' })).toBeInTheDocument()
+    // 탭이었을 때는 이 자리에서 지도가 통째로 사라졌다.
+    expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
+  })
+
+  it('오늘의 서울에서 명소를 누르면 같은 시트가 그 상세로 바뀐다', async () => {
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /오늘의 서울 열기/ }))
+    const busiest = (await screen.findByRole('heading', { name: '지금 가장 붐비는 곳' }))
+      .parentElement as HTMLElement
+
+    // 첫 줄이 아니라 **둘째 줄**을 누른다. 첫 줄을 누르면 「무엇을 눌렀든
+    // 1위를 연다」는 구현이 그대로 통과해 단언이 공허해진다.
+    const second = busiest.querySelectorAll('button')[1]
+    // 누른 그 명소가 열려야 한다. 「상세가 열렸다」까지만 보면 이름을 흘려버리는
+    // 통로도 통과한다.
+    const name = AREA_NAMES.find((area) => (second.textContent ?? '').includes(area))
+    // 이름을 못 찾으면 아래 단언이 「이름 조건 없음」이 되어 역시 공허해진다.
+    expect(name).toBeDefined()
+
+    await userEvent.click(second)
+
+    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
+  })
+
+  it('상세에서 저장한 곳이 내 장소 칩의 개수가 된다', async () => {
+    // 즐겨찾기 탭이 필터 칩이 됐으므로 「담았다」의 결과가 보이는 자리도
+    // 칩 하나뿐이다. 상세가 열리면 시트가 full이라 칩이 물러나 있어
+    // 목록으로 돌아와서 본다.
+    render(<App />)
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length,
+      ).toBeGreaterThan(0),
+    )
+
+    await userEvent.click(sheetRow(/광화문·덕수궁/))
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+
+    expect(await screen.findByRole('tab', { name: '내 장소 1' })).toBeInTheDocument()
+  })
+
+  it('담은 곳이 하나도 없어도 담는 방법에 닿을 수 있다', async () => {
+    // 즐겨찾기 화면이 사라지면서 「지도에서 ☆를 눌러 담아보세요」도 함께
+    // 없어졌다. 그 안내가 없으면 신규 사용자가 만나는 것은 「내 장소 0」 칩
+    // 하나뿐이고, 그 칩은 자기가 무엇인지도 어떻게 채우는지도 말하지 않는다.
+    // 그래서 「내 장소」만은 0에서도 눌리고, 누르면 빈 목록 문구가 답한다.
+    render(<App />)
+
+    const chip = await screen.findByRole('tab', { name: '내 장소 0' })
+    expect(chip).toBeEnabled()
+    await userEvent.click(chip)
+
+    expect(
+      screen.getByText('아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.'),
+    ).toBeInTheDocument()
+
+    // 되돌아올 길도 그 자리에 있다.
+    await userEvent.click(screen.getByRole('button', { name: '필터 해제' }))
+    expect(
+      screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length,
+    ).toBeGreaterThan(0)
+  })
+
+  it('위치를 거부하면 여유한 순으로 내려가고 허용 안내가 뜬다', async () => {
+    render(<App />)
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length,
+      ).toBeGreaterThan(0),
+    )
+
     expect(
       screen.getByText('위치를 허용하면 가까운 곳부터 볼 수 있어요.'),
     ).toBeInTheDocument()
-
-    // 좌표가 없으니 거리는 계산될 수 없다. "0m"이나 "NaN"이 새어나오면 잡는다.
-    const item = screen.getByText('강남역').closest('button')
-    expect(item?.textContent).not.toMatch(/\d+(\.\d+)?\s*(m|km)/)
+    // 좌표가 없으면 거리순을 고를 수 없다.
+    expect(screen.getByRole('tab', { name: '거리순' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '내 주변' })).toBeDisabled()
   })
 
-  it('위치를 허용하면 거리순으로 바뀌고 거리가 보인다', async () => {
+  it('위치를 허용하면 거리순이 열리고 내 주변을 누를 수 있다', async () => {
     grantLocation()
     render(<App />)
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('heading', { name: '거리순 주변 장소' }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole('tab', { name: '거리순' })).toBeEnabled(),
     )
-
-    // 광화문 한복판에서 가장 가까운 건 광화문·덕수궁이다.
-    const names = screen
-      .getAllByRole('button')
-      .map((button) => button.textContent ?? '')
-      .filter((text) => text.includes('·') || text.includes('역'))
-    expect(names[0]).toContain('광화문·덕수궁')
+    expect(screen.getByRole('button', { name: '내 주변' })).toBeEnabled()
     expect(screen.queryByText(/위치를 허용하면/)).not.toBeInTheDocument()
   })
 
-  it('위치를 허용하면 가까우면서 여유로운 곳을 추천으로 띄운다', async () => {
-    grantLocation()
-    render(<App />)
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('heading', { name: '가까우면서 여유로운 곳 추천' }),
-      ).toBeInTheDocument(),
-    )
-  })
-
-  it('정렬 기준을 바꾸면 목록 제목과 순서가 함께 바뀐다', async () => {
+  it('정렬 기준을 바꾸면 선택된 기준이 옮겨간다', async () => {
     grantLocation()
     render(<App />)
     await waitFor(() =>
-      expect(
-        screen.getByRole('heading', { name: '거리순 주변 장소' }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole('tab', { name: '거리순' })).toBeEnabled(),
     )
 
-    await userEvent.click(screen.getByRole('button', { name: /정렬 기준/ }))
+    await userEvent.click(screen.getByRole('tab', { name: '붐비는 순' }))
 
-    expect(
-      screen.getByRole('heading', { name: '혼잡도순 주변 장소' }),
-    ).toBeInTheDocument()
-  })
-
-  it('거부한 뒤 허용하기를 누르면 권한 다이얼로그를 연다', async () => {
-    render(<App />)
-    await waitFor(() =>
-      expect(screen.getByText('위치를 허용하면 가까운 곳부터 볼 수 있어요.')).toBeInTheDocument(),
+    expect(screen.getByRole('tab', { name: '붐비는 순' })).toHaveAttribute(
+      'aria-selected',
+      'true',
     )
-
-    vi.mocked(framework.Device.getLocation.openPermissionDialog).mockResolvedValue(
-      'allowed',
-    )
-    await userEvent.click(screen.getByRole('button', { name: '허용하기' }))
-
-    expect(
-      framework.Device.getLocation.openPermissionDialog,
-    ).toHaveBeenCalledTimes(1)
   })
 
   it('상세에 갔다 돌아와도 위치를 다시 요청하지 않는다', async () => {
-    // 위치 훅이 화면 안에 있으면 화면이 언마운트될 때마다 GPS가 다시 켜지고,
-    // 권한을 아직 안 정한 사용자에게는 팝업이 반복해서 뜬다.
     grantLocation()
     render(<App />)
-    // 위치를 허용하면 추천 카드에도 같은 명소가 뜰 수 있어 첫 번째를 집는다.
-    await waitFor(() =>
-      expect(screen.getAllByText('경복궁').length).toBeGreaterThan(0),
-    )
-    expect(getLocation).toHaveBeenCalledTimes(1)
-
-    await userEvent.click(screen.getAllByText('경복궁')[0])
-    await userEvent.click(screen.getByRole('button', { name: '뒤로 가기' }))
-    await waitFor(() => expect(screen.getByText('강남역')).toBeInTheDocument())
-
-    expect(getLocation).toHaveBeenCalledTimes(1)
-  })
-
-  it('네 탭이 모두 활성이다', async () => {
-    // 더보기까지 붙으면서 비활성 탭이 없어졌다. 화면 전환은 아래 '탭 전환'에서 다룬다.
-    render(<App />)
-    await waitFor(() => expect(screen.getByText('강남역')).toBeInTheDocument())
-
-    for (const label of [/지도/, /내 주변/, /혼잡예보/, /더보기/]) {
-      expect(screen.getByRole('button', { name: label })).not.toBeDisabled()
-    }
-  })
-})
-
-describe('탭 전환', () => {
-  // 저장소의 .env에 실제 키가 들어 있어서, 명시하지 않으면 로컬 환경에 따라
-  // 통과 여부가 달라진다. 테스트가 던져도 풀리도록 afterEach에 둔다.
-  beforeEach(() => {
-    vi.stubEnv('VITE_GOOGLE_MAPS_API_KEY', 'demo-key-1234')
-  })
-
-  afterEach(() => {
-    vi.unstubAllEnvs()
-  })
-
-  it('지도 탭을 누르면 지도가 뜬다', async () => {
-    grantLocation()
-    render(<App />)
-
-    await userEvent.click(screen.getByRole('button', { name: /지도/ }))
-
-    expect(await screen.findByTestId('google-map')).toBeInTheDocument()
-  })
-
-  it('지도에서 명소를 열고 뒤로 가면 지도로 돌아온다', async () => {
-    // 예전에는 뒤로 가기가 무조건 「내 주변」으로 보냈다. 지도에서 들어온
-    // 사용자는 보고 있던 지도 위치를 잃는다.
-    grantLocation()
-    render(<App />)
-
-    await userEvent.click(screen.getByRole('button', { name: /지도/ }))
-    await userEvent.click(await screen.findByRole('img', { name: /강남역/ }))
-    await userEvent.click(screen.getByRole('button', { name: '혼잡예보 보기' }))
-
-    await userEvent.click(await screen.findByRole('button', { name: '뒤로 가기' }))
-
-    expect(await screen.findByTestId('google-map')).toBeInTheDocument()
-  })
-
-  it('더보기 탭을 누르면 도시 정보가 목업 데이터로 채워진다', async () => {
-    grantLocation()
-    render(<App />)
-
-    await userEvent.click(screen.getByRole('button', { name: /더보기/ }))
-
-    expect(
-      await screen.findByRole('heading', { name: '도시 정보' }),
-    ).toBeInTheDocument()
-
-    // 제목만 뜨고 본문이 비면 사용자에겐 고장이다. 데이터가 실제로 흘러
-    // 들어왔는지 섹션 내용까지 확인한다.
-    expect(await screen.findByText('미세먼지')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '주차장' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '따릉이' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '문화행사' })).toBeInTheDocument()
-  })
-
-  it('더보기는 위치가 있으면 가장 가까운 명소로 시작한다', async () => {
-    // 광화문 한복판을 준다.
-    grantLocation()
-    render(<App />)
-
-    await userEvent.click(screen.getByRole('button', { name: /더보기/ }))
-
-    expect(await screen.findByLabelText('명소 선택')).toHaveValue('광화문·덕수궁')
-  })
-
-  it('더보기에서 명소를 바꾸면 그 명소 정보로 갈아탄다', async () => {
-    grantLocation()
-    render(<App />)
-
-    await userEvent.click(screen.getByRole('button', { name: /더보기/ }))
-    const picker = await screen.findByLabelText('명소 선택')
-    await userEvent.selectOptions(picker, '서울숲공원')
-
-    expect(picker).toHaveValue('서울숲공원')
-    // 갈아탄 뒤에도 화면이 서 있어야 한다 — 빈 명소를 고르면 안내 문구가 뜬다.
     await waitFor(() =>
       expect(
-        screen.queryByRole('heading', { name: '주차장' }) ??
-          screen.getByText(/제공되는 도시 정보가 없어요/),
-      ).toBeInTheDocument(),
+        screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length,
+      ).toBeGreaterThan(0),
     )
-  })
+    const callsAfterMount = getLocation.mock.calls.length
 
-  it('혼잡예보 탭을 눌러도 강조와 화면이 어긋나지 않는다', async () => {
-    // 혼잡예보는 명소를 골라야 열리는 상세 화면이다. 독립 화면이 없으므로
-    // 탭 상태로 받으면 강조만 옮겨가고 내용은 「내 주변」에 머문다 — 탭바가
-    // 거짓말을 하고 스크린리더에는 aria-current가 잘못 전달된다.
-    grantLocation()
-    render(<App />)
-    await screen.findByText('내 주변 명소')
+    await userEvent.click(sheetRow(/광화문·덕수궁/))
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
 
-    await userEvent.click(screen.getByRole('button', { name: /혼잡예보/ }))
-
-    expect(screen.getByText('내 주변 명소')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /혼잡예보/ })).not.toHaveAttribute(
-      'aria-current',
-      'page',
-    )
-  })
-
-  it('혼잡예보 화면에서 지도 탭을 누르면 상세가 닫히고 지도가 뜬다', async () => {
-    // 하단 탭바는 상세 화면에서도 계속 보인다(App.tsx에서 main 바깥에 있다).
-    // 그래서 handleTab의 setSelectedArea(null)은 방어적 코드가 아니라 이 경로를
-    // 실제로 떠받친다 — 지우면 상세가 닫히지 않아 지도가 영영 안 뜬다.
-    grantLocation()
-    render(<App />)
-
-    await userEvent.click(
-      await screen.findByRole('button', { name: /강남역/ }),
-    )
-    await screen.findByRole('button', { name: '뒤로 가기' })
-
-    await userEvent.click(screen.getByRole('button', { name: /지도/ }))
-
-    expect(await screen.findByTestId('google-map')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '뒤로 가기' })).not.toBeInTheDocument()
+    // 위치는 LocationProvider가 앱 수준에서 한 번만 잡는다.
+    expect(getLocation.mock.calls.length).toBe(callsAfterMount)
   })
 })

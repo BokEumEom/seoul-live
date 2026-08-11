@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { AREA_CATALOG } from '../data/areas'
 import type { AreaCatalogEntry, AreaSnapshot } from '../domain/types'
-import { buildNearbyList, pickRecommendations } from './useNearbyAreas'
+import {
+  buildNearbyList,
+  pickRecommendations,
+  type SortMode,
+} from './useNearbyAreas'
 
 const ENTRIES: readonly AreaCatalogEntry[] = [
   {
@@ -16,7 +20,7 @@ const ENTRIES: readonly AreaCatalogEntry[] = [
     name: '가까운붐빔',
     lat: 37.5675,
     lng: 126.979,
-    category: '카페',
+    category: '발달상권',
   },
   { code: 'C', name: '먼여유', lat: 37.65, lng: 127.05, category: '공원' },
 ]
@@ -35,6 +39,7 @@ function snapshot(
     observedAt: '2026-08-03 14:00',
     observedAtLabel: '14:00',
     forecasts: [],
+    composition: null,
   }
 }
 
@@ -45,6 +50,57 @@ const SNAPSHOTS: readonly AreaSnapshot[] = [
 ]
 
 const HERE = { lat: 37.5665, lng: 126.978 }
+
+describe('buildNearbyList — 붐비는 순', () => {
+  // 전용 픽스처다. 동점(여유 둘)과 스냅샷 없는 항목을 일부러 넣는다.
+  // 동점이 없으면 "역순"이 우연히 성립해 정렬 방향을 뒤집어도 통과한다.
+  const BUSY_ENTRIES: readonly AreaCatalogEntry[] = [
+    { code: 'A', name: '여유1', lat: 37.5, lng: 127, category: '공원' },
+    { code: 'B', name: '붐빔1', lat: 37.5, lng: 127, category: '공원' },
+    { code: 'C', name: '보통1', lat: 37.5, lng: 127, category: '공원' },
+    { code: 'D', name: '여유2', lat: 37.5, lng: 127, category: '공원' },
+    { code: 'E', name: '정보없음', lat: 37.5, lng: 127, category: '공원' },
+  ]
+
+  const BUSY_SNAPSHOTS: readonly (AreaSnapshot | null)[] = [
+    snapshot('여유1', '여유'),
+    snapshot('붐빔1', '붐빔'),
+    snapshot('보통1', '보통'),
+    snapshot('여유2', '여유'),
+    null,
+  ]
+
+  function levels(sort: SortMode): readonly (AreaSnapshot['congestion'] | null)[] {
+    return buildNearbyList({
+      entries: BUSY_ENTRIES,
+      snapshots: BUSY_SNAPSHOTS,
+      coords: null,
+      category: '전체',
+      sort,
+    }).map((item) => item.snapshot?.congestion ?? null)
+  }
+
+  it('혼잡도 내림차순으로 정렬한다', () => {
+    expect(levels('busy')).toEqual(['붐빔', '보통', '여유', '여유', null])
+  })
+
+  it('여유로운 순과 정확히 반대 방향이다', () => {
+    // 이름 순서로는 비교하지 않는다. 안정 정렬이 동점의 원래 순서를 지키므로
+    // 목록을 통째로 뒤집은 것과는 절대 같아지지 않는다. 혼잡도 수열로 본다.
+    const observed = (sort: SortMode) => levels(sort).filter((level) => level !== null)
+    expect(observed('busy')).toEqual(observed('calm').toReversed())
+  })
+
+  it('스냅샷이 없는 명소는 붐비는 순에서도 뒤로 간다', () => {
+    // 여유로운 순과 같은 방향이다 — "모름"은 붐비는 쪽에도 여유로운 쪽에도
+    // 속하지 않으므로 어느 정렬에서든 맨 뒤여야 한다.
+    expect(levels('busy').at(-1)).toBeNull()
+  })
+
+  it('좌표가 없으면 거리순을 골라도 여유로운 순으로 내려간다', () => {
+    expect(levels('distance')).toEqual(levels('calm'))
+  })
+})
 
 describe('buildNearbyList — 정렬 기준', () => {
   it('거리순을 골라도 좌표가 없으면 혼잡도순으로 내려간다', () => {
@@ -68,7 +124,7 @@ describe('buildNearbyList — 정렬 기준', () => {
       snapshots: SNAPSHOTS,
       coords: HERE,
       category: '전체',
-      sort: 'congestion',
+      sort: 'calm',
     })
 
     // 가장 가까운 건 '가까운여유'(0m)지만, 혼잡도순에서도 여유라 1등이다.

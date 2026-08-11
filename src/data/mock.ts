@@ -1,3 +1,4 @@
+import { AGE_LABELS } from '../domain/composition'
 import { CONGESTION_LEVELS, type CongestionLevel } from '../domain/types'
 import { findAreaByName } from './areas'
 
@@ -33,6 +34,48 @@ export function mixSeed(seed: number, index: number): number {
   x ^= x << 5
   x >>>= 0
   return x >>> 0
+}
+
+// 인구 구성용 salt. `mixSeed(seed, n)`의 `n`이 겹치면 같은 명소의 예측·도시정보·인구
+// 구성이 서로 상관관계를 갖는다. 예측이 0~11을 쓰고, 같은 씨앗과 같은 mixSeed를 쓰는
+// mockCityInfo.ts가 `<SALT>*10 + index` 규약으로 5~8·10~13·20~23·30~32를 쓴다.
+// 그쪽 salt가 두 자리로 늘어도(10 → 100~103) 닿지 않도록 네 자리 번호대를 쓴다.
+const GENDER_SALT = 1_000
+const NON_RESIDENT_SALT = 1_001
+const COMPOSITION_PRESENCE_SALT = 1_002
+/** 연령대 각 칸이 `AGE_SALT + index`를 쓴다. */
+const AGE_SALT = 1_010
+
+/** 인구 구성 필드. 일부 명소는 **빈 객체**를 돌려준다 — 서울 API가 이 필드를 주지 않을 때
+ * 상세 화면이 섹션을 통째로 숨기는 길을, 목업만으로도 볼 수 있어야 하기 때문이다.
+ * mockCityInfo.ts가 주차장·따릉이를 일부러 비워두는 것과 같은 이유다. */
+function buildComposition(seed: number): Readonly<Record<string, string>> {
+  if (mixSeed(seed, COMPOSITION_PRESENCE_SALT) % 7 === 0) {
+    return {}
+  }
+
+  const male = 35 + (mixSeed(seed, GENDER_SALT) % 30)
+  const nonResident = 20 + (mixSeed(seed, NON_RESIDENT_SALT) % 70)
+  // 칸 수를 AGE_LABELS에 묶는다. 여기 숫자를 따로 적으면 연령 구간이 늘어날 때
+  // 목업만 뒤처져 마지막 칸이 조용히 0으로 남는다.
+  const rawAges = Array.from(
+    { length: AGE_LABELS.length },
+    (_, index) => 1 + (mixSeed(seed, AGE_SALT + index) % 40),
+  )
+  const ageTotal = rawAges.reduce((sum, value) => sum + value, 0)
+
+  return {
+    MALE_PPLTN_RATE: String(male),
+    FEMALE_PPLTN_RATE: String(100 - male),
+    NON_RESNT_PPLTN_RATE: String(nonResident),
+    RESNT_PPLTN_RATE: String(100 - nonResident),
+    ...Object.fromEntries(
+      rawAges.map((value, index) => [
+        `PPLTN_RATE_${index * 10}`,
+        ((value / ageTotal) * 100).toFixed(1),
+      ]),
+    ),
+  }
 }
 
 function pad(value: number): string {
@@ -90,6 +133,7 @@ export function buildMockSnapshot(areaName: string, now: Date = new Date()): unk
         AREA_PPLTN_MIN: String(base),
         AREA_PPLTN_MAX: String(base + 2_000),
         PPLTN_TIME: formatSeoulTime(now),
+        ...buildComposition(seed),
         FCST_YN: 'Y',
         FCST_PPLTN: forecasts,
       },

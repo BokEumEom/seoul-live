@@ -19,11 +19,15 @@ describe('MapUnavailableNotice', () => {
     expect(screen.getByText(/불러오지 못했어요/)).toBeInTheDocument()
   })
 
-  it('어느 쪽이든 나머지 화면은 쓸 수 있다고 안내한다', () => {
+  it('어느 쪽이든 아직 쓸 수 있는 것을 함께 알린다', () => {
+    // 지도의 실패가 앱 전체의 실패로 읽히면 안 된다. 가리키는 대상은 지도가
+    // 죽어도 시트 안에 그대로 서는 것이어야 한다 — 예전 문구의 「내 주변」은
+    // 지도 위 FAB이고 「혼잡예보」는 아예 없는 화면이라 둘 다 틀린 안내였다.
     for (const reason of ['no-key', 'load-failed'] as const) {
       const { unmount } = render(<MapUnavailableNotice reason={reason} />)
 
-      expect(screen.getByText(/내 주변/)).toBeInTheDocument()
+      expect(screen.getByText(/목록과 검색은 그대로 쓸 수 있어요/)).toBeInTheDocument()
+      expect(screen.queryByText(/혼잡예보/)).not.toBeInTheDocument()
       unmount()
     }
   })

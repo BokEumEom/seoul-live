@@ -12,7 +12,6 @@
 
 ## Global Constraints
 
-- **npm 명령은 PowerShell에서 실행한다.** Git Bash의 POSIX PATH가 npm이 생성하는 `cmd.exe` 서브셸로 넘어가면서 `C:\Program Files\nodejs`를 잃어, esbuild처럼 postinstall에서 `node`를 부르는 패키지가 전부 실패한다.
 - **TDD.** 실패하는 테스트 먼저 → 실패 확인 → 구현 → 통과 확인 → 커밋.
 - **변이 테스트.** 새 테스트를 쓴 뒤 구현을 일부러 한 줄 깨뜨려 그 테스트가 실제로 실패하는지 확인한다. 이 프로젝트에서 "항상 참인 테스트"를 세 번 잡은 방법이다.
 - **불변성.** 배열은 `.sort()` 대신 `.toSorted()`. TanStack Query 캐시 배열을 제자리 정렬하면 캐시가 오염된다.
@@ -325,7 +324,7 @@ function labelOf(option: CategoryFilterValue): string {
 
 - [ ] **Step 8: 테스트와 타입 검사를 통과시킨다**
 
-Run (PowerShell): `npm test` 그리고 `npx tsc -b`
+Run: `npm test` 그리고 `npx tsc -b`
 Expected: 전부 PASS
 
 - [ ] **Step 9: 변이 확인**
@@ -1211,7 +1210,7 @@ git rm src/components/nearby/SortSelect.tsx src/components/nearby/SortSelect.tes
 
 - [ ] **Step 6: 통과를 확인한다**
 
-Run (PowerShell): `npm test` 그리고 `npx tsc -b`
+Run: `npm test` 그리고 `npx tsc -b`
 Expected: 전부 PASS
 
 - [ ] **Step 7: 변이 확인**
@@ -1277,7 +1276,7 @@ Expected: 남은 잘못된 경로가 에러로 전부 드러난다. 하나씩 �
 
 - [ ] **Step 3: 통과를 확인한다**
 
-Run (PowerShell): `npm test` 그리고 `npx tsc -b`
+Run: `npm test` 그리고 `npx tsc -b`
 Expected: 전부 PASS. **테스트 개수가 이동 전과 같아야 한다** — 줄었으면 파일을 빠뜨린 것이다.
 
 - [ ] **Step 4: 커밋**
@@ -2101,7 +2100,7 @@ const mapPane = !isMapAvailable() ? (
 
 - [ ] **Step 6: 통과를 확인한다**
 
-Run (PowerShell): `npm test` 그리고 `npx tsc -b`
+Run: `npm test` 그리고 `npx tsc -b`
 Expected: 전부 PASS
 
 - [ ] **Step 7: 변이 확인**
@@ -2369,7 +2368,7 @@ it('같은 재난문자가 여러 명소에 실려도 한 번만 그린다', () 
 })
 ```
 
-Run (PowerShell): `npm test`
+Run: `npm test`
 Expected: PASS
 
 - [ ] **Step 6: 변이 확인**
@@ -2584,12 +2583,12 @@ git rm src/components/more/AreaPicker.tsx src/components/more/AreaPicker.test.ts
 
 - [ ] **Step 6: 통과를 확인한다**
 
-Run (PowerShell): `npm test`, `npx tsc -b`, `npm run lint`, `npm run build:vite`
+Run: `npm test`, `npx tsc -b`, `npm run lint`, `npm run build:vite`
 Expected: 전부 PASS
 
 - [ ] **Step 7: 실제로 띄워 본다**
 
-Run (PowerShell): `npm run dev -- --port 5174 --strictPort`
+Run: `npm run dev -- --port 5174 --strictPort`
 
 브라우저에서 확인할 것:
 1. 첫 화면이 지도다
@@ -2646,14 +2645,6 @@ git commit -m "feat: 하단 탭을 지도·즐겨찾기·더보기 셋으로 전
 
 - 레이어 규칙의 화면 목록을 새 구조로
 - 바텀시트 조항: `AreaSheet`가 없어졌으므로 "진입 시 시트 자동 노출 금지"의 근거는 남기되 현재 코드에 시트가 없다는 사실을 적는다
-- **「명령어」 절에 추가**:
-
-```markdown
-**npm 명령은 PowerShell에서 실행한다.** Git Bash로 돌리면 POSIX 형식 PATH가
-npm이 생성하는 cmd.exe 서브셸로 넘어가면서 `C:\Program Files\nodejs`를 잃는다.
-esbuild처럼 postinstall에서 `node`를 부르는 패키지가 전부 실패한다.
-```
-
 - [ ] **Step 5: 커밋**
 
 ```bash

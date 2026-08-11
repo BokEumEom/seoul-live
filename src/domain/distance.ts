@@ -56,3 +56,14 @@ export function walkingMinutes(meters: number): number {
   const minutes = Math.round((meters / 1000 / WALKING_SPEED_KM_PER_HOUR) * 60)
   return Math.max(1, minutes)
 }
+
+/** 도보 시간을 적을 만한 상한. 한 시간(시속 4km로 4km)을 넘으면 걸어갈
+ *  거리가 아니라서 "도보 160분" 같은 수치가 화면의 신뢰만 깎는다. */
+const MAX_WALKING_MINUTES = 60
+
+/** 걸어갈 만한 거리면 분, 아니면 null. 상한을 화면마다 따로 두면 같은 값이
+ *  자리마다 다르게 잘린다 — 판정은 도메인이 갖는다. */
+export function walkableMinutes(meters: number): number | null {
+  const minutes = walkingMinutes(meters)
+  return minutes > MAX_WALKING_MINUTES ? null : minutes
+}

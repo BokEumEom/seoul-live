@@ -195,6 +195,48 @@ describe('parseCitydataResponse', () => {
     }
   })
 
+  it('인구 구성이 깨져 있어도 혼잡도는 살아남는다', () => {
+    // 부가 정보 때문에 본체를 잃지 않는다.
+    const payload = {
+      'SeoulRtd.citydata_ppltn': [
+        {
+          AREA_NM: '강남역',
+          AREA_CD: 'POI014',
+          AREA_CONGEST_LVL: '붐빔',
+          AREA_CONGEST_MSG: '붐벼요',
+          AREA_PPLTN_MIN: '74000',
+          AREA_PPLTN_MAX: '76000',
+          PPLTN_TIME: '2026-08-10 11:00',
+          MALE_PPLTN_RATE: { 이상한: '모양' },
+          PPLTN_RATE_20: [1, 2, 3],
+        },
+      ],
+    }
+
+    const snapshot = parseCitydataResponse(payload, '강남역')
+    expect(snapshot.congestion).toBe('붐빔')
+    expect(snapshot.populationMax).toBe(76_000)
+    expect(snapshot.composition?.maleRate).toBe(0)
+  })
+
+  it('인구 구성 필드가 아예 없으면 composition이 null이다', () => {
+    const payload = {
+      'SeoulRtd.citydata_ppltn': [
+        {
+          AREA_NM: '강남역',
+          AREA_CD: 'POI014',
+          AREA_CONGEST_LVL: '여유',
+          AREA_CONGEST_MSG: '한산해요',
+          AREA_PPLTN_MIN: '1000',
+          AREA_PPLTN_MAX: '2000',
+          PPLTN_TIME: '2026-08-10 11:00',
+        },
+      ],
+    }
+
+    expect(parseCitydataResponse(payload, '강남역').composition).toBeNull()
+  })
+
   it('서울 API의 RESULT 에러 봉투를 SeoulApiError로 바꾼다', () => {
     const errorEnvelope = {
       RESULT: { 'RESULT.CODE': 'INFO-200', 'RESULT.MESSAGE': '해당하는 데이터가 없습니다.' },

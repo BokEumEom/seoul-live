@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { parseCongestionLevel } from '../domain/congestion'
 import type { AreaSnapshot, CongestionLevel, Forecast } from '../domain/types'
+import { parseComposition } from './compositionSchema'
 
 /** 요청한 명소와 응답에 담긴 명소가 다를 때. `sample` 인증키는 지역명과 무관하게
  * 항상 광화문·덕수궁을 돌려주므로, 이 대조가 없으면 아무도 모르게 엉뚱한 데이터가 흐른다. */
@@ -183,6 +184,8 @@ export function parseCitydataResponse(payload: unknown, expectedName: string): A
     observedAt: area.PPLTN_TIME.raw,
     observedAtLabel: area.PPLTN_TIME.label,
     forecasts: (area.FCST_PPLTN ?? []).map(toForecast),
+    // 원본 payload에서 따로 읽는다. 실패해도 null일 뿐 위 값들은 그대로다.
+    composition: parseComposition(payload, expectedName),
   }
 }
 
