@@ -55,10 +55,14 @@ vi.mock('@vis.gl/react-google-maps', () => ({
     >
       {/* 실제 지도는 사용자가 팬·줌할 때 이 콜백을 쏜다. 목에 통로가 없으면
           `handleCameraChanged`가 통째로 미커버가 되고, 줌을 당겨도 마커 라벨이
-          영영 안 뜨는 증상을 아무도 못 잡는다. */}
+          영영 안 뜨는 증상을 아무도 못 잡는다.
+
+          이름이 「지도 확대」가 아니라 「지도 카메라 변경」인 이유: 이 버튼은
+          center와 zoom을 **함께** 쏜다(팬 + 줌). 확대만 하는 것으로 읽히면
+          카메라 이동을 잠그는 테스트가 이 통로를 안 쓰게 된다. */}
       <button
         type="button"
-        aria-label="지도 확대"
+        aria-label="지도 카메라 변경"
         onClick={() =>
           onCameraChanged?.({ detail: { center: { lat: 37.6, lng: 127.1 }, zoom: 15 } })
         }
@@ -231,7 +235,7 @@ describe('HomeScreen', () => {
     // 초기 줌 11은 라벨 기준(12) 아래다.
     expect(within(layer).queryByText('보통')).toBeNull()
 
-    await userEvent.click(screen.getByRole('button', { name: '지도 확대' }))
+    await userEvent.click(screen.getByRole('button', { name: '지도 카메라 변경' }))
 
     expect(within(layer).getAllByText('보통').length).toBeGreaterThan(0)
   })
@@ -242,7 +246,7 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
     const map = screen.getByRole('region', { name: '지도' })
 
-    await userEvent.click(screen.getByRole('button', { name: '지도 확대' }))
+    await userEvent.click(screen.getByRole('button', { name: '지도 카메라 변경' }))
 
     expect(map).toHaveAttribute('data-center', '37.6,127.1')
     expect(map).toHaveAttribute('data-zoom', '15')
@@ -346,6 +350,10 @@ describe('HomeScreen', () => {
     await userEvent.type(screen.getByRole('searchbox'), '경복궁')
     expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
     expect(areaButtons(/경복궁/).length).toBeGreaterThan(0)
+    // **친 글자가 다 남아야 한다.** 첫 글자에서 선택이 풀리며 뷰가 갈리는데,
+    // 그때 포커스 처방이 입력에서 포커스를 가져가면 둘째 글자부터 사라진다.
+    // 위 두 단언은 `'경'` 한 글자만으로도 통과해 그 회귀를 놓쳤다.
+    expect(screen.getByRole('searchbox')).toHaveValue('경복궁')
   })
 
   it('요약 스트립을 누르면 오늘의 서울이 열린다', async () => {
@@ -405,7 +413,7 @@ describe('HomeScreen', () => {
 
   it('시트 안에서 뷰를 오가도 지도 카메라가 남는다', async () => {
     render(<HomeScreen />)
-    await userEvent.click(screen.getByRole('button', { name: '지도 확대' }))
+    await userEvent.click(screen.getByRole('button', { name: '지도 카메라 변경' }))
 
     await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
@@ -514,6 +522,42 @@ describe('HomeScreen', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
     expect(sheet.contains(document.activeElement)).toBe(true)
+
+    // 돌아오는 길도 세어야 한다. 여기를 빼면 「오늘의 서울 → 목록」의 포커스
+    // 요청만 지워도 아무 테스트도 안 죽는다(실제로 그랬다).
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    expect(sheet.contains(document.activeElement)).toBe(true)
+  })
+
+  // 위 규칙의 반대편이다. 뷰가 갈렸다고 무조건 옮기면 **타이핑이 깨진다** —
+  // 검색어를 치면 `setQuery`가 선택을 풀어 상세→목록 전환이 일어나는데, 그건
+  // 사용자가 시트로 가려던 조작이 아니라 타이핑의 부수 효과다. 실제로 첫
+  // 글자만 입력되고 둘째 글자부터 사라졌다.
+  it('뷰가 갈려도 사용자가 부른 이동이 아니면 포커스를 뺏지 않는다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetRow(/강남역/))
+    await userEvent.click(sheetHandle()) // full → peek, 검색 바가 돌아온다
+    const box = screen.getByRole('searchbox')
+
+    await userEvent.type(box, '경')
+
+    // 상세가 닫히며 뷰는 갈렸는데 포커스는 입력에 남아야 한다.
+    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+    expect(document.activeElement).toBe(box)
+  })
+
+  it('칩을 눌러 선택이 풀려도 포커스는 칩 줄에 남는다', async () => {
+    // 같은 규칙의 다른 소재다. 칩도 선택을 푸는데(`useHomeFilters.setFilter`)
+    // 그때 손은 칩 줄에 있다 — 연달아 다른 칩을 누르려던 참이다.
+    render(<HomeScreen />)
+    await userEvent.click(sheetRow(/강남역/))
+    await userEvent.click(sheetHandle())
+    const chip = screen.getByRole('tab', { name: /데이트/ })
+
+    await userEvent.click(chip)
+
+    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+    expect(document.activeElement).toBe(chip)
   })
 
   it('좌표가 없으면 내 주변 버튼이 비활성이다', () => {
@@ -581,6 +625,23 @@ describe('HomeScreen', () => {
     expect(
       screen.getByText('아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.'),
     ).toBeInTheDocument()
+  })
+
+  it('빈 목록 안내는 소리로도 전달된다', async () => {
+    // 칩을 눌러도 포커스는 칩에 남고 시트만 올라오므로, live region이 없으면
+    // 이 문구는 눈에만 있다. 「내 장소」를 0에서도 누를 수 있게 만든 이유가
+    // 「누르면 답이 나온다」인데 그 답이 안 들리면 면제가 헛돈다.
+    render(<HomeScreen />)
+
+    await userEvent.click(screen.getByRole('tab', { name: '내 장소 0' }))
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent(
+      '아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.',
+    )
+    // 상자째 감싸므로 빠져나올 길도 함께 낭독된다 — half에서 4.2px만 보이는
+    // 버튼이라 소리로 먼저 알려주는 편이 낫다.
+    expect(within(status).getByRole('button', { name: '필터 해제' })).toBeInTheDocument()
   })
 
   it('담은 게 없는 내 장소를 켜면 안내가 보이는 높이까지 시트가 올라온다', async () => {

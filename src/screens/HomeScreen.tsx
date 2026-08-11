@@ -76,6 +76,43 @@ export function HomeScreen() {
 
   const { setSelectedName, setSort } = filters
 
+  // 뷰가 갈리면 방금 누른 버튼이 언마운트되면서 포커스가 `document.body`로
+  // 떨어진다. body에서 누른 Tab은 문서 맨 앞부터 다시 세는데, 시트 앞에는
+  // 지도 레이어가 통째로 놓여 있다(`data-map-layer`가 형제 중 첫째다).
+  // 키보드·스위치 사용자는 뷰를 바꿀 때마다 시트까지 다시 탭해 내려와야 한다.
+  //
+  // **「뷰가 달라졌는가」로는 판단할 수 없다.** 검색어를 치면 `setQuery`가
+  // 선택을 풀어(`useHomeFilters`) 상세→목록 전환이 일어나는데, 그 전환은
+  // 사용자가 시트로 가려던 조작이 아니라 **타이핑의 부수 효과**다. 거기서
+  // 포커스를 가져가면 첫 글자만 입력되고 둘째 글자부터 사라진다(실제로 그랬다).
+  // 칩을 눌러 선택이 풀릴 때도 마찬가지로 손이 칩 줄에 있다.
+  //
+  // 그래서 상태를 비교하는 대신 **옮겨 달라고 말한 조작만** 옮긴다.
+  // `document.activeElement`가 입력인지 보는 길도 있었지만 그건 원인이 아니라
+  // 증상을 보는 것이라, 지도 마커를 눌러 상세를 여는 순간 포커스가 아직
+  // 검색창에 있으면 처방이 통째로 건너뛰어진다.
+  //
+  // 의존성 배열이 없다. 신호가 ref라 렌더 결과에 안 남으므로 매 커밋 확인하는
+  // 것이 맞고, 하는 일은 불리언 하나 읽기다. 첫 렌더에서 안 뺏는 것도 공짜로
+  // 따라온다 — 아무도 요청하지 않았으니 false다.
+  //
+  // `preventScroll`이 필요한 이유: 이 상자의 부모가 시트의 스크롤 컨테이너라
+  // 기본 동작의 scrollIntoView가 끼면 방금 연 뷰가 맨 위가 아닌 곳에서
+  // 시작한다. jsdom에는 레이아웃이 없어 이 옵션은 테스트로 확인되지 않는다.
+  const viewRef = useRef<HTMLDivElement>(null)
+  const moveFocusRef = useRef(false)
+
+  /** 시트 내용을 바꾸는 조작이 「포커스도 따라와라」를 말하는 유일한 통로다. */
+  function requestSheetFocus(): void {
+    moveFocusRef.current = true
+  }
+
+  useEffect(() => {
+    if (!moveFocusRef.current) return
+    moveFocusRef.current = false
+    viewRef.current?.focus({ preventScroll: true })
+  })
+
   // 명소를 여는 유일한 경로다. 목록 행·지도 마커·「오늘의 서울」의 순위 목록이
   // 모두 여기로 들어온다 — 어디서 열든 시트가 상세로 가득 차야 같은 화면이 된다.
   //
@@ -91,6 +128,7 @@ export function HomeScreen() {
     setSelectedName(name)
     setView('list')
     setDetent('full')
+    requestSheetFocus()
   }
 
   const list = useMemo(
@@ -156,8 +194,11 @@ export function HomeScreen() {
   // 왜 그런지 적은 문구가 시트 안에 가려 있어 사용자에게는 「눌렀더니 다
   // 사라졌다」만 남으므로, 답이 보이는 높이까지 시트를 올린다.
   //
-  // full에서 오는 경우는 없다 — 칩 열이 full에서는 렌더되지 않는다. 실제로
-  // 움직이는 것은 peek → half뿐이다.
+  // **화면상** 움직이는 것은 peek → half뿐이다. 칩 열을 가르는 것은 `detent`가
+  // 아니라 `sheetDetent`(= `mapReady ? detent : 'half'`)라, 지도가 죽어 시트가
+  // half에 묶인 동안에는 `detent`가 `'full'`인 채로도 칩이 그려진다 — 그때
+  // 이 줄은 보이지 않는 `detent`만 'half'로 되돌린다. 눈에 띄는 변화는 없고,
+  // 지도가 살아 돌아올 길이 없어(`loadFailed`는 되돌지 않는다) 드러날 일도 없다.
   //
   // 「목록이 비면 올린다」로 일반화하지 않았다. 카테고리로 좁혀 비는 경우는
   // 칩이 0에서도 눌리게 만든 이 태스크와 무관하게 예전부터 있던 상태이고,
@@ -283,6 +324,7 @@ export function HomeScreen() {
             onOpen={() => {
               setView('today')
               setDetent('full')
+              requestSheetFocus()
             }}
           />
         </div>
@@ -319,7 +361,22 @@ export function HomeScreen() {
           났는지 말했고, 그 아래 "조건에 맞는 명소가 없어요"가 붙으면 원인을
           조건 탓으로 돌리게 된다. */}
       {!snapshots.isPending && !snapshots.isError && visible.length === 0 && (
-        <div className="px-4 py-10 text-center">
+        // `role="status"`가 없으면 이 문구는 **눈에만** 있다. 특히 「내 장소」를
+        // 0에서도 누를 수 있게 만든 이유가 「누르면 답이 나온다」인데, 칩을
+        // 누르면 포커스는 칩에 그대로 있고 시트만 올라오므로 스크린리더에
+        // 가는 신호는 「선택됨」 하나뿐이다 — 접근성을 위해 만든 면제가
+        // 접근성 채널에서만 답을 안 주는 꼴이 된다.
+        //
+        // 상자째 감싸므로 「필터 해제」 버튼의 존재까지 함께 낭독된다. 그 버튼은
+        // half에서 4.2px만 노출되는 자리라(Task 10 실측) 소리로 먼저 알려주는
+        // 편이 오히려 낫다.
+        //
+        // 검색어를 한 글자씩 칠 때마다 문구가 바뀌어 낭독이 반복되는 값을
+        // 치른다. 「내 장소일 때만」으로 좁히면 그 소음은 없어지지만 **규칙이
+        // 하나 더 늘고**, 어떤 빈 상태는 말하고 어떤 빈 상태는 침묵하는
+        // 화면이 된다 — 검색 결과를 폴라이트 리전으로 알리는 것은 표준 패턴
+        // 이기도 해서 일관성 쪽을 골랐다.
+        <div role="status" className="px-4 py-10 text-center">
           <p className="text-body-md text-on-surface-variant">{emptyMessage}</p>
           {clearableFilter !== null && (
             <button
@@ -357,6 +414,7 @@ export function HomeScreen() {
         onBack={() => {
           setSelectedName(null)
           setDetent('half')
+          requestSheetFocus()
         }}
         onSelectArea={openArea}
       />
@@ -366,39 +424,12 @@ export function HomeScreen() {
         onBack={() => {
           setView('list')
           setDetent('half')
+          requestSheetFocus()
         }}
       />
     ) : (
       listPane
     )
-
-  // 뷰가 갈리면 방금 누른 버튼이 언마운트되면서 포커스가 `document.body`로
-  // 떨어진다. body에서 누른 Tab은 문서 맨 앞부터 다시 세는데, 시트 앞에는
-  // 지도 레이어가 통째로 놓여 있다(`data-map-layer`가 형제 중 첫째다).
-  // 키보드·스위치 사용자는 뷰를 바꿀 때마다 시트까지 다시 탭해 내려와야 한다.
-  // Task 9가 만든 문제는 아니지만(SplitPane 시절에도 같았다) 시트가 유일한
-  // 내용 영역이 되고 뷰가 셋으로 늘면서 이 왕복이 주 동선이 됐다.
-  //
-  // 각 뷰의 맨 위 버튼 대신 감싸는 상자에 포커스를 준다. 목록의 맨 위인 요약
-  // 스트립은 조회가 실패하면 아예 안 그려져서 「맨 위 요소」가 뷰마다 있다고
-  // 말할 수가 없다 — 상자는 언제나 있다.
-  //
-  // `preventScroll`이 필요한 이유: 이 상자의 부모가 시트의 스크롤 컨테이너라
-  // 기본 동작의 scrollIntoView가 끼면 방금 연 뷰가 맨 위가 아닌 곳에서
-  // 시작한다. jsdom에는 레이아웃이 없어 이 옵션은 테스트로 확인되지 않는다.
-  const viewRef = useRef<HTMLDivElement>(null)
-  // 지금 시트를 차지한 것이 무엇인지. 접두사를 붙이는 이유는 「'today'라는
-  // 이름의 명소」 같은 충돌을 아예 표현할 수 없게 하려는 것이다.
-  const viewKey =
-    filters.selectedName !== null ? `detail:${filters.selectedName}` : `view:${view}`
-  // 첫 렌더에서는 뺏지 않는다. 진입하자마자 시트가 포커스를 가져가면
-  // 스크린리더가 화면 첫머리 대신 시트 내용을 읽는다.
-  const focusedViewRef = useRef(viewKey)
-  useEffect(() => {
-    if (focusedViewRef.current === viewKey) return
-    focusedViewRef.current = viewKey
-    viewRef.current?.focus({ preventScroll: true })
-  }, [viewKey])
 
   return (
     <div className="relative size-full overflow-hidden">
@@ -479,7 +510,24 @@ export function HomeScreen() {
 
       <BottomSheet detent={sheetDetent} onDetentChange={setDetent}>
         {/* 여백을 걸지 않는다 — 시트의 규칙이 아니라 뷰의 몫이다(BottomSheet
-            주석 참조). 이 상자는 오직 포커스를 받기 위한 것이다. */}
+            주석 참조). 이 상자는 오직 포커스를 받기 위한 것이다.
+
+            **각 뷰의 맨 위 버튼이 아니라 감싸는 상자에 준다.** 목록의 맨 위인
+            요약 스트립은 조회가 실패하면 아예 안 그려져서(위 `snapshots.isError`
+            분기) 「맨 위 요소」가 뷰마다 있다고 말할 수가 없다. 상자는 뷰가
+            셋 중 무엇으로 갈리든 언제나 있고 언마운트되지 않는다 — 「포커스를
+            옮긴 뒤 그 요소가 사라지면?」이 표현 불가능한 상태가 된다.
+
+            **이름을 주지 않은 것은 고른 것이다.** `tabindex="-1"`인 div는
+            암묵 role이 `generic`이고 `generic`은 **이름 부여가 금지된**
+            role이라, 나중에 `aria-label`만 얹으면 조용히 무시된다. 이름을
+            주려면 `role="group"`(또는 `region`)이 함께 와야 한다. 지금 이름을
+            안 주는 쪽을 고른 이유는 이 상자가 뷰의 경계가 아니라 포커스
+            받침대일 뿐이어서 — 뷰의 정체는 그 안 첫 요소(「목록으로」,
+            요약 스트립)가 이미 말한다.
+
+            포커스가 왔을 때 스크린리더가 실제로 무엇을 읽는지는 실기기로만
+            확인된다 — STATE.md의 미해결 항목. */}
         <div ref={viewRef} tabIndex={-1}>
           {sheetContent}
         </div>
