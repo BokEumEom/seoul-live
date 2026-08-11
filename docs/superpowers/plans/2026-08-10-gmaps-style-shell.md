@@ -2719,7 +2719,7 @@ M13(포커스 이동 제거)·M14(첫 렌더 가드 제거)는 옛 `viewKey` 구
 **Files:**
 - Modify: `README.md`, `PLAN.md`, `STATE.md`, `AGENTS.md`
 
-- [ ] **Step 1: `README.md`**
+- [x] **Step 1: `README.md`**
 
 화면 표를 셋에서 **하나**로 고친다.
 
@@ -2733,22 +2733,30 @@ M13(포커스 이동 제거)·M14(첫 렌더 가드 제거)는 옛 `viewKey` 구
 | **명소 상세** | 예측 차트, 경로·저장·공유, 인구 구성(성별·연령·상주비율), 접이식 도시 정보 |
 ```
 
-「구조」 절의 `src/screens/`를 `HomeScreen` 하나로 고치고, **`src/components/layout/` 줄을 지운다** — Task 10에서 `TopAppBar`까지 사라져 디렉터리가 비었다.
+「구조」 절에서 **`src/components/layout/` 줄을 지운다** — Task 10에서 `TopAppBar`까지 사라져 디렉터리가 비었다.
+
+> **정정 (Task 11 실행 중).** 위에 「`src/screens/`를 `HomeScreen` 하나로 고친다」고 적었지만 **틀렸다.** `screens/`는 둘이다 — `TodayScreen.tsx`가 그대로 남아 있고, 시트 안 뷰이면서도 스스로 `useAreaSnapshots`를 부르므로 레이어상 여기 속한다. `HomeScreen`이 `<TodayScreen onSelectArea onBack />`으로 시트에 끼워 넣는다.
 
 **상단바가 없다는 것도 적어라.** 앱에 자체 헤더가 없고(토스가 네이티브 헤더를 준다) 지도 위 검색 바가 그 자리를 쓴다. 제목은 `sr-only` h1 「서울 라이브」로만 남아 있다.
 
-- [ ] **Step 2: `PLAN.md`**
+- [x] **Step 2: `PLAN.md`**
 
 - 1차 절의 탭 서술을 "2026-08-10 개편으로 단일 화면이 됐다"로 정정
 - 2차 즐겨찾기 항목에 "탭이 아니라 필터 칩"을 적는다. **빈 상태 안내가 어디로 갔는지도 함께** — 「내 장소」 칩은 0에서도 눌리고, 누르면 빈 목록 문구가 「아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.」로 답한다
 - 3차에 **인구 구성이 추가 호출 없이 붙었다**를 적고, 미착수 항목에서 도로소통·사고통제만 남긴다
 
-- [ ] **Step 3: `STATE.md`**
+- [x] **Step 3: `STATE.md`**
 
 - 「한 줄 요약」을 단일 화면 구조로
 - 「파일 구조」를 새 디렉터리로. **실행 중 계획서에 없던 파일이 셋 늘었다 — 빠뜨리지 마라:**
   - 추가: `domain/sheet.ts`, `domain/composition.ts`, `data/compositionSchema.ts`, `components/home/BottomSheet.tsx`, `components/home/SummaryStrip.tsx`, `components/home/FilterChips.tsx`, `components/home/PopulationCard.tsx`, **`components/list/AreaList.tsx`**(Task 4 — 구분선 목록의 행 간격 계약을 소유), **`hooks/favoritesStore.ts`**(Task 6 — 즐겨찾기 단일 출처)
   - 삭제: `domain/split.ts`, `components/home/SplitPane.tsx`, `components/map/PresetFilter.tsx`, `screens/FavoritesScreen.tsx`, `components/layout/BottomTabBar.tsx`, **`components/layout/TopAppBar.tsx`** — **`components/layout/` 디렉터리가 통째로 사라졌다.** 파일 구조 표에서 그 줄을 지워라
+
+> **정정 (Task 11 실행 중).** 위 「추가」 목록이 **넷 모자랐다.** `git diff --name-status 86efd03 HEAD -- src`로 실제를 세면:
+>
+> - **추가 13개** — 위 아홉에 더해 Task 8이 `AreaDetail`을 쪼개며 만든 **`components/home/AreaHero.tsx`·`CongestionCard.tsx`·`CityInfoPanel.tsx`·`NearbyCalmSection.tsx`** 넷이 더 있다. `CityInfoPanel`은 브랜치 시작 시점에 `AreaDetail.tsx` 안에 있던 코드가 파일로 떨어져 나온 것이라 git이 「추가」로 잡는다.
+> - **이동 1개** — `components/forecast/ActionButtons.tsx` → **`components/home/ActionButtons.tsx`**. 그래서 `forecast/`에는 이제 `ForecastChart` 하나만 남는다. 위 「삭제」 목록에도 없던 항목이다.
+> - 삭제 6개는 목록 그대로다.
 - 「검증 수치」 갱신
 - **새 미해결 항목** (대부분 실기기로만 확인된다. 마지막 하나는 제품 결정이다):
   - 시트 드래그와 지도 팬 제스처 충돌
@@ -2782,14 +2790,14 @@ M13(포커스 이동 제거)·M14(첫 렌더 가드 제거)는 옛 `viewKey` 구
   - **Task 10이 무효화한 Task 9의 주장** — `RecenterButton`의 「실기기에서는 언제나 잘린다」. 컨테이너가 `100dvh − 7.5rem`에서 `100dvh`가 되면서 필요 뷰포트가 920px에서 800px로 내려가 거짓이 됐다. 결정(`full`에서 안 그린다)은 유지하되 근거를 다시 썼다
   - **파일을 지우며 잃을 뻔한 보호** — `FavoritesScreen.test`의 「혼잡도 조회가 실패해도 담은 목록은 보여준다」를 저쪽이 잡고 있지 않았다. 「같은 이름의 테스트가 저쪽에 있는가」가 아니라 「저쪽이 **같은 것을** 잡는가」를 세어야 잡히는 종류다 (Task 10)
 
-- [ ] **Step 4: `AGENTS.md`**
+- [x] **Step 4: `AGENTS.md`**
 
 - 레이어 규칙의 화면 목록을 `HomeScreen` 하나로. **`src/components/layout/`은 더 이상 없다**
 - **새 조항**: 앱 셸은 `<main className="h-dvh">` 하나다. 여기에 헤더·탭바를 다시 얹지 마라 — 세로 공간은 시트의 것이고, 토스가 네이티브 헤더를 준다. `h-dvh`를 빼면 지도가 0px로 접힌다
 - 바텀시트 조항을 갱신: **시트가 다시 생겼다.** "진입하자마자 자동으로 나타나지 않아요"는 여전히 유효하고, 우리 시트는 half로 시작하지만 사용자 조작 없이 뜬 것이 아니라 **화면 자체의 일부**다. 심사에서 지적되면 peek으로 시작하는 것이 대안이다
 - **새 조항**: 인구 구성은 `compositionSchema.ts`에서 관대하게 파싱한다. `schema.ts`의 엄격한 `areaSchema`에 얹지 마라 — 비율 하나가 이상할 때 혼잡도까지 날아간다
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git add README.md PLAN.md STATE.md AGENTS.md
@@ -2800,10 +2808,18 @@ git commit -m "docs: Google Maps 스타일 셸 개편을 문서에 반영"
 
 ## 완료 기준
 
-- [ ] `npm test` 통과, 커버리지 임계(라인·구문·함수 80%, 브랜치 75%) 유지
-- [ ] `npx tsc -b` 통과
-- [ ] `npm run lint` 통과
-- [ ] `npm run build:vite` 통과
+- [x] `npm test` 통과, 커버리지 임계(라인·구문·함수 80%, 브랜치 75%) 유지
+- [x] `npx tsc -b` 통과
+- [x] `npm run lint` 통과
+- [x] `npm run build:vite` 통과
 - [x] `npm run dev`로 띄워 Task 10의 실측 표(열한 항목)를 헤드리스 크롬 + CDP로 **숫자로** 확인 — 눈으로 못 보므로 좌표·높이·비율로 잰다
-- [ ] 콘솔 에러 0건
-- [ ] **인구 구성 필드를 목업에서 지워도 혼잡도 화면이 그대로 선다** (설계 §2.6의 핵심 안전망)
+- [x] **인구 구성 필드를 목업에서 지워도 혼잡도 화면이 그대로 선다** (설계 §2.6의 핵심 안전망) — `schema.test.ts`의 「인구 구성 필드가 아예 없으면 composition이 null이다」와 `mock.test.ts`가 고정한다
+- [ ] 콘솔 에러 0건 — 미확인. `npm run dev`를 띄워 콘솔을 직접 봐야 한다
+
+### Task 11 실측 (2026-08-11)
+
+- `npm test` — **617개 통과 + 1 todo** (테스트 파일 54개). 문서만 고쳤으므로 Task 10과 같다
+- 커버리지 — 라인 **96.62%** / 브랜치 **88.12%** / 함수 **93.78%** / 구문 **96.22%**. 임계(80/75) 전부 통과
+- `npx tsc -b --force` / `npm run lint` / `npm run build:vite` — 전부 통과
+- 번들 — JS 460.43 kB (gzip 140.11) / CSS 25.07 kB (gzip 5.57), 모듈 264개
+- 커밋 `e893c75 docs: Google Maps 스타일 셸 개편을 문서에 반영`
