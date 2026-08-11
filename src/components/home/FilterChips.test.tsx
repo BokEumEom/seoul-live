@@ -48,13 +48,31 @@ describe('FilterChips', () => {
     expect(chip).toHaveAccessibleName('내 장소 3')
   })
 
-  it('0이면 비활성이다', () => {
+  it('0인 프리셋은 비활성이다', () => {
     render(
-      <FilterChips counts={{ ...COUNTS, fav: 0 }} value={null} onChange={vi.fn()} />,
+      <FilterChips counts={{ ...COUNTS, hot: 0 }} value={null} onChange={vi.fn()} />,
     )
 
-    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeDisabled()
-    expect(screen.getByRole('tab', { name: '지금 핫플 7' })).toBeEnabled()
+    expect(screen.getByRole('tab', { name: '지금 핫플 0' })).toBeDisabled()
+    expect(screen.getByRole('tab', { name: '데이트 19' })).toBeEnabled()
+  })
+
+  it('0이어도 내 장소만은 누를 수 있다', async () => {
+    // 프리셋의 0은 지금 그런 곳이 없다는 데이터 사정이라 눌러도 나올 말이
+    // 없지만, 「내 장소」의 0은 아직 안 써 본 기능의 초기 상태다. 여기를
+    // 막으면 즐겨찾기 화면과 함께 사라진 「어떻게 담는가」에 닿을 길이
+    // 앱에서 완전히 없어진다 — 답은 이 칩을 눌러야 나오는 빈 목록 문구에 있다.
+    const onChange = vi.fn()
+    render(
+      <FilterChips counts={{ ...COUNTS, fav: 0 }} value={null} onChange={onChange} />,
+    )
+
+    const chip = screen.getByRole('tab', { name: '내 장소 0' })
+    expect(chip).toBeEnabled()
+
+    await userEvent.click(chip)
+
+    expect(onChange).toHaveBeenCalledWith('fav')
   })
 
   // 클릭 경로는 칩마다 따로 확인한다. 「내 장소」 하나로만 보면 어떤 칩을 눌러도

@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
+import { AREA_NAMES } from './data/areas'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -76,8 +77,14 @@ beforeEach(() => {
   getLocation.mockRejectedValue(new framework.GetCurrentLocationPermissionError())
 })
 
-function tab(name: string): HTMLElement {
-  return screen.getByRole('button', { name })
+/**
+ * 시트 안 목록 행. 지도 마커가 같은 이름을 갖고 있고 DOM 순서상 마커가
+ * 앞서므로(`data-map-layer`가 시트보다 앞이다) `getAllByRole(...)[0]`은
+ * 마커다. 「목록에서 열었다」를 뜻하려면 시트 안으로 좁혀야 한다.
+ */
+function sheetRow(name: string | RegExp): HTMLElement {
+  const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
+  return within(sheet).getAllByRole('button', { name })[0]
 }
 
 describe('App', () => {
@@ -95,24 +102,38 @@ describe('App', () => {
     ).toBeGreaterThan(0)
   })
 
-  it('탭이 셋이고 옛 탭은 없다', () => {
-    // 탭바 안으로 좁혀서 묻는다. 「내 주변」은 이제 지도 위 FAB의 이름이라
-    // 화면 전체에 대고 `queryByRole('button', { name: '내 주변' })`을 물으면
-    // **정당하게 존재하는 버튼**이 잡힌다 — 규칙은 "그 이름의 버튼이 없다"가
-    // 아니라 "그 이름의 **탭**이 없다"이다.
-    //
-    // 예전에는 이름에 후행 공백(`'내 주변 '`)이 붙어 있어 매칭이 성립하지
-    // 않았고, 그래서 이 단언은 무엇이 있든 늘 통과하는 공허한 것이었다.
+  it('갈 곳을 고르는 탭바가 없다', async () => {
+    // 「탭바 안으로 좁혀서 묻는다」가 이제 불가능하다 — `<nav>`가 통째로
+    // 사라지기 때문이다. 이름만 물으면 무엇이 있든 통과하는 공허한 단언이
+    // 되므로(Task 9에서 실제로 그런 단언이 있었다) **랜드마크가 없다**는 것과
+    // **옛 탭이 가던 곳을 지금 무엇이 대신하는가**를 함께 잠근다. 탭바를
+    // 되살리면 첫 단언이 곧바로 깨진다.
     render(<App />)
-    const tabBar = screen.getByRole('navigation')
 
-    // 개수를 먼저 고정한다. 이름으로만 물으면 넷째 탭이 생겨도 안 걸린다.
-    expect(within(tabBar).getAllByRole('button')).toHaveLength(3)
-    expect(within(tabBar).getByRole('button', { name: '지도' })).toBeInTheDocument()
-    expect(within(tabBar).getByRole('button', { name: '즐겨찾기' })).toBeInTheDocument()
-    expect(within(tabBar).getByRole('button', { name: '더보기' })).toBeInTheDocument()
-    expect(within(tabBar).queryByRole('button', { name: '내 주변' })).toBeNull()
-    expect(within(tabBar).queryByRole('button', { name: '혼잡예보' })).toBeNull()
+    expect(screen.queryAllByRole('navigation')).toHaveLength(0)
+    expect(screen.queryByRole('button', { name: '즐겨찾기' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '더보기' })).toBeNull()
+    // 즐겨찾기 탭의 자리는 필터 칩이, 더보기 탭의 자리는 요약 스트립이 받았다.
+    expect(await screen.findByRole('tab', { name: /내 장소/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /오늘의 서울 열기/ })).toBeInTheDocument()
+  })
+
+  it('앱이 자체 헤더를 두지 않고 제목은 보조기술에만 남는다', () => {
+    // 지도 위에 뜬 검색 바가 이미 상단바의 자리를 쓰고 있어 같은 층이 두 겹
+    // 이었고, 토스가 미니앱에 주는 네이티브 헤더까지 치면 세 겹이었다.
+    // 오버레이 시트를 쓰는 이상 세로 3.5rem은 시트가 계속 손해 보는 값이다.
+    render(<App />)
+    expect(screen.queryByRole('banner')).toBeNull()
+
+    // 그래도 제목 트리의 뿌리는 남긴다. TopAppBar의 h1이 앱의 유일한 h1이었고
+    // 없애면 시트 안 h2부터 시작하는 뿌리 없는 트리가 된다. 이름은
+    // index.html의 <title>과 같은 「서울 라이브」다 — TopAppBar는 「Seoul Live」라
+    // 둘이 어긋나 있었다.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveAccessibleName(
+      '서울 라이브',
+    )
+    // 랜드마크까지 함께 잃지는 않는다.
+    expect(screen.getByRole('main')).toBeInTheDocument()
   })
 
   it('명소를 누르면 상세가 열리고 지도는 남는다', async () => {
@@ -123,7 +144,7 @@ describe('App', () => {
       ).toBeGreaterThan(0),
     )
 
-    await userEvent.click(screen.getAllByRole('button', { name: /광화문·덕수궁/ })[0])
+    await userEvent.click(sheetRow(/광화문·덕수궁/))
 
     expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
     // 예전 구조에서는 상세로 가면 지도가 통째로 사라졌다.
@@ -133,78 +154,79 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
   })
 
-  // 홈을 hidden으로 남겨 두는 구현을 요구한다. 탭을 오갈 때 지도가 매번 다시
-  // 만들어지면 타일을 다시 받고 카메라가 초기화된다.
-  it('탭을 오가도 홈의 상태가 남는다', async () => {
+  it('오늘의 서울은 탭이 아니라 시트 안 뷰다', async () => {
     render(<App />)
-    await waitFor(() =>
-      expect(
-        screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length,
-      ).toBeGreaterThan(0),
-    )
 
-    await userEvent.type(screen.getByRole('searchbox'), '경복궁')
-    await userEvent.click(tab('더보기'))
-    await userEvent.click(tab('지도'))
-
-    // 검색어가 살아 있으면 HomeScreen이 언마운트되지 않은 것이다.
-    expect(screen.getByRole('searchbox')).toHaveValue('경복궁')
-    expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
-  })
-
-  it('더보기는 오늘의 서울이다', async () => {
-    render(<App />)
-    await userEvent.click(tab('더보기'))
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('heading', { name: '지금 가장 붐비는 곳' }),
-      ).toBeInTheDocument(),
-    )
-    expect(screen.getByRole('heading', { name: '오늘의 서울' })).toBeInTheDocument()
-  })
-
-  it('오늘의 서울에서 명소를 누르면 홈의 상세로 간다', async () => {
-    render(<App />)
-    await userEvent.click(tab('더보기'))
-    await waitFor(() =>
-      expect(
-        screen.getByRole('heading', { name: '지금 가장 붐비는 곳' }),
-      ).toBeInTheDocument(),
-    )
-
-    const busiest = screen.getByRole('heading', { name: '지금 가장 붐비는 곳' })
-      .parentElement as HTMLElement
-    await userEvent.click(busiest.querySelectorAll('button')[0])
-
-    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
-  })
-
-  it('저장을 누르면 즐겨찾기 탭에 나타난다', async () => {
-    render(<App />)
-    await waitFor(() =>
-      expect(
-        screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length,
-      ).toBeGreaterThan(0),
-    )
-
-    await userEvent.click(screen.getAllByRole('button', { name: /광화문·덕수궁/ })[0])
-    await userEvent.click(screen.getByRole('button', { name: '저장' }))
-    await userEvent.click(tab('즐겨찾기'))
+    await userEvent.click(await screen.findByRole('button', { name: /오늘의 서울 열기/ }))
 
     expect(
-      await screen.findByRole('button', { name: /광화문·덕수궁/ }),
+      await screen.findByRole('heading', { name: '지금 가장 붐비는 곳' }),
     ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '오늘의 서울' })).toBeInTheDocument()
+    // 탭이었을 때는 이 자리에서 지도가 통째로 사라졌다.
+    expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
   })
 
-  it('즐겨찾기가 비어 있으면 지도로 가는 길을 준다', async () => {
+  it('오늘의 서울에서 명소를 누르면 같은 시트가 그 상세로 바뀐다', async () => {
     render(<App />)
-    await userEvent.click(tab('즐겨찾기'))
+    await userEvent.click(await screen.findByRole('button', { name: /오늘의 서울 열기/ }))
+    const busiest = (await screen.findByRole('heading', { name: '지금 가장 붐비는 곳' }))
+      .parentElement as HTMLElement
 
-    expect(await screen.findByText('지도에서 ☆를 눌러 담아보세요')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: '지도로 가기' }))
+    // 첫 줄이 아니라 **둘째 줄**을 누른다. 첫 줄을 누르면 「무엇을 눌렀든
+    // 1위를 연다」는 구현이 그대로 통과해 단언이 공허해진다.
+    const second = busiest.querySelectorAll('button')[1]
+    // 누른 그 명소가 열려야 한다. 「상세가 열렸다」까지만 보면 이름을 흘려버리는
+    // 통로도 통과한다.
+    const name = AREA_NAMES.find((area) => (second.textContent ?? '').includes(area))
+    // 이름을 못 찾으면 아래 단언이 「이름 조건 없음」이 되어 역시 공허해진다.
+    expect(name).toBeDefined()
+
+    await userEvent.click(second)
+
+    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
+  })
+
+  it('상세에서 저장한 곳이 내 장소 칩의 개수가 된다', async () => {
+    // 즐겨찾기 탭이 필터 칩이 됐으므로 「담았다」의 결과가 보이는 자리도
+    // 칩 하나뿐이다. 상세가 열리면 시트가 full이라 칩이 물러나 있어
+    // 목록으로 돌아와서 본다.
+    render(<App />)
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length,
+      ).toBeGreaterThan(0),
+    )
+
+    await userEvent.click(sheetRow(/광화문·덕수궁/))
+    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+
+    expect(await screen.findByRole('tab', { name: '내 장소 1' })).toBeInTheDocument()
+  })
+
+  it('담은 곳이 하나도 없어도 담는 방법에 닿을 수 있다', async () => {
+    // 즐겨찾기 화면이 사라지면서 「지도에서 ☆를 눌러 담아보세요」도 함께
+    // 없어졌다. 그 안내가 없으면 신규 사용자가 만나는 것은 「내 장소 0」 칩
+    // 하나뿐이고, 그 칩은 자기가 무엇인지도 어떻게 채우는지도 말하지 않는다.
+    // 그래서 「내 장소」만은 0에서도 눌리고, 누르면 빈 목록 문구가 답한다.
+    render(<App />)
+
+    const chip = await screen.findByRole('tab', { name: '내 장소 0' })
+    expect(chip).toBeEnabled()
+    await userEvent.click(chip)
+
+    expect(
+      screen.getByText('아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.'),
+    ).toBeInTheDocument()
+
+    // 되돌아올 길도 그 자리에 있다.
+    await userEvent.click(screen.getByRole('button', { name: '필터 해제' }))
+    expect(
+      screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length,
+    ).toBeGreaterThan(0)
   })
 
   it('위치를 거부하면 여유한 순으로 내려가고 허용 안내가 뜬다', async () => {
@@ -259,7 +281,7 @@ describe('App', () => {
     )
     const callsAfterMount = getLocation.mock.calls.length
 
-    await userEvent.click(screen.getAllByRole('button', { name: /광화문·덕수궁/ })[0])
+    await userEvent.click(sheetRow(/광화문·덕수궁/))
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
 
     // 위치는 LocationProvider가 앱 수준에서 한 번만 잡는다.

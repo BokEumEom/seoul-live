@@ -2424,125 +2424,173 @@ git commit -m "feat: 지도를 전체 배경으로 깔고 오버레이 시트로
 
 ---
 
-## Task 10: 탭바 제거와 App 단순화
+## Task 10: 탭바·상단바 제거와 App 단순화 (완료)
 
 **Files:**
-- Modify: `src/App.tsx`, `src/App.test.tsx`
-- Delete: `src/components/layout/BottomTabBar.tsx`, `src/screens/FavoritesScreen.tsx`, `src/screens/FavoritesScreen.test.tsx`
+- Modify: `src/App.tsx`, `src/App.test.tsx`, `src/screens/HomeScreen.tsx`, `src/screens/HomeScreen.test.tsx`, `src/components/home/FilterChips.tsx`, `src/components/home/FilterChips.test.tsx`, `src/components/map/RecenterButton.tsx`
+- Delete: `src/components/layout/BottomTabBar.tsx`, **`src/components/layout/TopAppBar.tsx`**, `src/screens/FavoritesScreen.tsx`, `src/screens/FavoritesScreen.test.tsx`
+- **`src/components/layout/`가 비어 디렉터리째 사라졌다.** (덤: 비어 있던 `src/components/nearby/`도 정리했다 — git이 추적하던 것은 아니다)
 
-### 지우기 전에 — `FavoritesScreen`이 갖고 있던 것
+### 계획서와 달라진 것 (1) — 상단바도 없앴다
 
-**빈 상태 안내가 함께 사라진다.** `FavoritesScreen`은 즐겨찾기가 하나도 없을 때 담는 방법과 갈 곳을 알려준다. 탭이 없어지면 신규 사용자가 만나는 건 **영구히 `disabled:opacity-50`인 「★ 내 장소 0」 칩 하나**뿐이고, 그 칩은 자기가 무엇인지도 어떻게 채우는지도 말하지 않는다.
+계획서 원안은 `TopAppBar title="Seoul Live"`를 남겼다. **사용자가 제거하기로 정했다.**
 
-지우기 전에 그 안내가 갈 곳을 정해라. 후보: 빈 목록 문구에 섞기 / 「★ 내 장소」를 0일 때도 누를 수 있게 하고 누르면 안내를 띄우기 / 상세의 「저장」 버튼을 처음 한 번 강조하기. **파일을 지우면서 안내만 조용히 잃지 마라** — 이 브랜치에서 `PresetFilter.test.tsx`를 지울 때 그 파일이 잡던 보호 둘을 잃은 전례가 있다.
+- 설계 §2.2가 탭바를 없앤 논리가 그대로 적용된다 — 오버레이 시트를 채택한 이상 세로 공간이 가장 귀한 자원이고, 상단바 3.5rem은 시트를 full로 올린 상태에서도 계속 깎인다.
+- Google Maps에 상단바가 없다. **지도 위에 뜬 검색 바가 이미 그 층을 쓰고 있어** 같은 자리가 두 겹이었다.
+- 토스가 미니앱에 자체 네이티브 헤더를 주므로 유지하면 세 겹이 된다.
 
-같은 이유로, 지우기 전에 **`FavoritesScreen.test.tsx`가 잡던 것을 먼저 세어라.** 다른 곳이 안 잡는 것이 있으면 옮겨라.
+**여파 — 계획서의 다음 두 줄은 무효다.**
+- Step 4의 「`src/components/layout/`에 `TopAppBar`만 남는지 확인한다」 → 디렉터리가 통째로 없어졌다.
+- Step 4의 「`h-dvh`에서 상단바(3.5rem)만 빼면 된다」 → 뺄 것이 없다. `<main className="h-dvh">`가 뷰포트 높이를 그대로 갖고 `HomeScreen` 루트가 `relative size-full overflow-hidden`으로 받는다. `HOME_HEIGHT_CLASS`는 삭제했다.
+- Step 3의 `flex h-dvh flex-col` + `<main className="min-h-0 flex-1">` 구조도 쓰지 않았다. **자식이 하나면 높이를 나눌 형제가 없어 `min-h-0 flex-1`이 할 일이 없다.** `<main>`은 남겼다 — 랜드마크까지 잃을 이유는 없다.
 
-- [ ] **Step 1: 실패 테스트를 쓴다**
+**h1 판단: `sr-only` h1을 `App`에 뒀다.**
+`TopAppBar`의 `<h1>{title}</h1>`이 앱의 유일한 h1이었고, 없애면 제목 층이 시트 안의 h2부터 시작해 **제목으로 훑는 스크린리더 사용자에게 뿌리 없는 트리**가 된다. WCAG가 h1을 요구하지는 않지만 `sr-only`는 세로 공간을 한 픽셀도 쓰지 않으므로(실측 높이 1px) 상단바를 없앤 이득과 상충하지 않는다 — 없앨 이유가 없다. 이름은 `index.html`의 `<title>`과 같은 **「서울 라이브」**로 맞췄다. `TopAppBar`는 「Seoul Live」였고 둘이 어긋나 있었다.
 
-`App.test.tsx`를 고친다.
+### 계획서와 달라진 것 (2) — 「내 장소 0」 칩을 누를 수 있게 했다
 
-```tsx
-it('탭바가 없다', () => {
-  render(<App />)
-  expect(screen.queryByRole('button', { name: '즐겨찾기' })).toBeNull()
-  expect(screen.queryByRole('button', { name: '더보기' })).toBeNull()
-})
+**문제.** `FavoritesScreen`의 빈 상태 안내(「지도에서 ☆를 눌러 담아보세요」 + 「지도로 가기」)가 파일과 함께 사라진다. 계획서가 든 후보 중 「빈 목록 문구에 섞기」만으로는 **신규 사용자가 그 문구에 닿을 수 없다** — `FilterChips`의 `disabled={count === 0 && !selected}` 때문에 「내 장소 0」 칩이 영구히 비활성이라 필터를 켤 수가 없기 때문이다.
 
-it('첫 화면이 지도다', async () => {
-  render(<App />)
-  expect(await screen.findByRole('region', { name: '지도' })).toBeInTheDocument()
-})
+**결정.** `FilterChips`의 0-비활성 규칙에서 `'fav'`를 면제했다(`disabled={count === 0 && !selected && chip !== 'fav'}`).
 
-it('별을 저장하면 내 장소 칩에 잡힌다', async () => {
-  render(<App />)
-  await waitFor(() =>
-    expect(screen.getAllByRole('button', { name: /광화문·덕수궁/ }).length).toBeGreaterThan(0),
-  )
-  await userEvent.click(screen.getAllByRole('button', { name: /광화문·덕수궁/ })[0])
-  await userEvent.click(screen.getByRole('button', { name: '저장' }))
-  await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
-  expect(await screen.findByRole('tab', { name: /내 장소 1/ })).toBeInTheDocument()
-})
+그 규칙의 근거는 「눌렀는데 아무 일도 안 일어나는 순간을 만들지 않는다」이고, 프리셋의 0에는 그대로 유효하다 — 「지금 그런 곳이 없다」는 데이터 사정이라 눌러도 나올 말이 없다. 그러나 **「내 장소」의 0은 아직 안 써 본 기능의 초기 상태**이고, 누르면 나올 말이 있다. 이 파일은 이미 ★ 렌더에서 `'fav'`를 특별 취급하고 있어 특례가 새로 생긴 것도 아니다.
+
+**옮긴 문구 (그대로 옮기지 않았다).**
+
+```
+아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.
 ```
 
-탭 전환·`focusArea` 관련 기존 테스트는 지운다.
+- 옛 문구는 **이미 낡아 있었다.** Task 8에서 별이 상세 헤더를 떠나 액션 행의 「저장」 버튼이 됐으므로, 그대로 옮겼으면 사용자가 있지도 않은 ☆를 찾았다.
+- 「지도로 가기」 버튼은 옮기지 않았다. 지도는 이미 이 문구 뒤에 깔려 있고, 빠져나올 길은 그 자리에 이미 있던 **「필터 해제」**다(Task 9가 만들었다).
+- 조건은 `counts.fav === 0`이 아니라 **`favorites.length === 0`**이다. 카테고리로 좁혀 0이 된 것과 애초에 담은 게 없는 것은 사용자에게 다른 말이고, 전자는 기존 문구(「‘내 장소’에 해당하는 명소가 없어요」)가 맞다. 이 구분을 기존 테스트가 이미 잠그고 있었다(변이 M10).
 
-- [ ] **Step 2: 실패를 확인한다**
+**곁딸린 처리 하나.** 담은 게 없는 「내 장소」를 켜면 목록도 지도 마커도 함께 빈다(실측: 마커 0개). `peek`에서는 답을 적은 문구가 시트 안에 가려 있어 사용자에게는 「눌렀더니 다 사라졌다」만 남으므로, 그 경우에만 시트를 `half`로 올린다. **「목록이 비면 올린다」로 일반화하지 않았다** — 카테고리로 좁혀 비는 경우는 이 태스크와 무관하게 예전부터 있던 상태이고, 그쪽까지 손대면 필터를 만질 때마다 시트가 튀어오른다(변이 M12가 이 경계를 지킨다).
 
-Run: `npx vitest run src/App.test.tsx`
-Expected: FAIL — 탭바가 아직 있다
+### 계획서와 달라진 것 (3) — 계획서 테스트 코드의 결함
 
-- [ ] **Step 3: `App.tsx`를 단순화한다**
+계획서 Step 1의 세 테스트를 그대로 쓰지 않았다.
 
-```tsx
-import { LocationProvider } from './app/LocationProvider'
-import { QueryProvider } from './app/QueryProvider'
-import { TopAppBar } from './components/layout/TopAppBar'
-import { HomeScreen } from './screens/HomeScreen'
+1. `queryByRole('button', { name: '즐겨찾기' })` — **탭바가 통째로 사라진 뒤에는 공허해진다.** `<nav>`가 없어져 Task 9식 「탭바 안으로 좁혀 묻기」도 불가능하다. 대신 `queryAllByRole('navigation')`이 비었다는 것과 **옛 탭이 가던 곳을 지금 무엇이 대신하는가**(내 장소 칩 · 요약 스트립)를 함께 잠갔다.
+2. `getAllByRole('button', { name: /광화문·덕수궁/ })[0]` — Task 9에서 드러났듯 `[0]`은 목록 행이 아니라 **지도 마커**다(`data-map-layer`가 시트보다 DOM 앞). `App.test.tsx`에도 `sheetRow` 헬퍼를 두어 「목록에서 열었다」를 뜻하게 했다.
+3. 상단바 제거를 잠그는 테스트가 없었다 → 「앱이 자체 헤더를 두지 않고 제목은 보조기술에만 남는다」를 추가했다(`banner` 없음 + h1 이름 + `main` 랜드마크).
 
-// 화면이 하나다. 즐겨찾기는 필터 칩이고 오늘의 서울은 시트 안 뷰라서
-// 탭으로 갈 곳이 없다 — 설계 §2.2.
-function AppShell() {
-  return (
-    <div className="flex h-dvh flex-col bg-surface">
-      <TopAppBar title="Seoul Live" />
-      <main className="min-h-0 flex-1">
-        <HomeScreen />
-      </main>
-    </div>
-  )
-}
+### 지운 테스트가 잡던 것 — 어디로 갔나
 
-export default function App() {
-  return (
-    <QueryProvider>
-      <LocationProvider>
-        <AppShell />
-      </LocationProvider>
-    </QueryProvider>
-  )
-}
-```
+**`FavoritesScreen.test.tsx` (6개)**
 
-- [ ] **Step 4: 옛 파일을 지운다**
+| 지운 테스트 | 잡던 것 | 간 곳 |
+| --- | --- | --- |
+| 비어 있으면 담는 방법을 알려주고 홈으로 가는 버튼을 준다 | 빈 상태 안내와 나가는 길 | **문구를 고쳐 옮겼다.** `HomeScreen.test`「담은 게 하나도 없으면 담는 방법을 알려준다」, `App.test`「담은 곳이 하나도 없어도 담는 방법에 닿을 수 있다」 |
+| 담은 명소만 보여준다 | fav 필터가 즐겨찾기만 남긴다 | `HomeScreen.test`「내 장소 칩이 즐겨찾기만 남긴다」, `presets.test`「내 장소는 담아둔 이름만 남긴다」 |
+| 항목을 누르면 명소를 올려보낸다 | 행 클릭이 이름을 올려보낸다 | `AreaListItem.test`「누르면 명소 이름을 올려보낸다」, `HomeScreen.test`「목록 행을 눌러도 그 명소의 상세가 열린다」 |
+| 담은 게 여럿이면 모두 보여준다 | 하나만 보여주는 구현 | `presets.test`「내 장소는 담아둔 이름만 남긴다」가 **목록 전체를 비교**해 더 강하게 잡는다 |
+| 카탈로그에 없는 이름이 저장돼 있어도 무시한다 | 유령 행 | `presets.test`「담아둔 이름이 목록에 없으면 그냥 빠진다」, `HomeScreen.test`「내 장소 개수는 지금 목록에 있는 것만 센다」 |
+| 혼잡도 조회가 실패해도 담은 목록은 보여준다 | 실패해도 목록은 선다 | **저쪽이 안 잡고 있었다.** 기존 「혼잡도 조회가 실패하면 요약 스트립을 감춘다」는 스트립만 보므로 「실패하면 목록도 감춘다」가 통과했다 → `HomeScreen.test`「혼잡도 조회가 실패해도 명소 목록은 남는다」를 **새로 썼다**(변이 M25로 확인) |
 
-```bash
-git rm src/components/layout/BottomTabBar.tsx
-git rm src/screens/FavoritesScreen.tsx src/screens/FavoritesScreen.test.tsx
-```
+**`App.test.tsx` (12개 → 13개)**
 
-`src/components/layout/`에 `TopAppBar`만 남는지 확인한다.
+| 옛 테스트 | 결과 |
+| --- | --- |
+| 첫 화면이 지도이고 목록이 함께 채워진다 | 유지 (계획서의 「첫 화면이 지도다」를 이미 포함한다) |
+| 탭이 셋이고 옛 탭은 없다 | → 「갈 곳을 고르는 탭바가 없다」 |
+| 명소를 누르면 상세가 열리고 지도는 남는다 | 유지. `sheetRow`로 **어느 쪽을 눌렀는지 명시** |
+| **탭을 오가도 홈의 상태가 남는다** | **삭제, 대체 없음.** 잡던 것은 「탭을 오갈 때 `HomeScreen`이 언마운트되지 않는다」인데, 화면이 하나가 되면서 **언마운트시킬 주체 자체가 없어졌다.** 지킬 대상이 사라진 순감이다 |
+| 더보기는 오늘의 서울이다 | → 「오늘의 서울은 탭이 아니라 시트 안 뷰다」(요약 스트립 경유 + 지도가 남는지까지) |
+| 오늘의 서울에서 명소를 누르면 홈의 상세로 간다 | → 「…같은 시트가 그 상세로 바뀐다」. **강화했다**: 1위가 아니라 **둘째 줄**을 눌러 이름까지 확인한다. 옛 테스트는 「무엇을 눌렀든 1위를 연다」는 구현을 통과시켰다(변이 M16) |
+| 저장을 누르면 즐겨찾기 탭에 나타난다 | → 「상세에서 저장한 곳이 내 장소 칩의 개수가 된다」 |
+| 즐겨찾기가 비어 있으면 지도로 가는 길을 준다 | → 「담은 곳이 하나도 없어도 담는 방법에 닿을 수 있다」 |
+| 위치 거부/허용, 정렬, 위치 재요청 (4개) | 유지 |
+| — | **신설**: 「앱이 자체 헤더를 두지 않고 제목은 보조기술에만 남는다」 |
 
-`HomeScreen`의 높이 계산도 고친다 — 탭바가 없어졌으므로 `h-dvh`에서 상단바(3.5rem)만 빼면 된다.
+`HomeScreen.test.tsx`의 「focusArea가 주어지면 그 명소의 상세를 가득 펼친다」도 삭제했다. 잡던 것은 **탭 사이 이동**이라 대체할 것이 없다 — 명소를 열면 시트가 full이 된다는 부분은 「명소를 누르면 상세가 시트를 가득 채우고 지도는 뒤에 남는다」가 그대로 잡는다.
 
-- [ ] **Step 5: 통과를 확인한다**
+### 포커스 (Task 9의 I8) — 처방대로 했다
 
-Run: `npm test`, `npx tsc -b`, `npm run lint`, `npm run build:vite`
-Expected: 전부 PASS
+`HomeScreen`이 시트 내용을 `<div ref tabIndex={-1}>`로 감싸고, 뷰가 갈릴 때 `focus({ preventScroll: true })`를 부른다.
 
-- [ ] **Step 6: 실제로 띄워 본다**
+- **각 뷰의 맨 위 버튼이 아니라 감싸는 상자에 준다.** 계획서 처방은 「상세의 「목록으로」, 오늘의 서울의 「목록으로」, 목록의 요약 스트립」이었는데, **목록의 요약 스트립은 조회가 실패하면 아예 안 그려진다**(Task 9의 (F) 결정). 「맨 위 요소」가 뷰마다 있다고 말할 수가 없다. 상자는 언제나 있다.
+- 뷰의 신원은 `filters.selectedName !== null ? \`detail:${name}\` : \`view:${view}\``다. 접두사는 「'today'라는 이름의 명소」 같은 충돌을 **표현할 수 없게** 하려는 것이다(지금 카탈로그에는 그런 이름이 없어 테스트로는 확인되지 않는다 — 변이 M18 생존).
+- **첫 렌더에서는 뺏지 않는다.** 진입하자마자 시트가 포커스를 가져가면 스크린리더가 화면 첫머리 대신 시트를 읽는다. 테스트가 이것도 잠근다(변이 M14).
+- `preventScroll`은 jsdom에 레이아웃이 없어 **관측되지 않는다**(변이 M24 생존). 실기기 몫이다.
+- 파급은 `HomeScreen` 한 파일에 그쳤다 — 시트 안 뷰 셋은 손대지 않았다.
 
-Run: `npm run dev`
+### 실측 (헤드리스 크롬 145, 390×844, `Emulation.setDeviceMetricsOverride`)
 
-브라우저에서 확인할 것:
+| 확인 항목 | 결과 |
+| --- | --- |
+| 지도가 화면을 꽉 채우는가 | `[data-map-layer]` = `top 0, left 0, 390×844` — **뷰포트와 정확히 같다** |
+| 상단바가 없는가 | `<header>` 0개, `<nav>` 0개, `<main>` 1개, `<h1>` = 「서울 라이브」(높이 **1px** = `sr-only`) |
+| 홈 루트 | `relative size-full overflow-hidden`, `top 0`, `height 844` |
+| 3단 스냅 | half 388.2px(0.4600) → full 776.5px(0.9200) → peek 135.0px(0.1600) → half 388.2px. 라벨도 「절반/전체/살짝 열림」으로 따라온다 |
+| 검색 바·칩이 지도 위에 | `[data-overlay]` **0~112px** (검색 바 64 + 간격 4 + 칩 줄 44), 검색창 1개, 칩 4개 |
+| full에서 조작부가 물러나는가 | 오버레이 `false`, FAB `false` |
+| 명소를 누르면 | 시트 0.9200, **지도 살아 있음**, 「목록으로」·「지금 누가 있나」·「저장」 모두 있음 |
+| 저장 → 칩 | 「★내 장소 1」, 비활성 아님 |
+| 요약 스트립 → 오늘의 서울 | 제목·「지금 가장 붐비는 곳」 모두 뜨고 **지도 살아 있음** |
+| 포커스 | 상세 진입 시 `DIV[tabindex=-1]`, **시트 안**(`contains` = true). 오늘의 서울도 같다 |
+| 하단 탭바 | 없음(`<nav>` 0개) |
+| 콘솔 | `console.error` 0건, 미처리 예외 0건 |
+| 「내 장소 0」 경로 | 칩이 **비활성 아님** → peek에서 누르면 시트가 **half로 올라오고** 안내가 `top 779.8 / bottom 827.8`로 **화면 안**에 든다. 마커 0개. 「필터 해제」를 누르면 목록 15행 복귀 |
 
-1. 지도가 화면을 꽉 채우고 시트가 그 위에 떠 있다
-2. 손잡이를 끌면 peek / half / full로 스냅된다
-3. 검색 바와 필터 칩이 지도 위에 떠 있다
-4. 명소를 누르면 시트가 full로 올라가고 **지도는 뒤에 남는다**
-5. 상세에 「지금 누가 있나」가 뜬다 (목업 인구 구성)
-6. 「저장」을 누르면 「★ 내 장소」 칩 개수가 는다
-7. 요약 스트립을 누르면 오늘의 서울이 열린다
-8. 하단 탭바가 없다
-9. **콘솔에 에러가 없다**
+**되찾은 세로 공간 (뷰포트 844px, `1rem = 16px`)**
 
-- [ ] **Step 7: 커밋**
+| | 컨테이너 | half | full |
+| --- | --- | --- | --- |
+| Task 9 (`100dvh − 7.5rem`) | 724.0 | 333.0 | 666.1 |
+| 계획서 원안 (상단바 유지, `100dvh − 3.5rem`) | 788.0 | 362.5 | 725.0 |
+| **지금 (`100dvh`)** | **844.0** | **388.2** | **776.5** |
 
-```bash
-git add -A
-git commit -m "feat: 하단 탭바를 없애고 단일 화면으로 전환"
-```
+**상단바를 없앤 몫만 따로 보면 컨테이너 +56px(정확히 3.5rem), half +25.7px, full +51.5px.** Task 9 대비로는 컨테이너 +120px(7.5rem), half +55.2px, full +110.4px다. 시트 높이는 컨테이너의 순수 비율이라(실측 388.234 = 0.46 × 844) 이 산술은 근사가 아니라 정확하다.
+
+### 실측이 뒤집은 Task 9의 숫자 하나
+
+Task 9의 주석은 「검색 바 + 칩 열」이 **0~88px**을 차지한다고 적었다. 실측은 **0~112px**이다(검색 바 64px + 간격 4px + 칩 줄 44px). 검색 바의 세로 패딩을 빠뜨린 오답이었다. **결론은 뒤집히지 않고 오히려 강해진다** — 컨테이너 800px 기준 full의 손잡이 히트 영역이 44~88px인데 112px짜리 열이 그것을 통째로 덮는다. `HomeScreen.tsx`와 `FilterChips.tsx`의 주석을 실측값으로 고쳤다. 이 열은 컨테이너 높이와 무관한 고정 높이라 기기가 달라져도 같다.
+
+### 함께 고친 낡은 주석
+
+컨테이너가 `100dvh − 7.5rem`에서 `100dvh`가 되면서 `RecenterButton`의 「**실기기에서는 언제나 잘린다**」가 거짓이 됐다. `0.06H ≥ 48 ⟺ H ≥ 800px`이라는 산식은 그대로지만, 예전에는 800px 컨테이너를 위해 뷰포트가 920px이어야 했고 지금은 800px이면 된다 — 세로가 긴 기기에서는 안 잘릴 수 있다. 그래도 `full`에서 안 그리는 결정은 유지했다: 화면 높이로 갈라 그리면 규칙이 둘로 늘고, 그 갈림은 jsdom이 못 잡는 기하라 회귀를 테스트로 막을 수도 없다. `HomeScreen.tsx`·`HomeScreen.test.tsx`의 같은 주장도 함께 고쳤다.
+
+### 변이 테스트 (25건, 23건 사망 / 2건 생존 + 관측 불가 1건)
+
+| # | 변이 | 잡은 테스트 |
+| --- | --- | --- |
+| M1 | `<main>` → `<div>` | 1개 — 앱이 자체 헤더를… |
+| M2 | `sr-only` h1 삭제 | 1개 — 같음 |
+| M3 | h1 이름을 「Seoul Live」로 | 1개 — 같음 |
+| M4 | `<header>`(banner)를 되살린다 | 1개 — 같음 |
+| M5 | `<nav>` 탭바를 되살린다 | 1개 — 갈 곳을 고르는 탭바가 없다 |
+| M7 | 「내 장소」 0 면제를 되돌린다 | 4개 |
+| M8 | 0-비활성 규칙을 통째로 제거 | 2개 — 0인 프리셋은 비활성이다 / 비활성인 칩을 눌러도 값이 안 올라간다 |
+| M9 | 빈 상태 안내 분기 제거 | 2개 |
+| M10 | `favorites.length` → `counts.fav` | 1개 — 필터 때문에 목록이 비면 그 필터를 이름으로 지목한다 |
+| M11 | 안내가 보이게 시트를 올리는 처리 제거 | 1개 |
+| M12 | 어떤 칩을 눌러도 half로 올린다 | 1개 — 다른 칩은 시트를 건드리지 않는다 |
+| M13 | 뷰 전환 시 포커스 이동 제거 | 1개 |
+| M14 | 첫 렌더 포커스 가드 제거 | 1개 |
+| M15 | 포커스 상자의 `tabIndex` 제거 | 1개 |
+| M16 | 순위 목록이 언제나 1위를 연다 | 1개 |
+| M17 | 목록 행 선택 콜백 제거 | 6개 |
+| M19 | 요약 스트립의 오늘의 서울 통로 제거 | 5개 |
+| M22 | 「필터 해제」 버튼 제거 | 2개 |
+| M25 | 실패하면 목록도 감춘다 | 1개 |
+
+**M12와 M16은 처음에 살아남았고, 원인은 구현이 아니라 내 테스트였다.**
+- M12: 눌렀던 「지금 핫플」이 이 파일의 기본 목업(전부 '보통')에서 0이라 **비활성**이었다. 비활성 칩 클릭은 아무 일도 안 하므로 무엇을 넣든 통과한다. 활성인 「데이트」로 바꾸고 `toBeEnabled()`를 앞에 세웠다.
+- M16: 순위 목록의 **첫 줄**을 눌렀는데, `areas[0]`을 여는 변이는 첫 줄에서 정답과 구별되지 않는다. **둘째 줄**로 바꿨다.
+
+**살아남은 변이 3건 — 전부 「테스트를 더 쓸 자리가 아니다」.**
+
+| # | 변이 | 왜 안 잡히나 |
+| --- | --- | --- |
+| M6 | `<main>`의 `h-dvh` 제거 | **jsdom에 레이아웃이 없다.** 이걸 빼면 `size-full`이 auto 높이 부모를 만나 지도가 0px로 접히는데, 그 붕괴는 기하다. 헤드리스 크롬 실측(지도 390×844)이 대신 지킨다 |
+| M18 | `viewKey`의 충돌 방지 접두사 제거 | 「'today'라는 이름의 명소」가 카탈로그에 없어 충돌을 **만들 수가 없다.** 방어적 구성이지 동작이 아니다 |
+| M24 | `preventScroll` 제거 | jsdom이 옵션을 무시한다. 시트가 스크롤 컨테이너라는 사실 자체가 레이아웃이다 — 실기기 몫 |
+
+### 검증
+
+- `npm test` — **611개 통과 + 1 todo** (Task 9의 612 + 1에서 순변화 −1: 지운 8개, 새로 쓴 7개)
+- `npx tsc -b --force` / `npm run lint` / `npm run build:vite` — 전부 통과
 
 ---
 
@@ -2565,12 +2613,14 @@ git commit -m "feat: 하단 탭바를 없애고 단일 화면으로 전환"
 | **명소 상세** | 예측 차트, 경로·저장·공유, 인구 구성(성별·연령·상주비율), 접이식 도시 정보 |
 ```
 
-「구조」 절의 `src/screens/`를 `HomeScreen` 하나로 고친다.
+「구조」 절의 `src/screens/`를 `HomeScreen` 하나로 고치고, **`src/components/layout/` 줄을 지운다** — Task 10에서 `TopAppBar`까지 사라져 디렉터리가 비었다.
+
+**상단바가 없다는 것도 적어라.** 앱에 자체 헤더가 없고(토스가 네이티브 헤더를 준다) 지도 위 검색 바가 그 자리를 쓴다. 제목은 `sr-only` h1 「서울 라이브」로만 남아 있다.
 
 - [ ] **Step 2: `PLAN.md`**
 
 - 1차 절의 탭 서술을 "2026-08-10 개편으로 단일 화면이 됐다"로 정정
-- 2차 즐겨찾기 항목에 "탭이 아니라 필터 칩"을 적는다
+- 2차 즐겨찾기 항목에 "탭이 아니라 필터 칩"을 적는다. **빈 상태 안내가 어디로 갔는지도 함께** — 「내 장소」 칩은 0에서도 눌리고, 누르면 빈 목록 문구가 「아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.」로 답한다
 - 3차에 **인구 구성이 추가 호출 없이 붙었다**를 적고, 미착수 항목에서 도로소통·사고통제만 남긴다
 
 - [ ] **Step 3: `STATE.md`**
@@ -2578,21 +2628,24 @@ git commit -m "feat: 하단 탭바를 없애고 단일 화면으로 전환"
 - 「한 줄 요약」을 단일 화면 구조로
 - 「파일 구조」를 새 디렉터리로. **실행 중 계획서에 없던 파일이 셋 늘었다 — 빠뜨리지 마라:**
   - 추가: `domain/sheet.ts`, `domain/composition.ts`, `data/compositionSchema.ts`, `components/home/BottomSheet.tsx`, `components/home/SummaryStrip.tsx`, `components/home/FilterChips.tsx`, `components/home/PopulationCard.tsx`, **`components/list/AreaList.tsx`**(Task 4 — 구분선 목록의 행 간격 계약을 소유), **`hooks/favoritesStore.ts`**(Task 6 — 즐겨찾기 단일 출처)
-  - 삭제: `domain/split.ts`, `components/home/SplitPane.tsx`, `components/map/PresetFilter.tsx`, `screens/FavoritesScreen.tsx`, `components/layout/BottomTabBar.tsx`
+  - 삭제: `domain/split.ts`, `components/home/SplitPane.tsx`, `components/map/PresetFilter.tsx`, `screens/FavoritesScreen.tsx`, `components/layout/BottomTabBar.tsx`, **`components/layout/TopAppBar.tsx`** — **`components/layout/` 디렉터리가 통째로 사라졌다.** 파일 구조 표에서 그 줄을 지워라
 - 「검증 수치」 갱신
-- **새 미해결 항목** (실기기로만 확인된다):
+- **새 미해결 항목** (대부분 실기기로만 확인된다. 마지막 하나는 제품 결정이다):
   - 시트 드래그와 지도 팬 제스처 충돌
   - 시트 내용 스크롤과 시트 드래그 충돌
   - 인구 구성 필드의 실제 형태 (응답을 아직 본 적이 없다)
   - **손잡이 히트 영역이 지도 위 20px을 삼킨다** — `peek`에서 화면 84% 지점을 가로지르는 죽은 띠가 된다 (Task 3)
   - **FAB이 손잡이 히트 영역의 오른쪽 구석과 겹친다**(peek·half) — 겹치는 양이 `20px − 0.02×컨테이너높이`라 화면이 작을수록 는다(800px에서 4px, 713px에서 8px). 폭 48px짜리 구석이고 손잡이의 보이는 띠는 가운데 36px이라 실제로 막지는 않는다고 봤다. `full`은 아예 안 그리므로 해당 없다 (Task 9)
-  - **뷰가 갈릴 때 포커스가 `document.body`로 떨어진다** — Task 10 입력. 아래 참고
+  - **`preventScroll` 없이 포커스를 옮기면 시트가 튀는지** — 시트 내용이 스크롤 컨테이너라 기본 `scrollIntoView`가 방금 연 뷰를 맨 위가 아닌 곳에서 시작시킬 수 있다. jsdom은 이 옵션을 무시하므로 테스트로 확인되지 않는다 (Task 10)
+  - **`h-dvh`가 토스 웹뷰에서 실제로 뷰포트를 주는지** — 셸이 `<main className="h-dvh">` 하나가 되면서 지도 높이가 전부 여기 달려 있다. 이 값이 틀어지면 `size-full`인 홈 루트가 auto 부모를 만나 **지도가 0px로 접힌다.** 헤드리스 크롬(390×844)에서는 정확히 뷰포트를 받았지만 iOS 주소창·안전 영역이 낀 실기기는 미확인 (Task 10)
+  - **필터 칩 이름 셋이 참고 앱 「서울 인파레이더」의 것과 같다** — 「아이와 나들이」·「데이트」·「지금 핫플」. 사용자가 **이번 브랜치에서는 그대로 두기로** 정했다. 바꿀 거면 `domain/presets.ts`의 `PRESETS`가 정본이고(칩·빈 목록 문구가 모두 `filterLabel`을 통해 읽는다) 이름을 박아둔 테스트가 `FilterChips.test.tsx`·`HomeScreen.test.tsx`에 있다 (Task 10 이월)
   - **`releasePointerCapture`가 던지는 브라우저가 있는지** — 던지면 손잡이가 영구히 죽는 경로를 `try/catch`로 막아 뒀지만 실제로 던지는지는 미확인 (Task 3)
   - **즐겨찾기 별의 접근성 이름이 실기기에서 들리는지** — `<span role="img" aria-label>`로 고쳤으나 jsdom은 `generic`의 name-prohibited를 모형화하지 않아 테스트로는 검증 불가 (Task 4)
 - **해소된 항목**:
+  - **뷰가 갈릴 때 포커스가 `document.body`로 떨어지던 것** — Task 10이 시트 내용을 `tabIndex={-1}` 상자로 감싸고 뷰가 갈릴 때 `focus({ preventScroll: true })`를 부른다. 첫 렌더에서는 뺏지 않는다. 다만 **`preventScroll`이 실제로 필요한지는 실기기 몫**이다(아래 미해결로 남긴다) (Task 9·10)
   - 별 아이콘 채움 상태 미검증 — 라벨 있는 「저장」 버튼이 되면서 사라짐
   - **`full`에서 손잡이가 `z-20` 오버레이 밑에 들어가던 것** — Task 9가 `full`에서 검색 바·칩 열을 렌더하지 않기로 정해 해소됐다. 개발 서버를 헤드리스 크롬으로 띄워 `elementFromPoint`로 확인: `full`에서 손잡이 위쪽 띠의 왼쪽·가운데 모두 손잡이가 잡힌다 (Task 3·9)
-  - **필터 칩 높이 `min-h-10`(40px)** — Task 9에서 40px로 확정했다. 「검색 바 + 칩 열 = 0~88px」 예산이 이 값에 달려 있고, 그 88px이 곧 위 항목의 근거다. 48px로 올리려면 `showSearchOverlay` 근거부터 다시 계산해야 한다 (Task 6·9)
+  - **필터 칩 높이 `min-h-10`(40px)** — Task 9에서 40px로 확정했다. 「검색 바 + 칩 열」 예산이 이 값에 달려 있고 그것이 곧 위 항목의 근거다. **Task 10 실측으로 그 예산을 0~88px에서 0~112px로 정정했다**(검색 바 64 + 간격 4 + 칩 줄 44 — Task 9가 검색 바의 세로 패딩을 빠뜨렸다). 결론은 강해졌을 뿐 바뀌지 않는다. 48px로 올리려면 `HomeScreen`의 오버레이 조건부 렌더 근거부터 다시 계산해야 한다 (Task 6·9·10)
   - **`transition-[height]`가 스크롤 위치를 버린다던 것** — 실측 결과 보존된다. 자세한 숫자는 Task 9의 (B) (Task 3·9)
   - **`useFavorites`가 인스턴스마다 따로 놀던 것** — `favoritesStore`로 단일 출처가 됐다. 이전에는 홈의 칩과 상세의 별이 서로를 못 봤다
 - 「진행하며 실제로 잡은 문제」에 이번 개편 표를 더한다. **리뷰가 잡은 것 위주로 적어라** — 계획서 코드를 그대로 받아썼으면 남았을 결함들이다:
@@ -2601,10 +2654,14 @@ git commit -m "feat: 하단 탭바를 없애고 단일 화면으로 전환"
   - `pointercancel`을 확정으로 다뤄 취소된 제스처가 시트를 `full`로 밀어 올리던 것
   - 목록 개수를 `favorites.length`로 세서 칩에 2, 목록에 0이 뜨던 것
   - 인구 구성 막대를 실제 합으로 정규화해 없는 분포를 지어내던 것
+  - **Task 10이 실측으로 뒤집은 Task 9의 숫자** — 「검색 바 + 칩 열 = 0~88px」이 실은 0~112px이었다(검색 바 세로 패딩 누락). 결론은 그대로지만 근거 숫자가 틀려 있었다
+  - **Task 10이 무효화한 Task 9의 주장** — `RecenterButton`의 「실기기에서는 언제나 잘린다」. 컨테이너가 `100dvh − 7.5rem`에서 `100dvh`가 되면서 필요 뷰포트가 920px에서 800px로 내려가 거짓이 됐다. 결정(`full`에서 안 그린다)은 유지하되 근거를 다시 썼다
+  - **파일을 지우며 잃을 뻔한 보호** — `FavoritesScreen.test`의 「혼잡도 조회가 실패해도 담은 목록은 보여준다」를 저쪽이 잡고 있지 않았다. 「같은 이름의 테스트가 저쪽에 있는가」가 아니라 「저쪽이 **같은 것을** 잡는가」를 세어야 잡히는 종류다 (Task 10)
 
 - [ ] **Step 4: `AGENTS.md`**
 
-- 레이어 규칙의 화면 목록을 `HomeScreen` 하나로
+- 레이어 규칙의 화면 목록을 `HomeScreen` 하나로. **`src/components/layout/`은 더 이상 없다**
+- **새 조항**: 앱 셸은 `<main className="h-dvh">` 하나다. 여기에 헤더·탭바를 다시 얹지 마라 — 세로 공간은 시트의 것이고, 토스가 네이티브 헤더를 준다. `h-dvh`를 빼면 지도가 0px로 접힌다
 - 바텀시트 조항을 갱신: **시트가 다시 생겼다.** "진입하자마자 자동으로 나타나지 않아요"는 여전히 유효하고, 우리 시트는 half로 시작하지만 사용자 조작 없이 뜬 것이 아니라 **화면 자체의 일부**다. 심사에서 지적되면 peek으로 시작하는 것이 대안이다
 - **새 조항**: 인구 구성은 `compositionSchema.ts`에서 관대하게 파싱한다. `schema.ts`의 엄격한 `areaSchema`에 얹지 마라 — 비율 하나가 이상할 때 혼잡도까지 날아간다
 
@@ -2623,6 +2680,6 @@ git commit -m "docs: Google Maps 스타일 셸 개편을 문서에 반영"
 - [ ] `npx tsc -b` 통과
 - [ ] `npm run lint` 통과
 - [ ] `npm run build:vite` 통과
-- [ ] `npm run dev`로 띄워 Task 10 Step 6의 아홉 항목을 눈으로 확인
+- [x] `npm run dev`로 띄워 Task 10의 실측 표(열한 항목)를 헤드리스 크롬 + CDP로 **숫자로** 확인 — 눈으로 못 보므로 좌표·높이·비율로 잰다
 - [ ] 콘솔 에러 0건
 - [ ] **인구 구성 필드를 목업에서 지워도 혼잡도 화면이 그대로 선다** (설계 §2.6의 핵심 안전망)

@@ -273,8 +273,8 @@ describe('HomeScreen', () => {
 
   it('시트가 전체로 펼쳐지면 내 주변 버튼도 함께 물러난다', async () => {
     // full에서는 48px 버튼이 들어갈 자리가 없다. 시트 위 지도 조각에서 버튼
-    // 몫이 `0.06H`라 `H ≥ 800px`이라야 안 잘리는데, 컨테이너는
-    // `100dvh − 7.5rem`이라 실기기에서는 언제나 그보다 작다 — 루트의
+    // 몫이 `0.06H`라 `H ≥ 800px`이라야 안 잘리는데, Task 10에서 컨테이너가
+    // 뷰포트 그대로(`100dvh`)가 된 지금도 그보다 작은 기기가 많다 — 루트의
     // `overflow-hidden`이 버튼 위쪽을 잘라낸다.
     //
     // 잘림 자체는 기하라서 jsdom이 못 잡는다. 잡을 수 있는 것은 「full에서는
@@ -456,18 +456,30 @@ describe('HomeScreen', () => {
     expect(screen.getByRole('searchbox')).toBeInTheDocument()
   })
 
-  // Task 10에서 탭바와 함께 사라질 prop이다. 그때까지는 즐겨찾기·오늘의 서울
-  // **탭**에서 명소를 눌러 이 화면으로 넘어오는 유일한 통로라 남겨 둔다 —
-  // 지금 지우면 App이 그 이동을 표현할 수단을 잃는다.
-  it('focusArea가 주어지면 그 명소의 상세를 가득 펼친다', () => {
-    useAreaSnapshot.mockReturnValue({
-      data: snapshotFor('경복궁'),
-      isPending: false,
-      isError: false,
-    } as unknown as UseQueryResult<AreaSnapshot>)
-    render(<HomeScreen focusArea="경복궁" />)
-    expect(screen.getByRole('heading', { name: '경복궁' })).toBeInTheDocument()
-    expect(sheetHandle()).toHaveAccessibleName(/현재 전체/)
+  // 시트가 유일한 내용 영역이 되면서 목록↔상세↔오늘의 서울 왕복이 주 동선이
+  // 됐다. 방금 누른 버튼이 언마운트되면 포커스가 `document.body`로 떨어지고,
+  // body에서 누른 Tab은 문서 맨 앞부터 다시 세는데 시트 앞에는 지도 레이어가
+  // 통째로 놓여 있다. 키보드·스위치 사용자는 뷰를 바꿀 때마다 그 값을 치른다.
+  //
+  // `focus({ preventScroll: true })`의 `preventScroll`은 여기서 관측할 수
+  // 없다. jsdom에는 레이아웃이 없어 옵션이 무시된다 — 시트가 스크롤
+  // 컨테이너라 기본 동작이 방금 연 뷰를 맨 위가 아닌 곳에서 시작하게 만든다는
+  // 것은 실기기 몫이다. 잡을 수 있는 것은 「포커스가 시트를 벗어나지 않는다」이다.
+  it('시트 안에서 뷰가 갈려도 포커스가 시트를 벗어나지 않는다', async () => {
+    render(<HomeScreen />)
+    const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
+    // 첫 렌더에서는 뺏지 않는다. 진입하자마자 시트가 포커스를 가져가면
+    // 스크린리더가 화면 첫머리 대신 시트를 읽는다.
+    expect(document.activeElement).toBe(document.body)
+
+    await userEvent.click(sheetRow(/강남역/))
+    expect(sheet.contains(document.activeElement)).toBe(true)
+
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    expect(sheet.contains(document.activeElement)).toBe(true)
+
+    await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
+    expect(sheet.contains(document.activeElement)).toBe(true)
   })
 
   it('좌표가 없으면 내 주변 버튼이 비활성이다', () => {
@@ -520,7 +532,50 @@ describe('HomeScreen', () => {
 
     await userEvent.click(screen.getByRole('tab', { name: '공원' }))
 
-    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeDisabled()
+    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeInTheDocument()
+  })
+
+  // FavoritesScreen이 사라지면서 「지도에서 ☆를 눌러 담아보세요」도 함께
+  // 없어졌다. 문구는 이미 낡아 있었다 — Task 8에서 별이 상세 헤더를 떠나
+  // 액션 행의 「저장」이 됐으므로 그대로 옮기면 있지도 않은 ☆를 찾게 된다.
+  it('담은 게 하나도 없으면 담는 방법을 알려준다', async () => {
+    render(<HomeScreen />)
+
+    await userEvent.click(screen.getByRole('tab', { name: '내 장소 0' }))
+
+    expect(
+      screen.getByText('아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.'),
+    ).toBeInTheDocument()
+  })
+
+  it('담은 게 없는 내 장소를 켜면 안내가 보이는 높이까지 시트가 올라온다', async () => {
+    // 켜는 순간 목록도 마커도 함께 빈다. peek에서는 그 이유를 적은 문구가
+    // 시트 안에 가려 있어 사용자에게는 「눌렀더니 다 사라졌다」만 남는다.
+    render(<HomeScreen />)
+    await userEvent.click(sheetHandle()) // half → full
+    await userEvent.click(sheetHandle()) // full → peek
+    expect(sheetHandle()).toHaveAccessibleName(/현재 살짝 열림/)
+
+    await userEvent.click(screen.getByRole('tab', { name: '내 장소 0' }))
+
+    expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
+  })
+
+  it('다른 칩은 시트를 건드리지 않는다', async () => {
+    // 위 규칙을 「칩을 누르면 시트를 올린다」로 넓히면 필터를 만질 때마다
+    // 시트가 튀어오른다. peek으로 내려둔 것은 지도를 보려는 뜻이고, 칩은
+    // 그 지도의 마커를 거르는 도구다 — 거를 때마다 지도가 덮이면 안 된다.
+    render(<HomeScreen />)
+    await userEvent.click(sheetHandle()) // half → full
+    await userEvent.click(sheetHandle()) // full → peek
+    // 「지금 핫플」은 이 파일의 기본 목업(전부 '보통')에서 0이라 비활성이다.
+    // 비활성 칩을 누르면 아무 일도 안 일어나므로 무엇을 넣든 통과한다.
+    const chip = screen.getByRole('tab', { name: /데이트/ })
+    expect(chip).toBeEnabled()
+
+    await userEvent.click(chip)
+
+    expect(sheetHandle()).toHaveAccessibleName(/현재 살짝 열림/)
   })
 
   // (G) 필터 때문에 0이 된 목록은 어느 조건이 문제인지 말해야 한다.
@@ -566,7 +621,7 @@ describe('HomeScreen', () => {
     // 칩에 안 잡히고, 0인 칩은 비활성이라 필터를 켤 방법이 없어진다.
     // 상세가 열리면 시트가 full이라 칩이 가려지므로 목록으로 돌아와서 본다.
     render(<HomeScreen />)
-    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeDisabled()
+    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeInTheDocument()
 
     await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
@@ -627,6 +682,26 @@ describe('HomeScreen', () => {
     expect(screen.getByText('혼잡도 정보를 가져오지 못했어요.')).toBeInTheDocument()
     expect(screen.queryByText('혼잡도 정보를 아직 받지 못했어요.')).toBeNull()
     expect(screen.queryByRole('button', { name: /곳 중 붐빔/ })).toBeNull()
+  })
+
+  // 사라진 FavoritesScreen이 「혼잡도 조회가 실패해도 담은 목록은 보여준다」로
+  // 잡던 자리다. 위 테스트는 스트립이 감춰지는 것만 보므로 「실패하면 목록도
+  // 통째로 감춘다」는 구현이 그대로 통과한다 — 목록은 카탈로그만 있으면
+  // 서고, 혼잡도는 배지 자리에서 「정보 없음」이 될 뿐이다.
+  it('혼잡도 조회가 실패해도 명소 목록은 남는다', () => {
+    useAreaSnapshots.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      refetch: vi.fn(),
+    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+    render(<HomeScreen />)
+
+    expect(screen.getByText('혼잡도 정보를 가져오지 못했어요.')).toBeInTheDocument()
+    expect(sheetRow(/강남역/)).toBeInTheDocument()
+    expect(sheetRow(/남산공원/)).toBeInTheDocument()
+    // 빈 목록 문구가 대신 뜨면 원인을 조건 탓으로 돌리게 된다.
+    expect(screen.queryByText('조건에 맞는 명소가 없어요.')).toBeNull()
   })
 
   it('스냅샷이 아직 없을 뿐이면 요약 스트립이 그 사실을 말한다', () => {

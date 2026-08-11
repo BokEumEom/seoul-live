@@ -4,7 +4,7 @@ import {
   Map,
   type MapCameraChangedEvent,
 } from '@vis.gl/react-google-maps'
-import { useCallback, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from '../app/locationContext'
 import { ErrorState } from '../components/common/ErrorState'
 import { SkeletonList } from '../components/common/SkeletonCard'
@@ -29,7 +29,12 @@ import {
   shouldShowMarkerLabel,
   toMapMarkers,
 } from '../domain/map'
-import { filterAreas, filterCounts, filterLabel } from '../domain/presets'
+import {
+  filterAreas,
+  filterCounts,
+  filterLabel,
+  type FilterKey,
+} from '../domain/presets'
 import { searchAreas } from '../domain/search'
 import type { Detent } from '../domain/sheet'
 import { summarize } from '../domain/summary'
@@ -48,30 +53,7 @@ import {
 /** 재조정 버튼을 눌렀을 때의 줌. 주변 명소가 몇 곳 들어오는 정도다. */
 const RECENTER_ZOOM = 14
 
-// 상단바(3.5rem)와 하단 탭바(3.5rem), 안전 영역 여유를 뺀 높이.
-//
-// **Task 10까지의 임시 조치다.** 지도가 `absolute inset-0`이 되면서 이 화면은
-// 부모가 정해 주는 높이를 그대로 쓰는 게 맞고(`size-full`), 계획서도 그렇게
-// 적혀 있다. 그런데 지금 `App.tsx`는 이 화면을 `<div hidden={...}>`으로 감싸고
-// 그 div에 높이를 주지 않는다 — `size-full`로 바꾸면 `height: 100%`가 auto인
-// 부모를 만나 지도가 0px로 접힌다. 탭바를 걷어내는 Task 10에서 셸이 `h-dvh`가
-// 될 때 이 상수를 지우고 `size-full`로 바꾼다.
-//
-// iOS 안전 영역을 포함한 실제 값은 실기기로만 확정된다 — STATE.md의 미해결 항목.
-const HOME_HEIGHT_CLASS = 'h-[calc(100dvh-7.5rem)]'
-
-interface Props {
-  /**
-   * 즐겨찾기·오늘의 서울 **탭**에서 명소를 눌러 홈으로 넘어올 때.
-   *
-   * Task 10에서 탭바와 함께 사라진다. 계획서는 이 태스크에서 지우라고 했지만
-   * 지금 지우면 `App`이 그 이동을 표현할 수단을 통째로 잃는다 — 탭은 Task 10
-   * 전까지 살아 있으므로 그동안 앱이 서 있으려면 이 통로도 있어야 한다.
-   */
-  readonly focusArea?: string | null
-}
-
-export function HomeScreen({ focusArea = null }: Props) {
+export function HomeScreen() {
   const snapshots = useAreaSnapshots(AREA_NAMES)
   const location = useLocation()
   const filters = useHomeFilters()
@@ -94,42 +76,21 @@ export function HomeScreen({ focusArea = null }: Props) {
 
   const { setSelectedName, setSort } = filters
 
-  // 명소를 여는 유일한 경로다. 목록 행·지도 마커·「오늘의 서울」의 순위 목록,
-  // 그리고 아래 focusArea 조정이 모두 여기로 들어온다 — 어디서 열든 시트가
-  // 상세로 가득 차야 같은 화면이 된다.
+  // 명소를 여는 유일한 경로다. 목록 행·지도 마커·「오늘의 서울」의 순위 목록이
+  // 모두 여기로 들어온다 — 어디서 열든 시트가 상세로 가득 차야 같은 화면이 된다.
   //
-  // useCallback은 **성능 때문이 아니다.** 마커의 `onClick`은
-  // `() => openArea(...)` 인라인 화살표라 이 함수가 안정적이든 아니든 매 렌더
-  // 새것이고, 닿았더라도 소용이 없다 — vis.gl의 `useDomEventListener`가
-  // 리스너를 다는 effect의 의존성이 `[target, name, isCallbackDefined]`라
-  // **콜백 신원을 아예 보지 않는다**(node_modules에서 확인했다). 목록·상세·
-  // 오늘의 서울도 `memo`가 아니다.
-  //
-  // 남는 이유는 하나다: 아래 focusArea 조정이 이 함수를 렌더 중에 부르므로
-  // 매 렌더 새 함수면 그 자리에서 무엇이 바뀌었는지 읽기 어려워진다. 비용이
-  // 0이라 그대로 둔다. 의존성 `setSelectedName`은 useHomeFilters가 돌려주는
-  // useState 세터라 참조가 고정이다 — `filters` 객체 쪽은 매 렌더 새것이라
-  // 넣으면 memo가 통째로 무의미해진다.
-  const openArea = useCallback(
-    (name: string): void => {
-      setSelectedName(name)
-      setView('list')
-      setDetent('full')
-    },
-    [setSelectedName],
-  )
-
-  // focusArea가 바뀐 순간에만 그 명소를 연다. 즐겨찾기·오늘의 서울 **탭**에서
-  // 넘어오는 통로이고 Task 10에서 탭바와 함께 사라진다.
-  //
-  // effect가 아니라 렌더 중 상태 조정이다. React가 「prop이 바뀔 때 상태
-  // 맞추기」에 권하는 형태이고, effect로 쓰면 상세가 한 프레임 늦게 열려
-  // 목록이 번쩍인다. 직전에 연 이름을 따로 들고 있어야 하는 이유는, 사용자가
-  // 그 상세를 닫은 뒤에도 focusArea는 그대로라 매 렌더 다시 열리기 때문이다.
-  const [openedFocus, setOpenedFocus] = useState<string | null>(null)
-  if (focusArea !== null && focusArea !== openedFocus) {
-    setOpenedFocus(focusArea)
-    openArea(focusArea)
+  // **`useCallback`을 걸지 마라.** Task 9까지 걸려 있었지만 이유는 성능이
+  // 아니었다. 마커의 `onClick`은 `() => openArea(...)` 인라인 화살표라 이 함수가
+  // 안정적이든 아니든 매 렌더 새것이고, 닿았더라도 소용이 없다 — vis.gl의
+  // `useDomEventListener`가 리스너를 다는 effect의 의존성이
+  // `[target, name, isCallbackDefined]`라 **콜백 신원을 아예 보지 않는다**
+  // (node_modules에서 확인했다). 목록·상세·오늘의 서울도 `memo`가 아니다.
+  // 유일하게 남아 있던 근거는 렌더 중에 이 함수를 부르던 `focusArea` 조정이
+  // 읽기 어려워진다는 것이었는데, 그 조정이 탭바와 함께 사라졌다.
+  function openArea(name: string): void {
+    setSelectedName(name)
+    setView('list')
+    setDetent('full')
   }
 
   const list = useMemo(
@@ -189,6 +150,23 @@ export function HomeScreen({ focusArea = null }: Props) {
   function handleCameraChanged(event: MapCameraChangedEvent): void {
     setCenter(event.detail.center)
     setZoom(event.detail.zoom)
+  }
+
+  // 담은 게 없는 「내 장소」를 켜면 목록도 지도 마커도 함께 빈다. peek에서는
+  // 왜 그런지 적은 문구가 시트 안에 가려 있어 사용자에게는 「눌렀더니 다
+  // 사라졌다」만 남으므로, 답이 보이는 높이까지 시트를 올린다.
+  //
+  // full에서 오는 경우는 없다 — 칩 열이 full에서는 렌더되지 않는다. 실제로
+  // 움직이는 것은 peek → half뿐이다.
+  //
+  // 「목록이 비면 올린다」로 일반화하지 않았다. 카테고리로 좁혀 비는 경우는
+  // 칩이 0에서도 눌리게 만든 이 태스크와 무관하게 예전부터 있던 상태이고,
+  // 그쪽까지 손대면 필터를 만질 때마다 시트가 튀어오른다.
+  function handleFilterChange(next: FilterKey | null): void {
+    filters.setFilter(next)
+    if (next === 'fav' && favorites.length === 0) {
+      setDetent('half')
+    }
   }
 
   // 검색 줄에 있던 「내 주변」을 흡수했다. 지도를 내 위치로 옮기고 목록을
@@ -267,13 +245,29 @@ export function HomeScreen({ focusArea = null }: Props) {
   // 보이는 탭 줄이라 무엇이 골라져 있는지 눈에 있고, 칩과 달리 「전체」로
   // 돌아가는 자리가 그 줄 안에 이미 있다. 칩은 스스로 0이 되면 비활성으로
   // 굳을 수 있어 끄는 버튼이 따로 필요했다.
+  //
+  // 「내 장소」가 걸렸는데 담은 것이 하나도 없는 경우만 따로 말한다. 이 자리가
+  // Task 10에서 사라진 즐겨찾기 화면의 빈 상태 안내를 물려받는다 — 그 화면이
+  // 없으면 신규 사용자에게 「어떻게 담는가」를 말하는 곳이 앱에 하나도 없다.
+  // 「‘내 장소’에 해당하는 명소가 없어요」로는 못 대신한다: 담은 것은 있는데
+  // 지금 조건에 안 걸린다는 뜻이라 아직 아무것도 안 담은 사람에게는 거짓이다.
+  //
+  // 옛 문구(「지도에서 ☆를 눌러 담아보세요」)를 그대로 옮기지 않았다. Task 8에서
+  // 별이 상세 헤더를 떠나 액션 행의 「저장」 버튼이 됐으므로 그 문구대로 하면
+  // 있지도 않은 ☆를 찾게 된다. 함께 있던 「지도로 가기」 버튼도 옮기지 않는다 —
+  // 지도는 이미 이 문구 뒤에 깔려 있고, 빠져나올 길은 아래 「필터 해제」다.
+  //
+  // 세는 것은 `counts.fav`가 아니라 `favorites`다. 카테고리로 좁혀 0이 된 것과
+  // 애초에 담은 게 없는 것은 사용자에게 다른 말이다.
   const clearableFilter = filters.query === '' ? filters.filter : null
   const emptyMessage =
     filters.query !== ''
       ? `「${filters.query}」에 해당하는 명소가 없어요.`
-      : clearableFilter !== null
-        ? `「${filterLabel(clearableFilter)}」에 해당하는 명소가 없어요.`
-        : '조건에 맞는 명소가 없어요.'
+      : clearableFilter === 'fav' && favorites.length === 0
+        ? '아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.'
+        : clearableFilter !== null
+          ? `「${filterLabel(clearableFilter)}」에 해당하는 명소가 없어요.`
+          : '조건에 맞는 명소가 없어요.'
 
   const listPane = (
     <div className="flex flex-col gap-3 pb-6">
@@ -378,8 +372,36 @@ export function HomeScreen({ focusArea = null }: Props) {
       listPane
     )
 
+  // 뷰가 갈리면 방금 누른 버튼이 언마운트되면서 포커스가 `document.body`로
+  // 떨어진다. body에서 누른 Tab은 문서 맨 앞부터 다시 세는데, 시트 앞에는
+  // 지도 레이어가 통째로 놓여 있다(`data-map-layer`가 형제 중 첫째다).
+  // 키보드·스위치 사용자는 뷰를 바꿀 때마다 시트까지 다시 탭해 내려와야 한다.
+  // Task 9가 만든 문제는 아니지만(SplitPane 시절에도 같았다) 시트가 유일한
+  // 내용 영역이 되고 뷰가 셋으로 늘면서 이 왕복이 주 동선이 됐다.
+  //
+  // 각 뷰의 맨 위 버튼 대신 감싸는 상자에 포커스를 준다. 목록의 맨 위인 요약
+  // 스트립은 조회가 실패하면 아예 안 그려져서 「맨 위 요소」가 뷰마다 있다고
+  // 말할 수가 없다 — 상자는 언제나 있다.
+  //
+  // `preventScroll`이 필요한 이유: 이 상자의 부모가 시트의 스크롤 컨테이너라
+  // 기본 동작의 scrollIntoView가 끼면 방금 연 뷰가 맨 위가 아닌 곳에서
+  // 시작한다. jsdom에는 레이아웃이 없어 이 옵션은 테스트로 확인되지 않는다.
+  const viewRef = useRef<HTMLDivElement>(null)
+  // 지금 시트를 차지한 것이 무엇인지. 접두사를 붙이는 이유는 「'today'라는
+  // 이름의 명소」 같은 충돌을 아예 표현할 수 없게 하려는 것이다.
+  const viewKey =
+    filters.selectedName !== null ? `detail:${filters.selectedName}` : `view:${view}`
+  // 첫 렌더에서는 뺏지 않는다. 진입하자마자 시트가 포커스를 가져가면
+  // 스크린리더가 화면 첫머리 대신 시트 내용을 읽는다.
+  const focusedViewRef = useRef(viewKey)
+  useEffect(() => {
+    if (focusedViewRef.current === viewKey) return
+    focusedViewRef.current = viewKey
+    viewRef.current?.focus({ preventScroll: true })
+  }, [viewKey])
+
   return (
-    <div className={`relative w-full overflow-hidden ${HOME_HEIGHT_CLASS}`}>
+    <div className="relative size-full overflow-hidden">
       {/* 지도가 뷰포트를 꽉 채우고 시트가 그 위를 덮는다. 공간을 나눠 갖지
           않으므로 상세를 열어도 지도는 뒤에서 온전한 크기로 살아 있다.
 
@@ -395,12 +417,18 @@ export function HomeScreen({ focusArea = null }: Props) {
           다르지만 결론이 같아서 한 조건으로 묶었다.
 
           검색 바 + 칩 열: 800px 기준 full(92%)의 시트 상단이 64px이고 손잡이
-          히트 영역이 44~88px인데 이 열이 0~88px을 덮는다. 둘 다
+          히트 영역이 44~88px인데 이 열이 **0~112px**을 덮는다(검색 바 64px +
+          간격 4px + 칩 줄 44px. Task 10에서 헤드리스 크롬으로 실측했다 —
+          Task 9는 88px로 적었는데 틀린 값이었고, 결론은 오히려 강해졌다).
+          컨테이너 높이와 무관한 고정 높이라 어느 기기에서도 같다. 둘 다
           `pointer-events-auto`이고 폭이 화면 전체라 손잡이를 **통째로** 가려
           full에서는 시트를 잡을 수가 없다.
 
-          FAB: full에서는 48px가 들어갈 자리가 아예 없다 — 버튼 몫이 `0.06H`라
-          `H ≥ 800px`이라야 안 잘리는데 컨테이너는 `100dvh − 7.5rem`이다.
+          FAB: full에서는 48px가 들어갈 자리가 사실상 없다 — 버튼 몫이 `0.06H`라
+          `H ≥ 800px`이라야 안 잘린다. Task 10에서 상단바·탭바가 빠져 컨테이너가
+          곧 뷰포트가 됐으므로(`100dvh`) 이 조건은 「뷰포트 800px 이상」이 됐고,
+          세로가 긴 기기에서는 닿을 수 있다. 그래도 화면 크기로 갈라 그리지
+          않는다 — 규칙이 둘이 되고 작은 기기에서는 여전히 잘린다.
           자세한 산식은 `RecenterButton`에 있다.
 
           `opacity-0`이 아니라 조건부 렌더다. 그래야 포인터 이벤트와 접근성
@@ -437,7 +465,7 @@ export function HomeScreen({ focusArea = null }: Props) {
             <FilterChips
               counts={counts}
               value={filters.filter}
-              onChange={filters.setFilter}
+              onChange={handleFilterChange}
             />
           </div>
 
@@ -450,7 +478,11 @@ export function HomeScreen({ focusArea = null }: Props) {
       )}
 
       <BottomSheet detent={sheetDetent} onDetentChange={setDetent}>
-        {sheetContent}
+        {/* 여백을 걸지 않는다 — 시트의 규칙이 아니라 뷰의 몫이다(BottomSheet
+            주석 참조). 이 상자는 오직 포커스를 받기 위한 것이다. */}
+        <div ref={viewRef} tabIndex={-1}>
+          {sheetContent}
+        </div>
       </BottomSheet>
     </div>
   )
