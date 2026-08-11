@@ -273,6 +273,14 @@ describe('parseCitydataResponse — REPLACE_YN', () => {
     expect(parseCitydataResponse(withReplace('n'), NAME).replaced).toBe(false)
   })
 
+  // 안 다듬으면 `' Y '`가 조용히 「모름」이 되어 **대체값인데 안내가 안 뜬다.**
+  // 이 API는 숫자도 문자열로 오고 명세를 느슨하게 지키는 쪽이라, 같은 응답을
+  // 읽는 `cityInfoSchema.text()`도 같은 이유로 다듬는다.
+  it('앞뒤 공백이 있어도 같게 읽는다', () => {
+    expect(parseCitydataResponse(withReplace(' Y '), NAME).replaced).toBe(true)
+    expect(parseCitydataResponse(withReplace('\tN\n'), NAME).replaced).toBe(false)
+  })
+
   // **모름과 실측을 같은 값으로 묶지 않는다.** 화면에서는 지금 둘 다 아무것도
   // 안 그리지만, false는 "서울 API가 실측이라고 했다"는 주장이고 null은 "말해
   // 주지 않았다"이다. 묶어두면 나중에 「실측 확인됨」을 표시하려는 순간 필드가
