@@ -329,6 +329,26 @@ describe('BottomSheet', () => {
     expect(handle).toHaveClass('w-full')
   })
 
+  // 가로(`w-full`)만 잠그고 세로는 안 잠가 뒀었다. 히트 영역이 44px(WCAG 2.5.8)이
+  // 되는 것은 `pt-7.5`(30) + 띠 4 + `pb-2.5`(10)이고, `-mt-5`는 늘어난 20px의
+  // **레이아웃 몫만** 되돌려 내용이 밀리지 않게 한다. 셋 중 하나만 빠져도
+  // 히트 영역이 24px로 돌아간다.
+  //
+  // **잘린 높이 자체는 jsdom이 못 잰다** — 레이아웃이 없다. 잡을 수 있는 것은
+  // 그 값을 만드는 클래스이고, 이것이 `w-full`과 같은 급의 계약이다.
+  it('손잡이의 세로 히트 영역이 위로 20px 늘어나 있다', () => {
+    const { handle } = setup()
+    expect(handle).toHaveClass('-mt-5', 'pt-7.5', 'pb-2.5')
+  })
+
+  it('시트 루트가 손잡이의 넘친 히트 영역을 잘라내지 않는다', () => {
+    // 늘어난 20px은 시트 루트 **밖으로** 나가 있다. 루트에 `overflow-hidden`을
+    // 걸면 조용히 잘려 히트 영역이 24px로 돌아간다 — 화면에는 아무 변화가
+    // 없어서 눈으로도 안 보인다.
+    const { sheet } = setup()
+    expect(sheet).not.toHaveClass('overflow-hidden')
+  })
+
   it('내용 영역이 스크롤된다', () => {
     const { scroller } = setup()
     // 손잡이는 고정이고 내용만 흐른다 — full에서 상세를 스크롤할 때

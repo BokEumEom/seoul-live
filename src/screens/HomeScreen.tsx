@@ -97,9 +97,6 @@ export function HomeScreen() {
   // `openArea`가 `setDetent('full')`을 부르면 같은 커밋에서 검색 바가
   // 언마운트돼, effect가 도는 시점의 `activeElement`는 이미 `body`다.)
   //
-  // `preventScroll`이 필요한 이유: 이 상자의 부모가 시트의 스크롤 컨테이너라
-  // 기본 동작의 scrollIntoView가 끼면 방금 연 뷰가 맨 위가 아닌 곳에서
-  // 시작한다. jsdom에는 레이아웃이 없어 이 옵션은 테스트로 확인되지 않는다.
   const viewRef = useRef<HTMLDivElement>(null)
   // **ref가 아니라 상태다.** ref로 들면 「요청했는데 렌더가 안 일어나는」 경우에
   // 신호가 굳어 있다가 **나중에 엉뚱한 렌더에서 터진다.** 실제로 그랬다: 상세를
@@ -120,6 +117,31 @@ export function HomeScreen() {
 
   useEffect(() => {
     if (focusRequest === 0) return
+
+    // **스크롤도 함께 되돌린다.** 목록·상세·오늘의 서울이 시트의 스크롤
+    // 컨테이너 **하나를 나눠 쓰는데** 뷰가 갈려도 `scrollTop`은 그대로라,
+    // 앞 뷰에서 내려둔 자리에서 새 뷰가 시작한다. 실측(390×844): 목록을 200
+    // 내리고 명소를 열면 상세의 「목록으로」가 `top −47.5`로 화면 밖이고 맨 위에
+    // 액션 행이 보인다. 상세에서 돌아오면 요약 스트립이 시트 위로 잘려 —
+    // 「오늘의 서울」로 가는 **유일한 통로**가 사라진 것처럼 보인다.
+    //
+    // 컨테이너를 `parentElement`로 집지 않는다. 사이에 상자가 하나만 끼어도
+    // 조용히 엉뚱한 요소를 만지고, jsdom에는 레이아웃이 없어 그 회귀를 잡을
+    // 길이 없다 — Task 9에서 `.parentElement`로 같은 함정을 밟은 적이 있다.
+    // `data-sheet-content`는 그래서 테스트 손잡이가 아니라 **런타임 계약**이다.
+    const scroller = viewRef.current?.closest('[data-sheet-content]')
+    if (scroller instanceof HTMLElement) {
+      scroller.scrollTop = 0
+    }
+
+    // 스크롤을 우리가 정한 뒤에 포커스를 준다. `preventScroll`은 브라우저가
+    // 그 위에 제 스크롤을 얹지 않게 하는 것이다 — 방금 0으로 맞춘 자리를
+    // 되돌리면 위 처방이 무의미해진다.
+    //
+    // (예전 주석은 「이 옵션이 없으면 시트가 튄다」고 적었는데 **거짓이었다.**
+    // 실측: `scrollTop=200`에서 옵션 유무와 무관하게 200 그대로다. 포커스
+    // 대상이 스크롤 컨테이너의 첫 자식이라 브라우저가 끌어올 것이 애초에 없다.
+    // 옵션은 무해하고, 위 대입이 생긴 지금에야 진짜 이유가 붙었다.)
     viewRef.current?.focus({ preventScroll: true })
   }, [focusRequest])
 
@@ -401,6 +423,12 @@ export function HomeScreen() {
       )}
 
       <div className="px-4">
+        {/* 목록 뷰에는 눈에 보이는 제목이 없다. 상세는 히어로의 h2, 오늘의
+            서울은 절 제목을 갖는데 여기만 `App`의 h1 아래가 비어서, 제목으로
+            훑는 스크린리더 사용자에게 기본 화면이 통째로 빈 칸이었다.
+            제목이 가리키는 것은 목록 자체다 — 위의 요약 줄·필터·정렬까지
+            덮는 이름을 붙이면 실제 구조와 어긋난다. */}
+        <h2 className="sr-only">명소 목록</h2>
         <AreaList>
           {visible.map((area) => (
             <AreaListItem

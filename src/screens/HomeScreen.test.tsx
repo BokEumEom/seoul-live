@@ -373,6 +373,19 @@ describe('HomeScreen', () => {
     expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
   })
 
+  // `openArea`의 `setView('list')`가 없으면 여기서 오늘의 서울로 되돌아간다.
+  // 버튼 이름이 「목록으로」이므로 이름과 가는 곳이 갈리면 안 된다.
+  it('오늘의 서울에서 연 상세를 닫으면 오늘의 서울이 아니라 목록이다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
+    await userEvent.click(sheetRow(/강남역/))
+
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+
+    expect(screen.queryByRole('heading', { name: '오늘의 서울' })).toBeNull()
+    expect(screen.getByRole('button', { name: /오늘의 서울 열기/ })).toBeInTheDocument()
+  })
+
   it('오늘의 서울에서 목록으로 돌아온다', async () => {
     render(<HomeScreen />)
     await userEvent.click(screen.getByRole('button', { name: /곳 중 붐빔/ }))
@@ -529,6 +542,40 @@ describe('HomeScreen', () => {
     expect(sheet.contains(document.activeElement)).toBe(true)
   })
 
+  it('목록 뷰도 제목 층에 자리를 갖는다', () => {
+    // 상세는 히어로의 h2, 오늘의 서울은 절 제목을 갖는데 목록만 `App`의 h1
+    // 아래가 비어 있었다 — 제목으로 훑는 스크린리더 사용자에게 **기본 화면이**
+    // 통째로 빈 칸이 된다. 눈에 보이는 제목은 세로 공간을 먹으므로 sr-only다.
+    render(<HomeScreen />)
+    expect(
+      screen.getByRole('heading', { level: 2, name: '명소 목록' }),
+    ).toBeInTheDocument()
+  })
+
+  // 목록·상세·오늘의 서울이 시트의 스크롤 컨테이너 **하나를 나눠 쓴다.**
+  // 되돌리지 않으면 앞 뷰에서 내려둔 자리에서 새 뷰가 시작한다 — 실측으로는
+  // 상세의 「목록으로」가 화면 밖(`top −47.5`)이고, 돌아올 때는 요약 스트립이
+  // 잘려 「오늘의 서울」로 가는 유일한 통로가 사라진 것처럼 보였다.
+  //
+  // jsdom에는 레이아웃이 없어 **잘렸다는 사실 자체는** 못 잡는다. 잡을 수 있는
+  // 것은 `scrollTop = 0` 대입이고(jsdom이 대입값을 보존한다) 그게 처방이다.
+  it('뷰가 갈리면 시트 스크롤도 새 뷰의 맨 위로 돌아온다', async () => {
+    render(<HomeScreen />)
+    const scroller = document.querySelector('[data-sheet-content]') as HTMLElement
+
+    scroller.scrollTop = 200
+    await userEvent.click(sheetRow(/강남역/))
+    expect(scroller.scrollTop).toBe(0)
+
+    scroller.scrollTop = 200
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    expect(scroller.scrollTop).toBe(0)
+
+    scroller.scrollTop = 200
+    await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
+    expect(scroller.scrollTop).toBe(0)
+  })
+
   // 위 규칙의 반대편이다. 뷰가 갈렸다고 무조건 옮기면 **타이핑이 깨진다** —
   // 검색어를 치면 `setQuery`가 선택을 풀어 상세→목록 전환이 일어나는데, 그건
   // 사용자가 시트로 가려던 조작이 아니라 타이핑의 부수 효과다. 실제로 첫
@@ -675,6 +722,21 @@ describe('HomeScreen', () => {
     await userEvent.click(screen.getByRole('tab', { name: '내 장소 0' }))
 
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
+  })
+
+  it('담아둔 게 있으면 지금 0이어도 시트를 올리지 않는다', async () => {
+    // 「아직 아무것도 안 담았다」(온보딩)와 「담았는데 지금 조건에 안 걸린다」
+    // (일시적)는 다른 말이다. 앞엣것만 읽을 안내가 있어 시트를 올린다.
+    // 세는 것이 `favorites`가 아니라 `counts.fav`가 되면 둘이 뭉개진다.
+    localStorage.setItem('seoul-live:favorites', JSON.stringify(['강남역']))
+    render(<HomeScreen />)
+    await userEvent.click(await screen.findByRole('tab', { name: '공원' }))
+    await userEvent.click(sheetHandle()) // half → full
+    await userEvent.click(sheetHandle()) // full → peek
+
+    await userEvent.click(screen.getByRole('tab', { name: '내 장소 0' }))
+
+    expect(sheetHandle()).toHaveAccessibleName(/현재 살짝 열림/)
   })
 
   it('다른 칩은 시트를 건드리지 않는다', async () => {

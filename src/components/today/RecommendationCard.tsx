@@ -1,4 +1,4 @@
-import { formatDistance, walkingMinutes } from '../../domain/distance'
+import { formatDistance, walkableMinutes } from '../../domain/distance'
 import type { NearbyArea } from '../../domain/types'
 import { CongestionBadge } from '../common/CongestionBadge'
 import { Icon } from '../common/Icon'
@@ -14,6 +14,15 @@ interface Props {
 export function RecommendationCard({ area, onSelect }: Props) {
   const { entry, snapshot, distanceMeters } = area
 
+  // `walkingMinutes`(상한 없음)가 아니라 `walkableMinutes`(60분 상한)다.
+  // 「걸어갈 만한 거리인가」는 도메인이 갖는 판정이고 `AreaHero`도 이걸 쓴다 —
+  // 여기만 상한 없는 쪽을 쓰면 같은 값이 자리마다 다르게 잘린다.
+  //
+  // 지금은 `pickRecommendations`가 반경을 막아 null이 나올 수 없다. 그렇다고
+  // 죽은 가지가 아니다: 반경이 늘어나는 날 `AreaHero`는 그대로인데 여기만
+  // 「도보 160분」을 적게 되는 것을 이 한 줄이 막는다.
+  const walkMinutes = distanceMeters === null ? null : walkableMinutes(distanceMeters)
+
   return (
     <button
       type="button"
@@ -28,7 +37,7 @@ export function RecommendationCard({ area, onSelect }: Props) {
           <span className="font-bold text-primary">
             {formatDistance(distanceMeters)}
           </span>
-          <span>· 도보 {walkingMinutes(distanceMeters)}분</span>
+          {walkMinutes !== null && <span>· 도보 {walkMinutes}분</span>}
         </p>
       )}
       {snapshot !== null && (
