@@ -37,10 +37,27 @@ function setup(onDetentChange = vi.fn(), detent: Detent = 'half') {
     // 손잡이는 구분선이 아니라 버튼이다 — 이름은 현재 단계까지 담으므로
     // 정규식으로 잡는다.
     handle: screen.getByRole('button', { name: /시트 높이 조절/ }),
+    // 스크롤 컨테이너. 자식 텍스트의 `.parentElement`로 잡지 않는다 — 뷰가
+    // 자기 내용을 한 겹 감싸면 그 래퍼를 검사하면서 조용히 통과한다.
+    scroller: sheet.querySelector('[data-sheet-content]') as HTMLElement,
     onDetentChange,
     sheet,
     setViewportHeight,
   }
+}
+
+/** 요소에 걸린 Tailwind padding 유틸리티를 전부 모은다.
+ *
+ * 클래스 이름을 세는 이유: jsdom에는 Tailwind 스타일시트가 없어서
+ * `getComputedStyle`이 `px-4`가 있든 없든 언제나 0px을 돌려준다 — 계산값으로
+ * 재는 테스트는 절대 실패하지 못하는 죽은 테스트가 된다.
+ *
+ * `px-4` 하나만 찍어 보지 않는 이유: `p-4`나 `pl-4 pr-4`로 여백이 돌아오면
+ * 그 단언은 못 잡는다. 잠그려는 것은 「이 클래스가 없다」가 아니라
+ * 「여백이 없다」다. `p` 뒤에 방향 한 글자(있어도 되고 없어도 된다)와 `-`가
+ * 오는 것만 센다 — `place-items-*`·`pointer-events-*`·`peer`는 걸리지 않는다. */
+function paddingClasses(element: HTMLElement): readonly string[] {
+  return element.className.split(/\s+/).filter((cls) => /^-?p[trblxyse]?-/.test(cls))
 }
 
 // 한 id로 down→move→up 한 벌이 온전히 오는 표준 시퀀스. 제스처 **사이**에
@@ -275,13 +292,24 @@ describe('BottomSheet', () => {
   })
 
   it('내용 영역이 스크롤된다', () => {
-    setup()
+    const { scroller } = setup()
     // 손잡이는 고정이고 내용만 흐른다 — full에서 상세를 스크롤할 때
     // 시트가 따라 내려가면 안 된다.
     //
     // `min-h-0`·`flex-1`까지 함께 건다. 실제로 넘치는 내용을 줄여 주는 건
     // 이 둘이고, `overflow-y-auto`만 남으면 시트가 안 줄어든 채 통과한다.
-    const scroller = screen.getByText('시트내용').parentElement as HTMLElement
     expect(scroller).toHaveClass('overflow-y-auto', 'min-h-0', 'flex-1')
+    expect(scroller).toContainElement(screen.getByText('시트내용'))
+  })
+
+  it('여백은 시트가 아니라 내용 뷰가 소유한다', () => {
+    // 시트에 들어오는 뷰 셋(목록·상세·오늘의 서울)이 이미 저마다 `px-4`·`mx-4`·
+    // `pb-6`을 들고 있다. 시트가 한 겹 더 주면 좌우가 32px로 겹치고, 상세
+    // 히어로처럼 가로를 꽉 채워야 하는 요소는 표현할 길이 사라진다.
+    //
+    // 계획서를 뒤집은 결정이라(계획서는 "여백은 시트가 준다"였다) 잠금이
+    // 없으면 다음에 누가 되돌려도 아무도 못 막는다.
+    const { scroller } = setup()
+    expect(paddingClasses(scroller)).toEqual([])
   })
 })

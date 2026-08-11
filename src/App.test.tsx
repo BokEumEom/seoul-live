@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -96,12 +96,23 @@ describe('App', () => {
   })
 
   it('탭이 셋이고 옛 탭은 없다', () => {
+    // 탭바 안으로 좁혀서 묻는다. 「내 주변」은 이제 지도 위 FAB의 이름이라
+    // 화면 전체에 대고 `queryByRole('button', { name: '내 주변' })`을 물으면
+    // **정당하게 존재하는 버튼**이 잡힌다 — 규칙은 "그 이름의 버튼이 없다"가
+    // 아니라 "그 이름의 **탭**이 없다"이다.
+    //
+    // 예전에는 이름에 후행 공백(`'내 주변 '`)이 붙어 있어 매칭이 성립하지
+    // 않았고, 그래서 이 단언은 무엇이 있든 늘 통과하는 공허한 것이었다.
     render(<App />)
-    expect(tab('지도')).toBeInTheDocument()
-    expect(tab('즐겨찾기')).toBeInTheDocument()
-    expect(tab('더보기')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '내 주변 ' })).toBeNull()
-    expect(screen.queryByRole('button', { name: '혼잡예보' })).toBeNull()
+    const tabBar = screen.getByRole('navigation')
+
+    // 개수를 먼저 고정한다. 이름으로만 물으면 넷째 탭이 생겨도 안 걸린다.
+    expect(within(tabBar).getAllByRole('button')).toHaveLength(3)
+    expect(within(tabBar).getByRole('button', { name: '지도' })).toBeInTheDocument()
+    expect(within(tabBar).getByRole('button', { name: '즐겨찾기' })).toBeInTheDocument()
+    expect(within(tabBar).getByRole('button', { name: '더보기' })).toBeInTheDocument()
+    expect(within(tabBar).queryByRole('button', { name: '내 주변' })).toBeNull()
+    expect(within(tabBar).queryByRole('button', { name: '혼잡예보' })).toBeNull()
   })
 
   it('명소를 누르면 상세가 열리고 지도는 남는다', async () => {

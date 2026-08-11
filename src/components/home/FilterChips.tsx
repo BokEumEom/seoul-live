@@ -42,11 +42,14 @@ export function FilterChips({ counts, value, onChange }: Props) {
             onClick={() => onChange(selected ? null : chip)}
             // 높이가 40px이라 이 저장소의 48px 탭 규약(SearchBar·AreaListItem의
             // min-h-12)을 벗어난다. 흡수한 PresetFilter는 min-h-12였다.
-            // 면제인 이유: 계획서 Task 9가 「검색 바 + 필터 칩 열」을 약 88px로
-            // 잡고 시트 손잡이와 z-20 오버레이의 겹침을 계산해 뒀다. 여기서
-            // 48px로 올리면 그 예산이 틀어진다. SortSegmented의 min-h-10과
-            // 같은 급이고 WCAG 2.5.8(24px)은 통과한다.
-            // 최종 높이는 오버레이 배치를 확정하는 Task 9에서 함께 정한다.
+            // SortSegmented의 min-h-10과 같은 급이고 WCAG 2.5.8(24px)은 통과한다.
+            //
+            // **Task 9에서 40px로 확정했다.** 「검색 바 + 필터 칩 열」이 800px
+            // 기준 0~88px을 차지한다는 계산이 이 값에 달려 있고, 그 88px이
+            // full(92%)에서 손잡이 히트 영역(44~88px)을 통째로 덮는다는 근거가
+            // 되어 「full에서는 이 열을 렌더하지 않는다」는 결정으로 이어졌다.
+            // 여기서 48px로 올리면 그 예산이 틀어진다 — 올릴 거면 HomeScreen의
+            // `showSearchOverlay` 근거부터 다시 계산해야 한다.
             className={`min-h-10 shrink-0 rounded-full px-4 text-label-md font-semibold shadow-floating disabled:opacity-50 ${
               selected
                 ? 'bg-primary text-on-primary'

@@ -223,12 +223,19 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
         <span className="h-1 w-9 rounded-full bg-outline-variant" />
       </button>
 
-      {/* 좌우 여백을 여기서 주지 않는다. 시트에 들어오는 뷰 셋(목록·상세·
-          오늘의 서울)이 이미 저마다 `px-4`·`mx-4`를 들고 있어서, 여기서 한 겹
-          더 주면 32px로 겹친다. 그리고 상세의 히어로처럼 가로를 꽉 채워야
-          하는 요소는 바깥 여백이 있으면 표현할 방법이 없다.
-          `pb-6`도 같은 이유로 뷰 쪽에 있다. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      {/* **여기에 padding을 걸지 마라.** 시트에 들어오는 뷰 셋(목록·상세·
+          오늘의 서울)이 이미 저마다 `px-4`·`mx-4`·`pb-6`을 들고 있어서, 여기서
+          한 겹 더 주면 32px로 겹친다. 그리고 상세의 히어로처럼 가로를 꽉
+          채워야 하는 요소는 바깥 여백이 있으면 표현할 방법이 없다.
+          여백의 주인은 시트가 아니라 뷰다 — 테스트가 이 규칙을 잠근다.
+
+          `data-sheet-content`는 그 테스트의 손잡이다. 자식 텍스트에서
+          `.parentElement`로 거슬러 오르면, 뷰가 자기 내용을 한 겹 감싸는
+          순간 엉뚱한 요소를 검사하면서 조용히 통과한다. */}
+      <div
+        data-sheet-content
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
         {children}
       </div>
     </div>
