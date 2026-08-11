@@ -2337,7 +2337,7 @@ Expected: 전부 PASS
 
 - [ ] **Step 9: 변이 확인**
 
-**23개를 돌렸고 전부 죽었다(죽은 테스트 0).** 필수 둘:
+**변이 30개를 돌려 29개가 죽었고 1개가 살아남았다.** 필수 둘:
 
 1. `counts`를 걸러진 목록으로 센다 → 「프리셋 개수는 걸러진 목록이 아니라 전체로 센다」 1개 실패. ✅
    주의: `filterCounts(visible, ...)`로 그냥 바꾸면 `visible`이 아래에 선언돼 TDZ로 **30개 전부** 터진다 — 변이가 아니라 컴파일 실패다. `visible`의 정의를 인라인해 유효한 코드로 만들어야 판별력이 있다.
@@ -2349,7 +2349,16 @@ Expected: 전부 PASS
 (G) 6개 — `filterLabel` 오답 / 항상 즐겨찾기 이름 / 옛 문구로 되돌리기 / 「필터 해제」 미표시 / 버튼이 아무 일도 안 함 / 검색어가 있어도 필터 지목.
 그 밖 — `TodayScreen` 뒤로가기 제거, 오늘의 서울·상세에서 돌아올 때 시트 안 내리기, `RecenterButton` 이름·위치, `SearchBar`에 버튼 되살리기, 명소를 열어도 full로 안 올리기, `data-map-layer` 표식 제거.
 
-`vitest --reporter=basic`은 vitest 4에서 없어졌다(리포터 로드 실패로 조용히 0건 보고된다). 기본 리포터의 `FAIL ... > 이름` 줄을 파싱해야 한다.
+**살아남은 변이 1개 — `BottomSheet.detentFromY`의 `clampSheetRatio` 호출은 죽은 코드다.**
+
+```ts
+return nearestDetent(clampSheetRatio((rect.bottom - clientY) / rect.height))
+//                   ^^^^^^^^^^^^^^^ 빼도 68개 테스트가 전부 통과한다
+```
+
+`nearestDetent`가 첫 줄에서 `clampSheetRatio(ratio)`를 다시 부르고 클램프는 멱등이라, 바깥 호출은 결과를 바꿀 수 없다. 그래서 **어떤 테스트로도 잡을 수 없다** — 테스트를 더 쓸 게 아니라 호출을 지워야 하는 자리다. Task 3 코드라 이 태스크에서는 손대지 않았다. 지울 때 `clampSheetRatio` import도 함께 지워야 한다(안 그러면 lint가 막는다).
+
+**변이 도구에 대한 주의 둘.** (1) `vitest --reporter=basic`은 vitest 4에서 없어졌다 — 리포터 로드에 실패하면서 조용히 0건으로 보고돼 **모든 변이가 살아남은 것처럼 보인다.** 기본 리포터의 `FAIL ... > 이름` 줄을 파싱해야 한다. (2) 변이는 **컴파일되는 코드**여야 한다. `filterCounts(list, …)` → `filterCounts(visible, …)`처럼 선언 순서를 어기면 TDZ로 30개가 전부 터지는데, 그건 "테스트가 잡았다"가 아니라 변이 실패다. `<button>`을 `<div>`로 바꾸면서 닫는 태그를 안 고치는 것도 같은 함정이다.
 
 - [ ] **Step 10: 커밋**
 
