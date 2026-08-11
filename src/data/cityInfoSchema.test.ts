@@ -323,6 +323,26 @@ describe('parseCityInfoResponse — 도로소통', () => {
     expect(parseCityInfoResponse(payload({ ROAD_TRAFFIC_STTS: [] }), AREA).roadTraffic).toBeNull()
   })
 
+  // 가드가 두 항의 **곱**이라는 것을 잠근다. 한쪽만 봐도 「모두 비면 null」은
+  // 통과하므로, 각 항이 혼자 살아 있는 경우를 따로 세워야 한 항을 지웠을 때
+  // 죽는다. 안 그러면 메시지만 오는 명소에서 도로소통이 통째로 사라진다.
+  it('지표가 없고 안내 문구만 있어도 항목을 만든다', () => {
+    const info = parseCityInfoResponse(
+      payload({ ROAD_TRAFFIC_STTS: [{ ROAD_MSG: '사고로 정체 중이에요.' }] }),
+      AREA,
+    )
+    expect(info.roadTraffic?.message).toBe('사고로 정체 중이에요.')
+    expect(info.roadTraffic?.index).toBe('')
+  })
+
+  it('안내 문구가 없고 지표만 있어도 항목을 만든다', () => {
+    const info = parseCityInfoResponse(
+      payload({ ROAD_TRAFFIC_STTS: [{ ROAD_TRAFFIC_IDX: '원활' }] }),
+      AREA,
+    )
+    expect(info.roadTraffic?.index).toBe('원활')
+  })
+
   // 지표도 메시지도 없으면 카드가 빈 채로 뜬다. 주차장의 이름, 재난문자의
   // 내용과 같은 자리다 — 본체가 없는 항목은 만들지 않는다.
   it('지표와 메시지가 모두 비면 null이다', () => {

@@ -39,10 +39,20 @@ describe('RoadTrafficCard', () => {
 
   // 파서는 지표와 메시지 중 **하나만** 있어도 항목을 만든다. 지표가 빈 채로 오면
   // 제목 자리가 빈 줄로 남아 카드에 구멍이 생긴다.
-  it('지표가 비면 그 줄을 만들지 않는다', () => {
+  //
+  // 속도를 남겨 바깥 가드를 통과시킨 채로 시험한다. 둘 다 비우면 줄 자체가
+  // 안 그려져 **바깥 가드만 확인되고 지표 가드는 시험되지 않는다.**
+  it('지표가 비어도 속도가 있으면 속도만 그린다', () => {
+    render(<RoadTrafficCard traffic={traffic({ index: '', speed: 24 })} />)
+    expect(screen.getByText(/24km\/h/)).toBeInTheDocument()
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+  })
+
+  it('지표도 속도도 없으면 그 줄을 통째로 만들지 않는다', () => {
     render(<RoadTrafficCard traffic={traffic({ index: '', speed: null })} />)
     expect(screen.getByText('광화문 일대가 서행하고 있어요.')).toBeInTheDocument()
     expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+    expect(screen.queryByText(/km\/h/)).not.toBeInTheDocument()
   })
 
   it('안내 문구가 비면 그 자리를 만들지 않는다', () => {
