@@ -133,6 +133,11 @@ export function buildMockSnapshot(areaName: string, now: Date = new Date()): unk
         AREA_PPLTN_MIN: String(base),
         AREA_PPLTN_MAX: String(base + 2_000),
         PPLTN_TIME: formatSeoulTime(now),
+        // 대체값은 드물어야 한다. 6곳 중 1곳쯤만 'Y'로 둬야 개발 중에 기본으로
+        // 보이는 화면이 **안내가 없는 쪽**이 된다 — 실제로도 그게 정상이다.
+        // 값이 'Y'/'N'인지는 명세가 알려주지 않는다(`schema.ts`의 `replacedFlag`
+        // 주석). 목업이 이 둘을 쓴다고 파서가 이 둘만 안다고 읽지 마라.
+        REPLACE_YN: seed % 6 === 0 ? 'Y' : 'N',
         ...buildComposition(seed),
         FCST_YN: 'Y',
         FCST_PPLTN: forecasts,

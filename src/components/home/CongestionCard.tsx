@@ -25,6 +25,21 @@ export function CongestionCard({ snapshot }: Props) {
         마지막 업데이트: {snapshot.observedAtLabel}
       </p>
 
+      {/* 갱신 시각 바로 아래다. 이 안내는 **그 시각의 수치가 어디서 왔는가**에
+          대한 것이라 시각과 붙어 있어야 뜻이 통한다.
+
+          `=== true`로 명시해서 쓴다. `snapshot.replaced &&`로 적으면 동작은
+          같지만 「모름(null)을 실측과 같이 다룬다」는 결정이 코드에서 안 보인다 —
+          근거는 `AreaSnapshot.replaced` 주석.
+
+          수치 자체는 숨기지 않는다. 서울 API가 주는 최선의 추정이고, 감추면
+          화면에 남는 게 없다. 우리가 하는 일은 출처를 밝히는 것뿐이다. */}
+      {snapshot.replaced === true && (
+        <p className="mt-1 text-label-sm text-on-surface-variant">
+          이 수치는 실측이 아니라 대체값이에요.
+        </p>
+      )}
+
       {quietHour !== null && (
         <div className="mt-4 flex gap-2 rounded-card bg-secondary-container px-3 py-3">
           <Icon name="info" className="size-5 text-primary" />

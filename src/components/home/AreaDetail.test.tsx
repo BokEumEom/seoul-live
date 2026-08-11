@@ -37,6 +37,7 @@ const SNAPSHOT: AreaSnapshot = {
     nonResidentRate: 71,
     ageRates: [3, 8, 31, 22, 14, 11, 6, 4],
   },
+  replaced: null,
 }
 
 const EMPTY_CITY_INFO: CityInfo = {

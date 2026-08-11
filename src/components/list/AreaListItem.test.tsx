@@ -24,6 +24,7 @@ function area(overrides: Partial<NearbyArea> = {}): NearbyArea {
       observedAtLabel: '11:00',
       forecasts: [],
       composition: null,
+      replaced: null,
     },
     distanceMeters: 1200,
     ...overrides,

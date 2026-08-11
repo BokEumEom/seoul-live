@@ -135,6 +135,7 @@ function snapshotFor(
     observedAtLabel: '11:00',
     forecasts: [],
     composition: null,
+    replaced: null,
   }
 }
 

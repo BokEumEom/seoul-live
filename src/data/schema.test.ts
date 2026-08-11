@@ -254,6 +254,48 @@ describe('parseCitydataResponse', () => {
   })
 })
 
+describe('parseCitydataResponse — REPLACE_YN', () => {
+  function withReplace(value: unknown): unknown {
+    const [area] = VALID['SeoulRtd.citydata_ppltn']
+    return { 'SeoulRtd.citydata_ppltn': [{ ...area, REPLACE_YN: value }] }
+  }
+
+  it("'Y'면 대체값으로 읽는다", () => {
+    expect(parseCitydataResponse(withReplace('Y'), NAME).replaced).toBe(true)
+  })
+
+  it("'N'이면 실측으로 읽는다", () => {
+    expect(parseCitydataResponse(withReplace('N'), NAME).replaced).toBe(false)
+  })
+
+  it('소문자로 와도 같게 읽는다', () => {
+    expect(parseCitydataResponse(withReplace('y'), NAME).replaced).toBe(true)
+    expect(parseCitydataResponse(withReplace('n'), NAME).replaced).toBe(false)
+  })
+
+  // **모름과 실측을 같은 값으로 묶지 않는다.** 화면에서는 지금 둘 다 아무것도
+  // 안 그리지만, false는 "서울 API가 실측이라고 했다"는 주장이고 null은 "말해
+  // 주지 않았다"이다. 묶어두면 나중에 「실측 확인됨」을 표시하려는 순간 필드가
+  // 안 오는 날에도 실측이라고 단언하게 된다. 주차장의 `paid`와 같은 규칙이다.
+  it('필드가 없으면 실측이 아니라 모름(null)이다', () => {
+    expect(parseCitydataResponse(VALID, NAME).replaced).toBeNull()
+  })
+
+  it('아는 값이 아니면 모름(null)이다', () => {
+    expect(parseCitydataResponse(withReplace(''), NAME).replaced).toBeNull()
+    expect(parseCitydataResponse(withReplace('대체'), NAME).replaced).toBeNull()
+    expect(parseCitydataResponse(withReplace(1), NAME).replaced).toBeNull()
+  })
+
+  // 혼잡도는 값이 곧 화면의 존재 이유라 엄격하게 파싱한다. 이 필드는 그 값에
+  // **대한 메모**라 이상하게 와도 혼잡도를 날리면 안 된다.
+  it('값이 이상해도 혼잡도는 그대로 산다', () => {
+    const snapshot = parseCitydataResponse(withReplace({ 잘못된: '모양' }), NAME)
+    expect(snapshot.congestion).toBe('보통')
+    expect(snapshot.replaced).toBeNull()
+  })
+})
+
 describe('parseBulkEnvelope', () => {
   it('이름을 키로 하는 정상 봉투를 그대로 돌려준다', () => {
     const envelope = { results: { 강남역: VALID, 경복궁: null } }

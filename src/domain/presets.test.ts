@@ -34,6 +34,7 @@ function area(
           observedAtLabel: '14:00',
           forecasts: [],
           composition: null,
+          replaced: null,
         }
 
   return {
