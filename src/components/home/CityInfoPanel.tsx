@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useCityInfo } from '../../data/queries'
 import { hasAnyCityInfo } from '../../domain/cityInfo'
+import { AccidentList } from '../cityinfo/AccidentList'
 import { AlertBanner } from '../cityinfo/AlertBanner'
 import { BikeList } from '../cityinfo/BikeList'
 import { EventList } from '../cityinfo/EventList'
 import { EmptyNote, InfoSection } from '../cityinfo/InfoSection'
 import { ParkingList } from '../cityinfo/ParkingList'
+import { RoadTrafficCard } from '../cityinfo/RoadTrafficCard'
 import { WeatherCard } from '../cityinfo/WeatherCard'
 import { ErrorState } from '../common/ErrorState'
 import { Icon } from '../common/Icon'
@@ -59,6 +61,22 @@ export function CityInfoPanel({ areaName }: Props) {
                 <AlertBanner alerts={info.alerts} />
 
                 {info.weather !== null && <WeatherCard weather={info.weather} />}
+
+                {/* 도로소통과 사고통제를 한 섹션에 둔다. 같은 주제(지금 이 근처
+                    도로가 어떤가)이고, 시트가 좁아 관련 정보를 두 섹션으로
+                    나누면 제목만 두 줄 더 먹는다. 사고가 없으면 목록만 빠진다. */}
+                {(info.roadTraffic !== null || info.accidents.length > 0) && (
+                  <InfoSection title="도로소통">
+                    {info.roadTraffic !== null && (
+                      <RoadTrafficCard traffic={info.roadTraffic} />
+                    )}
+                    {info.accidents.length > 0 && (
+                      <div className={info.roadTraffic === null ? '' : 'mt-3'}>
+                        <AccidentList accidents={info.accidents} />
+                      </div>
+                    )}
+                  </InfoSection>
+                )}
 
                 <InfoSection title="주차장">
                   {info.parking.length === 0 ? (

@@ -14,6 +14,15 @@ const BIKE_SALT = 2
 const EVENT_SALT = 3
 const ALERT_SALT = 4
 const WEATHER_SALT = 5
+const ROAD_SALT = 6
+const ACCIDENT_SALT = 7
+
+// **목업이 이 셋을 쓴다고 해서 화면이 이 셋을 안다고 가정하면 안 된다.** 공식
+// 명세에 `ROAD_TRAFFIC_IDX`의 출력명만 있고 값의 종류가 없어서, 서울시 교통정보
+// 안내에서 흔히 쓰는 단어를 빌려 쓴 것뿐이다. 파서도 카드도 문자열을 그대로
+// 옮기고 어느 값에도 특별한 뜻을 붙이지 않는다 — 실제 값이 다르면 목업만
+// 고치면 되도록.
+const ROAD_INDEXES = ['원활', '서행', '정체'] as const
 
 const EVENT_NAMES = [
   '한여름 밤의 거리공연',
@@ -132,6 +141,38 @@ function buildAlerts(seed: number, now: Date): readonly unknown[] {
   ]
 }
 
+function buildRoadTraffic(seed: number, now: Date): readonly unknown[] {
+  const mixed = mixSeed(seed, ROAD_SALT)
+  const index = ROAD_INDEXES[mixed % ROAD_INDEXES.length]
+  const speed = 12 + (mixed % 28)
+  return [
+    {
+      ROAD_TRAFFIC_IDX: index,
+      ROAD_TRAFFIC_SPD: String(speed),
+      ROAD_MSG: `주변 도로 평균 속도는 ${String(speed)}km/h, 소통 상태는 ${index}입니다.`,
+      ROAD_TRAFFIC_TIME: formatSeoulTime(now),
+    },
+  ]
+}
+
+// 사고통제는 재난문자처럼 대부분의 명소에서 비어 있는 게 정상이다. 4곳 중 1곳쯤만
+// 채워야 "없을 때의 화면"이 개발 중에도 기본으로 보인다.
+function buildAccidents(seed: number, now: Date): readonly unknown[] {
+  if (mixSeed(seed, ACCIDENT_SALT) % 4 !== 0) {
+    return []
+  }
+  const clearAt = new Date(now.getTime() + 90 * 60 * 1000)
+  return [
+    {
+      ACDNT_OCCR_DT: formatSeoulTime(now),
+      EXP_CLR_DT: formatSeoulTime(clearAt),
+      ACDNT_TYPE: '교통사고',
+      ACDNT_DTYPE: '차대차',
+      ACDNT_INFO: '차량 2대 추돌로 1개 차로가 통제되고 있어요. 우회를 권합니다.',
+    },
+  ]
+}
+
 export function buildMockCityInfo(areaName: string, now: Date = new Date()): unknown {
   const seed = hashAreaName(areaName)
 
@@ -141,6 +182,8 @@ export function buildMockCityInfo(areaName: string, now: Date = new Date()): unk
       AREA_NM: areaName,
       AREA_CD: findAreaByName(areaName)?.code ?? 'POI000',
       WEATHER_STTS: [buildWeather(seed, now)],
+      ROAD_TRAFFIC_STTS: buildRoadTraffic(seed, now),
+      ACDNT_CNTRL_STTS: buildAccidents(seed, now),
       PRK_STTS: buildParking(areaName, seed, now),
       SBIKE_STTS: buildBikes(areaName, seed),
       CULTURALEVENTINFO: buildEvents(areaName, seed),

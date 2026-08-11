@@ -43,6 +43,8 @@ const EMPTY_CITY_INFO: CityInfo = {
   areaName: '강남역',
   areaCode: 'POI014',
   weather: null,
+  roadTraffic: null,
+  accidents: [],
   parking: [],
   bikes: [],
   events: [],

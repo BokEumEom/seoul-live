@@ -60,10 +60,45 @@ export interface CityAlert {
   readonly createdAt: string
 }
 
+export interface RoadTraffic {
+  /**
+   * ROAD_TRAFFIC_IDX — 전체도로소통평균현황.
+   *
+   * **문자열 그대로 보여주고 톤에 겹치지 않는다.** 대기등급을 혼잡도 네 톤에
+   * 얹은 것(`TONE_BY_AIR_GRADE`)과 다르게 가는 이유는 값 목록을 모르기
+   * 때문이다 — 공식 명세(`서울시+실시간+도시데이터.xls`)에 이 필드의 출력명만
+   * 있고 값의 종류가 없다. 「원활」·「서행」·「정체」로 짐작해 매핑을 넣으면
+   * 실제 값이 다를 때 **화면에 아무 톤도 안 붙는 게 아니라 틀린 톤이 붙는다.**
+   * 인증키가 나오면 실제 값을 확인하고 그때 톤을 붙일지 정한다(STATE.md).
+   */
+  readonly index: string
+  /** ROAD_TRAFFIC_SPD — 전체 평균 속도(km/h로 읽는다) */
+  readonly speed: number | null
+  /** ROAD_MSG — 서울 API 원문 안내 */
+  readonly message: string
+  /** ROAD_TRAFFIC_TIME 원문. 날씨와 같이 형식을 강제하지 않는다 */
+  readonly updatedAt: string
+}
+
+export interface AccidentControl {
+  /** ACDNT_INFO — 통제 내용. 재난문자의 `message`처럼 이 항목의 본체다 */
+  readonly info: string
+  /** ACDNT_TYPE — 사고발생유형 */
+  readonly type: string
+  /** ACDNT_DTYPE — 사고발생세부유형 */
+  readonly detailType: string
+  /** ACDNT_OCCR_DT — 사고발생일시 원문 */
+  readonly occurredAt: string
+  /** EXP_CLR_DT — 통제종료예정일시 원문 */
+  readonly expectedClearAt: string
+}
+
 export interface CityInfo {
   readonly areaName: string
   readonly areaCode: string
   readonly weather: Weather | null
+  readonly roadTraffic: RoadTraffic | null
+  readonly accidents: readonly AccidentControl[]
   readonly parking: readonly ParkingLot[]
   readonly bikes: readonly BikeStation[]
   readonly events: readonly CulturalEvent[]
@@ -150,8 +185,13 @@ export function formatTemperature(celsius: number | null): string {
 
 /** 어느 섹션에도 내용이 없으면 화면이 빈 상태 문구 하나만 보여준다. */
 export function hasAnyCityInfo(info: CityInfo): boolean {
+  // **섹션을 더할 때 여기도 더해야 한다.** 빠뜨리면 그 섹션만 있는 명소가
+  // 「정보 없음」으로 뜨는데, 정작 화면에는 그 섹션이 그려져 있어 안내와 내용이
+  // 서로 다른 말을 한다. 새 필드를 넣고 이 함수를 안 고쳐서 실제로 겪었다.
   return (
     info.weather !== null ||
+    info.roadTraffic !== null ||
+    info.accidents.length > 0 ||
     info.parking.length > 0 ||
     info.bikes.length > 0 ||
     info.events.length > 0 ||

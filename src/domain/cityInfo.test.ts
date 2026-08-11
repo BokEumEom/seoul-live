@@ -23,6 +23,8 @@ const EMPTY: CityInfo = {
   areaName: '광화문·덕수궁',
   areaCode: 'POI009',
   weather: null,
+  roadTraffic: null,
+  accidents: [],
   parking: [],
   bikes: [],
   events: [],
@@ -175,6 +177,20 @@ describe('hasAnyCityInfo', () => {
       hasAnyCityInfo({
         ...EMPTY,
         alerts: [{ category: '호우', step: '', message: '', createdAt: '' }],
+      }),
+    ).toBe(true)
+    expect(
+      hasAnyCityInfo({
+        ...EMPTY,
+        roadTraffic: { index: '서행', speed: null, message: '', updatedAt: '' },
+      }),
+    ).toBe(true)
+    expect(
+      hasAnyCityInfo({
+        ...EMPTY,
+        accidents: [
+          { info: '차로 통제', type: '', detailType: '', occurredAt: '', expectedClearAt: '' },
+        ],
       }),
     ).toBe(true)
   })
