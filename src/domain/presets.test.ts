@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { filterAreas, filterByPreset, filterCounts, PRESETS } from './presets'
+import {
+  filterAreas,
+  filterByPreset,
+  filterCounts,
+  filterLabel,
+  PRESETS,
+} from './presets'
 import type {
   AreaCategory,
   AreaSnapshot,
@@ -272,5 +278,28 @@ describe('filterCounts', () => {
       expect(filterAreas(areas, key, favorites)).toHaveLength(counts[key])
     }
     expect(counts.fav).toBe(2)
+  })
+})
+
+describe('filterLabel', () => {
+  it('즐겨찾기 칩의 이름을 준다', () => {
+    expect(filterLabel('fav')).toBe('내 장소')
+  })
+
+  it('프리셋 이름은 PRESETS의 것을 그대로 쓴다', () => {
+    // 라벨을 여기 복사해두면 이름을 고칠 때 한쪽만 옛 이름으로 남는다.
+    // 칩과 빈 목록 문구가 같은 말을 하는지가 이 함수의 존재 이유다.
+    for (const preset of PRESETS) {
+      expect(filterLabel(preset.key)).toBe(preset.label)
+    }
+  })
+
+  it('키마다 다른 이름이 나온다', () => {
+    // 위 반복문은 PRESETS에 든 것만 훑는다. 프리셋 하나가 PRESETS에서 빠지면
+    // 그 키는 폴백으로 떨어져 「내 장소」라고 답하는데, 반복문은 그 키를
+    // 아예 돌지 않아 조용히 통과한다. 빈 목록 문구가 엉뚱한 필터를 지목하게
+    // 되는 자리라 키 넷을 직접 센다.
+    const labels = (['fav', 'kids', 'date', 'hot'] as const).map(filterLabel)
+    expect(new Set(labels).size).toBe(labels.length)
   })
 })

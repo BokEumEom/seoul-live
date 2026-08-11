@@ -33,7 +33,14 @@ function setup(onDetentChange = vi.fn(), detent: Detent = 'half') {
   const setViewportHeight = (height: number): void => {
     rect.mockReturnValue(viewportRect(height))
   }
-  return { handle: screen.getByRole('separator'), onDetentChange, sheet, setViewportHeight }
+  return {
+    // 손잡이는 구분선이 아니라 버튼이다 — 이름은 현재 단계까지 담으므로
+    // 정규식으로 잡는다.
+    handle: screen.getByRole('button', { name: /시트 높이 조절/ }),
+    onDetentChange,
+    sheet,
+    setViewportHeight,
+  }
 }
 
 // 한 id로 down→move→up 한 벌이 온전히 오는 표준 시퀀스. 제스처 **사이**에
@@ -195,15 +202,76 @@ describe('BottomSheet', () => {
     expect(onDetentChange).toHaveBeenLastCalledWith('full')
   })
 
-  it('더블클릭하면 half로 돌아간다', () => {
-    const { handle, onDetentChange } = setup(vi.fn(), 'full')
-    fireEvent.doubleClick(handle)
-    expect(onDetentChange).toHaveBeenCalledWith('half')
+  // 손잡이는 보조기술로도 조작 가능해야 한다. role="separator"는 ARIA상
+  // 구조적 구분선이라 TalkBack/VoiceOver가 실행 동작을 주지 않고, 남아 있던
+  // onDoubleClick도 TalkBack의 두 번 탭이 click을 쏘므로 닿지 않았다.
+  // 그래서 진짜 button이고, 누르면 단계가 한 칸씩 굴러간다.
+  it.each([
+    ['peek', 'half'],
+    ['half', 'full'],
+    ['full', 'peek'],
+  ] as ReadonlyArray<readonly [Detent, Detent]>)(
+    '%s → %s: 손잡이를 누르면 한 칸 굴러간다',
+    (from, to) => {
+      const { handle, onDetentChange } = setup(vi.fn(), from)
+      fireEvent.click(handle)
+      expect(onDetentChange).toHaveBeenCalledTimes(1)
+      expect(onDetentChange).toHaveBeenLastCalledWith(to)
+    },
+  )
+
+  it('끌어서 놓은 뒤 따라오는 클릭은 단계를 한 칸 더 굴리지 않는다', () => {
+    // 드래그 뒤에도 click은 그대로 발생한다. 소비하지 않으면 손을 뗀 자리로
+    // 붙자마자 곧바로 다음 단계로 넘어가 손잡이가 제멋대로 움직인다.
+    const { handle, onDetentChange } = setup()
+    drag(handle, 430, 100)
+    fireEvent.click(handle)
+    expect(onDetentChange).toHaveBeenCalledTimes(1)
+    expect(onDetentChange).toHaveBeenLastCalledWith('full')
   })
 
-  it('손잡이에 접근 가능한 이름이 있다', () => {
+  it('끈 다음 제스처의 탭은 다시 먹는다', () => {
+    // 클릭 가드를 소비로만 풀면, 드래그 뒤 click이 오지 않는 경로에서 가드가
+    // 참으로 굳어 그다음 탭 한 번이 통째로 삼켜진다.
+    const { handle, onDetentChange } = setup()
+    drag(handle, 430, 100)
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 2 })
+    fireEvent.pointerUp(handle, { clientY: 430, pointerId: 2 })
+    fireEvent.click(handle)
+    expect(onDetentChange).toHaveBeenCalledTimes(2)
+    expect(onDetentChange).toHaveBeenLastCalledWith('full')
+  })
+
+  it('취소된 제스처 뒤의 탭도 단계를 바꾼다', () => {
+    const { handle, onDetentChange } = setup()
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 })
+    fireEvent.pointerCancel(handle, { clientY: 100, pointerId: 1 })
+    fireEvent.click(handle)
+    expect(onDetentChange).toHaveBeenCalledTimes(1)
+    expect(onDetentChange).toHaveBeenLastCalledWith('full')
+  })
+
+  // 스크린리더 사용자는 시트 높이를 볼 수 없다. 누르면 무엇이 될지는 현재
+  // 단계를 알아야만 예측된다. setup은 매번 새로 render하므로 한 테스트 안에서
+  // 세 번 부르면 손잡이가 셋이 되어 쿼리가 터진다 — it.each로 나눈다.
+  it.each([
+    ['peek', '살짝 열림'],
+    ['half', '절반'],
+    ['full', '전체'],
+  ] as ReadonlyArray<readonly [Detent, string]>)(
+    '%s 단계의 손잡이 이름이 「%s」이라고 말한다',
+    (detent, label) => {
+      const { handle } = setup(vi.fn(), detent)
+      expect(handle).toHaveAccessibleName(`시트 높이 조절, 현재 ${label}`)
+    },
+  )
+
+  it('손잡이가 시트 폭 전체를 받는다', () => {
+    // button은 기본이 inline-block이라 w-full이 없으면 히트 영역이 4px짜리
+    // 띠 폭으로 쪼그라든다. div였을 때는 공짜로 얻던 것이다.
     const { handle } = setup()
-    expect(handle).toHaveAccessibleName('시트 높이 조절')
+    expect(handle).toHaveClass('w-full')
   })
 
   it('내용 영역이 스크롤된다', () => {

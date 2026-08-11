@@ -35,7 +35,13 @@ function AppShell() {
         {tab === 'favorites' && (
           <FavoritesScreen onSelectArea={openArea} onGoHome={() => setTab('home')} />
         )}
-        {tab === 'more' && <TodayScreen onSelectArea={openArea} />}
+        {/* 「오늘의 서울」은 Task 9에서 홈의 시트 안 뷰가 됐다. 이 탭은 Task 10에서
+            탭바와 함께 사라지므로 그때까지만 같은 화면을 여기서도 띄운다.
+            `onBack`이 홈 탭으로 보내는 건 시트 쪽에서 「목록으로」가 하는 일과
+            같은 뜻이다 — 어느 쪽이든 명소 목록으로 돌아간다. */}
+        {tab === 'more' && (
+          <TodayScreen onSelectArea={openArea} onBack={() => setTab('home')} />
+        )}
       </main>
       <BottomTabBar active={tab} onSelect={setTab} />
     </div>

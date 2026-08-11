@@ -61,7 +61,7 @@ beforeEach(async () => {
 
 describe('TodayScreen', () => {
   it('붐비는 곳과 여유로운 곳을 모두 보여준다', () => {
-    render(<TodayScreen onSelectArea={() => {}} />)
+    render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     expect(
       screen.getByRole('heading', { name: '지금 가장 붐비는 곳' }),
     ).toBeInTheDocument()
@@ -70,7 +70,7 @@ describe('TodayScreen', () => {
 
   it('붐비는 곳 목록은 붐빔부터, 여유로운 곳 목록은 여유부터 나온다', () => {
     // 제목만 보면 두 목록을 서로 바꿔 넣어도 통과한다. 첫 줄의 배지를 고정한다.
-    render(<TodayScreen onSelectArea={() => {}} />)
+    render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     const busiest = screen.getByRole('heading', { name: '지금 가장 붐비는 곳' })
       .parentElement as HTMLElement
     const calmest = screen.getByRole('heading', { name: '지금 여유로운 곳' })
@@ -84,14 +84,14 @@ describe('TodayScreen', () => {
   })
 
   it('혼잡도 분포를 한 줄로 요약한다', () => {
-    render(<TodayScreen onSelectArea={() => {}} />)
+    render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     // 30곳을 네 단계로 돌려 배분하면 붐빔은 7곳이다(인덱스 3,7,...,27).
     expect(screen.getByText(/30곳 중 붐빔 7곳/)).toBeInTheDocument()
   })
 
   it('항목을 누르면 명소를 올려보낸다', async () => {
     const onSelectArea = vi.fn()
-    render(<TodayScreen onSelectArea={onSelectArea} />)
+    render(<TodayScreen onSelectArea={onSelectArea} onBack={() => {}} />)
     const busiest = screen.getByRole('heading', { name: '지금 가장 붐비는 곳' })
     const firstItem = busiest.parentElement?.querySelectorAll('button')[0]
     await userEvent.click(firstItem as HTMLElement)
@@ -100,7 +100,7 @@ describe('TodayScreen', () => {
 
   it('캐시에 재난문자가 없으면 배너를 그리지 않는다', () => {
     useCachedCityAlerts.mockReturnValue([])
-    render(<TodayScreen onSelectArea={() => {}} />)
+    render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
@@ -112,14 +112,14 @@ describe('TodayScreen', () => {
       createdAt: '2026-08-07 11:00',
     } satisfies CityAlert
     useCachedCityAlerts.mockReturnValue([alert, alert, alert])
-    render(<TodayScreen onSelectArea={() => {}} />)
+    render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     expect(screen.getAllByText('호우 주의보')).toHaveLength(1)
   })
 
   it('스냅샷이 하나도 없으면 그 사실을 말한다', async () => {
     const { AREA_CATALOG } = await import('../data/areas')
     mockSnapshots(AREA_CATALOG.map(() => null))
-    render(<TodayScreen onSelectArea={() => {}} />)
+    render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     expect(screen.getByText('혼잡도 정보를 아직 받지 못했어요.')).toBeInTheDocument()
     // 순위를 매길 근거가 없으면 목록 자체를 그리지 않는다.
     expect(screen.queryByRole('heading', { name: '지금 가장 붐비는 곳' })).toBeNull()
@@ -132,12 +132,33 @@ describe('TodayScreen', () => {
       isError: true,
       refetch: vi.fn(),
     } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
-    render(<TodayScreen onSelectArea={() => {}} />)
+    render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     expect(screen.getByText('혼잡도 정보를 가져오지 못했어요.')).toBeInTheDocument()
   })
 
+  // 시트 안 뷰가 되면서 「더보기」 탭이 아니라 목록 위에 덮인다. 돌아갈 길이
+  // 화면 안에 없으면 시트를 내리는 것 말고는 빠져나갈 방법이 없다.
+  it('목록으로 돌아가는 길이 있다', async () => {
+    const onBack = vi.fn()
+    render(<TodayScreen onSelectArea={() => {}} onBack={onBack} />)
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    expect(onBack).toHaveBeenCalledTimes(1)
+  })
+
+  it('로딩 중에도 목록으로 돌아갈 수 있다', () => {
+    // 뒤로가기를 데이터가 온 뒤에만 그리면, 느린 응답을 기다리는 동안
+    // 시트가 화면의 92%를 덮은 채 빠져나갈 길이 없다.
+    useAreaSnapshots.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+    render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
+    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+  })
+
   it('카테고리별 평균을 화면 라벨로 보여준다', () => {
-    render(<TodayScreen onSelectArea={() => {}} />)
+    render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     const heading = screen.getByRole('heading', { name: '카테고리별 평균' })
     // RankList 항목에도 같은 라벨이 붙으므로 이 섹션 안으로 좁힌다.
     const section = heading.parentElement as HTMLElement

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useLocation } from '../app/locationContext'
 import { ErrorState } from '../components/common/ErrorState'
 import { SkeletonList } from '../components/common/SkeletonCard'
+import { Icon } from '../components/common/Icon'
 import { AlertDigest } from '../components/today/AlertDigest'
 import { CategoryAverages } from '../components/today/CategoryAverages'
 import { RankList } from '../components/today/RankList'
@@ -23,6 +24,8 @@ const RANK_LIMIT = 5
 
 interface Props {
   readonly onSelectArea: (name: string) => void
+  /** 시트 안 뷰가 됐으므로 목록으로 돌아갈 길이 화면 안에 있어야 한다. */
+  readonly onBack: () => void
 }
 
 // 지도가 공간적 조망을 준다면 여기는 전체 조망을 준다. "30곳 중 붐빔 5곳"
@@ -30,7 +33,7 @@ interface Props {
 //
 // **useCityInfo를 부르지 않는다.** 추가 호출이 0이라는 것이 이 화면의 존재
 // 근거다. 재난문자는 상세에서 이미 받아둔 캐시에 있는 것만 모은다.
-export function TodayScreen({ onSelectArea }: Props) {
+export function TodayScreen({ onSelectArea, onBack }: Props) {
   const snapshots = useAreaSnapshots(AREA_NAMES)
   const location = useLocation()
   const alerts = useCachedCityAlerts()
@@ -56,7 +59,19 @@ export function TodayScreen({ onSelectArea }: Props) {
 
   return (
     <div className="flex flex-col gap-1 pb-6">
-      <section className="px-4 pt-4">
+      {/* 조회 상태 밖에 둔다. 데이터가 오기 전에도 나가는 길은 있어야 한다 —
+          느린 응답을 기다리는 동안 이 뷰가 시트의 92%를 덮고 있다.
+          `w-fit`이 없으면 flex 열의 자식이라 폭 전체가 뒤로가기 타깃이 된다. */}
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex min-h-12 w-fit items-center gap-1 px-4 text-label-md font-semibold text-primary"
+      >
+        <Icon name="back" className="size-4" />
+        목록으로
+      </button>
+
+      <section className="px-4">
         <h2 className="text-headline-md text-on-surface">오늘의 서울</h2>
         <p className="mt-1 text-label-md text-on-surface-variant">
           지도에 안 보이는 전체 그림

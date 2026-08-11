@@ -52,6 +52,22 @@ export const PRESETS: readonly Preset[] = [
   },
 ]
 
+/** 즐겨찾기 칩의 이름. 프리셋이 아니라 사용자 상태라 `PRESETS`에 자리가 없다. */
+const FAVORITE_LABEL = '내 장소'
+
+/** 칩 줄과 빈 목록 문구가 같은 이름을 쓰게 하는 정본.
+ *
+ * 라벨을 화면 쪽에 복사해두면 이름을 고칠 때 한쪽만 옛 이름으로 남는다.
+ * 빈 목록에서 "「내 장소」에 해당하는 명소가 없어요"라고 지목하는데 칩에는
+ * 다른 이름이 적혀 있으면 무엇을 풀어야 할지 알려주려던 문구가 오히려
+ * 헷갈리게 만든다.
+ *
+ * `fav`는 `PRESETS`에 없으므로 `find`가 비고 그대로 즐겨찾기 이름으로
+ * 떨어진다 — 분기를 따로 두지 않는 것은 폴백이 곧 정답인 유일한 키라서다. */
+export function filterLabel(key: FilterKey): string {
+  return PRESETS.find((candidate) => candidate.key === key)?.label ?? FAVORITE_LABEL
+}
+
 /** 프리셋이 `null`이면 입력을 그대로 돌려준다 — 호출부가 분기하지 않아도 된다. */
 export function filterByPreset(
   areas: readonly NearbyArea[],

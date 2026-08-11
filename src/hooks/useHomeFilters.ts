@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react'
 import type { FilterKey } from '../domain/presets'
-import { SHEET_RATIO } from '../domain/sheet'
 import type { CategoryFilterValue, SortMode } from './useNearbyAreas'
 
 export interface HomeFilters {
@@ -15,8 +14,6 @@ export interface HomeFilters {
   readonly setSort: (next: SortMode) => void
   readonly selectedName: string | null
   readonly setSelectedName: (next: string | null) => void
-  readonly mapRatio: number
-  readonly setMapRatio: (next: number) => void
 }
 
 // 홈의 상태를 한곳에 모은다. App으로 끌어올리지 않는다 — 홈의 필터·카메라는
@@ -27,12 +24,12 @@ export function useHomeFilters(): HomeFilters {
   const [filter, setFilterRaw] = useState<FilterKey | null>(null)
   const [sort, setSort] = useState<SortMode>('distance')
   const [selectedName, setSelectedName] = useState<string | null>(null)
-  const [mapRatio, setMapRatio] = useState(SHEET_RATIO.half)
 
   // 목록에서 빠질 수 있는 조작은 선택을 해제한다. 걸러져 사라진 명소의
   // 상세가 남으면 목록에 없는 곳의 요약이 떠 있는 상태가 된다.
   //
-  // 정렬과 분할 비율은 목록에서 빼지 않으므로 선택을 지우지 않는다.
+  // 정렬은 목록에서 빼지 않으므로 선택을 지우지 않는다. 시트 단계도 마찬가지라
+  // 이 훅이 들고 있지 않다 — HomeScreen의 지역 상태다.
   const setQuery = useCallback((next: string) => {
     setQueryRaw(next)
     setSelectedName(null)
@@ -59,7 +56,5 @@ export function useHomeFilters(): HomeFilters {
     setSort,
     selectedName,
     setSelectedName,
-    mapRatio,
-    setMapRatio,
   }
 }

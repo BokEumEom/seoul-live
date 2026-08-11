@@ -1,16 +1,9 @@
-import { PRESETS, type FilterKey } from '../../domain/presets'
+import { filterLabel, PRESETS, type FilterKey } from '../../domain/presets'
 
-interface Chip {
-  readonly key: FilterKey
-  readonly label: string
-}
-
-// 프리셋 이름은 domain/presets의 것을 그대로 가져온다. 여기에 복사해두면
-// 라벨을 고칠 때 칩만 옛 이름으로 남는다. 순서도 이 한 줄이 정본이다.
-const CHIPS: readonly Chip[] = [
-  { key: 'fav', label: '내 장소' },
-  ...PRESETS.map((preset) => ({ key: preset.key, label: preset.label })),
-]
+// 이름은 domain/presets의 `filterLabel`에서만 온다. 여기에 복사해두면 라벨을
+// 고칠 때 칩만 옛 이름으로 남고, 빈 목록 문구가 지목하는 이름과 갈린다.
+// 순서는 이 한 줄이 정본이다 — 즐겨찾기가 먼저고 그다음이 목적 프리셋이다.
+const CHIPS: readonly FilterKey[] = ['fav', ...PRESETS.map((preset) => preset.key)]
 
 interface Props {
   readonly counts: Readonly<Record<FilterKey, number>>
@@ -28,12 +21,12 @@ export function FilterChips({ counts, value, onChange }: Props) {
       className="pointer-events-auto flex gap-2 overflow-x-auto px-4 pb-1"
     >
       {CHIPS.map((chip) => {
-        const count = counts[chip.key]
-        const selected = value === chip.key
+        const count = counts[chip]
+        const selected = value === chip
 
         return (
           <button
-            key={chip.key}
+            key={chip}
             type="button"
             role="tab"
             aria-selected={selected}
@@ -46,7 +39,7 @@ export function FilterChips({ counts, value, onChange }: Props) {
             disabled={count === 0 && !selected}
             // 선택된 칩을 다시 누르면 해제된다. 「전체」 칩을 따로 두면 지도
             // 상단을 한 칸 더 먹는다.
-            onClick={() => onChange(selected ? null : chip.key)}
+            onClick={() => onChange(selected ? null : chip)}
             // 높이가 40px이라 이 저장소의 48px 탭 규약(SearchBar·AreaListItem의
             // min-h-12)을 벗어난다. 흡수한 PresetFilter는 min-h-12였다.
             // 면제인 이유: 계획서 Task 9가 「검색 바 + 필터 칩 열」을 약 88px로
@@ -60,14 +53,14 @@ export function FilterChips({ counts, value, onChange }: Props) {
                 : 'bg-surface text-on-surface-variant'
             }`}
           >
-            {chip.key === 'fav' && (
+            {chip === 'fav' && (
               // ★는 장식이다. 접근성 이름에 넣으면 "블랙 스타 내 장소 3"으로
               // 읽히는데 「내 장소」가 이미 같은 말을 한다.
               <span aria-hidden="true" className="mr-1">
                 ★
               </span>
             )}
-            {chip.label} {count}
+            {filterLabel(chip)} {count}
           </button>
         )
       })}
