@@ -1936,7 +1936,9 @@ FAB 상단 = 0.06H − 48        (음수면 홈 루트의 overflow-hidden이 잘
 
 감추는 쪽은 잠긴다. 그리고 규칙이 하나로 합쳐진다: **「전체로 펼치면 지도 위 조작부가 물러난다」** — 검색 바·칩 열과 FAB이 같은 조건 아래 놓여 예외가 사라졌다.
 
-`BOTTOM_CLASS.full`이 도달 불가가 되므로 지웠고, prop 타입을 `RecenterDetent = Exclude<Detent, 'full'>`로 좁혔다. `HomeScreen`이 파생 불리언 대신 `sheetDetent !== 'full'`로 직접 비교하는 이유가 이것이다 — 그 비교라야 타입이 좁혀져 **컴파일러가 불변식을 지킨다.**
+`BOTTOM_CLASS.full`이 도달 불가가 되므로 지웠고, prop 타입을 `RecenterDetent = Exclude<Detent, 'full'>`로 좁혔다. `HomeScreen`의 `sheetDetent !== 'full'` 안에서 값이 `RecenterDetent`로 좁혀지므로 **컴파일러가 불변식을 지킨다** — 좁혀지지 않은 값을 넘기면 `TS2322`가 난다(확인했다).
+
+> **정정.** 한때 여기에 「파생 불리언(`const show = sheetDetent !== 'full'`)으로 감싸면 안 좁혀지므로 직접 비교해야 한다」고 적혀 있었다. **거짓이다.** 실제로 바꿔 `npx tsc -b --force`를 돌리면 에러 0이다 — TS 4.4의 aliased conditions and discriminants가 처리하고 이 저장소는 TS ~6.0.2다. 직접 비교하는 것은 조건과 그것이 지배하는 JSX가 붙어 있는 편이 읽기 쉬워서일 뿐, 쪼개도 타입 안전은 안 깨진다. 「왜」를 적는 규약을 가진 저장소에서 **틀린 「왜」는 없는 것보다 나쁘다** — 다음 사람이 못 만지게 만든다. 같은 종류가 직전 라운드의 `useCallback` 주석에서도 나왔다.
 
 남은 두 단계에서 버튼 아래가 손잡이 히트 영역 오른쪽 끝과 겹치는 양은 `20px − 0.02H`다(800px에서 4px, 713px에서 8px). 폭 48px짜리 구석이고 손잡이의 보이는 띠는 가운데 36px이라 실제로 막지는 않는다고 봤지만, 확정은 실기기 몫이다.
 
