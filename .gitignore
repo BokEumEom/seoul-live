@@ -31,3 +31,8 @@ coverage
 *.sw?
 .gstack/
 .superpowers/
+
+# 저장소 루트에 떨어진 화면 캡처. 시안(stitch_ui/)의 png와 달리 참조되는 곳이
+# 없고 크기만 크다. `git add -A`가 다시 집어가지 않도록 이름을 박아 둔다 —
+# `*.png`로 넓히면 시안 이미지까지 빠진다.
+/detail_page.png
