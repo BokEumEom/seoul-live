@@ -22,6 +22,16 @@
 
 명소 상세에 **인구 구성**(성별·연령대·상주비율)이 붙었다. `citydata_ppltn`의 같은 응답에 있던 필드라 **추가 API 호출이 0이다.**
 
+**그 뒤 명소 상세를 셋 더 채웠다(2026-08-11~12).** 전부 `master`에 머지돼 있다.
+
+| 더한 것 | 출처 | 추가 호출 |
+| --- | --- | --- |
+| **도로소통·사고통제** | `citydata`의 `ROAD_TRAFFIC_STTS`·`ACDNT_CNTRL_STTS` | 0 |
+| **대체 데이터 표시** | `citydata_ppltn`의 `REPLACE_YN` | 0 |
+| **요일×시간 패턴** | **없다 — 이 기기에 쌓는다** | 0 |
+
+앞의 둘은 이미 받고 있던 응답에서 안 쓰던 필드를 읽은 것이다. 세 번째는 다르다 — **서울 API에 과거 조회가 없어서**(요청 인자 여섯에 날짜가 없다) 상세를 열 때마다 토스 Storage에 한 칸씩 쌓는다. 그래서 칸이 천천히 차고 기기마다 따로이며, 화면이 그 사실을 숨기지 않는다(빈 칸은 「여유」가 아니라 「관측 없음」). 서버 수집으로 갈아끼울 자리는 `useWeekPattern` 하나다.
+
 목업 데이터로 전부 동작하고 시안 토큰이 반영돼 있다. 실데이터로 넘어가려면 **인증키가 필요한데 아직 없다.**
 
 ## 다음에 할 일
@@ -109,34 +119,39 @@
 
 이후 시안 반영과 명세 대조, 지도·프리셋·도시정보 화면으로 추가 작업이 더 들어갔고, 개편이 두 번 더 있었다(지도 홈 15태스크 / 셸 11태스크).
 
-### 검증 수치 (2026-08-11 실측)
+### 검증 수치 (2026-08-12 실측)
 
-테스트 **617개 + todo 1개** 통과 (테스트 파일 54개).
-커버리지 — 라인 96.62% / 브랜치 88.12% / 함수 93.78% / 구문 96.22% (임계값 라인·구문·함수 80%, 브랜치 75%).
-`npx tsc -b --force`·`npm run lint`·`npm run build:vite` 전부 통과. `npm run dev`도 실제로 뜬다.
-번들 — JS 460.43 kB (gzip 140.11) / CSS 25.07 kB (gzip 5.57). 모듈 264개.
+테스트 **703개 + todo 1개** 통과 (테스트 파일 62개).
+커버리지 — 구문 96.68% / 브랜치 90.85% / 함수 94.97% / 라인 97.13% (임계값 라인·구문·함수 80%, 브랜치 75%).
+`npx tsc -b --force`·`npm run lint`·`npm run build:vite` 전부 통과.
+번들 — JS 468.78 kB (gzip 142.62) / CSS 26.43 kB (gzip 5.79). 모듈 270개.
 
-지도 홈 개편 직후(434개, 라인 94.71%)보다 커버리지가 다시 올라갔다. 화면이 하나로 줄어 조립 코드가 줄었고, 셸 개편이 `HomeScreen`(라인 98.43%)·`BottomSheet`·`FilterChips`의 분기를 새로 태웠다. 임계값은 모두 여유 있게 넘는다.
+셸 개편 직후(617개, 브랜치 88.12%)에서 703개로 늘었다. 늘어난 86개는 대부분 새 기능 셋의 것이고, 브랜치 커버리지가 함께 오른 것은 관대한 파서와 빈 상태 분기를 테스트가 실제로 태웠기 때문이다.
+
+**변이로 확인한 것 — 이번 세 기능에서 39건 중 39건 사망.** 처음 살아남은 여섯 중 다섯이 **테스트 구멍**이었고 하나만 구현 결함이었다(저장 파서가 칸 키를 검증하지 않던 것). 동치 변이 하나는 그렇다고 코드에 적어 뒀다(`cityInfoSchema.ts`의 `roadRows[0] ?? {}`).
 
 ### 파일 구조
 
 ```text
 src/domain/     types, cityInfo, composition, congestion, distance, forecast, map,
-                mapLinks, presets, search, sheet, summary       순수 함수. React도 네트워크도 모른다
+                mapLinks, pattern, presets, search, sheet, summary
+                                                                순수 함수. React도 네트워크도 모른다
 src/data/       areas, official-areas, schema, cityInfoSchema, compositionSchema,
                 mock, mockCityInfo, client, queries
-src/platform/   links, googleMaps, favorites                    토스 브리지 + 폴백, Google Maps SDK 경계
+src/platform/   links, googleMaps, favorites, weekPattern       토스 브리지 + 폴백, Google Maps SDK 경계
 src/hooks/      favoritesStore(모듈 단일 출처), useFavorites, useCurrentLocation,
-                useNearbyAreas, useHomeFilters, useCachedCityAlerts
+                useNearbyAreas, useHomeFilters, useCachedCityAlerts, useWeekPattern
 src/app/        QueryProvider, LocationProvider, locationContext
 src/components/ common(Icon, CongestionBadge, ToneBadge, toneClass, ErrorState, SkeletonCard)
                 home(BottomSheet, SearchBar, FilterChips, SummaryStrip,
                      AreaDetail, AreaHero, CongestionCard, PopulationCard,
-                     ActionButtons, CityInfoPanel, NearbyCalmSection)
+                     ActionButtons, CityInfoPanel, NearbyCalmSection,
+                     WeeklyPatternCard)
                 list(AreaList, AreaListItem, CategoryFilter, LocationNotice, SortSegmented)
                 map(CongestionMarker, MapUnavailableNotice, RecenterButton)
                 forecast(ForecastChart)
-                cityinfo(AlertBanner, WeatherCard, ParkingList, BikeList, EventList, InfoSection)
+                cityinfo(AlertBanner, WeatherCard, ParkingList, BikeList, EventList,
+                         InfoSection, RoadTrafficCard, AccidentList)
                 today(SummaryCard, RankList, CategoryAverages, AlertDigest, RecommendationCard)
 src/screens/    HomeScreen(화면 전체), TodayScreen(시트 안 뷰)
 api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, citydata-bulk, cityinfo
@@ -183,6 +198,14 @@ api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, cityda
 | `.claude/skills/apple-design/` | 추가 |
 
 ## 알아둬야 할 동작
+
+### 전체 스위트가 무작위로 실패하면 부하를 먼저 본다
+
+기본 `testTimeout`이 5초다. 기계가 포화되면 아무 테스트나 걸리고, 실패가 회차마다 **서로 무관한 파일**로 옮겨 다닌다(`useCurrentLocation` → `App` → `BikeList`처럼). 실패 원문은 `Test timed out in 5000ms`다.
+
+더 헷갈리는 형태도 있다 — 워커가 죽으면 **수집이 덜 돼서** 「62파일/704개」가 「57파일/653개」로 찍힌다. 테스트가 사라진 것처럼 보이지만 `git status`·`HEAD`·파일은 멀쩡하다.
+
+**판정은 `npx vitest run --maxWorkers=4`로 한다.** 2026-08-12에 load average 16.9(16코어)에서 겪었고, 워커를 4로 묶으니 3회 연속 깨끗했다.
 
 ### npm 명령은 파이프 없이 돌린다
 
