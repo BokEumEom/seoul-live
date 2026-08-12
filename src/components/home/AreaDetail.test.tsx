@@ -37,12 +37,15 @@ const SNAPSHOT: AreaSnapshot = {
     nonResidentRate: 71,
     ageRates: [3, 8, 31, 22, 14, 11, 6, 4],
   },
+  replaced: null,
 }
 
 const EMPTY_CITY_INFO: CityInfo = {
   areaName: '강남역',
   areaCode: 'POI014',
   weather: null,
+  roadTraffic: null,
+  accidents: [],
   parking: [],
   bikes: [],
   events: [],
@@ -173,6 +176,56 @@ describe('AreaDetail', () => {
     await userEvent.click(toggleButton)
     expect(useCityInfo).toHaveBeenCalledWith(undefined)
     expect(useCityInfo).not.toHaveBeenCalledWith('강남역')
+  })
+
+  // 파서와 카드가 각각 통과해도 **패널이 둘을 안 부르면** 화면에는 아무것도 안
+  // 뜬다. 배선을 따로 잠근다 — 새 섹션을 더할 때 가장 조용히 빠지는 자리다.
+  it('펼치면 도로소통 섹션이 뜬다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        roadTraffic: {
+          index: '서행',
+          speed: 18.4,
+          message: '강남대로가 서행하고 있어요.',
+          updatedAt: '2026-08-07 09:00',
+        },
+      }),
+    )
+    renderDetail()
+    await userEvent.click(screen.getByRole('button', { name: /이곳의 도시 정보/ }))
+    expect(screen.getByRole('heading', { name: '도로소통' })).toBeInTheDocument()
+    expect(screen.getByText('강남대로가 서행하고 있어요.')).toBeInTheDocument()
+  })
+
+  it('사고통제만 있어도 섹션이 뜬다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        accidents: [
+          {
+            info: '강남대로 1개 차로 통제',
+            type: '교통사고',
+            detailType: '',
+            occurredAt: '2026-08-07 08:40',
+            expectedClearAt: '2026-08-07 10:00',
+          },
+        ],
+      }),
+    )
+    renderDetail()
+    await userEvent.click(screen.getByRole('button', { name: /이곳의 도시 정보/ }))
+    expect(screen.getByRole('heading', { name: '도로소통' })).toBeInTheDocument()
+    expect(screen.getByText('강남대로 1개 차로 통제')).toBeInTheDocument()
+  })
+
+  // 도로 정보가 하나도 없으면 제목만 있는 빈 섹션이 남으면 안 된다. 주차장·
+  // 따릉이처럼 「없어요」를 쓰지 않는 이유는, 도로소통은 안 오는 게 흔한
+  // 필드라 명소마다 「도로 정보가 없어요」가 상시로 뜨게 되기 때문이다.
+  it('도로 정보가 없으면 섹션을 만들지 않는다', async () => {
+    renderDetail()
+    await userEvent.click(screen.getByRole('button', { name: /이곳의 도시 정보/ }))
+    expect(screen.queryByRole('heading', { name: '도로소통' })).not.toBeInTheDocument()
   })
 
   it('도시 정보가 실패해도 혼잡도는 그대로 남는다', async () => {

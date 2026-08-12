@@ -78,6 +78,16 @@ export interface AreaSnapshot {
   readonly forecasts: readonly Forecast[]
   /** 없을 수 있다. 이 값이 없어도 혼잡도 화면은 그대로 선다. */
   readonly composition: PopulationComposition | null
+  /**
+   * REPLACE_YN — 이 수치가 실측이 아니라 대체 데이터인가.
+   *
+   * **세 상태다.** `true`는 대체값, `false`는 실측, **`null`은 모름**이다.
+   * 모름을 실측으로 접지 마라 — `false`는 「서울 API가 실측이라고 했다」는
+   * 주장이고 `null`은 「말해 주지 않았다」이다. 둘을 묶으면 나중에 「실측
+   * 확인됨」을 표시하려는 순간, 필드가 안 오는 날에도 실측이라고 단언하게
+   * 된다. `ParkingLot.paid`가 `boolean | null`인 것과 같은 규칙이다.
+   */
+  readonly replaced: boolean | null
 }
 
 export interface NearbyArea {

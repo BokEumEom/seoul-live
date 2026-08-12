@@ -275,3 +275,121 @@ describe('parseCityInfoResponse — 재난문자', () => {
     expect(info.alerts).toEqual([])
   })
 })
+
+describe('parseCityInfoResponse — 도로소통', () => {
+  it('요약 네 값을 옮긴다', () => {
+    const info = parseCityInfoResponse(
+      payload({
+        ROAD_TRAFFIC_STTS: [
+          {
+            ROAD_TRAFFIC_IDX: '서행',
+            ROAD_TRAFFIC_SPD: '18.4',
+            ROAD_MSG: '광화문 일대가 서행하고 있어요.',
+            ROAD_TRAFFIC_TIME: '2026-08-07 09:00',
+          },
+        ],
+      }),
+      AREA,
+    )
+    expect(info.roadTraffic).toEqual({
+      index: '서행',
+      speed: 18.4,
+      message: '광화문 일대가 서행하고 있어요.',
+      updatedAt: '2026-08-07 09:00',
+    })
+  })
+
+  // 값 목록을 모르는 필드라 아는 값으로 좁히지 않는다. 명세에 없는 문자열이
+  // 와도 그대로 실려야 한다 — 걸러내면 화면에서 도로소통이 통째로 사라진다.
+  it('처음 보는 지표 문자열도 그대로 싣는다', () => {
+    const info = parseCityInfoResponse(
+      payload({ ROAD_TRAFFIC_STTS: [{ ROAD_TRAFFIC_IDX: '매우혼잡' }] }),
+      AREA,
+    )
+    expect(info.roadTraffic?.index).toBe('매우혼잡')
+  })
+
+  it('속도가 숫자가 아니면 null로 떨어뜨린다', () => {
+    const info = parseCityInfoResponse(
+      payload({ ROAD_TRAFFIC_STTS: [{ ROAD_TRAFFIC_IDX: '원활', ROAD_TRAFFIC_SPD: '-' }] }),
+      AREA,
+    )
+    expect(info.roadTraffic?.speed).toBeNull()
+  })
+
+  // 섹션이 아예 없는 것과 빈 배열로 오는 것을 같게 다룬다. 둘 다 보여줄 게 없다.
+  it('섹션이 없거나 비어 있으면 null이다', () => {
+    expect(parseCityInfoResponse(payload({}), AREA).roadTraffic).toBeNull()
+    expect(parseCityInfoResponse(payload({ ROAD_TRAFFIC_STTS: [] }), AREA).roadTraffic).toBeNull()
+  })
+
+  // 가드가 두 항의 **곱**이라는 것을 잠근다. 한쪽만 봐도 「모두 비면 null」은
+  // 통과하므로, 각 항이 혼자 살아 있는 경우를 따로 세워야 한 항을 지웠을 때
+  // 죽는다. 안 그러면 메시지만 오는 명소에서 도로소통이 통째로 사라진다.
+  it('지표가 없고 안내 문구만 있어도 항목을 만든다', () => {
+    const info = parseCityInfoResponse(
+      payload({ ROAD_TRAFFIC_STTS: [{ ROAD_MSG: '사고로 정체 중이에요.' }] }),
+      AREA,
+    )
+    expect(info.roadTraffic?.message).toBe('사고로 정체 중이에요.')
+    expect(info.roadTraffic?.index).toBe('')
+  })
+
+  it('안내 문구가 없고 지표만 있어도 항목을 만든다', () => {
+    const info = parseCityInfoResponse(
+      payload({ ROAD_TRAFFIC_STTS: [{ ROAD_TRAFFIC_IDX: '원활' }] }),
+      AREA,
+    )
+    expect(info.roadTraffic?.index).toBe('원활')
+  })
+
+  // 지표도 메시지도 없으면 카드가 빈 채로 뜬다. 주차장의 이름, 재난문자의
+  // 내용과 같은 자리다 — 본체가 없는 항목은 만들지 않는다.
+  it('지표와 메시지가 모두 비면 null이다', () => {
+    const info = parseCityInfoResponse(
+      payload({ ROAD_TRAFFIC_STTS: [{ ROAD_TRAFFIC_SPD: '20' }] }),
+      AREA,
+    )
+    expect(info.roadTraffic).toBeNull()
+  })
+})
+
+describe('parseCityInfoResponse — 사고통제', () => {
+  it('통제 항목을 옮긴다', () => {
+    const info = parseCityInfoResponse(
+      payload({
+        ACDNT_CNTRL_STTS: [
+          {
+            ACDNT_INFO: '세종대로 사거리 2개 차로 통제',
+            ACDNT_TYPE: '교통사고',
+            ACDNT_DTYPE: '차대차',
+            ACDNT_OCCR_DT: '2026-08-07 08:40',
+            EXP_CLR_DT: '2026-08-07 10:00',
+          },
+        ],
+      }),
+      AREA,
+    )
+    expect(info.accidents).toEqual([
+      {
+        info: '세종대로 사거리 2개 차로 통제',
+        type: '교통사고',
+        detailType: '차대차',
+        occurredAt: '2026-08-07 08:40',
+        expectedClearAt: '2026-08-07 10:00',
+      },
+    ])
+  })
+
+  it('내용이 없는 항목은 버린다', () => {
+    const info = parseCityInfoResponse(
+      payload({ ACDNT_CNTRL_STTS: [{ ACDNT_TYPE: '교통사고', ACDNT_INFO: '' }] }),
+      AREA,
+    )
+    expect(info.accidents).toEqual([])
+  })
+
+  it('섹션이 없으면 빈 배열이다', () => {
+    expect(parseCityInfoResponse(payload({}), AREA).accidents).toEqual([])
+  })
+})

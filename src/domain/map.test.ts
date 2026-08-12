@@ -24,6 +24,7 @@ function snapshot(name: string): AreaSnapshot {
     observedAtLabel: '14:00',
     forecasts: [],
     composition: null,
+    replaced: null,
   }
 }
 

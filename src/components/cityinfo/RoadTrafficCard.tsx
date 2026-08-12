@@ -1,0 +1,41 @@
+import type { RoadTraffic } from '../../domain/cityInfo'
+
+interface Props {
+  readonly traffic: RoadTraffic
+}
+
+// **지표에 색을 붙이지 않는다.** 혼잡도와 통합대기환경등급은 값의 종류를 알기
+// 때문에 네 톤에 겹칠 수 있지만(`congestionTone`·`airGradeTone`), 도로소통
+// 지표는 공식 명세에 출력명만 있고 값 목록이 없다. 짐작으로 매핑하면 처음 보는
+// 값에서 색이 안 붙는 게 아니라 **틀린 색이 붙는다.** 근거와 확인법은
+// `domain/cityInfo.ts`의 `RoadTraffic.index` 주석에 있다.
+export function RoadTrafficCard({ traffic }: Props) {
+  return (
+    <div>
+      {(traffic.index !== '' || traffic.speed !== null) && (
+        <div className="flex items-baseline gap-2">
+          {/* 파서가 지표와 메시지 중 하나만 있어도 항목을 만들므로 지표가 빌 수
+              있다. 빈 제목을 그리면 카드 위쪽에 빈 줄이 남는다. */}
+          {traffic.index !== '' && (
+            <h4 className="text-headline-sm text-on-surface">{traffic.index}</h4>
+          )}
+          {/* 속도를 못 읽었을 때 0으로 떨어뜨리지 않는다 — 「0km/h」는 완전 정체로
+              읽힌다. 주차장의 「실시간 미제공」과 같은 규칙이다. */}
+          {traffic.speed !== null && (
+            <p className="text-label-md text-on-surface-variant">
+              평균 {traffic.speed}km/h
+            </p>
+          )}
+        </div>
+      )}
+
+      {traffic.message !== '' && (
+        <p className="mt-2 text-body-md leading-6 text-on-surface">{traffic.message}</p>
+      )}
+
+      {traffic.updatedAt !== '' && (
+        <p className="mt-2 text-label-sm text-outline">기준 {traffic.updatedAt}</p>
+      )}
+    </div>
+  )
+}

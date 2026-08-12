@@ -1,10 +1,12 @@
 import { z } from 'zod'
 import type {
+  AccidentControl,
   BikeStation,
   CityAlert,
   CityInfo,
   CulturalEvent,
   ParkingLot,
+  RoadTraffic,
   Weather,
 } from '../domain/cityInfo'
 import { AreaNameMismatchError, seoulApiErrorFrom } from './schema'
@@ -135,6 +137,45 @@ function named<T>(rows: readonly Row[], key: string, build: (row: Row, name: str
   })
 }
 
+// 도로소통은 요약 한 줄이라 날씨처럼 첫 행만 읽는다.
+//
+// **구간 목록은 일부러 안 읽는다.** 같은 섹션에 `LINK_ID`·`ROAD_NM`·`SPD`·
+// `XYLIST`가 도로 구간마다 딸려 오는데, `XYLIST`는 보간점 좌표 덩어리이고
+// 구간 수는 명소마다 다르다. 시트는 좁고(half에서 목록이 약 5.9행) 여기서
+// 필요한 것은 「지금 이 근처가 막히는가」 한 줄이다. 구간별로 보여줄 일이
+// 생기면 그건 이 카드가 아니라 지도 위에 그릴 일이다.
+function toRoadTraffic(row: Row): RoadTraffic | null {
+  const index = text(row, 'ROAD_TRAFFIC_IDX')
+  const message = text(row, 'ROAD_MSG')
+  // 본체가 없으면 항목을 만들지 않는다 — 주차장의 이름, 재난문자의 내용과 같은
+  // 규칙이다. 속도만 남으면 카드에 「18.4」 하나만 뜬다.
+  if (index === '' && message === '') {
+    return null
+  }
+  return {
+    index,
+    message,
+    speed: numberOrNull(row, 'ROAD_TRAFFIC_SPD'),
+    updatedAt: text(row, 'ROAD_TRAFFIC_TIME'),
+  }
+}
+
+function toAccidents(rows: readonly Row[]): readonly AccidentControl[] {
+  // 사고통제도 내용이 본체다(재난문자와 같다). 유형만 오고 내용이 비면
+  // 「교통사고」라고만 적힌 카드가 되어 무엇을 조심하라는 건지 알려주지 못한다.
+  return named(
+    rows,
+    'ACDNT_INFO',
+    (row, info): AccidentControl => ({
+      info,
+      type: text(row, 'ACDNT_TYPE'),
+      detailType: text(row, 'ACDNT_DTYPE'),
+      occurredAt: text(row, 'ACDNT_OCCR_DT'),
+      expectedClearAt: text(row, 'EXP_CLR_DT'),
+    }),
+  )
+}
+
 function toParking(rows: readonly Row[]): readonly ParkingLot[] {
   return named(
     rows,
@@ -204,6 +245,7 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
   }
 
   const weatherRows = sectionRows(container, ['WEATHER_STTS'])
+  const roadRows = sectionRows(container, ['ROAD_TRAFFIC_STTS'])
 
   return {
     // 표시용 이름은 카탈로그 값이 권위다(schema.ts와 같은 이유). 위에서 이미
@@ -211,6 +253,12 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
     areaName: expectedName,
     areaCode: container.AREA_CD ?? '',
     weather: weatherRows.length > 0 ? toWeather(weatherRows[0]) : null,
+    // `roadRows[0] ?? {}`로 바꿔도 결과가 같다 — 빈 행이면 `text()`가 두 필드
+    // 모두 ''를 돌려줘 `toRoadTraffic`의 가드에 걸려 null이 된다. 변이가 살아도
+    // 테스트 구멍이 아니라 **동치 변이**이니 쫓지 마라. 바로 위 `weather`와 같은
+    // 모양을 유지하는 쪽을 택했다.
+    roadTraffic: roadRows.length > 0 ? toRoadTraffic(roadRows[0]) : null,
+    accidents: toAccidents(sectionRows(container, ['ACDNT_CNTRL_STTS'])),
     parking: toParking(sectionRows(container, ['PRK_STTS'])),
     bikes: toBikes(sectionRows(container, ['SBIKE_STTS'])),
     events: toEvents(sectionRows(container, ['CULTURALEVENTINFO', 'EVENT_STTS'])),

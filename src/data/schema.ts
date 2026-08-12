@@ -88,6 +88,27 @@ const forecastSchema = z
     path: ['FCST_PPLTN_MAX'],
   })
 
+// REPLACE_YN의 값을 명세가 알려주지 않는다 — 출력명 표에 필드명과 「대체 데이터
+// 여부」만 있고 값의 종류가 없다. `PAY_YN`·`CUR_PRK_YN`과 같은 상황이라 도시정보
+// 쪽과 같은 방식으로 다룬다: 아는 값이면 읽고 아니면 **모름**으로 둔다.
+//
+// 타입을 `z.unknown()`으로 열어두는 것이 핵심이다. `z.string()`으로 조이면 이
+// 필드가 숫자나 객체로 오는 날 **혼잡도까지 통째로 날아간다** — 이건 값이 아니라
+// 값에 대한 메모라 그럴 자격이 없다. 엄격함은 화면의 존재 이유인 값에만 건다.
+const REPLACED_VALUES: ReadonlySet<string> = new Set(['Y'])
+const MEASURED_VALUES: ReadonlySet<string> = new Set(['N'])
+
+function replacedFlag(value: unknown): boolean | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+  const raw = value.trim().toUpperCase()
+  if (REPLACED_VALUES.has(raw)) {
+    return true
+  }
+  return MEASURED_VALUES.has(raw) ? false : null
+}
+
 const areaSchema = z
   .object({
     AREA_NM: z.string(),
@@ -97,6 +118,7 @@ const areaSchema = z
     AREA_PPLTN_MIN: numericSchema,
     AREA_PPLTN_MAX: numericSchema,
     PPLTN_TIME: timeSchema,
+    REPLACE_YN: z.unknown().optional(),
     FCST_PPLTN: z.array(forecastSchema).nullish(),
   })
   .refine((value) => value.AREA_PPLTN_MIN <= value.AREA_PPLTN_MAX, {
@@ -184,6 +206,7 @@ export function parseCitydataResponse(payload: unknown, expectedName: string): A
     observedAt: area.PPLTN_TIME.raw,
     observedAtLabel: area.PPLTN_TIME.label,
     forecasts: (area.FCST_PPLTN ?? []).map(toForecast),
+    replaced: replacedFlag(area.REPLACE_YN),
     // 원본 payload에서 따로 읽는다. 실패해도 null일 뿐 위 값들은 그대로다.
     composition: parseComposition(payload, expectedName),
   }
