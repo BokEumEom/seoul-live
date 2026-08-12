@@ -19,16 +19,22 @@ interface Props {
 // 있는지 한눈에 보이는 쪽이 낫다.
 export function SortSegmented({ value, canSortByDistance, onChange }: Props) {
   return (
-    <div className="flex gap-1 rounded-full bg-surface-container p-1" role="tablist">
+    // 탭이 아니라 버튼 묶음인 근거는 `FilterChips`에 한 벌 있다. 이름이 함께
+    // 붙는 이유: 예전에는 이름 없는 `tablist`라 보조기술이 「탭 목록」이라고만
+    // 알리고 무엇을 고르는 줄인지 말하지 못했다.
+    <div
+      role="group"
+      aria-label="정렬"
+      className="flex gap-1 rounded-full bg-surface-container p-1"
+    >
       {OPTIONS.map((option) => {
         const disabled = option.mode === 'distance' && !canSortByDistance
         return (
           <button
             key={option.mode}
             type="button"
-            role="tab"
             disabled={disabled}
-            aria-selected={value === option.mode}
+            aria-pressed={value === option.mode}
             onClick={() => onChange(option.mode)}
             className={`min-h-10 flex-1 rounded-full px-3 text-label-md font-semibold ${
               value === option.mode

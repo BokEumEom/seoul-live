@@ -11,7 +11,12 @@ export function AlertDigest({ alerts }: Props) {
   if (unique.length === 0) return null
 
   return (
-    <section className="mx-4 mt-3 rounded-card bg-error-container p-4" role="alert">
+    // **`role="alert"`을 두지 않는다.** assertive 리전이라 보조기술이 읽던
+    // 것을 끊는데, 그 값을 하는 것은 「방금 일어난 일」이다. 이 절은 상세에서
+    // 이미 받아둔 캐시를 모아 보여주는 목록이고 「오늘의 서울」을 열 때 내용을
+    // 가진 채로 삽입된다 — 사용자가 스스로 연 화면의 한 절을 읽다 말고 끊길
+    // 이유가 없다. 아래 h3가 구조를 주고, 형제 절들도 같은 모양이다.
+    <section className="mx-4 mt-3 rounded-card bg-error-container p-4">
       <h3 className="text-label-md font-semibold text-on-error-container">
         재난문자 {unique.length}건
       </h3>

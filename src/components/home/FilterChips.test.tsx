@@ -10,7 +10,7 @@ describe('FilterChips', () => {
     render(<FilterChips counts={COUNTS} value={null} onChange={vi.fn()} />)
 
     // 줄 전체를 고정한다. 첫 칸만 보면 뒤의 셋을 아무렇게나 섞어도 통과한다.
-    const names = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '')
+    const names = screen.getAllByRole('button').map((chip) => chip.textContent ?? '')
     expect(names).toEqual([
       expect.stringContaining('내 장소'),
       expect.stringContaining('아이와 나들이'),
@@ -30,16 +30,16 @@ describe('FilterChips', () => {
   // 적었는데 검색 바의 세로 패딩을 빠뜨린 오답이었다.
   it('칩 높이가 오버레이 예산에 맞춰 40px로 묶여 있다', () => {
     render(<FilterChips counts={COUNTS} value={null} onChange={vi.fn()} />)
-    expect(screen.getByRole('tab', { name: '내 장소 3' })).toHaveClass('min-h-10')
+    expect(screen.getByRole('button', { name: '내 장소 3' })).toHaveClass('min-h-10')
   })
 
   it('개수를 함께 보여준다', () => {
     render(<FilterChips counts={COUNTS} value={null} onChange={vi.fn()} />)
 
-    expect(screen.getByRole('tab', { name: '내 장소 3' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: '아이와 나들이 10' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: '데이트 19' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: '지금 핫플 7' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '내 장소 3' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '아이와 나들이 10' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '데이트 19' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '지금 핫플 7' })).toBeInTheDocument()
   })
 
   it('★는 눈에만 보이고 접근성 이름에는 들어가지 않는다', () => {
@@ -47,7 +47,7 @@ describe('FilterChips', () => {
     // "블랙 스타 내 장소 3"으로 읽는다.
     render(<FilterChips counts={COUNTS} value={null} onChange={vi.fn()} />)
 
-    const chip = screen.getByRole('tab', { name: '내 장소 3' })
+    const chip = screen.getByRole('button', { name: '내 장소 3' })
     expect(chip).toHaveTextContent('★')
     expect(chip).toHaveAccessibleName('내 장소 3')
   })
@@ -57,8 +57,8 @@ describe('FilterChips', () => {
       <FilterChips counts={{ ...COUNTS, hot: 0 }} value={null} onChange={vi.fn()} />,
     )
 
-    expect(screen.getByRole('tab', { name: '지금 핫플 0' })).toBeDisabled()
-    expect(screen.getByRole('tab', { name: '데이트 19' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '지금 핫플 0' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '데이트 19' })).toBeEnabled()
   })
 
   it('0이어도 내 장소만은 누를 수 있다', async () => {
@@ -71,7 +71,7 @@ describe('FilterChips', () => {
       <FilterChips counts={{ ...COUNTS, fav: 0 }} value={null} onChange={onChange} />,
     )
 
-    const chip = screen.getByRole('tab', { name: '내 장소 0' })
+    const chip = screen.getByRole('button', { name: '내 장소 0' })
     expect(chip).toBeEnabled()
 
     await userEvent.click(chip)
@@ -93,7 +93,7 @@ describe('FilterChips', () => {
     const onChange = vi.fn()
     render(<FilterChips counts={COUNTS} value={null} onChange={onChange} />)
 
-    await userEvent.click(screen.getByRole('tab', { name }))
+    await userEvent.click(screen.getByRole('button', { name }))
 
     expect(onChange).toHaveBeenCalledWith(key)
   })
@@ -102,24 +102,46 @@ describe('FilterChips', () => {
     const onChange = vi.fn()
     render(<FilterChips counts={COUNTS} value={key} onChange={onChange} />)
 
-    await userEvent.click(screen.getByRole('tab', { name }))
+    await userEvent.click(screen.getByRole('button', { name }))
 
     expect(onChange).toHaveBeenCalledWith(null)
+  })
+
+  // **탭이 아니라 토글 버튼 묶음이다.** `role="tab"`은 `tabpanel`과 짝을 이루고
+  // `aria-controls`·화살표 이동·roving tabindex가 따라오는 패턴인데 이 칩 줄에는
+  // 넷 다 없었다. 보조기술은 「탭 목록, 탭 1/4」이라 알리고 사용자는 오지 않는
+  // 화살표 동작을 기대하게 된다 — 지키지 못할 약속이다. 게다가 한 화면에
+  // tablist가 셋이나 있었다(칩·정렬·카테고리).
+  //
+  // 하는 일은 목록을 거르는 토글이라 `aria-pressed`가 동작과 맞고, 버튼은
+  // 저마다 탭 순서에 들어가는 것이 정상이라 못 지킬 계약이 생기지 않는다.
+  //
+  // `radiogroup`을 쓰지 않은 이유도 같다 — 그쪽도 화살표 이동을 요구하는데,
+  // 이 칩은 고른 것을 다시 눌러 **해제**할 수 있어 라디오의 「반드시 하나」와도
+  // 어긋난다.
+  it('탭이 아니라 눌림 상태를 가진 버튼 묶음이다', () => {
+    render(<FilterChips counts={COUNTS} value="kids" onChange={vi.fn()} />)
+
+    expect(screen.queryAllByRole('tab')).toHaveLength(0)
+    expect(screen.getByRole('group', { name: '필터' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '아이와 나들이 10' }),
+    ).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('한 번에 하나만, 그것도 고른 그 칩만 선택된다', () => {
     render(<FilterChips counts={COUNTS} value="kids" onChange={vi.fn()} />)
 
-    const tabs = screen.getAllByRole('tab')
-    const selected = tabs.filter(
-      (tab) => tab.getAttribute('aria-selected') === 'true',
+    const chips = screen.getAllByRole('button')
+    const pressed = chips.filter(
+      (chip) => chip.getAttribute('aria-pressed') === 'true',
     )
-    expect(selected).toHaveLength(1)
+    expect(pressed).toHaveLength(1)
     // 개수만 세면 한 칸 밀린 칩을 칠해도 통과한다.
-    expect(selected[0]).toHaveAccessibleName('아이와 나들이 10')
-    // 나머지는 aria-selected가 빠진 게 아니라 false여야 한다.
+    expect(pressed[0]).toHaveAccessibleName('아이와 나들이 10')
+    // 나머지는 aria-pressed가 빠진 게 아니라 false여야 한다.
     expect(
-      tabs.filter((tab) => tab.getAttribute('aria-selected') === 'false'),
+      chips.filter((chip) => chip.getAttribute('aria-pressed') === 'false'),
     ).toHaveLength(3)
   })
 
@@ -129,7 +151,7 @@ describe('FilterChips', () => {
       <FilterChips counts={{ ...COUNTS, hot: 0 }} value={null} onChange={onChange} />,
     )
 
-    await userEvent.click(screen.getByRole('tab', { name: '지금 핫플 0' }))
+    await userEvent.click(screen.getByRole('button', { name: '지금 핫플 0' }))
 
     expect(onChange).not.toHaveBeenCalled()
   })
@@ -145,7 +167,7 @@ describe('FilterChips', () => {
     const onChange = vi.fn()
     render(<FilterChips counts={{ ...COUNTS, hot: 0 }} value="hot" onChange={onChange} />)
 
-    const chip = screen.getByRole('tab', { name: '지금 핫플 0' })
+    const chip = screen.getByRole('button', { name: '지금 핫플 0' })
     expect(chip).toBeEnabled()
 
     await userEvent.click(chip)

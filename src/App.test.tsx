@@ -114,7 +114,7 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: '즐겨찾기' })).toBeNull()
     expect(screen.queryByRole('button', { name: '더보기' })).toBeNull()
     // 즐겨찾기 탭의 자리는 필터 칩이, 더보기 탭의 자리는 요약 스트립이 받았다.
-    expect(await screen.findByRole('tab', { name: /내 장소/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /내 장소/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /오늘의 서울 열기/ })).toBeInTheDocument()
   })
 
@@ -204,7 +204,7 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
 
-    expect(await screen.findByRole('tab', { name: '내 장소 1' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '내 장소 1' })).toBeInTheDocument()
   })
 
   it('담은 곳이 하나도 없어도 담는 방법에 닿을 수 있다', async () => {
@@ -214,7 +214,7 @@ describe('App', () => {
     // 그래서 「내 장소」만은 0에서도 눌리고, 누르면 빈 목록 문구가 답한다.
     render(<App />)
 
-    const chip = await screen.findByRole('tab', { name: '내 장소 0' })
+    const chip = await screen.findByRole('button', { name: '내 장소 0' })
     expect(chip).toBeEnabled()
     await userEvent.click(chip)
 
@@ -241,7 +241,7 @@ describe('App', () => {
       screen.getByText('위치를 허용하면 가까운 곳부터 볼 수 있어요.'),
     ).toBeInTheDocument()
     // 좌표가 없으면 거리순을 고를 수 없다.
-    expect(screen.getByRole('tab', { name: '거리순' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '거리순' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '내 주변' })).toBeDisabled()
   })
 
@@ -250,7 +250,7 @@ describe('App', () => {
     render(<App />)
 
     await waitFor(() =>
-      expect(screen.getByRole('tab', { name: '거리순' })).toBeEnabled(),
+      expect(screen.getByRole('button', { name: '거리순' })).toBeEnabled(),
     )
     expect(screen.getByRole('button', { name: '내 주변' })).toBeEnabled()
     expect(screen.queryByText(/위치를 허용하면/)).not.toBeInTheDocument()
@@ -260,13 +260,13 @@ describe('App', () => {
     grantLocation()
     render(<App />)
     await waitFor(() =>
-      expect(screen.getByRole('tab', { name: '거리순' })).toBeEnabled(),
+      expect(screen.getByRole('button', { name: '거리순' })).toBeEnabled(),
     )
 
-    await userEvent.click(screen.getByRole('tab', { name: '붐비는 순' }))
+    await userEvent.click(screen.getByRole('button', { name: '붐비는 순' }))
 
-    expect(screen.getByRole('tab', { name: '붐비는 순' })).toHaveAttribute(
-      'aria-selected',
+    expect(screen.getByRole('button', { name: '붐비는 순' })).toHaveAttribute(
+      'aria-pressed',
       'true',
     )
   })

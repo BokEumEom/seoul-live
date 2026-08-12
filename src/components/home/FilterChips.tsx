@@ -17,8 +17,18 @@ interface Props {
 // 아예 안 눌린다.
 export function FilterChips({ counts, value, onChange }: Props) {
   return (
+    // **탭이 아니라 토글 버튼 묶음이다.** `role="tab"`은 `tabpanel`과 짝을
+    // 이루고 `aria-controls`·화살표 이동·roving tabindex가 따라오는 패턴인데
+    // 이 줄에는 넷 다 없었다 — 보조기술이 「탭 목록, 탭 1/4」이라 알리고
+    // 사용자는 오지 않는 화살표 동작을 기대하게 된다. 한 화면에 tablist가
+    // 셋이나 있기도 했다(이 줄·정렬·카테고리).
+    //
+    // 하는 일은 목록을 거르는 토글이라 `aria-pressed`가 동작과 맞고, 버튼이
+    // 저마다 탭 순서에 드는 것이 정상이라 못 지킬 계약이 생기지 않는다.
+    // `radiogroup`도 화살표 이동을 요구하는 데다, 고른 칩을 다시 눌러 해제할
+    // 수 있는 이 줄은 라디오의 「반드시 하나」와도 어긋난다.
     <div
-      role="tablist"
+      role="group"
       aria-label="필터"
       className="pointer-events-auto flex gap-2 overflow-x-auto px-4 pb-1"
     >
@@ -30,8 +40,7 @@ export function FilterChips({ counts, value, onChange }: Props) {
           <button
             key={chip}
             type="button"
-            role="tab"
-            aria-selected={selected}
+            aria-pressed={selected}
             // 0이면 누를 수 없다. 눌렀는데 아무 일도 안 일어나는 순간을 만들지
             // 않는다 — 프리셋은 실시간 혼잡도를 쓰므로 실제로 0이 된다.
             //

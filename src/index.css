@@ -157,6 +157,32 @@
   }
 }
 
+/* 움직임을 줄여 달라는 설정을 존중한다. 이 앱의 움직임은 둘뿐이다 —
+   시트 높이 전환(`BottomSheet`의 `transition-[height] duration-200`)과
+   스켈레톤의 `animate-pulse`. 전정기관 장애가 있는 사용자에게 화면의 절반을
+   차지하는 상자가 200ms 동안 자라는 것은 그냥 불편한 정도가 아니다.
+
+   `@layer base` 안이 아니라 **밖**에 둔다. 위 포커스 규칙은 유틸리티가 이겨야
+   하지만(그래야 검색창의 `outline-none`이 산다) 이쪽은 반대로 어떤 유틸리티도
+   이기면 안 된다 — `duration-200`은 유틸리티라 같은 레이어에서는 순서 싸움이
+   된다. `!important`가 그 역할을 하고, 레이어 밖이라 확실하다.
+
+   0으로 두지 않고 0.01ms인 것은 전환 완료 이벤트에 기대는 코드가 생겨도
+   그것이 계속 발화하게 하기 위해서다(지금은 없지만 표준 관용이다).
+
+   시트는 이 설정에서 즉시 붙는다 — 단계가 바뀌었다는 사실은 높이 변화 자체가
+   말하므로 정보가 사라지지 않는다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 html, body, #root {
   height: 100%;
 }

@@ -210,7 +210,7 @@ describe('HomeScreen', () => {
   it('검색 바와 필터 칩이 지도 위에 뜬다', () => {
     render(<HomeScreen />)
     expect(screen.getByRole('searchbox').closest('[data-overlay]')).not.toBeNull()
-    expect(screen.getByRole('tablist', { name: '필터' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: '필터' })).toBeInTheDocument()
   })
 
   // 지도가 살아 있는 상태에서 **목록 행**을 누르는 경로다. 다른 테스트들이
@@ -300,7 +300,7 @@ describe('HomeScreen', () => {
     await userEvent.click(areaButtons(/강남역/)[0])
 
     expect(screen.queryByRole('searchbox')).toBeNull()
-    expect(screen.queryByRole('tablist', { name: '필터' })).toBeNull()
+    expect(screen.queryByRole('group', { name: '필터' })).toBeNull()
   })
 
   it('시트가 전체로 펼쳐지면 내 주변 버튼도 함께 물러난다', async () => {
@@ -329,13 +329,13 @@ describe('HomeScreen', () => {
       retry: vi.fn(),
     })
     render(<HomeScreen />)
-    await userEvent.click(screen.getByRole('tab', { name: '붐비는 순' }))
+    await userEvent.click(screen.getByRole('button', { name: '붐비는 순' }))
 
     await userEvent.click(screen.getByRole('button', { name: '내 주변' }))
 
     expect(sheetHandle()).toHaveAccessibleName(/현재 살짝 열림/)
-    expect(screen.getByRole('tab', { name: '거리순' })).toHaveAttribute(
-      'aria-selected',
+    expect(screen.getByRole('button', { name: '거리순' })).toHaveAttribute(
+      'aria-pressed',
       'true',
     )
   })
@@ -666,7 +666,7 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
     await userEvent.click(sheetRow(/강남역/))
     await userEvent.click(sheetHandle())
-    const chip = screen.getByRole('tab', { name: /데이트/ })
+    const chip = screen.getByRole('button', { name: /데이트/ })
 
     await userEvent.click(chip)
 
@@ -714,19 +714,19 @@ describe('HomeScreen', () => {
     } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
 
     render(<HomeScreen />)
-    const kidsChip = screen.getByRole('tab', { name: /아이와 나들이 10/ })
-    expect(screen.getByRole('tab', { name: /지금 핫플 20/ })).toBeEnabled()
+    const kidsChip = screen.getByRole('button', { name: /아이와 나들이 10/ })
+    expect(screen.getByRole('button', { name: /지금 핫플 20/ })).toBeEnabled()
 
     await userEvent.click(kidsChip)
 
-    expect(screen.getByRole('tab', { name: /지금 핫플 20/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /지금 핫플 20/ })).toBeEnabled()
   })
 
   it('내 장소 칩이 즐겨찾기만 남긴다', async () => {
     localStorage.setItem('seoul-live:favorites', JSON.stringify(['경복궁']))
     render(<HomeScreen />)
 
-    await userEvent.click(await screen.findByRole('tab', { name: '내 장소 1' }))
+    await userEvent.click(await screen.findByRole('button', { name: '내 장소 1' }))
 
     expect(areaButtons(/경복궁/).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: /강남역/ })).toBeNull()
@@ -740,12 +740,12 @@ describe('HomeScreen', () => {
       JSON.stringify(['강남역', '사라진곳']),
     )
     render(<HomeScreen />)
-    expect(await screen.findByRole('tab', { name: '내 장소 1' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: '내 장소 1' })).toBeEnabled()
 
-    await userEvent.click(screen.getByRole('tab', { name: '공원' }))
+    await userEvent.click(screen.getByRole('button', { name: '공원' }))
 
     // 면제 이후의 대칭 단언은 `toBeEnabled()`다 — 위 `내 장소 1`과 짝을 이룬다.
-    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '내 장소 0' })).toBeEnabled()
   })
 
   // FavoritesScreen이 사라지면서 「지도에서 ☆를 눌러 담아보세요」도 함께
@@ -754,7 +754,7 @@ describe('HomeScreen', () => {
   it('담은 게 하나도 없으면 담는 방법을 알려준다', async () => {
     render(<HomeScreen />)
 
-    await userEvent.click(screen.getByRole('tab', { name: '내 장소 0' }))
+    await userEvent.click(screen.getByRole('button', { name: '내 장소 0' }))
 
     expect(
       screen.getByText('아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.'),
@@ -767,7 +767,7 @@ describe('HomeScreen', () => {
     // 「누르면 답이 나온다」인데 그 답이 안 들리면 면제가 헛돈다.
     render(<HomeScreen />)
 
-    await userEvent.click(screen.getByRole('tab', { name: '내 장소 0' }))
+    await userEvent.click(screen.getByRole('button', { name: '내 장소 0' }))
 
     const status = screen.getByRole('status')
     expect(status).toHaveTextContent(
@@ -786,7 +786,7 @@ describe('HomeScreen', () => {
     await userEvent.click(sheetHandle()) // full → peek
     expect(sheetHandle()).toHaveAccessibleName(/현재 살짝 열림/)
 
-    await userEvent.click(screen.getByRole('tab', { name: '내 장소 0' }))
+    await userEvent.click(screen.getByRole('button', { name: '내 장소 0' }))
 
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
   })
@@ -797,11 +797,11 @@ describe('HomeScreen', () => {
     // 세는 것이 `favorites`가 아니라 `counts.fav`가 되면 둘이 뭉개진다.
     localStorage.setItem('seoul-live:favorites', JSON.stringify(['강남역']))
     render(<HomeScreen />)
-    await userEvent.click(await screen.findByRole('tab', { name: '공원' }))
+    await userEvent.click(await screen.findByRole('button', { name: '공원' }))
     await userEvent.click(sheetHandle()) // half → full
     await userEvent.click(sheetHandle()) // full → peek
 
-    await userEvent.click(screen.getByRole('tab', { name: '내 장소 0' }))
+    await userEvent.click(screen.getByRole('button', { name: '내 장소 0' }))
 
     expect(sheetHandle()).toHaveAccessibleName(/현재 살짝 열림/)
   })
@@ -815,7 +815,7 @@ describe('HomeScreen', () => {
     await userEvent.click(sheetHandle()) // full → peek
     // 「지금 핫플」은 이 파일의 기본 목업(전부 '보통')에서 0이라 비활성이다.
     // 비활성 칩을 누르면 아무 일도 안 일어나므로 무엇을 넣든 통과한다.
-    const chip = screen.getByRole('tab', { name: /데이트/ })
+    const chip = screen.getByRole('button', { name: /데이트/ })
     expect(chip).toBeEnabled()
 
     await userEvent.click(chip)
@@ -829,9 +829,9 @@ describe('HomeScreen', () => {
   it('필터 때문에 목록이 비면 그 필터를 이름으로 지목한다', async () => {
     localStorage.setItem('seoul-live:favorites', JSON.stringify(['강남역']))
     render(<HomeScreen />)
-    await userEvent.click(await screen.findByRole('tab', { name: '내 장소 1' }))
+    await userEvent.click(await screen.findByRole('button', { name: '내 장소 1' }))
 
-    await userEvent.click(screen.getByRole('tab', { name: '공원' }))
+    await userEvent.click(screen.getByRole('button', { name: '공원' }))
 
     expect(screen.getByText('「내 장소」에 해당하는 명소가 없어요.')).toBeInTheDocument()
   })
@@ -839,8 +839,8 @@ describe('HomeScreen', () => {
   it('빈 목록의 필터 해제 버튼이 실제로 필터를 푼다', async () => {
     localStorage.setItem('seoul-live:favorites', JSON.stringify(['강남역']))
     render(<HomeScreen />)
-    await userEvent.click(await screen.findByRole('tab', { name: '내 장소 1' }))
-    await userEvent.click(screen.getByRole('tab', { name: '공원' }))
+    await userEvent.click(await screen.findByRole('button', { name: '내 장소 1' }))
+    await userEvent.click(screen.getByRole('button', { name: '공원' }))
 
     await userEvent.click(screen.getByRole('button', { name: '필터 해제' }))
 
@@ -853,7 +853,7 @@ describe('HomeScreen', () => {
     // 상태로 돌아가 그때 필터 문구가 뜬다.
     localStorage.setItem('seoul-live:favorites', JSON.stringify(['강남역']))
     render(<HomeScreen />)
-    await userEvent.click(await screen.findByRole('tab', { name: '내 장소 1' }))
+    await userEvent.click(await screen.findByRole('button', { name: '내 장소 1' }))
 
     await userEvent.type(screen.getByRole('searchbox'), '없는곳')
 
@@ -869,13 +869,13 @@ describe('HomeScreen', () => {
     // 담은 곳이 필터에 안 걸린다는 것 자체다.
     // 상세가 열리면 시트가 full이라 칩이 가려지므로 목록으로 돌아와서 본다.
     render(<HomeScreen />)
-    expect(screen.getByRole('tab', { name: '내 장소 0' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '내 장소 0' })).toBeEnabled()
 
     await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
 
-    expect(await screen.findByRole('tab', { name: '내 장소 1' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: '내 장소 1' })).toBeEnabled()
   })
 
   it('저장소가 막혀도 칩과 저장 버튼이 같은 것을 말한다', async () => {
@@ -894,7 +894,7 @@ describe('HomeScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
 
-    expect(screen.getByRole('tab', { name: '내 장소 1' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '내 장소 1' })).toBeEnabled()
 
     await userEvent.click(areaButtons(/강남역/)[0])
     expect(screen.getByRole('button', { name: '저장됨' })).toBeInTheDocument()
@@ -902,7 +902,7 @@ describe('HomeScreen', () => {
 
   it('카테고리를 고르면 목록이 그 분류만 남는다', async () => {
     render(<HomeScreen />)
-    await userEvent.click(screen.getByRole('tab', { name: '고궁·유적' }))
+    await userEvent.click(screen.getByRole('button', { name: '고궁·유적' }))
     expect(areaButtons(/경복궁/).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: /강남역/ })).toBeNull()
   })
@@ -910,8 +910,8 @@ describe('HomeScreen', () => {
   it('상세를 열면 카테고리와 정렬은 목록과 함께 물러난다', async () => {
     render(<HomeScreen />)
     await userEvent.click(areaButtons(/강남역/)[0])
-    expect(screen.queryByRole('tab', { name: '공원' })).toBeNull()
-    expect(screen.queryByRole('tab', { name: '여유한 순' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '공원' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '여유한 순' })).toBeNull()
   })
 
   // (F) 조회가 영구 실패해도 스트립은 `혼잡도 정보를 아직 받지 못했어요.`라고

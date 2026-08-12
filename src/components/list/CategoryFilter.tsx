@@ -16,13 +16,18 @@ interface Props {
 
 export function CategoryFilter({ value, onChange }: Props) {
   return (
-    <div className="flex gap-2 overflow-x-auto px-4 py-1" role="tablist">
+    // 탭이 아니라 버튼 묶음인 근거는 `FilterChips`에 한 벌 있다. 정렬 줄과
+    // 마찬가지로 예전에는 이름 없는 `tablist`였다.
+    <div
+      role="group"
+      aria-label="카테고리"
+      className="flex gap-2 overflow-x-auto px-4 py-1"
+    >
       {OPTIONS.map((option) => (
         <button
           key={option}
           type="button"
-          role="tab"
-          aria-selected={value === option}
+          aria-pressed={value === option}
           onClick={() => onChange(option)}
           className={`min-h-12 shrink-0 rounded-full px-4 text-label-md font-semibold ${
             value === option
