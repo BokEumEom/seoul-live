@@ -82,7 +82,7 @@ function drag(
 // 세 단계 모두를 확인한다. 한 단계만 보면 높이를 상수로 박아 둔 구현도 통과한다.
 const HEIGHT: ReadonlyArray<readonly [Detent, string]> = [
   ['peek', '16%'],
-  ['half', '46%'],
+  ['half', '56%'],
   ['full', '92%'],
 ]
 

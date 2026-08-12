@@ -49,7 +49,7 @@ interface Props {
 // 구석은 실제로 손잡이를 가로막지 않는다고 봤지만, 확정은 실기기 몫이다.
 const BOTTOM_CLASS: Readonly<Record<RecenterDetent, string>> = {
   peek: 'bottom-[18%]',
-  half: 'bottom-[48%]',
+  half: 'bottom-[58%]',
 }
 
 // 시안의 우하단 FAB. 지도는 초기 뷰를 서울 전역으로 고정하므로(자동으로 내

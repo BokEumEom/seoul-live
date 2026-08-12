@@ -47,9 +47,14 @@ describe('nearestDetent', () => {
   })
 
   it('중간값은 더 가까운 쪽으로 간다', () => {
-    // peek 0.16과 half 0.46의 중간은 0.31
-    expect(nearestDetent(0.33)).toBe('half')
-    expect(nearestDetent(0.29)).toBe('peek')
+    // peek 0.16과 half 0.56의 중간은 0.36.
+    //
+    // **소재를 상수에서 다시 뽑는다.** 예전에는 0.33/0.29를 박아 뒀는데
+    // half가 0.46→0.56으로 오르자 0.33이 peek 쪽으로 넘어가 이 테스트가 죽었다.
+    // 죽은 것이 맞다 — 다만 새 숫자를 다시 박으면 다음에 또 같은 일이 난다.
+    const mid = (SHEET_RATIO.peek + SHEET_RATIO.half) / 2
+    expect(nearestDetent(mid + 0.02)).toBe('half')
+    expect(nearestDetent(mid - 0.02)).toBe('peek')
   })
 
   it('범위 밖도 단계 하나로 떨어진다', () => {

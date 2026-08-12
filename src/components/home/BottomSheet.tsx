@@ -185,7 +185,13 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
   return (
     <div
       ref={sheetRef}
-      style={{ height: `${SHEET_RATIO[detent] * 100}%` }}
+      // 비율을 퍼센트로 옮길 때 잘라 낸다. `0.56 * 100`이 이진 부동소수에서
+      // `56.00000000000001`이라 그대로 두면 그 숫자가 DOM 스타일에 실린다
+      // (0.16·0.46·0.92는 우연히 깨끗해서 여태 안 드러났을 뿐이다).
+      // 화면에는 차이가 없지만 인라인 스타일을 읽는 사람과 테스트가 그 값을
+      // 마주하게 된다. 소수 둘째 자리까지 남기므로 0.01%보다 세밀한 비율을
+      // 쓰게 되면 그때는 이 자리를 다시 봐야 한다.
+      style={{ height: `${Number((SHEET_RATIO[detent] * 100).toFixed(2))}%` }}
       // 여기에 `overflow-hidden`을 걸지 마라. 손잡이의 히트 영역이 이 상자
       // 위로 20px 나가 있어서 조용히 잘린다 — 아래 손잡이 주석을 볼 것.
       className="absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-2xl bg-surface-container-lowest shadow-floating transition-[height] duration-200 ease-out"

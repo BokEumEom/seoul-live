@@ -38,7 +38,7 @@ describe('RecenterButton', () => {
   // 버튼을 덮는다.
   it.each([
     ['peek', 'bottom-[18%]'],
-    ['half', 'bottom-[48%]'],
+    ['half', 'bottom-[58%]'],
   ] as ReadonlyArray<readonly [RecenterDetent, string]>)(
     '시트가 %s이면 %s에 선다',
     (detent, bottomClass) => {
