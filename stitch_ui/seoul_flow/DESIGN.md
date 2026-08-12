@@ -218,9 +218,14 @@ To maintain the "Modern" and "Clean" aesthetic, this design system uses **Tonal 
 
 The shape language is **Rounded**, striking a balance between professional geometry and friendly accessibility. 
 
-- **Cards & Input Fields:** 0.5rem (8px) corner radius.
-- **Large Action Buttons:** 1rem (16px) corner radius or fully pill-shaped for high-priority actions.
-- **Status Indicators:** Density indicators (dots/pills) should be fully rounded to appear organic and non-threatening.
+쓰는 이름은 넷뿐이다: **`rounded-sm`(0.25rem) · `rounded-card`(0.5rem) · `rounded-action`(1rem) · `rounded-full`.**
+
+- **Cards & Input Fields:** `rounded-card`.
+- **Large Action Buttons:** `rounded-action` 또는 `rounded-full`.
+- **Status Indicators:** 배지·칩·마커 알약은 `rounded-full`.
+- **히트맵 칸:** `rounded-sm`.
+
+**Tailwind 기본 이름을 쓰지 마라.** `rounded-lg`·`rounded-2xl` 같은 유틸리티는 값이 우연히 맞을 뿐이고, 위 `rounded:` 스케일과 **이름이 어긋난다**(이 문서의 `lg`는 1rem인데 Tailwind v4의 `rounded-lg`는 0.5rem이다). 네 이름은 전부 `index.css`의 `--radius-*` 토큰에서 나오므로 프레임워크가 기본값을 바꿔도 흔들리지 않는다.
 
 ## Components
 
@@ -244,7 +249,17 @@ The shape language is **Rounded**, striking a balance between professional geome
   - "Last Updated" timestamp (Label-sm) to emphasize "Real-time" transparency.
 
 ### Map Markers
-- Custom markers that change color based on density. When tapped, they should expand slightly or show a mini-card overlay.
+
+핀과 알약이 **다른 일을 한다.** 배경이 임의의 지도 타일이라 한 요소가 둘을 겸할 수 없다.
+
+- **핀:** 선명한 톤(`--color-calm` 등) 그대로. 색상으로 네 단계를 한눈에 가른다. 줌이 낮아 알약이 없을 때 남는 것도 이쪽이다. 선택되면 커진다(`size-7` → `size-9`).
+- **알약:** 어두운 채움(`--color-on-*-container`) + 흰 글자. 선명한 톤에 흰 글자를 얹으면 3.19~3.77로 미달하고, 검은 글자로 바꾸면 붐빔이 3.56으로 무너지며, 옅은 `-container`로 뒤집으면 **밝은 지도 타일 위에서 알약이 사라진다**(1.00~1.06). 어두운 채움만이 셋을 다 만족한다 — 흰 글자 7.09~8.31, 밝은 타일 대비 6.18~7.24.
+- 알약끼리는 명도가 비슷해지는 값을 치른다(이웃 1.03~1.14). **알약에는 글자가 있어 색이 유일한 통로가 아니고, 색상 구분은 핀이 맡는다.**
+- 「정보 없음」도 같은 이유로 어둡다(`--color-on-surface-variant`). 옅게 두면 알약이 사라져 그 명소가 없는 것처럼 읽힌다.
+
+### Skeletons
+
+**대체할 것과 기하가 같아야 한다.** 카드 자리에는 카드(`SkeletonList`), 명소 목록 자리에는 구분선 행(`SkeletonRows`)을 세운다. 목록 자리에 카드를 세우면 데이터가 오는 순간 레이아웃이 통째로 바뀌어, 로딩 화면이 「무엇이 올지」를 잘못 약속한다.
 
 ### Lists
 - Use for "Nearby Locations" or "Favorites". Each list item should have a clear divider with a 4px vertical padding between items.

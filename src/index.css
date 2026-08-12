@@ -182,6 +182,10 @@
   --text-label-sm--font-weight: 600;
   --text-label-sm--letter-spacing: 0.02em;
 
+  /* 히트맵 칸처럼 아주 작은 모서리. Tailwind v4의 기본 `rounded-sm`이 마침
+     같은 0.25rem이라 여태 안 적어도 맞았지만, 그건 우리 값이 아니라 우연이다 —
+     프레임워크가 기본을 바꾸면 칸 모양이 조용히 달라진다. */
+  --radius-sm: 0.25rem;
   --radius-card: 0.5rem;
   --radius-action: 1rem;
 

@@ -1,8 +1,28 @@
 export function SkeletonCard() {
   return (
     <div className="animate-pulse rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-      <div className="h-4 w-1/3 rounded bg-surface-container-high" />
-      <div className="mt-3 h-3 w-1/2 rounded bg-surface-container" />
+      <div className="h-4 w-1/3 rounded-sm bg-surface-container-high" />
+      <div className="mt-3 h-3 w-1/2 rounded-sm bg-surface-container" />
+    </div>
+  )
+}
+
+/**
+ * 명소 목록 자리의 스켈레톤.
+ *
+ * **`SkeletonCard`를 쓰면 안 된다.** 목록은 카드가 아니라 구분선 행이라
+ * (`AreaListItem`) 카드 여섯 장을 세워 두면 데이터가 오는 순간 레이아웃이
+ * 통째로 바뀐다 — 로딩 화면이 「무엇이 올지」를 잘못 약속한다. 기하를 행에
+ * 맞춘다: 아래 구분선, `min-h-12`, 이름 줄 + 부제 줄, 오른쪽 배지 자리.
+ */
+function SkeletonRow() {
+  return (
+    <div className="flex min-h-12 animate-pulse items-center gap-3 border-b border-outline-variant py-2 last:border-b-0">
+      <div className="min-w-0 flex-1">
+        <div className="h-5 w-2/5 rounded-sm bg-surface-container-high" />
+        <div className="mt-1 h-4 w-1/4 rounded-sm bg-surface-container" />
+      </div>
+      <div className="h-6 w-14 shrink-0 rounded-full bg-surface-container" />
     </div>
   )
 }
@@ -26,6 +46,18 @@ export function SkeletonList({ count = 5 }: { count?: number }) {
       <span className="sr-only">불러오는 중</span>
       {Array.from({ length: count }, (_, index) => (
         <SkeletonCard key={index} />
+      ))}
+    </div>
+  )
+}
+
+/** 명소 목록 자리. 행 사이 간격은 구분선이 대신하므로 `gap`을 주지 않는다. */
+export function SkeletonRows({ count = 5 }: { count?: number }) {
+  return (
+    <div role="status" className="flex flex-col">
+      <span className="sr-only">불러오는 중</span>
+      {Array.from({ length: count }, (_, index) => (
+        <SkeletonRow key={index} />
       ))}
     </div>
   )

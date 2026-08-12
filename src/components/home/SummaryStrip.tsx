@@ -37,7 +37,7 @@ export function SummaryStrip({ summary, alertCount, onOpen }: Props) {
       //
       // font-medium을 쓰지 않는다 — --text-label-md--font-weight가 이미 500이라
       // 같은 값을 두 번 쓰는 것이고, 나중에 토큰을 고쳐도 여기만 안 따라온다.
-      className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-label-md ${
+      className={`flex w-full items-center justify-between gap-2 rounded-card px-3 py-2 text-label-md ${
         hasAlert
           ? 'bg-error-container text-on-error-container'
           : 'bg-secondary-container text-primary'

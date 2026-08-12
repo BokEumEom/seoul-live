@@ -20,7 +20,7 @@ export function SearchBar({ value, onChange }: Props) {
           `:focus-visible`이 아니라 `focus-within`인 것도 고른 것이다. 텍스트
           입력은 마우스·터치로 눌러 들어와도 「지금 여기에 쓴다」가 보여야 한다 —
           키보드일 때만 그리는 규칙은 버튼에 맞는 규칙이다. */}
-      <div className="flex min-h-12 flex-1 items-center gap-2 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 shadow-floating focus-within:ring-2 focus-within:ring-primary">
+      <div className="flex min-h-12 flex-1 items-center gap-2 rounded-card border border-outline-variant bg-surface-container-lowest px-3 shadow-floating focus-within:ring-2 focus-within:ring-primary">
         <Icon name="search" className="size-4 text-on-surface-variant" />
         <input
           type="search"

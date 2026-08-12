@@ -41,7 +41,7 @@ const AGE_CLASS: readonly string[] = [
 
 // 알약 기하는 셋이 함께 움직인다. 색만 갈라 두어 패딩을 고칠 때 한쪽만 고치는
 // 일이 없게 한다.
-const CHIP_BASE = 'rounded-lg px-2.5 py-1 text-label-sm'
+const CHIP_BASE = 'rounded-card px-2.5 py-1 text-label-sm'
 const CHIP_NEUTRAL = `${CHIP_BASE} bg-surface-container text-on-surface-variant`
 const CHIP_ACCENT = `${CHIP_BASE} bg-secondary-container text-primary`
 

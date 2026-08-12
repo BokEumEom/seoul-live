@@ -129,6 +129,17 @@ describe('혼잡도 배지 색 대비', () => {
   it.each(PAIRS)('%s 배지가 4.5:1을 넘는다', (_level, fg, bg) => {
     expect(contrast(token(fg), token(bg))).toBeGreaterThanOrEqual(4.5)
   })
+
+  // **`on-*-container` 넷은 두 곳에서 쓰인다.** 배지 글자(위)이면서 지도 마커
+  // 알약의 **배경**이다(`CongestionMarker`). 값이 같아도 되는 이유는 두 요구가
+  // 어긋나지 않아서다 — 둘 다 「그 색상의 어두운 끝」을 원한다.
+  //
+  // 그래도 겸용은 조용한 결합이라 여기서 드러낸다. 배지 대비를 맞추려고 이
+  // 색을 밝히면 알약의 흰 글자가 무너지는데, 그 사실이 코드 어디에도 안
+  // 보이기 때문이다. 지금 7.09~8.31이다.
+  it.each(PAIRS)('%s 마커 알약의 흰 글자가 4.5:1을 넘는다', (_level, fill) => {
+    expect(contrast('#ffffff', token(fill))).toBeGreaterThanOrEqual(4.5)
+  })
 })
 
 // 길찾기 버튼 둘은 상세 화면의 1차 CTA다(`ActionButtons`). 배경이 남의 브랜드

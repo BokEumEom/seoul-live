@@ -43,7 +43,27 @@ export function ForecastChart({ forecasts }: Props) {
   )
 
   return (
-    <div>
+    // 왼쪽 여백은 축 라벨의 자리다. 라벨을 SVG 안에 넣을 수 없다 —
+    // `preserveAspectRatio="none"`이 가로세로를 따로 늘려서 글자가 찌그러진다.
+    <div className="relative pl-9">
+      {/* 격자선 넷은 무엇을 뜻하는지 말해 주지 않으면 장식이다. 위아래 끝만
+          짚어도 사이가 읽힌다 — 넷을 다 적으면 좁은 시트에서 겹친다.
+          위치를 `yOf`에서 뽑는 이유: 같은 함수가 격자선을 그리므로 `PADDING_Y`나
+          `HEIGHT`가 바뀌어도 라벨이 선을 벗어날 수 없다. 숫자를 여기 박으면
+          그 순간 둘이 갈린다. */}
+      {[
+        { rank: MAX_RANK, label: '붐빔' },
+        { rank: 0, label: '여유' },
+      ].map(({ rank, label }) => (
+        <span
+          key={label}
+          aria-hidden="true"
+          style={{ top: `${(yOf(rank) / HEIGHT) * 100}%` }}
+          className="absolute left-0 -translate-y-1/2 text-label-sm text-outline"
+        >
+          {label}
+        </span>
+      ))}
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         preserveAspectRatio="none"
@@ -80,9 +100,9 @@ export function ForecastChart({ forecasts }: Props) {
           <span key={index}>{forecasts[index].hour}시</span>
         ))}
       </div>
-      <p className="mt-2 text-label-sm text-outline">
-        위로 갈수록 붐빕니다 · 점선은 예측값이에요
-      </p>
+      {/* 「위로 갈수록 붐빕니다」는 뺐다 — 축 라벨이 같은 말을 자리에서 한다.
+          점선의 뜻은 라벨로 대신할 수 없어 남긴다. */}
+      <p className="mt-2 text-label-sm text-outline">점선은 예측값이에요</p>
     </div>
   )
 }

@@ -3,17 +3,22 @@ import { describe, expect, it } from 'vitest'
 import { CongestionMarker } from './CongestionMarker'
 
 describe('CongestionMarker', () => {
-  it('혼잡도 4단계가 각기 다른 색 토큰을 쓴다', () => {
-    // Tailwind v4는 클래스명을 정적으로 추출한다. 동적 조합으로 만들면 빌드에서
-    // 사라져 화면에서 색이 안 나온다 — 그 회귀를 여기서 잡는다.
-    const cases = [
-      { level: '여유', className: 'bg-calm' },
-      { level: '보통', className: 'bg-normal' },
-      { level: '약간 붐빔', className: 'bg-busy' },
-      { level: '붐빔', className: 'bg-crowded' },
-    ] as const
+  // **예전 이 테스트는 「Tailwind의 정적 추출 때문에 동적 조합이 빌드에서
+  // 사라지는 회귀를 잡는다」고 적혀 있었는데 그건 거짓이었다.** 누가
+  // `` `bg-${tone}` ``으로 바꿔도 React는 그 문자열을 그대로 렌더하므로 DOM에는
+  // `bg-calm`이 찍히고, jsdom에는 CSS가 없어 그것이 실제로 색을 내는지 알 수
+  // 없다. 즉 이 자리에서 그 회귀는 **관찰 불가능**하다(그 규칙은
+  // `toneClass.ts`·`CongestionMarker`의 주석과 리뷰가 지킨다).
+  //
+  // 잡을 수 있는 것은 **네 단계가 서로 다른 채움을 받는가**다. 표를 한 칸
+  // 밀어 쓰거나 두 단계에 같은 값을 주면 여기서 죽는다. 클래스 이름을 박아
+  // 두지 않으므로 토큰 이름을 바꿔도 이 테스트는 살아 있다 — 예전 형태는
+  // 이름이 바뀔 때마다 함께 고쳐야 했고, 그때 「무엇을 지키는 테스트인가」가
+  // 흐려진다.
+  it('혼잡도 4단계가 서로 다른 채움을 받는다', () => {
+    const levels = ['여유', '보통', '약간 붐빔', '붐빔'] as const
 
-    for (const { level, className } of cases) {
+    const fills = levels.map((level) => {
       const { unmount } = render(
         <CongestionMarker
           name="강남역"
@@ -22,10 +27,13 @@ describe('CongestionMarker', () => {
           selected={false}
         />,
       )
-
-      expect(screen.getByText(level)).toHaveClass(className)
+      const found = screen.getByText(level).className.match(/\bbg-[a-z0-9-]+/)
       unmount()
-    }
+      return found?.[0]
+    })
+
+    expect(fills.every((fill) => fill !== undefined)).toBe(true)
+    expect(new Set(fills).size).toBe(levels.length)
   })
 
   it('스냅샷이 없으면 정보 없음으로 표시한다', () => {
@@ -39,9 +47,10 @@ describe('CongestionMarker', () => {
     )
 
     expect(screen.getByText('정보 없음')).toBeInTheDocument()
-    expect(screen.getByText('정보 없음')).toHaveClass(
-      'bg-surface-container-high',
-    )
+    // 알약이 어두워야 밝은 지도 타일 위에서 보인다. 예전 값
+    // `bg-surface-container-high`(#e1e2ed)는 밝은 타일과 1.1이라 알약 자체가
+    // 사라졌고, 그러면 그 명소가 없는 것처럼 읽힌다.
+    expect(screen.getByText('정보 없음')).toHaveClass('bg-on-surface-variant')
   })
 
   it('줌이 낮으면 라벨을 감추고 핀만 남긴다', () => {

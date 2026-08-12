@@ -7,7 +7,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from '../app/locationContext'
 import { ErrorState } from '../components/common/ErrorState'
-import { SkeletonList } from '../components/common/SkeletonCard'
+import { SkeletonRows } from '../components/common/SkeletonCard'
 import { AreaDetail } from '../components/home/AreaDetail'
 import { BottomSheet } from '../components/home/BottomSheet'
 import { FilterChips } from '../components/home/FilterChips'
@@ -390,9 +390,12 @@ export function HomeScreen() {
         />
       </div>
 
+      {/* 카드가 아니라 행이다 — 이 자리에 올 것이 `AreaList`이기 때문이다.
+          `SkeletonList`(카드)를 쓰면 데이터가 오는 순간 레이아웃이 통째로
+          바뀐다. */}
       {snapshots.isPending && (
         <div className="px-4">
-          <SkeletonList count={6} />
+          <SkeletonRows count={6} />
         </div>
       )}
 

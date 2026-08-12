@@ -194,7 +194,7 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
       style={{ height: `${Number((SHEET_RATIO[detent] * 100).toFixed(2))}%` }}
       // 여기에 `overflow-hidden`을 걸지 마라. 손잡이의 히트 영역이 이 상자
       // 위로 20px 나가 있어서 조용히 잘린다 — 아래 손잡이 주석을 볼 것.
-      className="absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-2xl bg-surface-container-lowest shadow-floating transition-[height] duration-200 ease-out"
+      className="absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-action bg-surface-container-lowest shadow-floating transition-[height] duration-200 ease-out"
     >
       <button
         type="button"
