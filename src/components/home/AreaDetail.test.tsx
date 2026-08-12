@@ -13,6 +13,13 @@ vi.mock('../../data/queries', () => ({
   useCityInfo: vi.fn(),
 }))
 vi.mock('../../app/locationContext', () => ({ useLocation: vi.fn() }))
+// 요일×시간 패턴의 저장소는 여기서 볼 것이 아니다. 목업하지 않으면 비동기
+// 읽기가 테스트가 끝난 뒤 상태를 바꿔 act() 경고가 뜨고, 상세 테스트가
+// 토스 Storage 브리지 구현에 묶인다. 쌓기 자체는 useWeekPattern이 잠근다.
+vi.mock('../../platform/weekPattern', () => ({
+  loadPattern: vi.fn().mockResolvedValue({ pattern: {}, lastObservedAt: null }),
+  savePattern: vi.fn().mockResolvedValue(undefined),
+}))
 
 const queries = await import('../../data/queries')
 const locationContext = await import('../../app/locationContext')
@@ -385,7 +392,13 @@ describe('AreaDetail', () => {
     renderDetail()
     expect(
       screen.getAllByRole('heading').map((node) => `${node.tagName} ${node.textContent}`),
-    ).toEqual(['H2 강남역', 'H3 지금 얼마나 붐비나', 'H4 지금 누가 있나', 'H3 시간대별 예상'])
+    ).toEqual([
+      'H2 강남역',
+      'H3 지금 얼마나 붐비나',
+      'H4 지금 누가 있나',
+      'H3 시간대별 예상',
+      'H3 요일×시간 패턴',
+    ])
   })
 
   it('예측 섹션 제목이 시간대별 예상이다', () => {

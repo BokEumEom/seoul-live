@@ -2,6 +2,7 @@ import { AreaHero } from './AreaHero'
 import { CityInfoPanel } from './CityInfoPanel'
 import { CongestionCard } from './CongestionCard'
 import { NearbyCalmSection } from './NearbyCalmSection'
+import { WeeklyPatternCard } from './WeeklyPatternCard'
 import { useLocation } from '../../app/locationContext'
 import { findAreaByName } from '../../data/areas'
 import { useAreaSnapshot } from '../../data/queries'
@@ -9,6 +10,7 @@ import { useFavorites } from '../../hooks/useFavorites'
 import { ErrorState } from '../common/ErrorState'
 import { Icon } from '../common/Icon'
 import { SkeletonList } from '../common/SkeletonCard'
+import { useWeekPattern } from '../../hooks/useWeekPattern'
 import { ActionButtons } from './ActionButtons'
 import { ForecastChart } from '../forecast/ForecastChart'
 
@@ -34,6 +36,9 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
 
   const starred = isFavorite(areaName)
   const snapshot = query.data
+  // 상세를 열 때마다 이 명소의 지금 혼잡도를 한 칸 쌓는다. 서울 API가 과거를
+  // 주지 않아 패턴을 조회할 수 없고, 쌓는 것 말고 방법이 없다 — PLAN.md 4차.
+  const pattern = useWeekPattern(entry?.name, snapshot)
 
   // 별은 여기 없다. 아이콘뿐인 별은 무엇인지 알 수 없어서 액션 행의 「저장」이
   // 됐다(설계 §2.6). w-fit이 없으면 flex 열의 자식이라 폭 전체가 뒤로가기
@@ -109,6 +114,10 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
               <ForecastChart forecasts={snapshot.forecasts} />
             </div>
           </section>
+
+          {/* 시안(stitch_ui/_3)의 순서 그대로 시간축 바로 아래다. 예측이
+              「오늘 앞으로」를 말하고 이 표가 「평소 이맘때」를 말한다. */}
+          <WeeklyPatternCard pattern={pattern} now={new Date()} />
         </>
       )}
 
