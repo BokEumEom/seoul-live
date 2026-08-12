@@ -48,6 +48,24 @@ colors:
   background: '#faf8ff'
   on-background: '#191b23'
   surface-variant: '#e1e2ed'
+  calm: '#059669'
+  calm-container: '#d1fae5'
+  on-calm-container: '#065f46'
+  normal: '#d97706'
+  normal-container: '#fef3c7'
+  on-normal-container: '#92400e'
+  busy: '#ea580c'
+  busy-container: '#ffedd5'
+  on-busy-container: '#9a3412'
+  crowded: '#dc2626'
+  crowded-container: '#fee2e2'
+  on-crowded-container: '#991b1b'
+  heat-calm: '#d1fae5'
+  heat-normal: '#f59e0b'
+  heat-busy: '#ea580c'
+  heat-crowded: '#b91c1c'
+  brand-kakao: '#fee500'
+  brand-naver: '#03c75a'
 typography:
   display-lg:
     fontFamily: "system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
@@ -116,14 +134,41 @@ The aesthetic blends **Modern Corporate** reliability with **Minimalist** clarit
 
 ## Colors
 
-The palette is anchored by a "Seoul City Blue" (Primary), conveying institutional trust and technological precision. 
-
-The semantic color system is the most critical element of this design system:
-- **Success (Relaxed):** Used for low-density areas. Represents safety and open space.
-- **Warning (Normal):** Used for moderate activity. Represents standard urban flow.
-- **Danger (Crowded):** Used for high-density alerts. Requires immediate visual attention.
+The palette is anchored by a "Seoul City Blue" (Primary), conveying institutional trust and technological precision.
 
 The background uses a very light cool gray to differentiate cards and surfaces from the base canvas, ensuring maximum legibility under varying outdoor lighting conditions.
+
+### 혼잡도는 3색이 아니라 4단계다
+
+원안은 Success/Warning/Danger 3색이었다. **서울 API가 실제로 주는 값은 `여유`·`보통`·`약간 붐빔`·`붐빔` 넷이라** 3색으로 접으면 정보가 사라진다. 4단계를 그대로 산다.
+
+| 단계 | 채움 | 배지 배경 | 배지 글자 |
+| --- | --- | --- | --- |
+| 여유 | `--color-calm #059669` | `--color-calm-container #d1fae5` | `--color-on-calm-container #065f46` |
+| 보통 | `--color-normal #d97706` | `--color-normal-container #fef3c7` | `--color-on-normal-container #92400e` |
+| 약간 붐빔 | `--color-busy #ea580c` | `--color-busy-container #ffedd5` | `--color-on-busy-container #9a3412` |
+| 붐빔 | `--color-crowded #dc2626` | `--color-crowded-container #fee2e2` | `--color-on-crowded-container #991b1b` |
+
+**`on-*-container`가 따로 있는 이유:** 채움 색을 배지 글자로 그대로 쓰면 네 배지가 전부 4.5:1에 못 미친다(2.86~3.95). 채움은 지도 타일 위에서 색상으로 갈려야 해서 선명해야 하고, 배지 글자는 옅은 `-container` 위에 12px로 얹히므로 어두워야 한다 — **요구가 반대라 한 토큰으로는 못 맞춘다.** 지금 값은 6.37~6.80이다.
+
+### 히트맵 램프는 또 다른 축이다
+
+요일×시간 표(`WeeklyPatternCard`)는 **글자 없이 색만으로** 네 단계를 말한다. 여기서 필요한 것은 색상 구분이 아니라 **명도의 단조 하강**이라, 위 표를 재사용하면 안 된다. 실제로 재사용하던 시절 이웃 대비가 여유→보통 **1.02**(명도가 뒤집혀 있었다), 약간붐빔→붐빔 1.36이라 네 단계가 둘로 읽혔다.
+
+| 단계 | 토큰 | 명도 |
+| --- | --- | --- |
+| 여유 | `--color-heat-calm #d1fae5` | 0.876 |
+| 보통 | `--color-heat-normal #f59e0b` | 0.439 |
+| 약간 붐빔 | `--color-heat-busy #ea580c` | 0.245 |
+| 붐빔 | `--color-heat-crowded #b91c1c` | 0.112 |
+
+여유~붐빔 전체 대비(5.70)를 세 구간에 등비로 나눠 역산한 값이다. 이웃 대비 1.89 / 1.66 / 1.82.
+
+**「관측 없음」은 이 램프에 없다.** 값의 부재는 값이 아니고, 어떤 회색을 골라도 여유와 명도가 겹쳐 다섯째 단계처럼 읽힌다. 채우지 않고 `--color-outline-variant` 테두리로 표현한다 — **채움이 아닌 다른 채널**을 쓰는 것이 요점이다.
+
+### 브랜드 색은 우리 팔레트가 아니다
+
+길찾기 버튼 둘(`--color-brand-kakao #fee500`, `--color-brand-naver #03c75a`)은 남의 자산이라 값을 조정할 수 없다. 맞출 수 있는 것은 글자뿐이고 둘 다 `--color-on-surface`를 쓴다(네이버 7.63, 카카오 13.43). 네이버 녹색에 흰 글자는 2.25:1이고, 흰 배경에 녹색 글자로 뒤집어도 같은 2.25:1이다.
 
 ## Typography
 
@@ -142,16 +187,32 @@ The layout follows a **Fluid Grid** model optimized for mobile devices. It utili
 
 - **Margins:** A standard 16px lateral margin is maintained across all screens.
 - **Card-Based Architecture:** Information is grouped into cards. Cards should have a vertical stack gap of 12px to maintain a clear visual rhythm.
-- **Touch Targets:** All interactive elements (filters, search bars, buttons) must maintain a minimum height of 48px to accommodate one-handed mobile use.
+- **Touch Targets:** 기본은 48px다. **다만 면제가 넷 있고 전부 근거가 있다** — 예전에는 이 줄이 예외 없는 규칙이라 코드가 규칙을 어긴 채로 남아 있었다.
+
+| 요소 | 높이 | 근거 |
+| --- | --- | --- |
+| 필터 칩 | 40px | 「검색 바 + 칩 열 = 112px」이라는 오버레이 예산이 이 값에 걸려 있다. 올리면 「full에서 이 열을 그리지 않는다」는 결정부터 다시 계산해야 한다 |
+| 정렬 세그먼트 | 40px | 같은 급. 시트 세로 예산 |
+| 요약 스트립 | 36px | 설계가 "약 40px"로 잡았고, 48px로 올리면 half에서 목록이 0.2행 준다. 폭이 시트 전체라 명중률 손실이 작다 |
+| 검색어 지우기 | 40px | 아이콘은 16px이고 히트 상자만 넓혔다(`-mr-3`으로 아이콘 위치는 그대로) |
+
+**넷 다 WCAG 2.5.8(24px)은 통과한다.** 새 면제를 만들려면 이 표에 근거와 함께 줄을 더해라.
 
 ## Elevation & Depth
 
 To maintain the "Modern" and "Clean" aesthetic, this design system uses **Tonal Layers** supplemented by extremely soft, ambient shadows.
 
-- **Level 0 (Canvas):** The background color (#F8FAFC).
-- **Level 1 (Default Cards):** Pure white (#FFFFFF) with a 1px subtle stroke (#E2E8F0). This is used for standard information units.
-- **Level 2 (Active/Floating):** White background with a 12% opacity shadow, 8px blur, and 4px vertical offset. Used for the bottom navigation bar and floating action buttons (FAB) like "Recenter Map".
-- **Glassmorphism:** Use a light backdrop blur (12px) for top navigation headers to allow the map content to peek through, reinforcing the sense of "Real-time" transparency.
+- **Level 0 (Canvas):** `--color-surface #faf8ff`. (원문은 `#F8FAFC`라고 적었는데 프론트매터와 어긋난 오기였다.)
+- **Level 1 (Default Cards):** `--color-surface-container-lowest #ffffff` + `--color-outline-variant #c3c6d7` 1px 스트로크. (원문의 `#E2E8F0`도 오기였다.) **테두리는 선택이 아니다** — 흰 카드와 캔버스의 대비가 1.05:1이라 테두리가 카드를 보이게 하는 유일한 수단이다.
+- **Level 2 (Active/Floating):** White background with a 12% opacity shadow, 8px blur, and 4px vertical offset. 지금 이 층에 있는 것은 FAB(「내 주변」)·지도 위 검색 바·필터 칩·바텀시트다.
+- ~~**Glassmorphism:** 상단 헤더에 backdrop blur~~ — **해당 없음.** 상단바가 없어졌다(토스가 미니앱에 자체 네이티브 헤더를 준다). 지도 위에 뜨는 것은 검색 바와 칩 열이고 둘 다 불투명이다.
+
+## Motion & Focus
+
+원안에 없던 층이다. 앱에 실제로 있는 것을 적는다.
+
+- **포커스 링:** `:focus-visible`에 `--color-primary` 2px + `outline-offset: 2px`. 흰 표면 대비 7.51:1. `@layer base`에 두어 유틸리티가 이길 수 있게 한다 — 검색 필드는 상자가 `focus-within` 링을 대신 받으므로 안쪽 입력의 `outline-none`이 살아야 한다.
+- **움직임:** 시트 높이 전환(200ms)과 스켈레톤 펄스 둘뿐이다. `prefers-reduced-motion: reduce`에서 둘 다 끊는다. 이 규칙만 `@layer` 밖에 둔다(`duration-200`이 유틸리티라 같은 레이어에서는 순서 싸움이 된다).
 
 ## Shapes
 
@@ -164,11 +225,14 @@ The shape language is **Rounded**, striking a balance between professional geome
 ## Components
 
 ### Buttons
-- **Primary:** Seoul Blue background with white text. High prominence for "View Details" or "Directions".
-- **Ghost:** Seoul Blue 1px border with transparent background for secondary map filters.
+- **Primary:** Seoul Blue background with white text. 지금 쓰이는 곳은 `ErrorState`의 「다시 시도」다.
+- **Ghost:** Seoul Blue 1px border with transparent background.
+- **길찾기:** 원안은 Directions를 Primary(Seoul Blue)에 배정했지만 **카카오맵·네이버지도 브랜드 색을 쓴다.** 한국 사용자에게 인지 이득이 크다고 보고 고른 교환이고, 대가는 상세 화면에서 가장 크고 밝은 두 덩어리가 앱 액센트가 아니라는 것이다. 위 「브랜드 색은 우리 팔레트가 아니다」 참고.
 
 ### Chips (Density Indicators)
-- Small, rounded labels that combine a color-coded dot (Success/Warning/Danger) with text (여유/보통/붐빔). These are used inside cards and as map markers.
+- 색점 + 텍스트, 완전한 라운드. **크기는 하나뿐이다** — 상세 히어로가 유일한 「강조」 자리였는데 거기서도 목록과 같은 배지를 쓴다. 같은 사실을 크기로 두 번 말하지 않는다.
+- 문구는 API 원문 넷(`여유`/`보통`/`약간 붐빔`/`붐빔`)을 그대로 쓴다.
+- **색만으로 값을 전하지 않는다.** 배지는 글자가 함께 있고, 글자 없는 자리(히트맵 칸·지도 마커)는 `sr-only`나 `aria-label`로 같은 값을 소리 채널에도 낸다.
 
 ### Input Fields
 - Search bars should be full-width with a subtle 1px border and a leading "search" icon. Use "soft" roundedness (8px).

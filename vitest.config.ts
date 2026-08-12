@@ -20,6 +20,9 @@ export default defineConfig({
   // 다시 띄워라.
   define: {
     __INDEX_CSS__: JSON.stringify(readFileSync('src/index.css', 'utf8')),
+    __DESIGN_MD__: JSON.stringify(
+      readFileSync('stitch_ui/seoul_flow/DESIGN.md', 'utf8'),
+    ),
   },
   test: {
     environment: 'jsdom',

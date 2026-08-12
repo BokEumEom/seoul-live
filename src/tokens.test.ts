@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest'
 declare const __INDEX_CSS__: string
 const CSS = __INDEX_CSS__
 
+/** `stitch_ui/seoul_flow/DESIGN.md`의 원문. 같은 경로로 들어온다. */
+declare const __DESIGN_MD__: string
+const DESIGN = __DESIGN_MD__
+
 // `@theme` 블록에서 색 토큰을 읽는다. **값을 여기에 리터럴로 옮겨 적지 않는다** —
 // 그러면 색을 고칠 때 테스트도 같이 고치게 되어 아무것도 못 죽인다. 파일에서
 // 읽어 계산하므로 누가 대비를 되돌리면 여기서 죽는다(되돌려 확인했다).
@@ -44,6 +48,63 @@ describe('contrast()', () => {
       contrast('#ffffff', '#004ac6'),
       5,
     )
+  })
+})
+
+// AGENTS.md의 「디자인 토큰의 출처는 `stitch_ui/seoul_flow/DESIGN.md` 하나다.
+// `index.css`에서 값을 직접 고치지 말고 그 파일을 고친 뒤 옮긴다」를 기계로
+// 지킨다.
+//
+// **손으로는 지켜지지 않았다.** 2026-08-12 감사에서 정본과 실제가 열 곳에서
+// 갈려 있었다 — 캔버스 색이 본문(`#F8FAFC`)과 프론트매터(`#faf8ff`)에서 서로
+// 다르고, 카드 스트로크가 코드와 달랐고, 혼잡도 4단계·`on-*-container`·히트맵
+// 램프·브랜드 색 18개는 정본에 아예 없었다. 규칙이 문장으로만 있으면 이렇게 된다.
+//
+// 양방향으로 본다. 한쪽만 보면 반대 방향 드리프트가 그대로 산다 — 코드에만
+// 토큰을 더하면 정본이 낡고, 정본에만 더하면 화면에 없는 값을 문서가 약속한다.
+describe('DESIGN.md와 index.css의 색이 일치한다', () => {
+  function colorsOfCss(): Map<string, string> {
+    return new Map(
+      [...CSS.matchAll(/--color-([a-z0-9-]+):\s*(#[0-9a-fA-F]{6})/g)].map(
+        (found) => [found[1], found[2].toLowerCase()],
+      ),
+    )
+  }
+
+  function colorsOfDesign(): Map<string, string> {
+    // 프론트매터(첫 `---`와 둘째 `---` 사이)의 `colors:` 블록만 본다. 본문에도
+    // 색 코드가 나오므로 범위를 좁히지 않으면 설명문의 숫자까지 긁힌다.
+    const front = DESIGN.split('---')[1] ?? ''
+    return new Map(
+      [...front.matchAll(/^ {2}([a-z0-9-]+): '(#[0-9a-fA-F]{6})'/gm)].map(
+        (found) => [found[1], found[2].toLowerCase()],
+      ),
+    )
+  }
+
+  it('정본의 색이 전부 코드에 같은 값으로 있다', () => {
+    const css = colorsOfCss()
+    const missing = [...colorsOfDesign()]
+      .filter(([name, value]) => css.get(name) !== value)
+      .map(([name, value]) => `${name}: 정본 ${value} vs 코드 ${css.get(name)}`)
+
+    expect(missing).toEqual([])
+  })
+
+  it('코드의 색이 전부 정본에 올라 있다', () => {
+    const design = colorsOfDesign()
+    const unrecorded = [...colorsOfCss()]
+      .filter(([name]) => !design.has(name))
+      .map(([name, value]) => `${name}: ${value}`)
+
+    expect(unrecorded).toEqual([])
+  })
+
+  // 위 둘이 빈 배열끼리 비교하며 조용히 통과하는 것을 막는다. 정규식이 깨져
+  // 양쪽 다 0개가 되면 「일치한다」가 언제나 참이 된다.
+  it('양쪽에서 실제로 색을 읽어낸다', () => {
+    expect(colorsOfCss().size).toBeGreaterThan(40)
+    expect(colorsOfDesign().size).toBe(colorsOfCss().size)
   })
 })
 
