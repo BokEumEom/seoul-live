@@ -16,7 +16,7 @@ export function CategoryAverages({ rows }: Props) {
   if (rows.length === 0) return null
 
   return (
-    <section className="mx-4 mt-3 rounded-card bg-surface-container-lowest p-4">
+    <section className="mx-4 mt-3 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
       <h3 className="text-headline-sm text-on-surface">카테고리별 평균</h3>
       <ul className="mt-2">
         {rows.map((row) => (

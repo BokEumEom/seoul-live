@@ -5,7 +5,7 @@ interface Props {
 
 export function ErrorState({ message, onRetry }: Props) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-card bg-surface-container-lowest px-4 py-10 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-card border border-outline-variant bg-surface-container-lowest px-4 py-10 text-center">
       <p className="text-body-md text-on-surface-variant">{message}</p>
       {onRetry !== undefined && (
         <button

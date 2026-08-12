@@ -20,18 +20,22 @@ interface MapLink {
   readonly className: string
 }
 
+// 배경은 남의 브랜드 색이라 우리가 못 고친다 — 맞출 수 있는 것은 글자 쪽이다.
+// 네이버에 흰 글자를 얹으면 2.25:1로 무너졌다(카카오는 원래 어두운 글자라
+// 문제가 없었다). 둘 다 `text-on-surface`로 맞춘다: 네이버 7.63, 카카오 13.43.
+// 값과 근거는 index.css의 `--color-brand-*` 주석에, 대비는 `tokens.test.ts`에.
 const MAP_LINKS: readonly MapLink[] = [
   {
     label: '카카오맵 길찾기',
     icon: 'pin',
     href: kakaoMapSearchUrl,
-    className: 'bg-[#FEE500] text-[#191600]',
+    className: 'bg-brand-kakao text-on-surface',
   },
   {
     label: '네이버 길찾기',
     icon: 'map',
     href: naverMapSearchUrl,
-    className: 'bg-[#03C75A] text-white',
+    className: 'bg-brand-naver text-on-surface',
   },
 ]
 

@@ -7,7 +7,7 @@ interface Props {
 export function SummaryCard({ summary }: Props) {
   if (summary.counted === 0) {
     return (
-      <section className="mx-4 rounded-card bg-surface-container-lowest p-4">
+      <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
         <h2 className="text-headline-sm text-on-surface">지금 서울</h2>
         <p className="mt-1 text-body-md text-on-surface-variant">
           혼잡도 정보를 아직 받지 못했어요.
@@ -17,7 +17,7 @@ export function SummaryCard({ summary }: Props) {
   }
 
   return (
-    <section className="mx-4 rounded-card bg-surface-container-lowest p-4">
+    <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
       <h2 className="text-label-md text-on-surface-variant">지금 서울</h2>
       <p className="mt-1 text-headline-md font-bold text-on-surface">
         {summary.counted}곳 중 붐빔 {summary.byLevel.붐빔}곳
