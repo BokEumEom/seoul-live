@@ -1,5 +1,5 @@
 import { Storage } from '@apps-in-toss/web-framework'
-import type { PatternCell, WeekPattern } from '../domain/pattern'
+import { PATTERN_BUCKETS, PATTERN_DAYS, type PatternCell, type WeekPattern } from '../domain/pattern'
 
 /**
  * 저장 봉투. 패턴만 담지 않고 **마지막으로 기록한 관측 시각**을 함께 든다.
@@ -68,12 +68,29 @@ function parseCell(value: unknown): PatternCell | null {
 
 const EMPTY: StoredPattern = { pattern: {}, lastObservedAt: null }
 
+// 키도 검사한다. 안 하면 `"7-4"`나 `"망가짐"` 같은 칸이 그대로 남아 화면이
+// 신뢰도로 내놓는 「몇 번 봤나」를 부풀린다 — 그 칸은 어느 요일에도 안 그려지니
+// 눈에 보이지 않는 채로 숫자만 는다.
+// `split('-')`으로 자르지 않는다. `'-1-0'`은 `['', '1', '0']`이 되고 **`Number('')`이
+// 0**이라 유효한 좌표로 통과한다 — AGENTS.md의 「관대한 파서에서 `Number()`를
+// 맨몸으로 쓰지 마라」가 여기서도 그대로 걸렸다. 자릿수만 받는 정규식이면
+// 음수·빈 칸·소수가 한 번에 걸러진다.
+const SLOT_KEY_PATTERN = /^(\d+)-(\d+)$/
+
+function validSlotKey(at: string): boolean {
+  const matched = at.match(SLOT_KEY_PATTERN)
+  if (matched === null) {
+    return false
+  }
+  return Number(matched[1]) < PATTERN_DAYS && Number(matched[2]) < PATTERN_BUCKETS
+}
+
 function parseCells(value: unknown): WeekPattern {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return {}
   }
   const entries = Object.entries(value).flatMap(([at, cell]) => {
-    const parsed = parseCell(cell)
+    const parsed = validSlotKey(at) ? parseCell(cell) : null
     return parsed === null ? [] : [[at, parsed] as const]
   })
   return Object.fromEntries(entries)

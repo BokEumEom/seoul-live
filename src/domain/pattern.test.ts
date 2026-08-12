@@ -66,6 +66,14 @@ describe('recordObservation', () => {
     expect(observationTotal(pattern)).toBe(2)
   })
 
+  // 「여유 다음 붐빔」은 누적이든 덮어쓰기든 합이 3이라 구분되지 않는다.
+  // 같은 값을 두 번 보면 갈린다 — 누적은 6/2=3(붐빔), 덮어쓰기는 3/2=1.5(약간 붐빔).
+  it('같은 값을 두 번 봐도 그 값이 그대로다', () => {
+    let pattern = recordObservation({}, { day: 3, bucket: 2 }, '붐빔')
+    pattern = recordObservation(pattern, { day: 3, bucket: 2 }, '붐빔')
+    expect(cellLevel(pattern, 3, 2)).toBe('붐빔')
+  })
+
   it('칸끼리 섞이지 않는다', () => {
     let pattern = recordObservation(EMPTY, { day: 1, bucket: 0 }, '붐빔')
     pattern = recordObservation(pattern, { day: 1, bucket: 1 }, '여유')
@@ -85,6 +93,12 @@ describe('cellLevel', () => {
     const pattern = recordObservation(EMPTY, { day: 1, bucket: 4 }, '보통')
     expect(cellLevel(pattern, 7, 4)).toBeNull()
     expect(cellLevel(pattern, 1, PATTERN_BUCKETS)).toBeNull()
+  })
+
+  // 없는 좌표는 보통 맵에도 없어서 조회만으로도 null이 된다. 저장소가 망가져
+  // **그 키가 실제로 들어 있는 경우**라야 좌표 검사가 하는 일이 드러난다.
+  it('범위 밖 키가 저장돼 있어도 답하지 않는다', () => {
+    expect(cellLevel({ '7-4': { rankSum: 3, count: 1 } }, 7, 4)).toBeNull()
   })
 })
 

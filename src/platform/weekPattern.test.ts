@@ -98,6 +98,16 @@ describe('loadPattern / savePattern', () => {
     expect((await loadPattern(AREA)).pattern).toEqual({ '1-4': CELL })
   })
 
+  // 어느 요일에도 안 그려지는 칸이라 눈에는 안 보이지만 「몇 번 봤나」는 는다.
+  it('범위 밖 키는 버린다', async () => {
+    getItem.mockResolvedValue(
+      JSON.stringify({
+        cells: { '1-4': CELL, '7-0': CELL, '1-9': CELL, '망가짐': CELL, '-1-0': CELL },
+      }),
+    )
+    expect((await loadPattern(AREA)).pattern).toEqual({ '1-4': CELL })
+  })
+
   it('저장된 값이 객체가 아니면 빈 패턴이다', async () => {
     getItem.mockResolvedValue('[1,2,3]')
     expect(await loadPattern(AREA)).toEqual({ pattern: {}, lastObservedAt: null })
