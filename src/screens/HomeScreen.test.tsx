@@ -70,14 +70,20 @@ vi.mock('@vis.gl/react-google-maps', () => ({
       {children}
     </div>
   ),
+  // 쌓임 순서를 DOM에 실어 둔다. 겹친 핀 중 무엇이 위에 오는지는 실제 지도가
+  // 정하는 일이라 여기서 관찰할 수 있는 것은 **화면이 무엇을 넘기는가**뿐이고,
+  // 그게 이 화면의 책임이다. 목이 이 값을 버리면 「붐빔이 여유 뒤에 숨는다」를
+  // 잡을 통로가 없어진다.
   AdvancedMarker: ({
     children,
     onClick,
+    zIndex,
   }: {
     children: ReactNode
     onClick?: () => void
+    zIndex?: number
   }) => (
-    <button type="button" onClick={onClick}>
+    <button type="button" onClick={onClick} data-z={zIndex}>
       {children}
     </button>
   ),
@@ -239,6 +245,27 @@ describe('HomeScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: '지도 카메라 변경' }))
 
     expect(within(layer).getAllByText('보통').length).toBeGreaterThan(0)
+  })
+
+  // 중심부에 핀이 몰려 서로를 덮는데, 덮는 쪽이 「여유」면 사용자가 피해야 할
+  // 곳이 피할 수 있는 곳 뒤에 숨는다. 순서를 정하는 규칙 자체는 `domain/map`의
+  // `markerZIndex`가 잠그고, 여기서는 **그 값이 실제로 지도까지 가는지**만 본다.
+  it('붐비는 마커가 여유로운 마커 위에 쌓인다', async () => {
+    // 기본 목은 30곳이 전부 '보통'이라 순서가 갈리지 않는다 — 소재를 바꾼다.
+    const { AREA_NAMES } = await import('../data/areas')
+    useAreaSnapshots.mockReturnValue({
+      data: AREA_NAMES.map((name) =>
+        snapshotFor(name, name === '강남역' ? '붐빔' : '여유'),
+      ),
+      isPending: false,
+      isError: false,
+    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+    render(<HomeScreen />)
+
+    const busy = Number(mapMarker(/강남역/).dataset.z)
+    const calm = Number(mapMarker(/경복궁/).dataset.z)
+
+    expect(busy).toBeGreaterThan(calm)
   })
 
   it('지도를 움직이면 그 위치를 화면이 이어받는다', async () => {

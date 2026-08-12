@@ -1,3 +1,4 @@
+import { congestionRank } from './congestion'
 import type {
   AreaCatalogEntry,
   CongestionLevel,
@@ -39,6 +40,24 @@ export interface MapMarker {
 
 export function shouldShowMarkerLabel(zoom: number): boolean {
   return zoom >= LABEL_MIN_ZOOM
+}
+
+/**
+ * 마커를 쌓는 순서. 붐빌수록 위에 온다.
+ *
+ * 30곳 중 12곳쯤이 종로·중구의 좁은 구역에 몰려 있어 기본 줌에서 핀이 서로를
+ * 덮는다. 겹침 자체는 줌으로 푸는 것이고 `LABEL_MIN_ZOOM`이 라벨 쪽을 이미
+ * 그렇게 다루지만, **어느 핀이 위에 오는가**는 겹친 채로도 고를 수 있다.
+ * 덮는 쪽이 「여유」면 사용자가 피해야 할 곳이 피할 수 있는 곳 뒤에 숨는다.
+ *
+ * `null`(정보 없음)이 0이라 가장 아래다. 아는 것이 모르는 것에 가리지 않는다.
+ *
+ * **선택된 마커는 여기서 다루지 않는다.** 선택은 혼잡도와 다른 축이고,
+ * 넣으면 탭할 때마다 쌓임 순서가 바뀌어 근거가 둘이 된다. 선택된 핀은
+ * `CongestionMarker`가 크기로(`size-9` vs `size-7`) 이미 구분한다.
+ */
+export function markerZIndex(level: CongestionLevel | null): number {
+  return level === null ? 0 : congestionRank(level) + 1
 }
 
 /**

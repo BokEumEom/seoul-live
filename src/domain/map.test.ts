@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_ZOOM,
   LABEL_MIN_ZOOM,
+  markerZIndex,
   SEOUL_CENTER,
   shouldShowMarkerLabel,
   toMapMarkers,
@@ -115,5 +116,29 @@ describe('toMapMarkers', () => {
 
   it('빈 목록은 빈 결과다', () => {
     expect(toMapMarkers([])).toEqual([])
+  })
+})
+
+// 30곳 중 12곳쯤이 종로·중구의 좁은 구역에 몰려 있어 기본 줌에서 핀이 서로를
+// 덮는다(390px 렌더에서 60×60px 안에 겹친 것을 셌다). 겹치는 것 자체는 줌으로
+// 풀 일이지만, **어느 핀이 위에 오는가**는 고를 수 있다 — 덮는 쪽이 「여유」면
+// 사용자가 피해야 할 곳이 피할 수 있는 곳 뒤에 숨는다.
+describe('markerZIndex', () => {
+  it('붐빌수록 위에 온다', () => {
+    // 네 단계를 다 세운다. 이웃 한 쌍만 보면 나머지 쌍이 뒤집혀도 산다.
+    const ordered = [
+      markerZIndex('여유'),
+      markerZIndex('보통'),
+      markerZIndex('약간 붐빔'),
+      markerZIndex('붐빔'),
+    ]
+
+    expect(ordered).toEqual([...ordered].toSorted((a, b) => a - b))
+    expect(new Set(ordered).size).toBe(4)
+  })
+
+  it('정보 없음이 가장 아래다', () => {
+    // 회색 핀이 실제 값을 가진 핀을 덮으면, 아는 것이 모르는 것에 가린다.
+    expect(markerZIndex(null)).toBeLessThan(markerZIndex('여유'))
   })
 })

@@ -28,6 +28,7 @@ import { AREA_CATALOG, AREA_NAMES } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
 import {
   DEFAULT_ZOOM,
+  markerZIndex,
   SEOUL_CENTER,
   shouldShowMarkerLabel,
   toMapMarkers,
@@ -307,6 +308,9 @@ export function HomeScreen() {
             // `toMapMarkers`가 만들어 둔 객체를 그대로 넘긴다. 여기서
             // `{{ lat, lng }}`로 새로 만들면 위 memo가 통째로 무의미해진다.
             position={marker.position}
+            // 겹친 핀 중 붐비는 쪽이 위에 온다. 규칙은 `domain/map`이 갖는다 —
+            // 여기서 `level === '붐빔' ? 4 : …`로 풀면 같은 판정이 두 곳에 산다.
+            zIndex={markerZIndex(marker.level)}
             onClick={() => openArea(marker.entry.name)}
           >
             <CongestionMarker
