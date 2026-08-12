@@ -489,6 +489,45 @@ describe('HomeScreen', () => {
     expect(logged).toHaveBeenCalled()
   })
 
+  // **안내가 있는 것과 보이는 것은 다르다.** 오버레이(검색 바 + 칩 열)가 화면
+  // 위 0~112px을 `z-20`으로 덮는데(Task 10 실측), 안내를 지도 레이어에 두면
+  // `ErrorState`의 `py-10` 때문에 문구가 y≈64px에서 시작해 그 아래로 깔린다 —
+  // 390px 헤드리스 크롬으로 찍어 보니 칩 사이 틈으로 글자 조각만 새어 나오고
+  // 사용자에게는 **아무 설명 없는 빈 화면**이었다. 위 테스트는 "안내가 문서에
+  // 있다"만 세고 있어서 이 상태를 그대로 통과시켰다.
+  //
+  // 지도를 **대신하는** 안내라 지도 위에 얹을 것이 아니라 오버레이 열의 마지막
+  // 칸에 서야 한다. 그러면 칩 아래에 흐름대로 놓여 어느 뷰포트에서도 안 가리고,
+  // 오버레이 높이가 바뀌어도 따라온다 — 112px을 어딘가에 또 적어 둘 필요가 없다.
+  //
+  // jsdom에는 레이아웃이 없어 겹침 자체는 못 잰다. 잠글 수 있는 것은 **어느
+  // 레이어에 속하는가**뿐이라 `data-overlay`·`data-map-layer`로 본다. 위치로
+  // 재려 들면 무엇을 해도 통과하는 테스트가 된다.
+  // **`closest('[data-map-layer]')`가 null이라는 단언은 두지 않는다.** 실제로
+  // 일어날 변이 둘 다 그것 없이 죽는다 — 안내를 지도 레이어로 되돌리면 아래
+  // 단언이 죽고, 양쪽에 그리면 `getByText`가 "multiple elements"로 죽는다.
+  // 반대로 오버레이를 지도 레이어 **안으로** 옮기는 무해한 리팩터에는 그 단언만
+  // 죽는다(중첩돼도 `z-20`이라 안내는 그대로 보인다). 잡을 결함이 없고 거짓
+  // 경보만 내는 소재라 뺀다.
+  it('키가 없을 때의 안내가 검색 바·칩 열에 가리지 않는다', () => {
+    isMapAvailable.mockReturnValue(false)
+    render(<HomeScreen />)
+
+    expect(
+      screen.getByText(/VITE_GOOGLE_MAPS_API_KEY/).closest('[data-overlay]'),
+    ).not.toBeNull()
+  })
+
+  it('스크립트를 못 받았을 때의 안내도 가리지 않는다', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<HomeScreen />)
+    await userEvent.click(screen.getByRole('button', { name: '지도 스크립트 로드 실패' }))
+
+    expect(
+      screen.getByText(/불러오지 못했어요/).closest('[data-overlay]'),
+    ).not.toBeNull()
+  })
+
   it('지도 스크립트를 못 받으면 시트가 half에 묶인다', async () => {
     // 키가 없을 때와 같은 이유다. 지도 안내가 화면의 92%를 차지할 이유가 없다.
     vi.spyOn(console, 'error').mockImplementation(() => {})

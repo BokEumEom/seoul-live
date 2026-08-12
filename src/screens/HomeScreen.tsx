@@ -19,7 +19,10 @@ import { CategoryFilter } from '../components/list/CategoryFilter'
 import { LocationNotice } from '../components/list/LocationNotice'
 import { SortSegmented } from '../components/list/SortSegmented'
 import { CongestionMarker } from '../components/map/CongestionMarker'
-import { MapUnavailableNotice } from '../components/map/MapUnavailableNotice'
+import {
+  MapUnavailableNotice,
+  type MapUnavailableReason,
+} from '../components/map/MapUnavailableNotice'
 import { RecenterButton } from '../components/map/RecenterButton'
 import { AREA_CATALOG, AREA_NAMES } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
@@ -204,7 +207,20 @@ export function HomeScreen() {
     [snapshots.isPending, visible],
   )
   const showLabel = shouldShowMarkerLabel(zoom)
-  const mapReady = isMapAvailable() && !loadFailed
+
+  // 지도를 못 그리는 두 경우를 한 값으로 모은다. 「레이어를 비우는가」와
+  // 「시트를 half에 묶는가」와 「어떤 안내를 그리는가」가 전부 이 값 하나를
+  // 보므로 셋의 판정이 갈릴 자리가 없다.
+  //
+  // 키 미설정과 로드 실패를 나누는 이유는 그대로다 — 개발자는 "왜 안 뜨지"에서
+  // 키를 의심하고 사용자는 네트워크를 의심하는데, 문구가 하나면 양쪽 다 엉뚱한
+  // 곳을 본다. 로드 실패는 스크립트를 못 받은 경우다(오프라인·차단·잘못된 키).
+  const mapUnavailableReason: MapUnavailableReason | null = !isMapAvailable()
+    ? 'no-key'
+    : loadFailed
+      ? 'load-failed'
+      : null
+  const mapReady = mapUnavailableReason === null
 
   // 지도를 못 쓰면 시트를 half에 묶는다. 지도 안내가 화면의 92%를 차지할 이유가
   // 없고, 접을 수 있게 두면 안내가 사라져 더 헷갈린다.
@@ -253,13 +269,9 @@ export function HomeScreen() {
     setDetent('peek')
   }
 
-  const mapPane = !isMapAvailable() ? (
-    <MapUnavailableNotice reason="no-key" />
-  ) : loadFailed ? (
-    // 스크립트를 못 받은 경우다(오프라인·차단·잘못된 키). 키 미설정과 문구를
-    // 나눠야 개발자와 사용자가 각각 맞는 곳을 의심한다.
-    <MapUnavailableNotice reason="load-failed" />
-  ) : (
+  // **지도를 못 그리면 이 레이어는 비운다.** 안내는 여기가 아니라 아래 오버레이
+  // 열이 갖는다 — 근거는 그쪽 주석에 한 벌 있다.
+  const mapPane = !mapReady ? null : (
     <APIProvider
       apiKey={googleMapsApiKey()}
       onError={(error) => {
@@ -536,6 +548,27 @@ export function HomeScreen() {
               value={filters.filter}
               onChange={handleFilterChange}
             />
+
+            {/* **지도를 대신하는 안내라 지도 위가 아니라 이 열의 마지막 칸이다.**
+                지도 레이어에 두면 이 오버레이가 통째로 덮는다: 오버레이는 `z-20`
+                으로 화면 위 0~112px을 차지하는데(검색 바 64 + 간격 4 + 칩 줄 44,
+                Task 10 실측) `ErrorState`의 `py-10` 때문에 안내 문구는 y≈64px에서
+                시작한다. 390px 헤드리스 크롬으로 찍어 보니 칩 사이 틈으로 글자
+                조각만 새어 나오고, 사용자에게는 아무 설명 없는 빈 화면이었다.
+
+                흐름대로 칩 아래에 놓이므로 오버레이 높이가 바뀌면 따라온다 —
+                112px을 여기에 다시 적어 두지 않아도 되는 것이 이 자리의 값이다.
+                가운데 정렬로 피하는 길도 있었지만 그건 뷰포트가 작아질수록
+                오버레이 쪽으로 밀려 올라가 640px 아래에서 다시 겹친다(계산).
+
+                `pointer-events-auto`가 필요하다. 이 컨테이너는 칩 줄과 검색 바
+                사이의 빈 곳에서 지도를 끌 수 있게 `pointer-events-none`이라,
+                되살리지 않으면 안내 글자를 고를 수도 없다. */}
+            {mapUnavailableReason !== null && (
+              <div className="pointer-events-auto">
+                <MapUnavailableNotice reason={mapUnavailableReason} />
+              </div>
+            )}
           </div>
 
           <RecenterButton
