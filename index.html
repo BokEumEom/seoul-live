@@ -6,16 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>서울 라이브</title>
     <!--
-      Hanken Grotesk에는 한글 글리프가 없다. 거리·인구 같은 숫자와 라틴 문자만
-      이 폰트로 그려지고 한글은 index.css의 폴백(Pretendard → system-ui)으로
-      떨어진다. 의도된 동작이다.
+      **웹폰트를 쓰지 않는다.** 예전에는 Hanken Grotesk 4종을 Google Fonts에서
+      받았는데(실측 229KB: CSS 964B + woff2 4개 × 57KB) 그 폰트에는 한글
+      글리프가 없어서 **화면 글자의 대부분은 어차피 기기 폰트로 그려졌다.**
+      229KB와 렌더 블로킹 요청이 숫자와 라틴 몇 글자를 위해 쓰인 셈이다.
+
+      한 줄 안에서 서체가 갈리는 것이 더 나빴다 — 「추정 인구 88,000~90,000명」
+      에서 숫자는 Hanken, 「명」은 시스템 폰트라 x-height와 굵기가 어긋났다.
+
+      Pretendard로 갈아타는 길도 재 봤다. 동적 서브셋이 조각당 평균 35KB라
+      200~700KB이고, **미리 서브셋을 뜨는 길은 막혀 있다** — `snapshot.message`와
+      재난문자가 서울 API에서 오는 임의의 한글이라 글리프를 예측할 수 없다.
+      빠진 음절이 문장 중간에서 조용히 폴백된다.
+
+      그래서 폰트 스택은 `index.css`의 `--font-sans` 하나이고 전부 기기 것이다.
     -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
   </head>
   <body>
     <div id="root"></div>

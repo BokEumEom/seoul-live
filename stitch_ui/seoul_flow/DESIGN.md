@@ -50,46 +50,46 @@ colors:
   surface-variant: '#e1e2ed'
 typography:
   display-lg:
-    fontFamily: Hanken Grotesk
+    fontFamily: "system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
     fontSize: 32px
     fontWeight: '700'
     lineHeight: 40px
     letterSpacing: -0.02em
   headline-md:
-    fontFamily: Hanken Grotesk
+    fontFamily: "system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
     fontSize: 24px
     fontWeight: '600'
     lineHeight: 32px
     letterSpacing: -0.01em
   headline-sm:
-    fontFamily: Hanken Grotesk
+    fontFamily: "system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
     fontSize: 20px
     fontWeight: '600'
     lineHeight: 28px
   body-lg:
-    fontFamily: Hanken Grotesk
+    fontFamily: "system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
     fontSize: 18px
     fontWeight: '400'
     lineHeight: 28px
   body-md:
-    fontFamily: Hanken Grotesk
+    fontFamily: "system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
     fontSize: 16px
     fontWeight: '400'
     lineHeight: 24px
   label-md:
-    fontFamily: Hanken Grotesk
+    fontFamily: "system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
     fontSize: 14px
     fontWeight: '500'
     lineHeight: 20px
     letterSpacing: 0.01em
   label-sm:
-    fontFamily: Hanken Grotesk
+    fontFamily: "system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
     fontSize: 12px
     fontWeight: '600'
     lineHeight: 16px
     letterSpacing: 0.02em
   headline-md-mobile:
-    fontFamily: Hanken Grotesk
+    fontFamily: "system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif"
     fontSize: 20px
     fontWeight: '600'
     lineHeight: 28px
@@ -127,8 +127,11 @@ The background uses a very light cool gray to differentiate cards and surfaces f
 
 ## Typography
 
-This design system utilizes **Hanken Grotesk** for its exceptional legibility and contemporary, neutral feel that mirrors the efficiency of modern infrastructure. 
+이 시스템은 **웹폰트를 쓰지 않고 플랫폼 기본 서체 스택**을 쓴다. 원안은 Hanken Grotesk였고 "exceptional legibility and contemporary, neutral feel"이 선정 이유였는데, **그 폰트에는 한글 글리프가 없다.** 화면 글자의 대부분이 한글인 앱에서 그 선택은 성립하지 않는다 — 실제로는 229KB(woff2 4종)를 받아 숫자와 라틴 몇 글자에만 쓰고, 한 줄 안에서 서체가 갈렸다(「추정 인구 88,000~90,000명」).
 
+- **스택:** `system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif`. iOS는 San Francisco + Apple SD Gothic Neo, 안드로이드는 Roboto + Noto Sans KR로 떨어진다. 한 패밀리는 아니지만 **같은 제조사가 짝지어 설계한 조합이라 메트릭이 맞는다.**
+- **`system-ui`가 먼저인 이유:** 이 앱의 핵심 정보가 큰 숫자(혼잡도 헤드라인, 추정 인구)라 자형이 가장 다듬어진 플랫폼 기본 서체로 그린다. 한글 얼굴을 앞에 두면 진짜 한 패밀리가 되는 대신 숫자가 나빠진다.
+- **Pretendard를 얹지 않은 이유:** 동적 서브셋이 조각당 평균 35KB라 200~700KB이고, 미리 서브셋을 뜨는 길은 막혀 있다 — `snapshot.message`와 재난문자가 서울 API에서 오는 **임의의 한글**이라 글리프를 예측할 수 없다. 빠진 음절이 문장 중간에서 조용히 폴백된다.
 - **Weight Strategy:** Use Bold/700 for key density metrics and location names. Use Medium/500 for secondary labels.
 - **Scale:** The type scale is slightly larger than standard utility apps to ensure readability while walking.
 - **Accessibility:** Ensure a minimum contrast ratio of 4.5:1 for all body text against card backgrounds.
