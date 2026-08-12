@@ -69,3 +69,33 @@ describe('혼잡도 배지 색 대비', () => {
     expect(contrast(token(fg), token(bg))).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+// 요일×시간 히트맵은 **글자 없이 색만으로** 네 단계를 말한다(`WeeklyPatternCard`).
+// 칸마다 `sr-only`로 값을 함께 내보내지만 그건 소리 채널이고, 눈으로 읽는
+// 사람에게는 색이 유일한 통로다. 아래 범례 막대도 같은 표를 쓴다.
+//
+// 예전 램프는 `-container` 둘 + 진한 색 둘이라 네 단계가 사실상 둘로 읽혔다.
+// 이웃 대비가 여유→보통 **1.02**, 약간붐빔→붐빔 1.36이었다 — 앞의 둘은
+// 명도가 같고 색상(민트/연노랑)으로만 갈렸다.
+describe('히트맵 램프', () => {
+  const RAMP = ['heat-calm', 'heat-normal', 'heat-busy', 'heat-crowded'] as const
+
+  // **이쪽이 객관적인 성질이다.** 붐빌수록 어두워야 한다 — 순서를 뒤섞거나
+  // 한 칸만 밝게 바꾸면 죽는다.
+  it('붐빌수록 어두워진다', () => {
+    const levels = RAMP.map((name) => luminance(token(name)))
+
+    expect(levels).toEqual([...levels].toSorted((a, b) => b - a))
+  })
+
+  // **이쪽 문턱은 고른 값이다.** 순차 스케일의 이웃 간격에 대한 표준 기준은
+  // 없다. 1.5는 작은 칸(20px)에서 명도 차가 눈에 띄기 시작하는 선으로 잡았고,
+  // 지금 램프는 1.66~1.89다. 예전 램프의 최소값 1.02가 이 문턱에 걸린다.
+  it('이웃한 두 단계가 눈으로 갈린다', () => {
+    const neighbours = RAMP.slice(1).map((name, at) =>
+      contrast(token(RAMP[at]), token(name)),
+    )
+
+    expect(Math.min(...neighbours)).toBeGreaterThanOrEqual(1.5)
+  })
+})

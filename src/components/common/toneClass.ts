@@ -24,20 +24,30 @@ export const NEUTRAL_TONE_CLASS = 'bg-surface-container text-on-surface-variant'
 /**
  * 히트맵 칸처럼 **글자 없이 색만으로** 값을 말하는 자리.
  *
- * `TONE_CLASS`의 `-container`만 쓰면 네 값이 전부 옅어 강도 차가 안 보인다
- * (계산해 보면 명도가 거의 같다). 그래서 위 둘은 옅은 배경, 아래 둘은 진한
- * 색으로 올려 눈에 램프가 생기게 했다. 색 체계는 여전히 하나다 — 같은
- * 토큰(`calm`·`normal`·`busy`·`crowded`)에서 밝기만 다르게 고른다.
+ * 전용 토큰(`--color-heat-*`)을 쓴다. 예전에는 `-container` 둘 + 진한 색 둘을
+ * 섞어 「위 둘은 옅게, 아래 둘은 진하게」로 램프를 흉내 냈는데, 재 보니 네
+ * 단계가 사실상 둘로 읽혔다 — 이웃 대비가 여유→보통 **1.02**로 명도가 오히려
+ * 뒤집혀 있었다. 배지·핀과 요구가 반대라 토큰을 갈랐다(근거는 index.css).
  *
  * **색만으로 값을 전하지 마라.** 이 표를 쓰는 자리는 같은 값을 소리로도
  * 내보내야 한다(`WeeklyPatternCard`의 `sr-only` 참고).
  */
 export const TONE_FILL_CLASS: Readonly<Record<CongestionTone, string>> = {
-  calm: 'bg-calm-container',
-  normal: 'bg-normal-container',
-  busy: 'bg-busy',
-  crowded: 'bg-crowded',
+  calm: 'bg-heat-calm',
+  normal: 'bg-heat-normal',
+  busy: 'bg-heat-busy',
+  crowded: 'bg-heat-crowded',
 }
 
-/** 관측이 없는 칸. 어느 톤도 아니다 — 「여유」와 반드시 달라야 한다. */
-export const EMPTY_CELL_CLASS = 'bg-surface-container-high'
+/**
+ * 관측이 없는 칸.
+ *
+ * **채우지 않는다.** 어떤 회색을 골라도 「여유」(L 0.876)와 명도가 겹쳐
+ * 다섯째 단계처럼 읽힌다 — 예전 값 `bg-surface-container-high`로 재면 여유와
+ * 1.14였다. 값의 부재는 값이 아니므로 램프에 자리를 주지 않고, 채움 대신
+ * 테두리라는 **다른 채널**로 말한다.
+ *
+ * Tailwind 프리플라이트가 `box-sizing: border-box`를 깔아 두어 1px 테두리가
+ * 붙어도 칸 높이(`h-5`)는 그대로다.
+ */
+export const EMPTY_CELL_CLASS = 'border border-outline-variant'
