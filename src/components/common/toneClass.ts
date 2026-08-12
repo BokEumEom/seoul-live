@@ -7,11 +7,15 @@ import type { CongestionTone } from '../../domain/congestion'
 // 공유한다. 표를 두 벌 두면 같은 화면에 미묘하게 다른 초록이 두 종류 생긴다.
 // 컴포넌트 파일이 아니라 여기 두는 이유는 react-refresh 규칙이다 — 컴포넌트를
 // export하는 파일이 상수까지 함께 export하면 빠른 새로고침이 깨진다.
+// 글자색이 `text-calm`이 아니라 `text-on-calm-container`인 이유는 index.css의
+// 그 토큰 주석에 한 벌 있다 — 요약하면 선명한 `--color-calm`을 옅은
+// `-container` 위에 얹으면 12px 글자가 4.5:1에 못 미친다. 지도 핀·마커 알약은
+// 여전히 선명한 쪽을 쓴다.
 export const TONE_CLASS: Readonly<Record<CongestionTone, string>> = {
-  calm: 'bg-calm-container text-calm',
-  normal: 'bg-normal-container text-normal',
-  busy: 'bg-busy-container text-busy',
-  crowded: 'bg-crowded-container text-crowded',
+  calm: 'bg-calm-container text-on-calm-container',
+  normal: 'bg-normal-container text-on-normal-container',
+  busy: 'bg-busy-container text-on-busy-container',
+  crowded: 'bg-crowded-container text-on-crowded-container',
 }
 
 /** 값을 모를 때. 어느 톤도 아니라는 뜻이라 색을 쓰지 않는다. */

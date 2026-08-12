@@ -1,8 +1,26 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  // `tokens.test.ts`가 색 토큰의 대비를 실제 파일에서 읽어 계산한다. 토큰 값을
+  // 테스트에 리터럴로 옮겨 적으면 색을 고칠 때 테스트도 함께 고치게 되어 아무것도
+  // 못 죽이기 때문이다.
+  //
+  // **주입하는 이유가 둘이다.** (1) vitest는 CSS 임포트를 통째로 스텁 처리해서
+  // `import css from './index.css?raw'`가 빈 문자열을 준다 — 확인했다. (2) 테스트
+  // 안에서 `node:fs`를 부르면 `tsconfig.app.json`이 브라우저 번들용이라
+  // (`types: ["vite/client"]`) `tsc -b`가 죽고, 거기에 node 타입을 열면 앱 코드가
+  // 브라우저에 못 가는 API를 부를 길이 생긴다. 이 파일은 tsc 프로젝트 밖이라
+  // node API를 여기서 쓰는 것이 경계를 넘지 않는다.
+  //
+  // 값은 전환 시점에 문자열로 박힌다. `vitest run`은 매번 새로 읽지만 **watch
+  // 중에 index.css를 고치면 이 값은 낡은 채로 남는다** — 색을 만졌으면 러너를
+  // 다시 띄워라.
+  define: {
+    __INDEX_CSS__: JSON.stringify(readFileSync('src/index.css', 'utf8')),
+  },
   test: {
     environment: 'jsdom',
     globals: true,
