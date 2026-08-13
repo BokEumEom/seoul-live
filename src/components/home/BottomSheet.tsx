@@ -9,6 +9,16 @@ import {
 interface Props {
   readonly detent: Detent
   readonly onDetentChange: (next: Detent) => void
+  /**
+   * 끄는 동안의 높이 비율. 놓거나 취소하면 `null`을 준다 — 「이제 `detent`가
+   * 다시 높이의 주인이다」라는 뜻이다.
+   *
+   * `onDetentChange`만으로는 부족해서 생겼다. 지도가 시트를 따라 팬하려면
+   * **끄는 중간 높이**를 알아야 하는데, 단계는 손을 뗀 뒤에나 알려지므로
+   * 지도가 한 박자 늦게 뚝 끊겨 따라온다. 시트가 손끝을 따라오는 것과 같은
+   * 이유로 지도도 손끝을 따라온다.
+   */
+  readonly onDragRatioChange: (ratio: number | null) => void
   readonly children: ReactNode
 }
 
@@ -59,7 +69,12 @@ const DETENT_LABEL: Readonly<Record<Detent, string>> = {
 //
 // 토스 웹뷰에서 이 드래그와 지도 팬 제스처가 충돌하는지는 실기기로만 확인된다
 // — 설계 문서 §6.
-export function BottomSheet({ detent, onDetentChange, children }: Props) {
+export function BottomSheet({
+  detent,
+  onDetentChange,
+  onDragRatioChange,
+  children,
+}: Props) {
   const sheetRef = useRef<HTMLDivElement>(null)
   // 잡고 있는 포인터의 id. 두 손가락이 닿아도 처음 것만 손잡이를 움직인다.
   const pointerIdRef = useRef<number | null>(null)
@@ -134,6 +149,7 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
     const ratio = ratioFromY(event.clientY)
     if (ratio !== null) {
       setDragRatio(ratio)
+      onDragRatioChange(ratio)
     }
   }
 
@@ -151,6 +167,7 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
     releaseCapture(event)
     // 끌던 높이를 놓아준다. 이 뒤로는 부모가 준 detent가 다시 높이의 주인이다.
     setDragRatio(null)
+    onDragRatioChange(null)
 
     // 손잡이를 스치기만 해도 시트가 튀면 목록을 만지기 무서워진다.
     if (!movedRef.current) {
@@ -183,6 +200,7 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
     movedRef.current = false
     // 없던 일이 된 제스처다 — 끌던 높이도 함께 버리고 원래 단계로 돌아간다.
     setDragRatio(null)
+    onDragRatioChange(null)
     // 없던 일이 된 제스처는 드래그도 아니다. 취소 뒤에는 click이 오지 않는 게
     // 보통이지만, 남겨 두면 그다음 탭이 삼켜진다.
     draggedRef.current = false

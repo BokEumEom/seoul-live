@@ -26,29 +26,76 @@ export const LABEL_MIN_ZOOM = 12
 const TILE_SIZE = 256
 
 /**
- * 화면 세로 1픽셀이 몇 도의 위도인가.
+ * 위도 → 웹 메르카토르 세로 픽셀. 위로 갈수록 작고, 적도가 한가운데다.
  *
- * 경도는 세계 한 바퀴(360°)가 `TILE_SIZE * 2^zoom` 픽셀에 균등하게 펴지므로
- * 위도와 무관하지만, **위도는 메르카토르라 극으로 갈수록 늘어난다** — 같은
- * 1픽셀이 서울(37.5°)에서는 적도의 79%에 해당하는 위도만 덮는다. `cos`를
- * 빼먹으면 서울에서 21% 어긋난 자리에 지도를 잡는다.
+ * **「1픽셀 = cos(위도)×상수 도」로 근사하지 않는다.** 그 선형화는 왕복이
+ * 안 닫힌다 — 되돌아올 때의 `cos`가 출발할 때와 다른 위도에서 계산되기
+ * 때문이다. 시트를 끄는 동안 매 프레임 이 계산이 도는데, 왕복이 안 닫히면
+ * 시트를 몇 번 오르내리는 것만으로 지도가 조금씩 흘러간다(실제로 그랬다:
+ * half→full→peek→half 한 바퀴에 37.6이 37.60000029로 돌아왔다).
+ * 픽셀로 갔다가 픽셀에서 돌아오면 부동소수점 오차만 남는다.
  */
-export function latitudeDegreesPerPixel(latitude: number, zoom: number): number {
-  const degreesPerPixel = 360 / (TILE_SIZE * 2 ** zoom)
-  return degreesPerPixel * Math.cos((latitude * Math.PI) / 180)
+function latitudeToPixel(latitude: number, zoom: number): number {
+  const worldPixels = TILE_SIZE * 2 ** zoom
+  const sin = Math.sin((latitude * Math.PI) / 180)
+  const mercator = Math.log((1 + sin) / (1 - sin)) / 2
+  return (worldPixels / 2) * (1 - mercator / Math.PI)
+}
+
+/** 그 역. */
+function pixelToLatitude(pixel: number, zoom: number): number {
+  const worldPixels = TILE_SIZE * 2 ** zoom
+  const mercator = (1 - (2 * pixel) / worldPixels) * Math.PI
+  return (Math.atan(Math.sinh(mercator)) * 180) / Math.PI
+}
+
+/**
+ * 시트 비율이 `fromRatio`에서 `toRatio`로 바뀔 때, **보이는 띠 한가운데에 있던
+ * 좌표가 그 자리에 그대로 남도록** 지도 중심을 옮긴다.
+ *
+ * 지도는 뷰포트를 꽉 채우고 시트가 그 위를 덮으므로, 지도의 중심은 언제나
+ * 화면 한가운데다 — 390×844에서 y=422인데 half 시트의 상단이 y=371이다.
+ * **시트가 커지면 보이는 띠가 위로 줄어드는데 지도가 가만히 있으면 보고 있던
+ * 곳이 시트 뒤로 밀려 들어간다.** 「목록에서 고르면 지도가 그리로 간다」를
+ * 만들어 놓고 시트를 올리면 도로 가리는 셈이라, 시트가 움직이는 동안 지도도
+ * 함께 움직인다.
+ *
+ * 비율 r에서 지도 중심(y=H/2)과 보이는 띠 한가운데(y=H(1−r)/2)의 거리는
+ * `H·r/2` 픽셀이다. 두 비율의 차만큼 중심을 밀면 그 좌표가 제자리에 남는다.
+ *
+ * `viewportHeight`가 0이나 NaN으로 오면(측정 전 프레임, 일부 웹뷰) 옮기지
+ * 않는다 — NaN 좌표를 넘기면 지도가 통째로 죽는다. 덜 옮기는 편이 낫다.
+ */
+export function shiftCenterForSheet(
+  center: Coords,
+  zoom: number,
+  viewportHeight: number,
+  fromRatio: number,
+  toRatio: number,
+): Coords {
+  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) {
+    return center
+  }
+  // 세로 픽셀은 아래로 갈수록 커진다. 시트가 커지면(to > from) 중심이 남쪽,
+  // 곧 픽셀이 커지는 쪽으로 간다 — 그래야 보고 있던 곳이 화면 위로 올라온다.
+  const offsetPixels = ((toRatio - fromRatio) * viewportHeight) / 2
+  // 옮길 것이 없으면 손대지 않는다. 픽셀로 갔다 오는 것만으로도 부동소수점
+  // 끝자리가 흔들려(37.5665 → 37.566500000000005) 「안 움직였다」가 거짓이 된다.
+  if (offsetPixels === 0) {
+    return center
+  }
+  return {
+    lat: pixelToLatitude(latitudeToPixel(center.lat, zoom) + offsetPixels, zoom),
+    lng: center.lng,
+  }
 }
 
 /**
  * 시트가 아래를 덮은 지도에서, `target`이 **보이는 띠의 한가운데**에 놓이도록
- * 지도 중심을 남쪽으로 비켜 잡는다.
+ * 지도 중심을 남쪽으로 비켜 잡는다. 명소를 열 때 쓴다.
  *
- * 지도는 뷰포트를 꽉 채우고 시트가 그 위를 덮으므로, 지도의 중심은 언제나
- * 화면 한가운데다 — 390×844에서 y=422인데 half 시트의 상단이 y=371이다.
- * 명소를 그냥 중심에 놓으면 **시트 뒤로 들어가 하나도 안 보인다.** 「목록에서
- * 고르면 지도가 그리로 간다」가 눈에 보이려면 이 보정이 있어야 한다.
- *
- * `viewportHeight`가 0이나 NaN으로 오면(측정 전 프레임, 일부 웹뷰) 옮기지
- * 않는다 — NaN 좌표를 넘기면 지도가 통째로 죽는다. 덜 옮기는 편이 낫다.
+ * 「시트가 없는 상태(0)에서 지금 비율로 옮긴다」와 같은 말이라 위 함수에
+ * 맡긴다. 식을 두 벌로 적으면 한쪽만 고쳐지는 날이 온다.
  */
 export function centerBelowSheet(
   target: Coords,
@@ -56,15 +103,7 @@ export function centerBelowSheet(
   viewportHeight: number,
   sheetRatio: number,
 ): Coords {
-  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) {
-    return target
-  }
-  const visibleHeight = viewportHeight * (1 - sheetRatio)
-  const offsetPixels = (viewportHeight - visibleHeight) / 2
-  return {
-    lat: target.lat - offsetPixels * latitudeDegreesPerPixel(target.lat, zoom),
-    lng: target.lng,
-  }
+  return shiftCenterForSheet(target, zoom, viewportHeight, 0, sheetRatio)
 }
 
 export interface MapMarker {

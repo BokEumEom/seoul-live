@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
@@ -410,7 +410,14 @@ describe('HomeScreen', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '내 주변' }))
 
-    expect(map).toHaveAttribute('data-center', '37.5,127')
+    const [lat, lng] = (map.getAttribute('data-center') ?? '').split(',').map(Number)
+    expect(lng).toBe(127)
+    // **내 위치(37.5)가 아니라 그보다 조금 남쪽이다.** 명소를 열 때와 같은
+    // 이유다 — 시트가 아래를 덮으므로 내 위치가 보이는 띠 한가운데 오려면
+    // 지도 중심이 그만큼 아래에 있어야 한다. 몇 픽셀인지는
+    // `shiftCenterForSheet`가 잠그고, 여기서는 「내 위치 근처로 갔다」만 본다.
+    expect(lat).toBeLessThan(37.5)
+    expect(lat).toBeGreaterThan(37.49)
     // 줌도 함께 당긴다. 서울 전역 줌 그대로 옮기면 내 주변이 안 보인다.
     expect(map).toHaveAttribute('data-zoom', '14')
   })
@@ -523,11 +530,20 @@ describe('HomeScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
 
     // 옛 구조에서 탭을 오가면 지도가 다시 만들어져 카메라가 서울 전역으로
-    // 돌아갔다. 시트 안 뷰 전환에서는 지도가 아예 언마운트되지 않아야 한다.
-    expect(screen.getByRole('region', { name: '지도' })).toHaveAttribute(
-      'data-center',
-      '37.6,127.1',
+    // 돌아갔다(37.5665). 시트 안 뷰 전환에서는 지도가 아예 언마운트되지 않아야 한다.
+    //
+    // **정확한 문자열로 못 잠근다.** 오늘의 서울은 full로 열리므로 이 왕복에서
+    // 시트 비율이 0.56 → 0.92 → 0.56으로 오갔고, 지도가 그것을 따라 팬했다가
+    // 돌아온다. 위도↔픽셀 왕복이 부동소수점 끝자리 하나를 남겨
+    // 37.599999999999994가 된다 — 언마운트(0.03° 차이)와는 열 자릿수 떨어져
+    // 있어 이 단언으로도 그 회귀는 그대로 잡힌다.
+    const [lat, lng] = (
+      screen.getByRole('region', { name: '지도' }).getAttribute('data-center') ?? ''
     )
+      .split(',')
+      .map(Number)
+    expect(lat).toBeCloseTo(37.6, 6)
+    expect(lng).toBe(127.1)
   })
 
   it('검색하면 목록이 줄어든다', async () => {
@@ -1034,5 +1050,94 @@ describe('HomeScreen', () => {
     expect(
       screen.getByRole('button', { name: /혼잡도 정보를 아직 받지 못했어요/ }),
     ).toBeInTheDocument()
+  })
+
+  // 시트가 커지면 지도의 보이는 띠가 위로 줄어든다. 지도가 가만히 있으면 방금
+  // 「목록에서 고르면 지도가 그리로 간다」로 데려다 놓은 그 자리가 시트 뒤로
+  // 도로 밀려 들어간다 — 서울 인파레이더처럼 지도도 시트에 반응해야 한다.
+  //
+  // 위도 하나만 본다. 시트는 아래쪽을 덮으므로 경도는 움직일 이유가 없고,
+  // 얼마나 움직이는지는 `shiftCenterForSheet`가 픽셀로 잠근다.
+  function mapLatitude(): number {
+    const map = screen.getByRole('region', { name: '지도' })
+    return Number((map.getAttribute('data-center') ?? '').split(',')[0])
+  }
+
+  it('시트를 올리면 지도가 따라 올라온다', async () => {
+    render(<HomeScreen />)
+    const before = mapLatitude()
+
+    await userEvent.click(sheetHandle()) // half → full
+
+    // 중심이 남쪽으로 간다 = 보고 있던 곳이 화면 위쪽으로 올라온다.
+    expect(mapLatitude()).toBeLessThan(before)
+  })
+
+  it('시트를 내리면 지도가 제자리로 돌아온다', async () => {
+    // 한쪽만 보면 「올릴 때만 옮긴다」는 구현이 통과한다. 왕복이 닫혀야
+    // 시트를 몇 번 오르내려도 지도가 흘러가지 않는다.
+    render(<HomeScreen />)
+    const start = mapLatitude()
+
+    await userEvent.click(sheetHandle()) // half → full
+    await userEvent.click(sheetHandle()) // full → peek
+    await userEvent.click(sheetHandle()) // peek → half
+
+    expect(mapLatitude()).toBeCloseTo(start, 5)
+  })
+
+  it('시트를 끄는 동안에도 지도가 손끝을 따라온다', () => {
+    // **손을 떼기 전에** 움직여야 한다. 단계만 받으면 지도가 한 박자 늦게
+    // 뚝 끊겨 따라오는데, 시트가 손끝을 따라오게 만든 이유와 같은 이유로
+    // 그건 「고정된 것」처럼 느껴진다.
+    //
+    // jsdom에는 레이아웃이 없어 시트가 비율을 못 낸다 — 부모의 rect를 심는다.
+    const { container } = render(<HomeScreen />)
+    const root = container.firstElementChild as HTMLElement
+    vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({
+      top: 0, height: 800, bottom: 800, left: 0, right: 400, width: 400,
+      x: 0, y: 0, toJSON: () => ({}),
+    } as DOMRect)
+    const before = mapLatitude()
+
+    fireEvent.pointerDown(sheetHandle(), { clientY: 400, pointerId: 1 })
+    fireEvent.pointerMove(sheetHandle(), { clientY: 100, pointerId: 1 })
+
+    expect(mapLatitude()).toBeLessThan(before)
+  })
+
+  it('어느 단계에서 눌러도 내 주변은 같은 자리에 지도를 잡는다', async () => {
+    // 비켜 잡는 거리는 **누를 때 시트가 덮고 있던 만큼**이고, 그 뒤 단계가
+    // 바뀌면 effect가 이어받아 새 띠의 한가운데로 옮긴다. 둘이 합쳐져 어느
+    // 단계에서 눌렀든 같은 자리가 나와야 한다.
+    //
+    // 「지금 비율」 대신 half로 고정하면 이 등식이 깨진다. peek으로 내려 둔 채
+    // 누르면 단계가 안 바뀌어 effect가 손댈 것이 없고, 시트가 덮지도 않은
+    // 만큼을 비켜 잡아 내 위치를 215px 지나친다 — 실제로 「내 주변」이 그렇게
+    // 0.0105° 어긋났었다.
+    useLocation.mockReturnValue({
+      coords: { lat: 37.5, lng: 127 },
+      status: 'granted',
+      retry: vi.fn(),
+    })
+
+    async function offsetFromMyPlace(lowerFirst: boolean): Promise<number> {
+      const view = render(<HomeScreen />)
+      if (lowerFirst) {
+        await userEvent.click(sheetHandle()) // half → full
+        await userEvent.click(sheetHandle()) // full → peek
+      }
+      await userEvent.click(screen.getByRole('button', { name: '내 주변' }))
+      const offset = 37.5 - mapLatitude()
+      view.unmount()
+      return offset
+    }
+
+    const fromPeek = await offsetFromMyPlace(true)
+    const fromHalf = await offsetFromMyPlace(false)
+
+    expect(fromPeek).toBeCloseTo(fromHalf, 6)
+    // 0이 아니어야 한다 — 둘 다 안 비켜 잡아도 위 단언은 통과한다.
+    expect(fromHalf).toBeGreaterThan(0)
   })
 })

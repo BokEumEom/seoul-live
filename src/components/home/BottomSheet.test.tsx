@@ -17,9 +17,17 @@ function viewportRect(height: number): DOMRect {
   }
 }
 
-function setup(onDetentChange = vi.fn(), detent: Detent = 'half') {
+function setup(
+  onDetentChange = vi.fn(),
+  detent: Detent = 'half',
+  onDragRatioChange = vi.fn(),
+) {
   const { container } = render(
-    <BottomSheet detent={detent} onDetentChange={onDetentChange}>
+    <BottomSheet
+      detent={detent}
+      onDetentChange={onDetentChange}
+      onDragRatioChange={onDragRatioChange}
+    >
       <div>시트내용</div>
     </BottomSheet>,
   )
@@ -41,6 +49,7 @@ function setup(onDetentChange = vi.fn(), detent: Detent = 'half') {
     // 자기 내용을 한 겹 감싸면 그 래퍼를 검사하면서 조용히 통과한다.
     scroller: sheet.querySelector('[data-sheet-content]') as HTMLElement,
     onDetentChange,
+    onDragRatioChange,
     sheet,
     setViewportHeight,
   }
@@ -456,5 +465,68 @@ describe('BottomSheet — 손끝을 따라온다', () => {
     fireEvent.pointerMove(handle, { pointerId: 2, clientY: 100 })
 
     expect(sheet.style.height).toBe('56%')
+  })
+})
+
+// 시트가 커지면 지도의 보이는 띠가 위로 줄어든다. 지도가 가만히 있으면 보고
+// 있던 곳이 시트 뒤로 밀려 들어가므로, 지도도 함께 팬해야 한다 — 그러려면
+// **끄는 동안의 높이를 부모가 알아야 한다.** 단계만 알려서는 손을 뗀 뒤에나
+// 알게 되어 지도가 한 박자 늦게 뚝 끊겨 따라온다.
+describe('BottomSheet가 끄는 높이를 부모에게 알린다', () => {
+  it('끄는 동안 지금 비율을 알린다', () => {
+    const { handle, onDragRatioChange } = setup()
+
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 })
+
+    // 뷰포트 800에서 y=100이면 (800-100)/800 = 0.875다.
+    expect(onDragRatioChange).toHaveBeenLastCalledWith(0.875)
+  })
+
+  it('끄는 내내 계속 알린다', () => {
+    // 한 번만 알리면 지도가 첫 프레임에서 멈춘다 — 「손끝을 따라온다」가 아니다.
+    const { handle, onDragRatioChange } = setup()
+
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientY: 300, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientY: 200, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 })
+
+    expect(onDragRatioChange.mock.calls.map((call) => call[0])).toEqual([
+      0.625, 0.75, 0.875,
+    ])
+  })
+
+  it('놓으면 끌던 높이를 놓았다고 알린다', () => {
+    // null은 「이제 부모의 detent가 높이의 주인이다」라는 뜻이다. 안 알리면
+    // 지도가 손 뗀 순간의 비율에 굳어, 스냅으로 붙은 단계와 어긋난 자리를 본다.
+    const { handle, onDragRatioChange } = setup()
+
+    drag(handle, 430, 100)
+
+    expect(onDragRatioChange).toHaveBeenLastCalledWith(null)
+  })
+
+  it('취소돼도 놓았다고 알린다', () => {
+    // 취소는 「없던 일」이다. 지도도 원래 자리로 돌아가야 한다.
+    const { handle, onDragRatioChange } = setup()
+
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 })
+    fireEvent.pointerCancel(handle, { clientY: 100, pointerId: 1 })
+
+    expect(onDragRatioChange).toHaveBeenLastCalledWith(null)
+  })
+
+  it('부모가 접혀 비율을 못 내면 알리지 않는다', () => {
+    // 시트 자신이 마지막 높이를 그대로 두는 것과 같은 이유다. 0을 알리면
+    // 지도가 순간적으로 엉뚱한 데로 튄다.
+    const { handle, onDragRatioChange, setViewportHeight } = setup()
+    fireEvent.pointerDown(handle, { clientY: 430, pointerId: 1 })
+    setViewportHeight(0)
+
+    fireEvent.pointerMove(handle, { clientY: 100, pointerId: 1 })
+
+    expect(onDragRatioChange).not.toHaveBeenCalled()
   })
 })

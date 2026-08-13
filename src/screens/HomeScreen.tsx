@@ -30,6 +30,7 @@ import {
   centerBelowSheet,
   DEFAULT_ZOOM,
   markerZIndex,
+  shiftCenterForSheet,
   SEOUL_CENTER,
   shouldShowMarkerLabel,
   toMapMarkers,
@@ -86,6 +87,9 @@ export function HomeScreen() {
   // 나타나지 않아요")은 덮어씌우는 모달 시트를 말하는 것이라, 지도와 함께
   // 상시 보이는 이 셸의 기본 단계와는 다른 이야기다 — 그래도 full로는 열지 않는다.
   const [detent, setDetent] = useState<Detent>('half')
+  // 시트를 끄는 동안에만 채워진다. 시트가 제 높이를 그렇게 들고 있고, 지도가
+  // 그 높이를 따라가야 해서 여기까지 올라왔다 — `BottomSheet`의 주석 참조.
+  const [dragRatio, setDragRatio] = useState<number | null>(null)
   const [view, setView] = useState<'list' | 'today'>('list')
 
   const { setSelectedName, setSort } = filters
@@ -205,9 +209,6 @@ export function HomeScreen() {
   // 시트의 상단이 y=371이라 **명소가 시트 뒤로 들어가 하나도 안 보인다.**
   // 얼마나 비켜 잡을지는 `centerBelowSheet`가 화면 높이와 줌으로 계산한다.
   //
-  // `SHEET_RATIO.half`를 넘기는 것은 `openArea`가 언제나 half로 연다는 바로 위
-  // 규칙에서 온다. 둘이 갈리면 지도가 엉뚱한 자리를 잡으므로 함께 고쳐야 한다.
-  //
   // 카탈로그에 없는 이름이면 지도를 건드리지 않는다. 화면에서 오는 이름은 전부
   // 카탈로그에서 나온 것이라(목록 행·마커·오늘의 서울·근처 여유로운 곳) 닿지
   // 않는 가지지만, 없는 곳으로 지도를 던지느니 그대로 두는 편이 낫다 —
@@ -215,15 +216,24 @@ export function HomeScreen() {
   function moveMapTo(name: string): void {
     const entry = findAreaByName(name)
     if (entry === undefined) return
-    setCenter(
-      centerBelowSheet(
-        { lat: entry.lat, lng: entry.lng },
-        AREA_ZOOM,
-        window.innerHeight,
-        SHEET_RATIO.half,
-      ),
-    )
-    setZoom(AREA_ZOOM)
+    focusMapOn({ lat: entry.lat, lng: entry.lng }, AREA_ZOOM)
+  }
+
+  /**
+   * 그 좌표를 **지금 보이는 띠의 한가운데**에 놓는다.
+   *
+   * **「지금」이 중요하다.** 이 함수를 부르는 두 곳(`openArea`·`handleRecenter`)은
+   * 단계도 함께 바꾸는데, 옮겨 갈 단계의 비율을 여기서 미리 반영하면 안 된다 —
+   * 아래 effect가 비율 변화를 한 번 더 밀어 **두 번 적용된다.** 실제로 그랬다:
+   * 「내 주변」이 내 위치를 지나쳐 0.0105° 북쪽에 지도를 잡았다.
+   *
+   * 지금 비율로 놓아 두면 effect가 이어받아 새 비율의 띠 한가운데로 옮겨 준다.
+   * 그 effect가 하는 일이 정확히 「보고 있던 곳을 띠 한가운데에 유지한다」라서
+   * 두 조작이 합쳐져 옳은 자리가 나온다 — 계산으로 확인했고 테스트가 잠근다.
+   */
+  function focusMapOn(target: Coords, nextZoom: number): void {
+    setCenter(centerBelowSheet(target, nextZoom, window.innerHeight, sheetRatio))
+    setZoom(nextZoom)
   }
 
   const list = useMemo(
@@ -293,6 +303,32 @@ export function HomeScreen() {
   // 화면에 드러날 길이 없어서 **테스트로 지킬 수도 없다.**
   const sheetDetent: Detent = mapReady ? detent : 'half'
 
+  // 시트가 지금 실제로 덮고 있는 비율. 끄는 동안에는 손끝이, 놓으면 단계가 준다.
+  // `BottomSheet` 안의 `dragRatio ?? SHEET_RATIO[detent]`와 같은 식이다 — 시트가
+  // 제 높이를 그렇게 정하므로 지도도 같은 값을 봐야 둘이 안 갈린다.
+  const sheetRatio = dragRatio ?? SHEET_RATIO[sheetDetent]
+
+  // **시트가 움직이면 지도도 움직인다.** 시트가 커지면 보이는 띠가 위로 줄어드는데
+  // 지도가 가만히 있으면 보고 있던 곳이 시트 뒤로 밀려 들어간다 — 「목록에서
+  // 고르면 지도가 그리로 간다」로 데려다 놓은 자리를 시트가 도로 가리는 셈이다.
+  //
+  // **직전에 반영한 비율을 ref로 든다.** 절대 위치가 아니라 「이만큼 밀어라」라는
+  // 차이를 적용하기 때문이다. 절대식으로 쓰려면 「지금 띠 한가운데가 어디인가」를
+  // 상태로 따로 들어야 하는데, 그러면 지도가 카메라로 돌려주는 값과 그 상태가
+  // 두 벌이 되어 갈린다. 차이로 밀면 지도가 돌려준 중심 위에 그대로 얹힌다.
+  //
+  // 함수형 업데이트인 이유도 같다. `center`를 의존성에 넣으면 카메라 이벤트가
+  // 돌려준 중심마다 이 effect가 다시 돌아 같은 차이를 두 번 민다.
+  const appliedRatioRef = useRef(SHEET_RATIO.half)
+  useEffect(() => {
+    const previous = appliedRatioRef.current
+    if (previous === sheetRatio) return
+    appliedRatioRef.current = sheetRatio
+    setCenter((current) =>
+      shiftCenterForSheet(current, zoom, window.innerHeight, previous, sheetRatio),
+    )
+  }, [sheetRatio, zoom])
+
   function handleCameraChanged(event: MapCameraChangedEvent): void {
     setCenter(event.detail.center)
     setZoom(event.detail.zoom)
@@ -323,8 +359,8 @@ export function HomeScreen() {
   // 옮긴 보람이 없다.
   function handleRecenter(): void {
     if (location.coords === null) return
-    setCenter(location.coords)
-    setZoom(RECENTER_ZOOM)
+    // 명소를 열 때와 같은 통로다. 내 위치도 시트 뒤가 아니라 보이는 띠에 와야 한다.
+    focusMapOn(location.coords, RECENTER_ZOOM)
     setSort('distance')
     setDetent('peek')
   }
@@ -645,7 +681,11 @@ export function HomeScreen() {
         </>
       )}
 
-      <BottomSheet detent={sheetDetent} onDetentChange={setDetent}>
+      <BottomSheet
+        detent={sheetDetent}
+        onDetentChange={setDetent}
+        onDragRatioChange={setDragRatio}
+      >
         {/* 여백을 걸지 않는다 — 시트의 규칙이 아니라 뷰의 몫이다(BottomSheet
             주석 참조). 이 상자는 오직 포커스를 받기 위한 것이다.
 
