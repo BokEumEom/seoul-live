@@ -108,6 +108,72 @@ export function cellLevel(
   return CONGESTION_LEVELS[Math.round(cell.rankSum / cell.count)] ?? null
 }
 
+export type UsualDelta = 'busier' | 'similar' | 'calmer'
+
+export interface UsualComparison {
+  readonly delta: UsualDelta
+  /** 비교에 쓴 **과거** 관측 수. 지금 것은 빠져 있다 */
+  readonly samples: number
+}
+
+/**
+ * 비교를 시작하는 최소 과거 관측 수.
+ *
+ * 한두 번 본 것으로 「평소보다 붐벼요」를 말하면 근거 없는 단정이 된다. 셋은
+ * 자신 있게 말할 만한 수가 아니라 **말하지 않을 선**을 그은 것이다 — 서버
+ * 수집이 붙어 표본이 늘면 올릴 자리다.
+ */
+const MIN_SAMPLES = 3
+
+/**
+ * 한 단계 차이의 절반. 랭크가 0~3인 정수축이라 0.5면 「이웃 칸으로 넘어갔나」다.
+ * 이보다 작은 흔들림을 「평소보다」라고 부르면 매번 다른 말을 하게 된다.
+ */
+const DELTA_THRESHOLD = 0.5
+
+/**
+ * 지금 혼잡도를 **같은 요일·같은 시간대의 과거 평균**과 견준다.
+ * detail_page.png의 「평소보다 붐빔」 한 줄이다.
+ *
+ * **지금 관측을 평균에서 뺀다.** 이 함수가 받는 패턴에는 `useWeekPattern`이 방금
+ * 넣은 지금 값이 이미 들어 있어서, 빼지 않으면 자기 자신과 비교하게 되고 관측이
+ * 적을수록 무엇을 넣어도 「비슷」으로 눌린다.
+ *
+ * 과거가 `MIN_SAMPLES`에 못 미치면 `null`이다 — 화면은 그때 수치 대신
+ * 「아직 비교할 기록이 부족해요」를 적는다. 「평소와 비슷」으로 떨어뜨리지 않는
+ * 이유는 `cellLevel`이 관측 없는 칸을 「여유」로 만들지 않는 것과 같다.
+ */
+export function compareWithUsual(
+  pattern: WeekPattern,
+  slot: PatternSlot,
+  current: CongestionLevel,
+): UsualComparison | null {
+  if (!inRange(slot.day, slot.bucket)) {
+    return null
+  }
+  const cell = pattern[key(slot.day, slot.bucket)]
+  if (cell === undefined) {
+    return null
+  }
+
+  const currentRank = congestionRank(current)
+  const samples = cell.count - 1
+  if (samples < MIN_SAMPLES) {
+    return null
+  }
+
+  const usualRank = (cell.rankSum - currentRank) / samples
+  const difference = currentRank - usualRank
+
+  if (difference >= DELTA_THRESHOLD) {
+    return { delta: 'busier', samples }
+  }
+  return {
+    delta: difference <= -DELTA_THRESHOLD ? 'calmer' : 'similar',
+    samples,
+  }
+}
+
 /** 지금까지 쌓인 관측 수. 화면이 「얼마나 믿을 만한가」를 말하는 근거다. */
 export function observationTotal(pattern: WeekPattern): number {
   return Object.values(pattern).reduce((sum, cell) => sum + cell.count, 0)

@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import type { CongestionLevel } from './types'
 import {
   bucketLabel,
   cellLevel,
+  compareWithUsual,
   observationSlot,
   observationTotal,
   PATTERN_BUCKETS,
   recordObservation,
+  type PatternSlot,
   type WeekPattern,
 } from './pattern'
 
@@ -107,5 +110,73 @@ describe('bucketLabel', () => {
     expect(bucketLabel(0)).toBe('0시')
     expect(bucketLabel(4)).toBe('12시')
     expect(bucketLabel(PATTERN_BUCKETS - 1)).toBe('21시')
+  })
+})
+
+describe('compareWithUsual', () => {
+  const SLOT: PatternSlot = { day: 3, bucket: 4 }
+
+  /** 지금 관측까지 이미 쌓인 칸을 만든다 — 화면이 받는 패턴이 그 모양이다. */
+  function patternOf(levels: readonly CongestionLevel[]): WeekPattern {
+    return levels.reduce(
+      (pattern, level) => recordObservation(pattern, SLOT, level),
+      {} as WeekPattern,
+    )
+  }
+
+  it('과거 평균보다 붐비면 busier다', () => {
+    // 과거 셋이 여유(0)인데 지금이 붐빔(3)이다.
+    const pattern = patternOf(['여유', '여유', '여유', '붐빔'])
+    expect(compareWithUsual(pattern, SLOT, '붐빔')?.delta).toBe('busier')
+  })
+
+  it('과거 평균보다 한산하면 calmer다', () => {
+    const pattern = patternOf(['붐빔', '붐빔', '붐빔', '여유'])
+    expect(compareWithUsual(pattern, SLOT, '여유')?.delta).toBe('calmer')
+  })
+
+  it('과거 평균과 비슷하면 similar다', () => {
+    const pattern = patternOf(['보통', '보통', '보통', '보통'])
+    expect(compareWithUsual(pattern, SLOT, '보통')?.delta).toBe('similar')
+  })
+
+  // 이 카드가 받는 패턴에는 **지금 관측이 이미 들어 있다**. 빼지 않으면 자기
+  // 자신과 비교하게 되고, 관측이 적을수록 무엇을 넣어도 「비슷」으로 눌린다.
+  //
+  // 소재를 판정이 갈리는 값으로 고른다. 표본 수(samples)만 세면 뺄셈을 없애도
+  // 그 값은 그대로라 무엇을 해도 통과하는 테스트가 된다 — 실제로 그랬다.
+  // 과거 넷의 랭크 합이 6(보통·보통·약간 붐빔·약간 붐빔)이고 지금이 약간 붐빔(2)일 때:
+  //   지금 것을 빼면  평균 6/4 = 1.5,  차이 0.5 → 경계에 걸려 busier
+  //   빼지 않으면     평균 8/5 = 1.6,  차이 0.4 → 문턱 아래라 similar
+  it('지금 관측을 평균에서 빼고 비교한다', () => {
+    const pattern = patternOf(['보통', '보통', '약간 붐빔', '약간 붐빔', '약간 붐빔'])
+    const usual = compareWithUsual(pattern, SLOT, '약간 붐빔')
+    expect(usual?.delta).toBe('busier')
+    expect(usual?.samples).toBe(4)
+  })
+
+  it('과거 관측이 모자라면 아무 말도 하지 않는다', () => {
+    // 한두 번 본 것으로 「평소보다」를 말하면 근거 없는 단정이 된다.
+    expect(compareWithUsual(patternOf(['붐빔']), SLOT, '붐빔')).toBeNull()
+    expect(compareWithUsual(patternOf(['여유', '붐빔']), SLOT, '붐빔')).toBeNull()
+    expect(compareWithUsual(patternOf(['여유', '여유', '붐빔']), SLOT, '붐빔')).toBeNull()
+  })
+
+  it('그 칸을 한 번도 안 봤으면 null이다', () => {
+    expect(compareWithUsual({}, SLOT, '붐빔')).toBeNull()
+  })
+
+  it('다른 칸의 관측은 끌어오지 않는다', () => {
+    // 같은 시간대라도 요일이 다르면 다른 이야기다.
+    const other = [0, 1, 2, 3].reduce<WeekPattern>(
+      (pattern, _, index) =>
+        recordObservation(pattern, { day: 1, bucket: 4 }, index === 3 ? '붐빔' : '여유'),
+      {},
+    )
+    expect(compareWithUsual(other, SLOT, '붐빔')).toBeNull()
+  })
+
+  it('칸 범위를 벗어나면 null이다', () => {
+    expect(compareWithUsual(patternOf(['여유']), { day: 9, bucket: 0 }, '붐빔')).toBeNull()
   })
 })

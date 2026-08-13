@@ -105,7 +105,9 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
 
       {snapshot !== undefined && (
         <>
-          <CongestionCard snapshot={snapshot} />
+          {/* 패턴을 넘긴다 — 「평소 대비」 한 줄의 근거이고, 이 훅이 방금 넣은
+              지금 관측이 그 안에 들어 있다(compareWithUsual이 빼고 견준다). */}
+          <CongestionCard snapshot={snapshot} pattern={pattern} />
 
           <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
             {/* "예측"은 시스템 용어에 가깝다. Google Maps의 「인기 시간대」 자리다. */}
