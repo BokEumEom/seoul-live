@@ -48,6 +48,7 @@ import type { Coords } from '../domain/types'
 import { useCachedCityAlerts } from '../hooks/useCachedCityAlerts'
 import { useFavorites } from '../hooks/useFavorites'
 import { useHomeFilters } from '../hooks/useHomeFilters'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { buildNearbyList } from '../hooks/useNearbyAreas'
 import { TodayScreen } from './TodayScreen'
 import {
@@ -77,6 +78,8 @@ export function HomeScreen() {
   // 「오늘의 서울」이 시트 안 뷰가 되면서 요약 줄의 재난문자 개수도 여기서 센다.
   // 캐시에 있는 것만 읽으므로 추가 호출이 없다.
   const alerts = useCachedCityAlerts()
+  // 지도가 없는 이유를 가르는 데 쓴다 — 아래 `mapUnavailableReason` 주석 참조.
+  const online = useOnlineStatus()
 
   // 초기 뷰는 위치 권한과 무관하게 서울 전역이다. 내 위치로 자동 이동하면
   // 서울 밖 사용자에게 마커가 하나도 없는 지도가 뜬다.
@@ -278,18 +281,33 @@ export function HomeScreen() {
   )
   const showLabel = shouldShowMarkerLabel(zoom)
 
-  // 지도를 못 그리는 두 경우를 한 값으로 모은다. 「레이어를 비우는가」와
+  // 지도를 못 그리는 세 경우를 한 값으로 모은다. 「레이어를 비우는가」와
   // 「시트를 half에 묶는가」와 「어떤 안내를 그리는가」가 전부 이 값 하나를
   // 보므로 셋의 판정이 갈릴 자리가 없다.
   //
   // 키 미설정과 로드 실패를 나누는 이유는 그대로다 — 개발자는 "왜 안 뜨지"에서
   // 키를 의심하고 사용자는 네트워크를 의심하는데, 문구가 하나면 양쪽 다 엉뚱한
-  // 곳을 본다. 로드 실패는 스크립트를 못 받은 경우다(오프라인·차단·잘못된 키).
+  // 곳을 본다. 로드 실패는 스크립트를 못 받은 경우다(차단·잘못된 키).
+  //
+  // **오프라인은 서비스워커가 생기면서 늘어났다.** 예전에는 끊기면 화면 자체가
+  // 안 떠서 표현할 일이 없었는데, 지금은 셸이 캐시에서 뜨고 목록도 마지막
+  // 기억으로 선다 — 지도만 회색 빈칸으로 남는다.
+  //
+  // **`loadFailed`로는 이 상태를 못 잡는다.** 실측으로 확인했다: 오프라인에서
+  // 구글 지도 SDK는 브라우저 HTTP 캐시에서 살아 돌아오고, 못 받는 것은 그다음의
+  // 지도 설정(`Unable to fetch configuration for mapId`)이다. 스크립트 로드는
+  // 성공했으므로 `APIProvider`의 `onError`가 안 불리고, 사용자에게는 회색 빈칸
+  // 위에 구글의 영문 오류만 남는다.
+  //
+  // 순서: 키 없음 → 오프라인 → 로드 실패. 오프라인은 잠깐이고 키가 없는 것은
+  // 고치기 전까지 영영 그대로라, 먼저 고칠 것을 먼저 말한다.
   const mapUnavailableReason: MapUnavailableReason | null = !isMapAvailable()
     ? 'no-key'
-    : loadFailed
-      ? 'load-failed'
-      : null
+    : !online
+      ? 'offline'
+      : loadFailed
+        ? 'load-failed'
+        : null
   const mapReady = mapUnavailableReason === null
 
   // 지도를 못 쓰면 시트를 half에 묶는다. 지도 안내가 화면의 92%를 차지할 이유가

@@ -2,9 +2,35 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>서울 라이브</title>
+    <meta name="description" content="서울 주요 명소의 실시간 인파를 지도에서 봅니다." />
+    <!--
+      **여기 값들은 매니페스트와 같아야 한다.** 매니페스트(`vite.config.ts`의
+      `pwa()`)는 설치된 뒤에 읽히고, 이 메타 태그들은 설치되기 **전** 브라우저
+      탭에서 읽힌다 — 갈리면 설치 전후로 색이 바뀐다.
+
+      `theme_color`가 파랑이 아니라 표면색인 이유도 그쪽에 적어 뒀다.
+    -->
+    <meta name="theme-color" content="#faf8ff" />
+
+    <!--
+      iOS는 웹 매니페스트를 반쪽만 읽는다. 홈 화면 아이콘과 전체화면 여부는
+      아직도 `apple-` 접두사 메타를 본다 — 매니페스트의 `icons`·`display`가
+      있어도 이것들이 없으면 사파리가 스크린샷을 아이콘으로 쓰고 주소창을 남긴다.
+      `mobile-web-app-capable`은 그 표준판이고, 크롬이 이쪽을 본다. 둘 다 둔다.
+    -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="서울라이브" />
+    <!--
+      `black-translucent`가 아니라 `default`다. 반투명으로 두면 상태 표시줄이
+      내용 위에 겹쳐 뜨는데, 이 앱의 화면 맨 위 0~112px은 검색 바와 필터 칩이
+      차지하고 있어 시계와 겹친다(그 112px은 Task 10에서 실측한 값이다).
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!--
       **웹폰트를 쓰지 않는다.** 예전에는 Hanken Grotesk 4종을 Google Fonts에서
       받았는데(실측 229KB: CSS 964B + woff2 4개 × 57KB) 그 폰트에는 한글

@@ -1,6 +1,6 @@
 import { ErrorState } from '../common/ErrorState'
 
-export type MapUnavailableReason = 'no-key' | 'load-failed'
+export type MapUnavailableReason = 'no-key' | 'load-failed' | 'offline'
 
 // 두 상황을 같은 문구로 묶지 않는다. 개발자는 "왜 안 뜨지"에서 키를 의심하고
 // 사용자는 네트워크를 의심하는데, 문구가 하나면 양쪽 다 엉뚱한 곳을 본다.
@@ -12,11 +12,22 @@ export type MapUnavailableReason = 'no-key' | 'load-failed'
 // 녹아들었고, 「내 주변」은 **지도 위에 뜨는 FAB**이 됐다 — 지도가 없는 화면에서
 // 지도 위 버튼으로 안내하는 꼴이었다. 목록과 검색은 시트 안에 있어 지도가
 // 죽어도 그대로 선다.
+// **오프라인은 서비스워커가 생기면서 늘어난 세 번째 상태다.** 예전에는 끊기면
+// 화면 자체가 안 떠서 표현할 일이 없었는데, 지금은 셸이 캐시에서 뜨고 목록도
+// 마지막 기억으로 서므로 지도만 회색 빈칸으로 남는다.
+//
+// 「불러오지 못했어요」로 묶지 않았다. 그 문구는 「네트워크 상태를 확인해
+// 주세요」로 이어지는데, 끊긴 걸 이미 아는 사용자에게 확인하라는 건 할 일을
+// 되돌려주는 것이다. 여기서 해야 할 말은 **끊긴 동안에도 목록은 선다**는 사실이고,
+// 그건 마지막 기억이라 시각을 함께 말해야 오해가 없다 — 그 시각은 각 명소 카드의
+// 「마지막 업데이트」가 이미 들고 있다.
 const MESSAGE: Readonly<Record<MapUnavailableReason, string>> = {
   'no-key':
     'VITE_GOOGLE_MAPS_API_KEY가 설정되지 않아 지도를 표시할 수 없어요. 아래 목록과 검색은 그대로 쓸 수 있어요.',
   'load-failed':
     '지도를 불러오지 못했어요. 네트워크 상태를 확인해 주세요. 아래 목록과 검색은 그대로 쓸 수 있어요.',
+  offline:
+    '오프라인이에요. 연결되면 지도가 다시 나와요. 아래 목록과 검색은 그대로 쓸 수 있어요.',
 }
 
 interface Props {

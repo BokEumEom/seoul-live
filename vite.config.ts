@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 import { fetchArea } from './api/_lib/seoul.js'
 import { isAllowedAreaName } from './api/_lib/allowed-areas.js'
 import { mapWithConcurrency } from './api/_lib/concurrency.js'
@@ -108,6 +109,100 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    plugins: [react(), tailwindcss(), seoulApiDevServer(env)],
+    plugins: [react(), tailwindcss(), seoulApiDevServer(env), pwa()],
   }
 })
+
+/**
+ * 웹 배포(`seoul-live-now.vercel.app`)를 설치 가능한 앱으로 만든다.
+ *
+ * **토스 미니앱과 같은 `dist`를 쓴다.** `npm run build`가 `vite build` 한 번을
+ * 돌고 그 결과를 `ait build`가 그대로 포장하므로, 여기서 만드는 매니페스트와
+ * 서비스워커 파일은 `.ait` 안에도 들어간다. 파일이 들어가는 것 자체는 몇 KB라
+ * 문제가 아니지만 **등록은 하면 안 된다** — 토스 웹뷰 안에서 서비스워커가
+ * 옛 번들을 붙들면 사용자에게는 되돌릴 방법이 없다. 그래서 `injectRegister: null`
+ * 로 자동 주입을 끄고, 등록은 `src/platform/pwa.ts`가 환경을 보고 직접 한다.
+ */
+function pwa(): Plugin[] {
+  return VitePWA({
+    // **자동 주입을 끈다.** 켜 두면 index.html에 등록 코드가 무조건 박혀
+    // 토스 웹뷰에서도 서비스워커가 살아난다. 위 주석의 이유로 안 된다.
+    injectRegister: null,
+    // 새 배포가 있으면 받아서 곧바로 갈아탄다. 이 앱에는 지킬 입력 상태가 없고
+    // (필터·즐겨찾기는 localStorage에 있다), 낡은 번들이 바뀐 API 응답을
+    // 파싱하다 조용히 「정보 없음」이 되는 쪽이 새로고침 한 번보다 나쁘다.
+    registerType: 'autoUpdate',
+    // 개발 서버에서는 끈다. 켜면 서비스워커가 `/api/*`를 가로채 위 개발용
+    // 미들웨어와 겹치고, 방금 고친 코드가 캐시에 묶여 헷갈린다.
+    devOptions: { enabled: false },
+    includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+    manifest: {
+      name: '서울 라이브',
+      short_name: '서울라이브',
+      description: '서울 주요 명소의 실시간 인파를 지도에서 봅니다.',
+      lang: 'ko',
+      dir: 'ltr',
+      start_url: '/',
+      scope: '/',
+      display: 'standalone',
+      // 지도와 시트가 세로 화면을 전제로 짜여 있다(시트 비율이 화면 높이 기준).
+      orientation: 'portrait',
+      // 상태 표시줄 색이다. 화면 맨 위는 지도 위에 뜬 흰 검색 바라 표면색이 맞다.
+      // 파랑(`--color-primary`)을 넣으면 검색 바와 경계가 생겨 오히려 튄다.
+      theme_color: '#faf8ff',
+      background_color: '#faf8ff',
+      icons: [
+        { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+        { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+        {
+          // **한 그림이 둘을 겸한다.** `icon.svg`가 이미 마스커블 안전지대
+          // (가운데 80%) 안에 핀을 넣고 바탕을 꽉 채우고 있어서, 안드로이드가
+          // 어떤 모양으로 잘라도 핀이 안 잘린다 — 그 근거는 그 파일에 있다.
+          src: 'pwa-512x512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+      ],
+    },
+    workbox: {
+      // SPA다. 어떤 경로로 들어와도 셸을 내준다.
+      navigateFallback: 'index.html',
+      // **`/api/*`는 셸로 대체하면 안 된다.** 오프라인에서 API 요청에 index.html을
+      // 돌려주면 JSON 파서가 `<!doctype`에서 터져, 「못 받았다」가 「깨졌다」가 된다.
+      navigateFallbackDenylist: [/^\/api\//],
+      runtimeCaching: [
+        {
+          // 혼잡도 조회. **네트워크가 먼저다** — 「지금 붐빔」이 이 앱의 전부라
+          // 캐시를 먼저 주면 앱이 거짓말을 한다. 캐시는 오프라인일 때의 마지막
+          // 기억으로만 쓴다. 화면이 「마지막 업데이트 HH:MM」을 함께 보여주므로
+          // 낡은 값이 조용히 지나가지 않는다.
+          // **같은 오리진으로 좁힌다.** 경로만 보면 아무 서드파티의 `/api/`도
+          // 걸린다. 서비스워커가 사는 곳은 웹 배포뿐이고(토스 웹뷰에서는 등록
+          // 자체를 안 한다) 거기서는 `/api/*`가 같은 오리진의 Vercel 함수다 —
+          // 절대 URL(`VITE_API_BASE_URL`)은 토스 빌드에서만 쓴다.
+          urlPattern: ({ url, sameOrigin }) =>
+            sameOrigin && url.pathname.startsWith('/api/'),
+          handler: 'NetworkFirst',
+          options: {
+            cacheName: 'seoul-api',
+            // 상류가 죽어 있을 때 무한정 기다리지 않는다. 3초면 마지막 기억을 낸다.
+            networkTimeoutSeconds: 3,
+            expiration: {
+              // 명소 30곳 + 일괄 + 상세 몇 개. 넉넉히 잡아도 이 정도다.
+              maxEntries: 60,
+              // 서버가 CDN에 거는 `s-maxage`와 같은 값이다. 이보다 오래된 기억은
+              // 오프라인에서도 보여줄 값어치가 없다.
+              maxAgeSeconds: 60 * 60,
+            },
+            cacheableResponse: { statuses: [200] },
+          },
+        },
+      ],
+      // **구글 지도는 캐시하지 않는다.** 타일과 SDK는 서드파티 opaque 응답이라
+      // 용량을 못 재고, 구글 지도 약관이 타일 저장을 제한한다. 오프라인에서
+      // 지도는 비고, 그건 `MapUnavailableNotice`가 이미 설명하는 상태다.
+      globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+    },
+  }) as Plugin[]
+}

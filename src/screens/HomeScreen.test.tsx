@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
@@ -148,6 +148,12 @@ function snapshotFor(
 beforeEach(async () => {
   reset()
   localStorage.clear()
+  // 오프라인 테스트가 `navigator.onLine`을 인스턴스에 심는다. 지우지 않으면
+  // **그 뒤 파일 전체가 오프라인 상태로 돈다** — 안내가 지도를 대신하므로
+  // 「지도가 있다」를 세는 테스트들이 한꺼번에 무너지거나, 더 나쁘게는
+  // 무너지지 않고 다른 것을 세게 된다. jsdom은 프로토타입에 getter를 두므로
+  // 인스턴스 속성만 지우면 원래 값으로 돌아간다.
+  Reflect.deleteProperty(navigator, 'onLine')
   vi.restoreAllMocks()
   vi.clearAllMocks()
   isMapAvailable.mockReturnValue(true)
@@ -1139,5 +1145,60 @@ describe('HomeScreen', () => {
     expect(fromPeek).toBeCloseTo(fromHalf, 6)
     // 0이 아니어야 한다 — 둘 다 안 비켜 잡아도 위 단언은 통과한다.
     expect(fromHalf).toBeGreaterThan(0)
+  })
+
+  // 서비스워커가 생기면서 「오프라인」이 표현 가능한 상태가 됐다. 셸이 캐시에서
+  // 뜨고 목록도 마지막 기억으로 서는데 **지도만 회색 빈칸으로 남기 때문에**,
+  // 그 빈칸이 무엇인지 말해 주지 않으면 사용자에게는 그냥 깨진 화면이다.
+  //
+  // 실측으로 확인한 것: 오프라인에서 구글 지도 SDK는 브라우저 HTTP 캐시에서
+  // 살아 돌아오지만 설정을 못 받아 초기화에 실패한다. 그때 `APIProvider`의
+  // `onError`는 **안 불린다**(스크립트 로드는 성공했으므로). 그래서 `loadFailed`로는
+  // 이 상태를 잡을 수 없고, 연결 여부를 따로 봐야 한다.
+  function goOffline(): void {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: false })
+  }
+
+  it('오프라인이면 지도 대신 오프라인 안내가 뜬다', () => {
+    goOffline()
+    render(<HomeScreen />)
+
+    expect(screen.getByText(/오프라인이에요/)).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '지도' })).toBeNull()
+  })
+
+  it('오프라인이어도 목록과 검색은 그대로 선다', () => {
+    // 마지막 기억을 서비스워커가 들고 있다. 지도가 죽었다고 앱 전체가 죽으면
+    // 오프라인 캐시를 만든 값이 없다.
+    goOffline()
+    render(<HomeScreen />)
+
+    expect(sheetRow(/강남역/)).toBeInTheDocument()
+    expect(screen.getByRole('searchbox')).toBeInTheDocument()
+  })
+
+  it('연결이 끊기면 지도가 떠 있다가도 안내로 바뀐다', () => {
+    // 앱을 켜 둔 채 지하로 들어가는 경로다. 처음 한 번만 보면 「진입 시점의
+    // 상태」로 굳는 구현이 그대로 통과한다.
+    render(<HomeScreen />)
+    expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
+
+    act(() => {
+      goOffline()
+      window.dispatchEvent(new Event('offline'))
+    })
+
+    expect(screen.getByText(/오프라인이에요/)).toBeInTheDocument()
+  })
+
+  it('키가 없으면 오프라인보다 키 문제를 먼저 말한다', () => {
+    // 둘 다 참일 수 있다. 오프라인은 잠깐이고 키가 없는 것은 고치기 전까지
+    // 영영 그대로라, 먼저 고칠 것을 먼저 말한다.
+    isMapAvailable.mockReturnValue(false)
+    goOffline()
+    render(<HomeScreen />)
+
+    expect(screen.getByText(/VITE_GOOGLE_MAPS_API_KEY/)).toBeInTheDocument()
+    expect(screen.queryByText(/오프라인이에요/)).toBeNull()
   })
 })
