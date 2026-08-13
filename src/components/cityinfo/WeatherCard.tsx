@@ -1,5 +1,6 @@
 import { airGradeTone, formatTemperature, type Weather } from '../../domain/cityInfo'
 import { ToneBadge } from '../common/ToneBadge'
+import { HourlyWeather } from './HourlyWeather'
 
 interface DustProps {
   readonly label: string
@@ -69,6 +70,10 @@ export function WeatherCard({ weather }: Props) {
           {weather.airMessage}
         </p>
       )}
+
+      {/* 대기질 다음, 기준 시각 앞이다 — detail_page.png의 순서이고, 「지금」을
+          말하는 값들이 끝난 뒤에 「앞으로」가 온다. 예보가 없으면 통째로 빠진다. */}
+      <HourlyWeather hourly={weather.hourly} />
 
       {weather.updatedAt !== '' && (
         <p className="mt-3 text-label-sm text-outline">기준 {weather.updatedAt}</p>

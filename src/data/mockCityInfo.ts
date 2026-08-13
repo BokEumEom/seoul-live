@@ -54,7 +54,43 @@ const AIR_MESSAGES: Readonly<Record<string, string>> = {
   매우나쁨: '실외활동을 줄이고 외출 시 마스크를 챙기세요.',
 }
 
-function buildWeather(seed: number, now: Date): Record<string, string> {
+/** 예보 칸 수. 명세의 이름이 FCST24HOURS라 24를 그대로 쓴다. */
+const FORECAST_HOURS = 24
+
+// **FCST_DT의 형식은 모른다.** 명세에 출력명(「예보시간」)만 있고 예시가 없어서
+// 붙여 쓴 12자리(YYYYMMDDHHmm)를 골랐다. 도메인의 `forecastHourLabel`은 이 형식과
+// 구분자가 있는 형식을 둘 다 읽고 어느 쪽도 아니면 원문을 그대로 보여주므로,
+// 실제 응답이 다른 모양이어도 여기만 고치면 된다 — ROAD_INDEXES와 같은 규약이다.
+function forecastTime(base: Date, offsetHours: number): string {
+  const at = new Date(base.getTime() + offsetHours * 60 * 60 * 1000)
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${at.getFullYear()}${pad(at.getMonth() + 1)}${pad(at.getDate())}${pad(at.getHours())}00`
+}
+
+function buildHourlyForecast(
+  seed: number,
+  now: Date,
+  temperature: number,
+): readonly Record<string, string>[] {
+  return Array.from({ length: FORECAST_HOURS }, (_, index) => {
+    // 해가 지면 식는 하루 곡선. 상수 곡선이면 「밤에 시원해지나」를 목업으로
+    // 확인할 수 없다(mock.ts의 톱니파 교훈과 같다).
+    const hour = (now.getHours() + index) % 24
+    const swing = Math.cos(((hour - 14) / 24) * 2 * Math.PI) * 4
+    const chance = mixSeed(seed, WEATHER_SALT + 10 + index) % 100
+
+    return {
+      FCST_DT: forecastTime(now, index),
+      TEMP: (temperature + swing).toFixed(1),
+      // 확률을 10 단위로 떨어뜨린다. 기상청도 10% 단위로 낸다.
+      RAIN_CHANCE: String(Math.round(chance / 10) * 10),
+      SKY_STTS: chance >= 60 ? '흐림' : chance >= 30 ? '구름많음' : '맑음',
+      PRECPT_TYPE: chance >= 60 ? '비' : '없음',
+    }
+  })
+}
+
+function buildWeather(seed: number, now: Date): Record<string, unknown> {
   const temperature = 18 + (mixSeed(seed, WEATHER_SALT) % 15) + 0.4
   const pm10 = 10 + (mixSeed(seed, WEATHER_SALT + 1) % 140)
   const pm25 = 5 + (mixSeed(seed, WEATHER_SALT + 2) % 70)
@@ -76,6 +112,7 @@ function buildWeather(seed: number, now: Date): Record<string, string> {
     AIR_IDX: airGrade,
     AIR_MSG: AIR_MESSAGES[airGrade],
     WEATHER_TIME: formatSeoulTime(now),
+    FCST24HOURS: buildHourlyForecast(seed, now, temperature),
   }
 }
 

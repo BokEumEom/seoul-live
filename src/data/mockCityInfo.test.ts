@@ -71,4 +71,32 @@ describe('buildMockCityInfo', () => {
   it('날씨 관측 시각은 넘겨준 시각을 따른다', () => {
     expect(infoFor('강남역').weather?.updatedAt).toBe('2026-08-07 10:30')
   })
+
+  it('시간대별 예보 24칸을 준다', () => {
+    // 파서까지 통과한 값으로 센다. 목업 객체를 직접 들여다보면 FCST24HOURS의
+    // 키 이름이 틀려도 통과한다.
+    expect(infoFor('광화문·덕수궁').weather?.hourly).toHaveLength(24)
+  })
+
+  it('예보 시각이 넘겨준 시각부터 한 시간씩 나아간다', () => {
+    const hourly = infoFor('광화문·덕수궁').weather?.hourly ?? []
+    // NOW가 10시 30분이라 첫 칸은 10시, 그다음이 11시다.
+    expect(hourly[0].time).toBe('202608071000')
+    expect(hourly[1].time).toBe('202608071100')
+  })
+
+  it('예보 기온이 한 값으로 고정되지 않는다', () => {
+    // 상수 곡선이면 「밤에 시원해지나」를 목업으로 확인할 수 없다.
+    const temps = new Set(
+      (infoFor('광화문·덕수궁').weather?.hourly ?? []).map((entry) => entry.temperature),
+    )
+    expect(temps.size).toBeGreaterThan(1)
+  })
+
+  it('강수확률이 0~100 안에 있다', () => {
+    for (const entry of infoFor('강남역').weather?.hourly ?? []) {
+      expect(entry.rainChance).toBeGreaterThanOrEqual(0)
+      expect(entry.rainChance).toBeLessThanOrEqual(100)
+    }
+  })
 })

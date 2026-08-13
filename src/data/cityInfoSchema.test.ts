@@ -62,6 +62,8 @@ describe('parseCityInfoResponse — 날씨', () => {
       temperature: 28.4,
       maxTemperature: 31,
       minTemperature: 24.2,
+      // 이 목업에는 FCST24HOURS가 없다. 예보가 없는 것은 정상이라 빈 배열이다.
+      hourly: [],
       precipitationMessage: '비 소식은 없어요.',
       pm10: 35,
       pm10Grade: '보통',
@@ -391,5 +393,88 @@ describe('parseCityInfoResponse — 사고통제', () => {
 
   it('섹션이 없으면 빈 배열이다', () => {
     expect(parseCityInfoResponse(payload({}), AREA).accidents).toEqual([])
+  })
+})
+
+describe('parseCityInfoResponse — 시간대별 예보', () => {
+  // 명세 200~206행: FCST24HOURS > FCST_DT·TEMP·PRECIPITATION·PRECPT_TYPE·
+  // RAIN_CHANCE·SKY_STTS. WEATHER_STTS 안에 중첩된 배열이다.
+  function weatherWith(hourly: unknown): unknown {
+    return payload({ WEATHER_STTS: [{ TEMP: '28.4', FCST24HOURS: hourly }] })
+  }
+
+  it('예보 칸을 순서대로 읽는다', () => {
+    const info = parseCityInfoResponse(
+      weatherWith([
+        { FCST_DT: '202608131400', TEMP: '31', RAIN_CHANCE: '0', SKY_STTS: '맑음' },
+        { FCST_DT: '202608131500', TEMP: '30.5', RAIN_CHANCE: '20', SKY_STTS: '구름많음' },
+      ]),
+      AREA,
+    )
+
+    expect(info.weather?.hourly).toEqual([
+      {
+        time: '202608131400',
+        temperature: 31,
+        rainChance: 0,
+        sky: '맑음',
+        precipitationType: '',
+      },
+      {
+        time: '202608131500',
+        temperature: 30.5,
+        rainChance: 20,
+        sky: '구름많음',
+        precipitationType: '',
+      },
+    ])
+  })
+
+  it('강수형태도 읽는다', () => {
+    const info = parseCityInfoResponse(
+      weatherWith([{ FCST_DT: '202608131400', PRECPT_TYPE: '비' }]),
+      AREA,
+    )
+    expect(info.weather?.hourly[0].precipitationType).toBe('비')
+  })
+
+  it('예보시간이 없는 칸은 버린다', () => {
+    // 시각이 이 항목의 본체다. 시각 없이 「31°」만 있는 칸은 언제의 기온인지
+    // 알려주지 못하고 자리만 차지한다 — 주차장의 이름, 재난문자의 내용과 같은 규칙.
+    const info = parseCityInfoResponse(
+      weatherWith([
+        { TEMP: '31' },
+        { FCST_DT: '202608131500', TEMP: '30' },
+      ]),
+      AREA,
+    )
+    expect(info.weather?.hourly).toHaveLength(1)
+    expect(info.weather?.hourly[0].time).toBe('202608131500')
+  })
+
+  it('항목이 하나면 객체로 와도 읽는다', () => {
+    // 서울 API의 하위 섹션은 항목이 하나일 때 객체로 오는 사례가 있다.
+    const info = parseCityInfoResponse(
+      weatherWith({ FCST_DT: '202608131400', TEMP: '31' }),
+      AREA,
+    )
+    expect(info.weather?.hourly).toHaveLength(1)
+  })
+
+  it('예보가 없으면 빈 배열이고 날씨는 그대로 남는다', () => {
+    // 부가 정보 하나가 없다고 현재 기온까지 잃으면 안 된다.
+    const info = parseCityInfoResponse(payload({ WEATHER_STTS: [{ TEMP: '28.4' }] }), AREA)
+    expect(info.weather?.hourly).toEqual([])
+    expect(info.weather?.temperature).toBe(28.4)
+  })
+
+  it('읽지 못한 숫자는 0이 아니라 null이다', () => {
+    // Number('')이 0이라 「강수확률 0%」로 보이면 안 된다.
+    const info = parseCityInfoResponse(
+      weatherWith([{ FCST_DT: '202608131400', TEMP: '-', RAIN_CHANCE: '' }]),
+      AREA,
+    )
+    expect(info.weather?.hourly[0].temperature).toBeNull()
+    expect(info.weather?.hourly[0].rainChance).toBeNull()
   })
 })

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   airGradeTone,
+  formatForecastTemperature,
   formatTemperature,
+  forecastHourLabel,
   hasAnyCityInfo,
   parkingTone,
   sortBikesByStock,
@@ -204,6 +206,7 @@ describe('hasAnyCityInfo', () => {
           temperature: 23,
           maxTemperature: null,
           minTemperature: null,
+          hourly: [],
           precipitationMessage: '',
           pm10: null,
           pm10Grade: '',
@@ -215,5 +218,65 @@ describe('hasAnyCityInfo', () => {
         },
       }),
     ).toBe(true)
+  })
+})
+
+describe('forecastHourLabel', () => {
+  // FCST_DT의 형식은 공식 명세에 없다 — 출력명(「예보시간」)만 있고 예시가
+  // 없다. 그래서 아는 모양이면 시각을 뽑고, 모르는 모양이면 원문을 그대로
+  // 돌려준다. 짐작으로 자르면 처음 보는 형식에서 엉뚱한 두 자리가 「14시」로
+  // 둔갑한다.
+  it('붙여 쓴 12자리에서 시각을 뽑는다', () => {
+    expect(forecastHourLabel('202608131400')).toBe('14시')
+  })
+
+  it('구분자가 있는 형식에서 시각을 뽑는다', () => {
+    expect(forecastHourLabel('2026-08-13 14:00')).toBe('14시')
+    expect(forecastHourLabel('2026-08-13T14:00:00')).toBe('14시')
+  })
+
+  it('앞자리 0을 떼고 읽는다', () => {
+    // 「09시」가 아니라 「9시」다. 화면에서 숫자 폭이 들쭉날쭉해지는 대신
+    // 사람이 말하는 대로 적는다.
+    expect(forecastHourLabel('202608130900')).toBe('9시')
+    expect(forecastHourLabel('2026-08-13 09:00')).toBe('9시')
+  })
+
+  it('자정은 0시다', () => {
+    // Number('00')이 0이라 falsy 검사로 짜면 이 칸이 조용히 원문으로 떨어진다.
+    expect(forecastHourLabel('202608130000')).toBe('0시')
+  })
+
+  it('모르는 형식은 원문을 그대로 돌려준다', () => {
+    expect(forecastHourLabel('예보 없음')).toBe('예보 없음')
+    expect(forecastHourLabel('')).toBe('')
+  })
+
+  it('시각 범위를 벗어나면 뽑지 않고 원문으로 둔다', () => {
+    // 25는 시각이 아니다. 뽑아서 「25시」로 적으면 없는 시각을 단정한다.
+    expect(forecastHourLabel('202608132500')).toBe('202608132500')
+    expect(forecastHourLabel('2026-08-13 99:00')).toBe('2026-08-13 99:00')
+  })
+})
+
+describe('formatForecastTemperature', () => {
+  it('소수점을 반올림해 없앤다', () => {
+    // 카드 상단의 현재 기온은 0.1도까지 적지만(formatTemperature) 예보 칸은
+    // 폭이 좁아 「31.0°」가 타일을 넘친다.
+    expect(formatForecastTemperature(31.4)).toBe('31°')
+    expect(formatForecastTemperature(30.6)).toBe('31°')
+  })
+
+  it('영하도 읽는다', () => {
+    expect(formatForecastTemperature(-3.2)).toBe('-3°')
+  })
+
+  it('값이 없으면 현재 기온과 같은 대시를 쓴다', () => {
+    expect(formatForecastTemperature(null)).toBe('—')
+  })
+
+  it('0도를 값 없음으로 뭉개지 않는다', () => {
+    // falsy 검사로 짜면 0도가 대시가 된다.
+    expect(formatForecastTemperature(0)).toBe('0°')
   })
 })

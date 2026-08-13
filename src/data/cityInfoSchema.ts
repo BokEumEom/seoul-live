@@ -5,6 +5,7 @@ import type {
   CityAlert,
   CityInfo,
   CulturalEvent,
+  HourlyForecast,
   ParkingLot,
   RoadTraffic,
   Weather,
@@ -112,9 +113,28 @@ function httpUrl(row: Row, key: string): string {
   return /^https?:\/\//i.test(raw) ? raw : ''
 }
 
+// FCST24HOURS는 WEATHER_STTS 안에 중첩된 배열이다(명세 200~206행). 시각이 이
+// 항목의 본체라 시각 없는 칸은 버린다 — 「31°」만 남으면 언제의 기온인지
+// 알려주지 못한다. 시각의 **형식**은 모른다: `time`에 원문을 그대로 담고
+// 표시용 라벨은 도메인의 `forecastHourLabel`이 만든다.
+function toHourly(rows: readonly Row[]): readonly HourlyForecast[] {
+  return named(
+    rows,
+    'FCST_DT',
+    (row, time): HourlyForecast => ({
+      time,
+      temperature: numberOrNull(row, 'TEMP'),
+      rainChance: numberOrNull(row, 'RAIN_CHANCE'),
+      sky: text(row, 'SKY_STTS'),
+      precipitationType: text(row, 'PRECPT_TYPE'),
+    }),
+  )
+}
+
 function toWeather(row: Row): Weather {
   return {
     temperature: numberOrNull(row, 'TEMP'),
+    hourly: toHourly(sectionRows(row, ['FCST24HOURS'])),
     maxTemperature: numberOrNull(row, 'MAX_TEMP'),
     minTemperature: numberOrNull(row, 'MIN_TEMP'),
     precipitationMessage: text(row, 'PCP_MSG'),

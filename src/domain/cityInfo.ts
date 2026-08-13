@@ -4,10 +4,31 @@ import type { CongestionTone } from './congestion'
 // 이쪽 값들은 서울 API가 "없으면 아예 안 보내거나 빈 문자열로 보내는" 필드가 많아
 // 숫자·문자열 모두 null을 정상 상태로 취급한다. 화면이 아니라 여기서 흡수한다.
 
+/** FCST24HOURS의 한 칸. 명세 200~206행. */
+export interface HourlyForecast {
+  /** FCST_DT 원문. 형식을 모르므로 표시용 라벨은 `forecastHourLabel`이 만든다 */
+  readonly time: string
+  /** TEMP — 이 시각의 기온 */
+  readonly temperature: number | null
+  /** RAIN_CHANCE — 강수확률(%) */
+  readonly rainChance: number | null
+  /** SKY_STTS — 하늘상태 */
+  readonly sky: string
+  /** PRECPT_TYPE — 강수형태 */
+  readonly precipitationType: string
+}
+
 export interface Weather {
   readonly temperature: number | null
   readonly maxTemperature: number | null
   readonly minTemperature: number | null
+  /**
+   * FCST24HOURS — 시간대별 예보. 없으면 빈 배열이다.
+   *
+   * `citydata`의 같은 응답 안에 있어 추가 호출이 0이다. 현재 날씨(`temperature`)와
+   * 달리 「앞으로 몇 시간」을 말하므로 카드에서 자리가 다르다.
+   */
+  readonly hourly: readonly HourlyForecast[]
   /** PCP_MSG — "비 소식이 없어요" 같은 서울 API 원문 */
   readonly precipitationMessage: string
   readonly pm10: number | null
@@ -181,6 +202,42 @@ export function sortBikesByStock(
 /** 값이 없을 때 화면마다 다른 문자를 쓰지 않도록 대시 하나로 고정한다. */
 export function formatTemperature(celsius: number | null): string {
   return celsius === null ? '—' : `${celsius.toFixed(1)}°`
+}
+
+/**
+ * 예보 칸의 기온. 현재 기온(`formatTemperature`)과 달리 소수점을 뺀다.
+ *
+ * 같은 값을 두 가지로 적는 것은 정밀도가 아니라 폭 때문이다 — 예보 타일은
+ * 56px이라 「31.0°」가 넘친다. 카드 상단의 지금 기온은 0.1도까지 그대로 둔다.
+ */
+export function formatForecastTemperature(celsius: number | null): string {
+  return celsius === null ? '—' : `${Math.round(celsius)}°`
+}
+
+// 붙여 쓴 형식(YYYYMMDDHHmm)과 구분자가 있는 형식(… HH:mm) 둘 다 받는다.
+// FCST_DT의 형식이 공식 명세에 없어서 — 출력명 「예보시간」만 있고 예시가 없다 —
+// 실제 응답이 어느 쪽인지 모른다. 둘 다 읽고, 어느 쪽도 아니면 뽑지 않는다.
+const COMPACT_HOUR = /^\d{8}(\d{2})\d{2}$/
+const DELIMITED_HOUR = /(\d{1,2}):\d{2}/
+
+const HOURS_IN_DAY = 24
+
+/**
+ * 예보 시각을 「14시」로 만든다. 모르는 형식이면 **원문을 그대로 돌려준다.**
+ *
+ * 짐작으로 두 자리를 자르면 처음 보는 형식에서 엉뚱한 숫자가 시각으로 둔갑한다.
+ * `ROAD_TRAFFIC_IDX`를 톤에 겹치지 않은 것과 같은 판단이다 — 모르면 원문이 낫다.
+ */
+export function forecastHourLabel(raw: string): string {
+  const value = raw.trim()
+  const matched = value.match(COMPACT_HOUR) ?? value.match(DELIMITED_HOUR)
+  if (matched === null) {
+    return raw
+  }
+
+  const hour = Number(matched[1])
+  // 25시는 시각이 아니다. 뽑아서 적으면 없는 시각을 단정하게 된다.
+  return hour >= 0 && hour < HOURS_IN_DAY ? `${hour}시` : raw
 }
 
 /** 어느 섹션에도 내용이 없으면 화면이 빈 상태 문구 하나만 보여준다. */
