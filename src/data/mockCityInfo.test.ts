@@ -20,7 +20,7 @@ describe('buildMockCityInfo', () => {
   it('카탈로그의 장소 코드를 그대로 준다', () => {
     // 실제 응답은 등록된 코드를 돌려준다. 목업이 다른 값을 주면 코드 대조나
     // React key로 쓸 때 목업에서만 동작이 갈린다.
-    expect(infoFor('경복궁').areaCode).toBe('POI007')
+    expect(infoFor('경복궁').areaCode).toBe('POI008')
   })
 
   it('같은 입력이면 같은 결과다', () => {
