@@ -10,7 +10,6 @@ function arrival(overrides: Partial<SubwayArrival> = {}): SubwayArrival {
     direction: '성수행',
     terminal: '성수',
     message: '4분 20초 후',
-    messageDetail: '',
     ...overrides,
   }
 }
@@ -30,17 +29,12 @@ describe('SubwayArrivals', () => {
     expect(screen.getByText('4분 20초 후')).toBeInTheDocument()
   })
 
-  it('보조 메세지가 있으면 괄호로 덧붙인다', () => {
-    // detail_page.png의 「5분 30초 후 (삼성중앙)」 자리다.
-    render(<SubwayArrivals arrivals={[arrival({ messageDetail: '역삼' })]} />)
+  it('도착 메세지를 원문 그대로 적는다', () => {
+    // 실측값이 「9분 후 (동대입구)」처럼 괄호까지 포함해 온다(2026-08-13).
+    // 우리가 쪼개거나 덧붙이지 않는다 — detail_page.png의 오른쪽 칸과 같은 모양이다.
+    render(<SubwayArrivals arrivals={[arrival({ message: '9분 후 (동대입구)' })]} />)
 
-    expect(screen.getByText('(역삼)')).toBeInTheDocument()
-  })
-
-  it('보조 메세지가 없으면 빈 괄호를 만들지 않는다', () => {
-    render(<SubwayArrivals arrivals={[arrival()]} />)
-
-    expect(screen.queryByText('()')).not.toBeInTheDocument()
+    expect(screen.getByText('9분 후 (동대입구)')).toBeInTheDocument()
   })
 
   it('방향이 없으면 종착역으로 대신한다', () => {

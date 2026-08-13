@@ -151,12 +151,12 @@ function buildBikes(areaName: string, seed: number): readonly unknown[] {
   })
 }
 
-// **목업이 이 문구들을 쓴다고 해서 화면이 이 문구를 안다고 가정하면 안 된다.**
-// SUB_ARMG1의 값 목록도 명세에 없다(ROAD_INDEXES와 같은 사정). 서울 지하철
-// 도착 안내에서 흔히 보는 형태를 빌린 것뿐이고, 파서도 카드도 문자열을 그대로
-// 옮긴다 — 실제 값이 다르면 여기만 고치면 된다.
-const SUB_MESSAGES = ['전역 출발', '전역 진입', '도착', '출발'] as const
-const SUB_LINES = ['2호선', '9호선', '신분당선'] as const
+// 문구와 구조 모두 **2026-08-13 실호출 응답을 본떴다**(고정 자료:
+// docs/fixtures/citydata-광화문덕수궁.json). 열차는 역 안의 `SUB_DETAIL`에 있고,
+// 역 쪽 `SUB_STN_LINE`은 「3」처럼 숫자만, 열차 쪽 `SUB_LINE`은 「3호선」으로 온다.
+// 도착 메세지는 「전역 출발」·「9분 후 (동대입구)」 두 모양이 섞여 온다.
+const SUB_MESSAGES = ['전역 출발', '전역 진입', '전역 도착'] as const
+const SUB_TERMINALS = ['대화', '오금', '소요산', '인천'] as const
 
 function buildSubway(seed: number): readonly unknown[] {
   // 역이 0~2곳. 지하철역이 없는 명소(한강공원 등)를 목업으로도 볼 수 있어야 한다.
@@ -164,28 +164,35 @@ function buildSubway(seed: number): readonly unknown[] {
 
   return Array.from({ length: stationCount }, (_, stationIndex) => {
     const mixed = mixSeed(seed, SUBWAY_SALT * 10 + stationIndex)
-    const line = SUB_LINES[mixed % SUB_LINES.length]
-    const station = `${mixed % 90}번가`
+    const lineNumber = 1 + (mixed % 9)
 
-    // 역마다 열차 2~4대. 넷이면 「외 1대」가 붙어 잘림 안내도 볼 수 있다.
-    return Array.from({ length: 2 + (mixed % 3) }, (_, trainIndex) => {
-      const train = mixSeed(mixed, trainIndex + 1)
-      const minutes = train % 12
-      return {
-        SUB_STN_NM: station,
-        SUB_LINE: line,
-        SUB_DIR: train % 2 === 0 ? '성수행' : '개화행',
-        SUB_TERMINAL: train % 2 === 0 ? '성수' : '개화',
-        SUB_ORD: String(trainIndex + 1),
-        // 분 단위와 문구형이 섞여 온다. 한쪽만 넣으면 다른 쪽 표시를 못 본다.
-        SUB_ARMG1:
-          minutes === 0
-            ? SUB_MESSAGES[train % SUB_MESSAGES.length]
-            : `${minutes}분 ${train % 60}초 후`,
-        SUB_ARMG2: `${train % 90}번가`,
-      }
-    })
-  }).flat()
+    return {
+      SUB_STN_NM: `${mixed % 90}번가`,
+      // 실제 응답이 숫자 문자열이다. 파서가 여기에 「호선」을 붙인다.
+      SUB_STN_LINE: String(lineNumber),
+      SUB_STN_X: '126.97353',
+      SUB_STN_Y: '37.575762',
+      // 역마다 열차 2~4대. 넷이면 「외 1대」가 붙어 잘림 안내도 볼 수 있다.
+      SUB_DETAIL: Array.from({ length: 2 + (mixed % 3) }, (_, trainIndex) => {
+        const train = mixSeed(mixed, trainIndex + 1)
+        const minutes = train % 12
+        const terminal = SUB_TERMINALS[train % SUB_TERMINALS.length]
+        return {
+          SUB_LINE: `${lineNumber}호선`,
+          SUB_ROUTE_NM: `${terminal}행 - ${train % 90}번가방면`,
+          SUB_DIR: train % 2 === 0 ? '상행' : '하행',
+          SUB_TERMINAL: terminal,
+          SUB_ARVTIME: String(minutes * 60),
+          // 분 단위와 문구형이 섞여 온다. 한쪽만 넣으면 다른 쪽 표시를 못 본다.
+          SUB_ARMG1:
+            minutes === 0
+              ? SUB_MESSAGES[train % SUB_MESSAGES.length]
+              : `${minutes}분 후 (${train % 90}번가)`,
+          SUB_ARMG2: `${train % 90}번가`,
+        }
+      }),
+    }
+  })
 }
 
 function buildEvents(areaName: string, seed: number): readonly unknown[] {
@@ -216,18 +223,33 @@ function buildAlerts(seed: number, now: Date): readonly unknown[] {
   ]
 }
 
-function buildRoadTraffic(seed: number, now: Date): readonly unknown[] {
+// **한 겹 안이다.** 2026-08-13 실호출로 확인했다 — 바깥은 `{ AVG_ROAD_DATA, 구간
+// 배열 }`이고 지표·안내·평균속도는 `AVG_ROAD_DATA` 안에 있다. 예전 목업은 이걸
+// 평평하게 두어, 파서가 바깥을 읽어도 목업에서는 통과하고 실데이터에서만 카드가
+// 사라졌다. 목업이 실제 모양을 흉내 내야 그 차이가 테스트에서 드러난다.
+//
+// 평균속도는 **문자열이 아니라 number**로 온다. 구간 배열은 파서가 일부러
+// 읽지 않지만(XYLIST 좌표 덩어리다) 모양은 남겨 둔다.
+function buildRoadTraffic(seed: number, now: Date): unknown {
   const mixed = mixSeed(seed, ROAD_SALT)
   const index = ROAD_INDEXES[mixed % ROAD_INDEXES.length]
   const speed = 12 + (mixed % 28)
-  return [
-    {
+  return {
+    AVG_ROAD_DATA: {
       ROAD_TRAFFIC_IDX: index,
-      ROAD_TRAFFIC_SPD: String(speed),
+      ROAD_TRAFFIC_SPD: speed,
       ROAD_MSG: `주변 도로 평균 속도는 ${String(speed)}km/h, 소통 상태는 ${index}입니다.`,
       ROAD_TRAFFIC_TIME: formatSeoulTime(now),
     },
-  ]
+    ROAD_TRAFFIC_STTS: [
+      {
+        LINK_ID: `116${String(mixed % 10000)}`,
+        ROAD_NM: '세종대로',
+        SPD: speed,
+        XYLIST: '126.977,37.570_126.978,37.571',
+      },
+    ],
+  }
 }
 
 // 사고통제는 재난문자처럼 대부분의 명소에서 비어 있는 게 정상이다. 4곳 중 1곳쯤만

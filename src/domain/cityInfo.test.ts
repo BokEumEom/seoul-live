@@ -291,7 +291,7 @@ describe('groupSubwayArrivals', () => {
     direction = '',
     message = '',
   ): SubwayArrival {
-    return { station, line, direction, terminal: '', message, messageDetail: '' }
+    return { station, line, direction, terminal: '', message }
   }
 
   it('같은 역·같은 호선의 열차를 한 묶음으로 만든다', () => {
@@ -380,7 +380,6 @@ describe('hasAnyCityInfo — 지하철', () => {
             direction: '성수행',
             terminal: '',
             message: '4분 20초 후',
-            messageDetail: '',
           },
         ],
       }),

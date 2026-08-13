@@ -61,13 +61,10 @@ export function SubwayArrivals({ arrivals }: Props) {
                   <span className="min-w-0 truncate text-label-md text-on-surface-variant">
                     {entry.direction === '' ? entry.terminal : entry.direction}
                   </span>
+                  {/* 원문 그대로다. 실측값이 「9분 후 (동대입구)」처럼 괄호까지
+                      포함해 오므로 우리가 덧붙일 것이 없다. */}
                   <span className="shrink-0 text-label-md text-on-surface">
                     {entry.message}
-                    {entry.messageDetail !== '' && (
-                      <span className="ml-1 text-on-surface-variant">
-                        ({entry.messageDetail})
-                      </span>
-                    )}
                   </span>
                 </li>
               ))}

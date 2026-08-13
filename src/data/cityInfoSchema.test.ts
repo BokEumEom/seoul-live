@@ -480,86 +480,209 @@ describe('parseCityInfoResponse — 시간대별 예보', () => {
 })
 
 describe('parseCityInfoResponse — 지하철 실시간 도착', () => {
-  // 명세 62~78행: SUB_STTS > SUB_STN_NM·SUB_LINE·SUB_ROUTE_NM·SUB_STN_LINE·
-  // SUB_DIR·SUB_TERMINAL·SUB_ARMG1·SUB_ARMG2.
-  it('역·호선·방향·도착 메세지를 옮긴다', () => {
+  // 구조는 아래 「실제 응답 구조」 블록이 잠근다. 여기는 값을 고르는 규칙만 본다.
+  function withTrains(trains: readonly unknown[], stationOverrides = {}) {
+    return payload({
+      SUB_STTS: [
+        { SUB_STN_NM: '경복궁', SUB_STN_LINE: '3', ...stationOverrides, SUB_DETAIL: trains },
+      ],
+    })
+  }
+
+  it('호선은 열차 쪽을 먼저 쓴다', () => {
+    // 열차 쪽 SUB_LINE이 「3호선」이고 역 쪽 SUB_STN_LINE은 「3」이다.
+    const info = parseCityInfoResponse(
+      withTrains([{ SUB_LINE: '3호선', SUB_ARMG1: '도착' }]),
+      AREA,
+    )
+    expect(info.subway[0].line).toBe('3호선')
+  })
+
+  it('열차 쪽 호선이 없으면 노선명을 본다', () => {
+    const info = parseCityInfoResponse(
+      withTrains([{ SUB_ROUTE_NM: '신분당선', SUB_ARMG1: '도착' }]),
+      AREA,
+    )
+    expect(info.subway[0].line).toBe('신분당선')
+  })
+
+  it('방면은 종착역에 「행」을 붙여 만든다', () => {
+    // SUB_DIR은 「상행」·「하행」이라 어디로 가는지를 말해주지 않는다.
+    const info = parseCityInfoResponse(
+      withTrains([{ SUB_DIR: '상행', SUB_TERMINAL: '대화', SUB_ARMG1: '전역 출발' }]),
+      AREA,
+    )
+    expect(info.subway[0].direction).toBe('대화행')
+  })
+
+  it('종착역이 없으면 노선명의 앞머리를 쓴다', () => {
+    const info = parseCityInfoResponse(
+      withTrains([{ SUB_ROUTE_NM: '대화행 - 독립문방면', SUB_ARMG1: '도착' }]),
+      AREA,
+    )
+    expect(info.subway[0].direction).toBe('대화행')
+  })
+
+  it('도착 메세지는 원문 그대로 둔다', () => {
+    // 괄호까지 포함해 온다. 우리가 덧붙이거나 잘라내지 않는다.
+    const info = parseCityInfoResponse(
+      withTrains([{ SUB_ARMG1: '9분 후 (동대입구)', SUB_ARMG2: '동대입구' }]),
+      AREA,
+    )
+    expect(info.subway[0].message).toBe('9분 후 (동대입구)')
+  })
+
+  it('역명이 없으면 그 역의 열차를 통째로 버린다', () => {
+    // 어느 역인지 모르면 「4분 20초 후」는 쓸모가 없다.
+    const info = parseCityInfoResponse(
+      payload({
+        SUB_STTS: [
+          { SUB_STN_LINE: '3', SUB_DETAIL: [{ SUB_ARMG1: '도착' }] },
+          { SUB_STN_NM: '시청', SUB_STN_LINE: '1', SUB_DETAIL: [{ SUB_ARMG1: '도착' }] },
+        ],
+      }),
+      AREA,
+    )
+    expect(info.subway).toHaveLength(1)
+    expect(info.subway[0].station).toBe('시청')
+  })
+
+  it('지하철 정보가 없으면 빈 배열이다', () => {
+    expect(parseCityInfoResponse(payload({}), AREA).subway).toEqual([])
+  })
+})
+
+describe('parseCityInfoResponse — 실제 응답 구조 (2026-08-13 실측)', () => {
+  it('도로소통은 AVG_ROAD_DATA 안에 있다', () => {
+    // 바깥 ROAD_TRAFFIC_STTS에는 AVG_ROAD_DATA와 구간 배열뿐이고 지표가 없다.
+    // 바깥에서 읽으면 실데이터에서 도로소통 카드가 통째로 사라진다.
+    const info = parseCityInfoResponse(
+      payload({
+        ROAD_TRAFFIC_STTS: {
+          AVG_ROAD_DATA: {
+            ROAD_MSG: '해당 장소로 이동·진입시 시간이 오래 걸릴 수 있어요.',
+            ROAD_TRAFFIC_IDX: '정체',
+            ROAD_TRAFFIC_SPD: 12,
+            ROAD_TRAFFIC_TIME: '2026-08-13 14:00',
+          },
+          ROAD_TRAFFIC_STTS: [{ LINK_ID: '1', SPD: 20 }],
+        },
+      }),
+      AREA,
+    )
+
+    expect(info.roadTraffic).toEqual({
+      index: '정체',
+      message: '해당 장소로 이동·진입시 시간이 오래 걸릴 수 있어요.',
+      speed: 12,
+      updatedAt: '2026-08-13 14:00',
+    })
+  })
+
+  it('속도가 숫자로 와도 읽는다', () => {
+    // 실제 응답의 ROAD_TRAFFIC_SPD는 문자열이 아니라 number다.
+    const info = parseCityInfoResponse(
+      payload({
+        ROAD_TRAFFIC_STTS: { AVG_ROAD_DATA: { ROAD_TRAFFIC_IDX: '원활', ROAD_TRAFFIC_SPD: 34.5 } },
+      }),
+      AREA,
+    )
+    expect(info.roadTraffic?.speed).toBe(34.5)
+  })
+
+  it('지하철 열차는 SUB_DETAIL 안에 있고 역 정보는 바깥에 있다', () => {
     const info = parseCityInfoResponse(
       payload({
         SUB_STTS: [
           {
-            SUB_STN_NM: '강남',
-            SUB_LINE: '2호선',
-            SUB_DIR: '성수행',
-            SUB_TERMINAL: '성수',
-            SUB_ARMG1: '4분 20초 후',
-            SUB_ARMG2: '역삼',
+            SUB_STN_NM: '경복궁',
+            SUB_STN_LINE: '3',
+            SUB_DETAIL: [
+              {
+                SUB_LINE: '3호선',
+                SUB_ROUTE_NM: '대화행 - 독립문방면',
+                SUB_DIR: '상행',
+                SUB_TERMINAL: '대화',
+                SUB_ARVTIME: '120',
+                SUB_ARMG1: '전역 출발',
+                SUB_ARMG2: '안국',
+              },
+            ],
           },
         ],
       }),
       AREA,
     )
 
-    expect(info.subway).toEqual([
-      {
-        station: '강남',
-        line: '2호선',
-        direction: '성수행',
-        terminal: '성수',
-        message: '4분 20초 후',
-        messageDetail: '역삼',
-      },
-    ])
+    expect(info.subway).toHaveLength(1)
+    expect(info.subway[0]).toEqual({
+      station: '경복궁',
+      line: '3호선',
+      direction: '대화행',
+      terminal: '대화',
+      message: '전역 출발',
+    })
   })
 
-  it('호선은 SUB_LINE → SUB_ROUTE_NM → SUB_STN_LINE 순으로 채운다', () => {
-    // 셋 중 무엇이 「9호선」으로 오는지 모른다. 앞이 비면 뒤를 본다.
+  it('한 역의 열차를 모두 편다', () => {
     const info = parseCityInfoResponse(
       payload({
         SUB_STTS: [
-          { SUB_STN_NM: 'A', SUB_ROUTE_NM: '신분당선', SUB_STN_LINE: '무시됨', SUB_ARMG1: '도착' },
-          { SUB_STN_NM: 'B', SUB_STN_LINE: '9호선', SUB_ARMG1: '도착' },
+          {
+            SUB_STN_NM: '시청',
+            SUB_STN_LINE: '1',
+            SUB_DETAIL: [
+              { SUB_LINE: '1호선', SUB_TERMINAL: '소요산', SUB_ARMG1: '3분 후' },
+              { SUB_LINE: '1호선', SUB_TERMINAL: '인천', SUB_ARMG1: '5분 후' },
+            ],
+          },
         ],
       }),
       AREA,
     )
 
-    expect(info.subway.map((entry) => entry.line)).toEqual(['신분당선', '9호선'])
+    expect(info.subway.map((entry) => entry.message)).toEqual(['3분 후', '5분 후'])
+    expect(info.subway.every((entry) => entry.station === '시청')).toBe(true)
   })
 
-  it('SUB_ARMG1이 비면 SUB_ARMG2를 본문으로 쓴다', () => {
-    const info = parseCityInfoResponse(
-      payload({ SUB_STTS: [{ SUB_STN_NM: '강남', SUB_ARMG2: '전역 출발' }] }),
-      AREA,
-    )
-
-    expect(info.subway[0].message).toBe('전역 출발')
-    // 본문으로 올라갔으므로 같은 말을 보조 자리에 또 적지 않는다.
-    expect(info.subway[0].messageDetail).toBe('')
-  })
-
-  it('두 메세지가 같으면 한 번만 남긴다', () => {
-    const info = parseCityInfoResponse(
-      payload({ SUB_STTS: [{ SUB_STN_NM: '강남', SUB_ARMG1: '전역 출발', SUB_ARMG2: '전역 출발' }] }),
-      AREA,
-    )
-
-    expect(info.subway[0].messageDetail).toBe('')
-  })
-
-  it('역명이 없는 줄은 버린다', () => {
-    // 역명이 이 항목의 본체다. 어느 역인지 모르면 「4분 20초 후」는 쓸모가 없다.
+  it('호선이 SUB_DETAIL에 없으면 역의 숫자에 「호선」을 붙인다', () => {
+    // 바깥 SUB_STN_LINE은 "3"처럼 숫자만 온다. 그대로 쓰면 「경복궁 3」이 된다.
     const info = parseCityInfoResponse(
       payload({
-        SUB_STTS: [{ SUB_ARMG1: '4분 20초 후' }, { SUB_STN_NM: '강남', SUB_ARMG1: '도착' }],
+        SUB_STTS: [
+          { SUB_STN_NM: '광화문', SUB_STN_LINE: '5', SUB_DETAIL: [{ SUB_ARMG1: '도착' }] },
+        ],
+      }),
+      AREA,
+    )
+
+    expect(info.subway[0].line).toBe('5호선')
+  })
+
+  it('열차가 없는 역은 버린다', () => {
+    // 역 이름만 남으면 화면에 제목만 있고 아래가 빈 묶음이 생긴다.
+    const info = parseCityInfoResponse(
+      payload({
+        SUB_STTS: [
+          { SUB_STN_NM: '경복궁', SUB_STN_LINE: '3', SUB_DETAIL: [] },
+          { SUB_STN_NM: '시청', SUB_STN_LINE: '1', SUB_DETAIL: [{ SUB_ARMG1: '도착' }] },
+        ],
       }),
       AREA,
     )
 
     expect(info.subway).toHaveLength(1)
-    expect(info.subway[0].station).toBe('강남')
+    expect(info.subway[0].station).toBe('시청')
   })
 
-  it('지하철 정보가 없으면 빈 배열이다', () => {
-    expect(parseCityInfoResponse(payload({}), AREA).subway).toEqual([])
+  it('행사는 EVENT_STTS로 온다', () => {
+    // 명세는 CULTURALEVENTINFO라고 적었지만 실제 키는 EVENT_STTS다.
+    const info = parseCityInfoResponse(
+      payload({ EVENT_STTS: [{ EVENT_NM: '2026 청춘만발', PAY_YN: null }] }),
+      AREA,
+    )
+    expect(info.events).toHaveLength(1)
+    // PAY_YN이 null로 온다 — 유무료를 모르는 것이지 무료가 아니다.
+    expect(info.events[0].free).toBeNull()
   })
 })

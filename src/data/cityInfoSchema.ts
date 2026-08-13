@@ -268,24 +268,46 @@ function firstText(row: Row, keys: readonly string[]): string {
   return ''
 }
 
+// **열차는 역 한 겹 안에 있다.** 2026-08-13 실호출로 확인했다 — 바깥 행은 역
+// (`SUB_STN_NM`·`SUB_STN_LINE`·좌표·주소)이고 도착 열차는 `SUB_DETAIL` 배열이다.
+// 명세의 출력명 표는 62~80행을 한 층으로 늘어놓아서 이 중첩이 안 보인다.
+//
+// `SUB_ARMG2`는 읽지 않는다. 실제 값이 `SUB_ARMG1`("9분 후 (동대입구)")에 이미
+// 괄호로 들어 있는 역 이름("동대입구")이라, 따로 붙이면 같은 말이 두 번 나온다.
 function toSubway(rows: readonly Row[]): readonly SubwayArrival[] {
-  return named(rows, 'SUB_STN_NM', (row, station): SubwayArrival => {
-    // 두 도착 메세지의 역할이 명세에 없다(둘 다 출력명이 「열차 도착 메세지」다).
-    // 앞이 본문이고 뒤가 보조라고 보되, 앞이 비면 뒤가 본문으로 올라온다.
-    const primary = text(row, 'SUB_ARMG1')
-    const secondary = text(row, 'SUB_ARMG2')
-    const message = primary !== '' ? primary : secondary
-
-    return {
-      station,
-      line: firstText(row, LINE_KEYS),
-      direction: text(row, 'SUB_DIR'),
-      terminal: text(row, 'SUB_TERMINAL'),
-      message,
-      // 같은 말을 두 번 적지 않는다. 본문으로 올라간 값도 여기 남기지 않는다.
-      messageDetail: secondary === message ? '' : secondary,
+  return rows.flatMap((stationRow) => {
+    const station = text(stationRow, 'SUB_STN_NM')
+    if (station === '') {
+      return []
     }
+    // 바깥 호선은 "3"처럼 숫자만 온다. 그대로 쓰면 「경복궁 3」이 된다.
+    const stationLine = text(stationRow, 'SUB_STN_LINE')
+    const fallbackLine = stationLine === '' ? '' : `${stationLine}호선`
+
+    // 열차가 없는 역은 통째로 버린다 — 제목만 있고 아래가 빈 묶음이 남는다.
+    return sectionRows(stationRow, ['SUB_DETAIL']).map(
+      (train): SubwayArrival => ({
+        station,
+        // 열차 쪽 SUB_LINE이 "3호선"으로 온다. 없으면 역의 숫자로 만든다.
+        line: firstText(train, LINE_KEYS) || fallbackLine,
+        direction: directionOf(train),
+        terminal: text(train, 'SUB_TERMINAL'),
+        message: text(train, 'SUB_ARMG1'),
+      }),
+    )
   })
+}
+
+// 화면 왼쪽 칸에 들어갈 방면. `SUB_DIR`은 「상행」·「하행」이라 어디로 가는지를
+// 말해주지 않고, `SUB_ROUTE_NM`은 「대화행 - 독립문방면」이라 좁은 칸에 길다.
+// 종착역에 「행」을 붙인 「대화행」이 detail_page.png의 왼쪽 칸과 같은 모양이다.
+function directionOf(train: Row): string {
+  const terminal = text(train, 'SUB_TERMINAL')
+  if (terminal !== '') {
+    return `${terminal}행`
+  }
+  // 종착역이 없으면 노선명의 앞머리(「대화행」)라도 쓴다.
+  return text(train, 'SUB_ROUTE_NM').split(' - ')[0]
 }
 
 export function parseCityInfoResponse(payload: unknown, expectedName: string): CityInfo {
@@ -304,7 +326,16 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
   }
 
   const weatherRows = sectionRows(container, ['WEATHER_STTS'])
-  const roadRows = sectionRows(container, ['ROAD_TRAFFIC_STTS'])
+  // **도로소통도 한 겹 안에 있다.** 2026-08-13 실호출로 확인했다 — 바깥
+  // `ROAD_TRAFFIC_STTS`는 `{ AVG_ROAD_DATA, ROAD_TRAFFIC_STTS: [구간 159개] }`이고
+  // 지표·안내·평균속도는 `AVG_ROAD_DATA` 안이다. 바깥에서 읽으면 `toRoadTraffic`의
+  // 가드에 걸려 **실데이터에서 도로소통 카드가 통째로 사라진다.**
+  // 안쪽이 있으면 안쪽을, 없으면 바깥을 읽는다 — 응답이 평평해지는 날 조용히
+  // 죽지 않게 두 모양을 다 받는다.
+  const roadRows = sectionRows(container, ['ROAD_TRAFFIC_STTS']).flatMap((row) => {
+    const average = sectionRows(row, ['AVG_ROAD_DATA'])
+    return average.length > 0 ? average : [row]
+  })
 
   return {
     // 표시용 이름은 카탈로그 값이 권위다(schema.ts와 같은 이유). 위에서 이미

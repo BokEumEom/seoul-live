@@ -119,11 +119,9 @@ export interface SubwayArrival {
   /** SUB_STN_NM — 지하철역명 */
   readonly station: string
   /**
-   * 호선 이름. SUB_LINE → SUB_ROUTE_NM → SUB_STN_LINE 순으로 처음 채워진 것을 쓴다.
-   *
-   * **셋 중 무엇이 「9호선」·「신분당선」으로 오는지 모른다.** 명세에 출력명만
-   * 있고(「지하철호선」·「지하철노선명」·「지하철역 호선」) 값의 예시가 없다.
-   * 셋 다 비면 화면이 호선 없이 역명만 적는다 — 틀린 호선을 적는 것보다 낫다.
+   * 호선 이름. 2026-08-13 실측: **열차 쪽 `SUB_LINE`이 「3호선」**으로 오고,
+   * 역 쪽 `SUB_STN_LINE`은 「3」처럼 숫자만 온다. 그래서 열차 쪽을 먼저 쓰고
+   * 없으면 역의 숫자에 「호선」을 붙인다 — 숫자만 쓰면 「경복궁 3」이 된다.
    */
   readonly line: string
   /** SUB_DIR — 지하철방향 */
@@ -131,14 +129,15 @@ export interface SubwayArrival {
   /** SUB_TERMINAL — 종착역 */
   readonly terminal: string
   /**
-   * SUB_ARMG1이 비면 SUB_ARMG2. 「5분 30초 후」·「전역 출발」 같은 원문이다.
+   * SUB_ARMG1 원문. 실측값은 「전역 출발」·「9분 후 (동대입구)」·「4분 30초 후 (무악재)」다.
    *
-   * 값 목록을 모르므로 `ROAD_TRAFFIC_IDX`와 같이 **그대로 보여주고** 파싱하지
-   * 않는다. 「분」을 숫자로 뽑으려 들면 「전역 출발」에서 무엇을 뽑을지가 없다.
+   * **그대로 보여주고 파싱하지 않는다**(`ROAD_TRAFFIC_IDX`와 같은 규칙). 「분」을
+   * 숫자로 뽑으려 들면 「전역 출발」에서 무엇을 뽑을지가 없다.
+   *
+   * SUB_ARMG2는 읽지 않는다 — 실제 값이 이 문자열의 괄호 안에 이미 들어 있는
+   * 역 이름이라, 따로 붙이면 같은 말이 두 번 나온다.
    */
   readonly message: string
-  /** SUB_ARMG2. `message`와 다를 때만 채운다 — 같은 말을 두 번 적지 않는다 */
-  readonly messageDetail: string
 }
 
 /** 같은 역·같은 호선의 도착 열차를 묶은 것. 화면이 역 이름을 한 번만 적는다. */

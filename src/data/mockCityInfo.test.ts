@@ -121,7 +121,9 @@ describe('buildMockCityInfo', () => {
     const messages = AREA_NAMES.flatMap((name) =>
       infoFor(name).subway.map((entry) => entry.message),
     )
-    expect(messages.some((message) => message.endsWith('후'))).toBe(true)
-    expect(messages.some((message) => !message.endsWith('후'))).toBe(true)
+    // 실측 형태는 「9분 후 (동대입구)」와 「전역 출발」 둘이다 — 분 단위 쪽도
+    // 괄호로 끝나므로 어미가 아니라 안에 든 말로 센다.
+    expect(messages.some((message) => message.includes('분 후'))).toBe(true)
+    expect(messages.some((message) => message.startsWith('전역'))).toBe(true)
   })
 })
