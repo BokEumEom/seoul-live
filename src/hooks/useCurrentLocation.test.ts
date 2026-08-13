@@ -2,50 +2,25 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useCurrentLocation } from './useCurrentLocation'
 
-// 설치된 @apps-in-toss/web-framework 3.0.1 기준.
-// `getCurrentLocation`은 deprecated이고 `Device.getLocation`이 정본이다.
-// 권한 함수는 호출 가능한 함수에 getPermission/openPermissionDialog가 붙은
-// 형태(PermissionFunctionWithDialog)라 목업도 같은 모양이어야 한다.
-vi.mock('@apps-in-toss/web-framework', () => {
-  class GetCurrentLocationPermissionError extends Error {}
-  const getLocation = Object.assign(vi.fn(), {
-    getPermission: vi.fn(),
-    openPermissionDialog: vi.fn(),
-  })
+// 브리지냐 웹 표준이냐는 platform/location이 정한다 — 권한 다이얼로그와 폴백
+// 순서는 그쪽 테스트가 잠근다. 여기서 잠그는 것은 상태 기계뿐이다:
+// 실패의 종류를 status로 옮기는 것, 재시도가 사용자 의도를 전달하는 것,
+// 언마운트 뒤 갱신하지 않는 것.
+vi.mock('../platform/location', async () => {
+  const actual =
+    await vi.importActual<typeof import('../platform/location')>(
+      '../platform/location',
+    )
   return {
-    Accuracy: {
-      Lowest: 1,
-      Low: 2,
-      Balanced: 3,
-      High: 4,
-      Highest: 5,
-      BestForNavigation: 6,
-    },
-    Device: { getLocation },
-    GetCurrentLocationPermissionError,
+    LocationDeniedError: actual.LocationDeniedError,
+    requestCoords: vi.fn(),
   }
 })
 
-const framework = await import('@apps-in-toss/web-framework')
-const getLocation = vi.mocked(framework.Device.getLocation)
-const openPermissionDialog = vi.mocked(
-  framework.Device.getLocation.openPermissionDialog,
+const { LocationDeniedError, requestCoords } = await import(
+  '../platform/location'
 )
-const { GetCurrentLocationPermissionError } = framework
-
-function locationOf(lat: number, lng: number) {
-  return {
-    timestamp: 0,
-    coords: {
-      latitude: lat,
-      longitude: lng,
-      altitude: 0,
-      accuracy: 10,
-      altitudeAccuracy: 10,
-      heading: 0,
-    },
-  }
-}
+const mockedRequestCoords = vi.mocked(requestCoords)
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -53,7 +28,7 @@ beforeEach(() => {
 
 describe('useCurrentLocation', () => {
   it('성공하면 좌표를 주고 granted가 된다', async () => {
-    getLocation.mockResolvedValue(locationOf(37.5665, 126.978))
+    mockedRequestCoords.mockResolvedValue({ lat: 37.5665, lng: 126.978 })
 
     const { result } = renderHook(() => useCurrentLocation())
 
@@ -61,21 +36,8 @@ describe('useCurrentLocation', () => {
     expect(result.current.coords).toEqual({ lat: 37.5665, lng: 126.978 })
   })
 
-  it('deprecated된 getCurrentLocation이 아니라 Device.getLocation을 쓴다', async () => {
-    getLocation.mockResolvedValue(locationOf(37.5, 127))
-
-    const { result } = renderHook(() => useCurrentLocation())
-
-    await waitFor(() => expect(result.current.status).toBe('granted'))
-    expect(getLocation).toHaveBeenCalledWith({
-      accuracy: framework.Accuracy.Balanced,
-    })
-  })
-
   it('권한 거부면 denied가 되고 좌표는 없다', async () => {
-    getLocation.mockRejectedValue(
-      new GetCurrentLocationPermissionError(),
-    )
+    mockedRequestCoords.mockRejectedValue(new LocationDeniedError())
 
     const { result } = renderHook(() => useCurrentLocation())
 
@@ -83,21 +45,8 @@ describe('useCurrentLocation', () => {
     expect(result.current.coords).toBeNull()
   })
 
-  it('첫 로드에서는 권한 다이얼로그를 직접 열지 않는다', async () => {
-    // 화면에 들어오자마자 팝업이 두 번 뜨는 걸 막는다. 재요청은 사용자가
-    // 명시적으로 누를 때만 한다.
-    getLocation.mockRejectedValue(
-      new GetCurrentLocationPermissionError(),
-    )
-
-    const { result } = renderHook(() => useCurrentLocation())
-
-    await waitFor(() => expect(result.current.status).toBe('denied'))
-    expect(openPermissionDialog).not.toHaveBeenCalled()
-  })
-
   it('그 외 실패는 unavailable이 된다', async () => {
-    getLocation.mockRejectedValue(new Error('timeout'))
+    mockedRequestCoords.mockRejectedValue(new Error('timeout'))
 
     const { result } = renderHook(() => useCurrentLocation())
 
@@ -105,46 +54,47 @@ describe('useCurrentLocation', () => {
     expect(result.current.coords).toBeNull()
   })
 
-  it('거부 상태에서 retry하면 권한 다이얼로그를 열고, 허용되면 좌표를 준다', async () => {
-    getLocation.mockRejectedValueOnce(
-      new GetCurrentLocationPermissionError(),
-    )
+  it('첫 로드는 사용자가 누른 재시도가 아니라고 알린다', async () => {
+    // 이 인자가 권한 다이얼로그를 여는지를 가른다. 화면에 들어오자마자 팝업이
+    // 뜨는 걸 막는 것은 여기서 false를 넘기는 것에 달려 있다.
+    mockedRequestCoords.mockResolvedValue({ lat: 37.5, lng: 127 })
+
+    const { result } = renderHook(() => useCurrentLocation())
+
+    await waitFor(() => expect(result.current.status).toBe('granted'))
+    expect(mockedRequestCoords).toHaveBeenCalledWith(false)
+  })
+
+  it('retry는 사용자가 누른 재시도라고 알리고, 성공하면 좌표를 준다', async () => {
+    mockedRequestCoords.mockRejectedValueOnce(new LocationDeniedError())
 
     const { result } = renderHook(() => useCurrentLocation())
     await waitFor(() => expect(result.current.status).toBe('denied'))
 
-    getLocation.mockRejectedValueOnce(
-      new GetCurrentLocationPermissionError(),
-    )
-    openPermissionDialog.mockResolvedValue('allowed')
-    getLocation.mockResolvedValueOnce(locationOf(37.4979, 127.0276))
-
+    mockedRequestCoords.mockResolvedValueOnce({ lat: 37.4979, lng: 127.0276 })
     act(() => result.current.retry())
 
     await waitFor(() => expect(result.current.status).toBe('granted'))
-    expect(openPermissionDialog).toHaveBeenCalledTimes(1)
+    expect(mockedRequestCoords).toHaveBeenLastCalledWith(true)
     expect(result.current.coords).toEqual({ lat: 37.4979, lng: 127.0276 })
   })
 
-  it('다이얼로그에서 또 거부하면 denied로 남는다', async () => {
-    getLocation.mockRejectedValue(
-      new GetCurrentLocationPermissionError(),
-    )
+  it('재시도가 또 거부되면 denied로 남는다', async () => {
+    mockedRequestCoords.mockRejectedValue(new LocationDeniedError())
 
     const { result } = renderHook(() => useCurrentLocation())
     await waitFor(() => expect(result.current.status).toBe('denied'))
 
-    openPermissionDialog.mockResolvedValue('denied')
     act(() => result.current.retry())
 
-    await waitFor(() => expect(openPermissionDialog).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mockedRequestCoords).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(result.current.status).toBe('denied'))
     expect(result.current.coords).toBeNull()
   })
 
   it('언마운트된 뒤 응답이 와도 상태를 갱신하지 않는다', async () => {
-    let resolve: ((value: ReturnType<typeof locationOf>) => void) | undefined
-    getLocation.mockReturnValue(
+    let resolve: ((value: { lat: number; lng: number }) => void) | undefined
+    mockedRequestCoords.mockReturnValue(
       new Promise((r) => {
         resolve = r
       }),
@@ -154,7 +104,7 @@ describe('useCurrentLocation', () => {
     expect(result.current.status).toBe('loading')
 
     unmount()
-    resolve?.(locationOf(37.5, 127))
+    resolve?.({ lat: 37.5, lng: 127 })
 
     // 언마운트 뒤 setState가 일어나면 React가 경고를 낸다. 경고 없이
     // 마지막 값이 loading으로 남아 있어야 한다.
