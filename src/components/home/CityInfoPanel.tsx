@@ -8,6 +8,7 @@ import { EventList } from '../cityinfo/EventList'
 import { EmptyNote, InfoSection } from '../cityinfo/InfoSection'
 import { ParkingList } from '../cityinfo/ParkingList'
 import { RoadTrafficCard } from '../cityinfo/RoadTrafficCard'
+import { SubwayArrivals } from '../cityinfo/SubwayArrivals'
 import { WeatherCard } from '../cityinfo/WeatherCard'
 import { ErrorState } from '../common/ErrorState'
 import { Icon } from '../common/Icon'
@@ -75,6 +76,14 @@ export function CityInfoPanel({ areaName }: Props) {
                         <AccidentList accidents={info.accidents} />
                       </div>
                     )}
+                  </InfoSection>
+                )}
+
+                {/* 도로소통 다음, 따릉이 앞이다 — detail_page.png의 순서다.
+                    「어떻게 갈까」를 묻는 교통 수단들이 이어서 온다. */}
+                {info.subway.length > 0 && (
+                  <InfoSection title="지하철 실시간 도착">
+                    <SubwayArrivals arrivals={info.subway} />
                   </InfoSection>
                 )}
 

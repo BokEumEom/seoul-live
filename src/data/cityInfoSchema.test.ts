@@ -478,3 +478,88 @@ describe('parseCityInfoResponse — 시간대별 예보', () => {
     expect(info.weather?.hourly[0].rainChance).toBeNull()
   })
 })
+
+describe('parseCityInfoResponse — 지하철 실시간 도착', () => {
+  // 명세 62~78행: SUB_STTS > SUB_STN_NM·SUB_LINE·SUB_ROUTE_NM·SUB_STN_LINE·
+  // SUB_DIR·SUB_TERMINAL·SUB_ARMG1·SUB_ARMG2.
+  it('역·호선·방향·도착 메세지를 옮긴다', () => {
+    const info = parseCityInfoResponse(
+      payload({
+        SUB_STTS: [
+          {
+            SUB_STN_NM: '강남',
+            SUB_LINE: '2호선',
+            SUB_DIR: '성수행',
+            SUB_TERMINAL: '성수',
+            SUB_ARMG1: '4분 20초 후',
+            SUB_ARMG2: '역삼',
+          },
+        ],
+      }),
+      AREA,
+    )
+
+    expect(info.subway).toEqual([
+      {
+        station: '강남',
+        line: '2호선',
+        direction: '성수행',
+        terminal: '성수',
+        message: '4분 20초 후',
+        messageDetail: '역삼',
+      },
+    ])
+  })
+
+  it('호선은 SUB_LINE → SUB_ROUTE_NM → SUB_STN_LINE 순으로 채운다', () => {
+    // 셋 중 무엇이 「9호선」으로 오는지 모른다. 앞이 비면 뒤를 본다.
+    const info = parseCityInfoResponse(
+      payload({
+        SUB_STTS: [
+          { SUB_STN_NM: 'A', SUB_ROUTE_NM: '신분당선', SUB_STN_LINE: '무시됨', SUB_ARMG1: '도착' },
+          { SUB_STN_NM: 'B', SUB_STN_LINE: '9호선', SUB_ARMG1: '도착' },
+        ],
+      }),
+      AREA,
+    )
+
+    expect(info.subway.map((entry) => entry.line)).toEqual(['신분당선', '9호선'])
+  })
+
+  it('SUB_ARMG1이 비면 SUB_ARMG2를 본문으로 쓴다', () => {
+    const info = parseCityInfoResponse(
+      payload({ SUB_STTS: [{ SUB_STN_NM: '강남', SUB_ARMG2: '전역 출발' }] }),
+      AREA,
+    )
+
+    expect(info.subway[0].message).toBe('전역 출발')
+    // 본문으로 올라갔으므로 같은 말을 보조 자리에 또 적지 않는다.
+    expect(info.subway[0].messageDetail).toBe('')
+  })
+
+  it('두 메세지가 같으면 한 번만 남긴다', () => {
+    const info = parseCityInfoResponse(
+      payload({ SUB_STTS: [{ SUB_STN_NM: '강남', SUB_ARMG1: '전역 출발', SUB_ARMG2: '전역 출발' }] }),
+      AREA,
+    )
+
+    expect(info.subway[0].messageDetail).toBe('')
+  })
+
+  it('역명이 없는 줄은 버린다', () => {
+    // 역명이 이 항목의 본체다. 어느 역인지 모르면 「4분 20초 후」는 쓸모가 없다.
+    const info = parseCityInfoResponse(
+      payload({
+        SUB_STTS: [{ SUB_ARMG1: '4분 20초 후' }, { SUB_STN_NM: '강남', SUB_ARMG1: '도착' }],
+      }),
+      AREA,
+    )
+
+    expect(info.subway).toHaveLength(1)
+    expect(info.subway[0].station).toBe('강남')
+  })
+
+  it('지하철 정보가 없으면 빈 배열이다', () => {
+    expect(parseCityInfoResponse(payload({}), AREA).subway).toEqual([])
+  })
+})

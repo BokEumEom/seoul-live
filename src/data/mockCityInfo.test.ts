@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { groupSubwayArrivals } from '../domain/cityInfo'
 import { AREA_CATALOG, AREA_NAMES } from './areas'
 import { parseCityInfoResponse } from './cityInfoSchema'
 import { buildMockCityInfo } from './mockCityInfo'
@@ -98,5 +99,29 @@ describe('buildMockCityInfo', () => {
       expect(entry.rainChance).toBeGreaterThanOrEqual(0)
       expect(entry.rainChance).toBeLessThanOrEqual(100)
     }
+  })
+
+  it('지하철 도착이 있는 명소와 없는 명소가 둘 다 있다', () => {
+    // 지하철역이 없는 명소(한강공원 등)의 빈 상태를 목업으로도 볼 수 있어야 한다.
+    const counts = AREA_NAMES.map((name) => infoFor(name).subway.length)
+    expect(counts.some((count) => count > 0)).toBe(true)
+    expect(counts.some((count) => count === 0)).toBe(true)
+  })
+
+  it('한 역에 열차가 여러 대 온다', () => {
+    // 한 대씩만 오면 역·호선 묶음도 「외 N대」도 목업으로 확인할 수 없다.
+    const grouped = AREA_NAMES.map((name) =>
+      groupSubwayArrivals(infoFor(name).subway),
+    ).flat()
+    expect(grouped.some((group) => group.arrivals.length > 1)).toBe(true)
+  })
+
+  it('분 단위와 문구형 도착 메세지가 둘 다 나온다', () => {
+    // 한쪽만 나오면 다른 쪽 표시를 목업으로 못 본다.
+    const messages = AREA_NAMES.flatMap((name) =>
+      infoFor(name).subway.map((entry) => entry.message),
+    )
+    expect(messages.some((message) => message.endsWith('후'))).toBe(true)
+    expect(messages.some((message) => !message.endsWith('후'))).toBe(true)
   })
 })

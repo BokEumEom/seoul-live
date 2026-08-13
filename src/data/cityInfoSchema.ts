@@ -8,6 +8,7 @@ import type {
   HourlyForecast,
   ParkingLot,
   RoadTraffic,
+  SubwayArrival,
   Weather,
 } from '../domain/cityInfo'
 import { AreaNameMismatchError, seoulApiErrorFrom } from './schema'
@@ -249,6 +250,44 @@ function toAlerts(rows: readonly Row[]): readonly CityAlert[] {
   )
 }
 
+// 역명이 이 항목의 본체다 — 어느 역인지 모르면 「4분 20초 후」는 쓸모가 없다.
+//
+// 호선은 셋 중 처음 채워진 것을 쓴다. 명세에 「지하철호선」·「지하철노선명」·
+// 「지하철역 호선」 셋이 따로 있는데 값의 예시가 없어 무엇이 「9호선」·
+// 「신분당선」으로 오는지 모른다. 셋 다 비면 화면이 호선 없이 역명만 적는다.
+// **확인법:** 실호출 응답에서 세 필드의 값을 나란히 찍어 무엇이 채워지는지 본다.
+const LINE_KEYS = ['SUB_LINE', 'SUB_ROUTE_NM', 'SUB_STN_LINE'] as const
+
+function firstText(row: Row, keys: readonly string[]): string {
+  for (const key of keys) {
+    const value = text(row, key)
+    if (value !== '') {
+      return value
+    }
+  }
+  return ''
+}
+
+function toSubway(rows: readonly Row[]): readonly SubwayArrival[] {
+  return named(rows, 'SUB_STN_NM', (row, station): SubwayArrival => {
+    // 두 도착 메세지의 역할이 명세에 없다(둘 다 출력명이 「열차 도착 메세지」다).
+    // 앞이 본문이고 뒤가 보조라고 보되, 앞이 비면 뒤가 본문으로 올라온다.
+    const primary = text(row, 'SUB_ARMG1')
+    const secondary = text(row, 'SUB_ARMG2')
+    const message = primary !== '' ? primary : secondary
+
+    return {
+      station,
+      line: firstText(row, LINE_KEYS),
+      direction: text(row, 'SUB_DIR'),
+      terminal: text(row, 'SUB_TERMINAL'),
+      message,
+      // 같은 말을 두 번 적지 않는다. 본문으로 올라간 값도 여기 남기지 않는다.
+      messageDetail: secondary === message ? '' : secondary,
+    }
+  })
+}
+
 export function parseCityInfoResponse(payload: unknown, expectedName: string): CityInfo {
   const result = envelopeSchema.safeParse(payload)
   if (!result.success) {
@@ -283,5 +322,6 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
     bikes: toBikes(sectionRows(container, ['SBIKE_STTS'])),
     events: toEvents(sectionRows(container, ['CULTURALEVENTINFO', 'EVENT_STTS'])),
     alerts: toAlerts(sectionRows(container, ['LIVE_DST_MESSAGE'])),
+    subway: toSubway(sectionRows(container, ['SUB_STTS'])),
   }
 }

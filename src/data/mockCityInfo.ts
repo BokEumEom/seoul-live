@@ -16,6 +16,7 @@ const ALERT_SALT = 4
 const WEATHER_SALT = 5
 const ROAD_SALT = 6
 const ACCIDENT_SALT = 7
+const SUBWAY_SALT = 8
 
 // **목업이 이 셋을 쓴다고 해서 화면이 이 셋을 안다고 가정하면 안 된다.** 공식
 // 명세에 `ROAD_TRAFFIC_IDX`의 출력명만 있고 값의 종류가 없어서, 서울시 교통정보
@@ -150,6 +151,43 @@ function buildBikes(areaName: string, seed: number): readonly unknown[] {
   })
 }
 
+// **목업이 이 문구들을 쓴다고 해서 화면이 이 문구를 안다고 가정하면 안 된다.**
+// SUB_ARMG1의 값 목록도 명세에 없다(ROAD_INDEXES와 같은 사정). 서울 지하철
+// 도착 안내에서 흔히 보는 형태를 빌린 것뿐이고, 파서도 카드도 문자열을 그대로
+// 옮긴다 — 실제 값이 다르면 여기만 고치면 된다.
+const SUB_MESSAGES = ['전역 출발', '전역 진입', '도착', '출발'] as const
+const SUB_LINES = ['2호선', '9호선', '신분당선'] as const
+
+function buildSubway(seed: number): readonly unknown[] {
+  // 역이 0~2곳. 지하철역이 없는 명소(한강공원 등)를 목업으로도 볼 수 있어야 한다.
+  const stationCount = mixSeed(seed, SUBWAY_SALT) % 3
+
+  return Array.from({ length: stationCount }, (_, stationIndex) => {
+    const mixed = mixSeed(seed, SUBWAY_SALT * 10 + stationIndex)
+    const line = SUB_LINES[mixed % SUB_LINES.length]
+    const station = `${mixed % 90}번가`
+
+    // 역마다 열차 2~4대. 넷이면 「외 1대」가 붙어 잘림 안내도 볼 수 있다.
+    return Array.from({ length: 2 + (mixed % 3) }, (_, trainIndex) => {
+      const train = mixSeed(mixed, trainIndex + 1)
+      const minutes = train % 12
+      return {
+        SUB_STN_NM: station,
+        SUB_LINE: line,
+        SUB_DIR: train % 2 === 0 ? '성수행' : '개화행',
+        SUB_TERMINAL: train % 2 === 0 ? '성수' : '개화',
+        SUB_ORD: String(trainIndex + 1),
+        // 분 단위와 문구형이 섞여 온다. 한쪽만 넣으면 다른 쪽 표시를 못 본다.
+        SUB_ARMG1:
+          minutes === 0
+            ? SUB_MESSAGES[train % SUB_MESSAGES.length]
+            : `${minutes}분 ${train % 60}초 후`,
+        SUB_ARMG2: `${train % 90}번가`,
+      }
+    })
+  }).flat()
+}
+
 function buildEvents(areaName: string, seed: number): readonly unknown[] {
   const count = mixSeed(seed, EVENT_SALT) % 3
   return Array.from({ length: count }, (_, index) => {
@@ -225,6 +263,7 @@ export function buildMockCityInfo(areaName: string, now: Date = new Date()): unk
       SBIKE_STTS: buildBikes(areaName, seed),
       CULTURALEVENTINFO: buildEvents(areaName, seed),
       LIVE_DST_MESSAGE: buildAlerts(seed, now),
+      SUB_STTS: buildSubway(seed),
     },
   }
 }

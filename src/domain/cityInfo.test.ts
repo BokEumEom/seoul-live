@@ -4,12 +4,14 @@ import {
   formatForecastTemperature,
   formatTemperature,
   forecastHourLabel,
+  groupSubwayArrivals,
   hasAnyCityInfo,
   parkingTone,
   sortBikesByStock,
   sortParkingByAvailable,
   type BikeStation,
   type CityInfo,
+  type SubwayArrival,
   type ParkingLot,
 } from './cityInfo'
 
@@ -31,6 +33,7 @@ const EMPTY: CityInfo = {
   bikes: [],
   events: [],
   alerts: [],
+  subway: [],
 }
 
 describe('airGradeTone', () => {
@@ -278,5 +281,109 @@ describe('formatForecastTemperature', () => {
   it('0도를 값 없음으로 뭉개지 않는다', () => {
     // falsy 검사로 짜면 0도가 대시가 된다.
     expect(formatForecastTemperature(0)).toBe('0°')
+  })
+})
+
+describe('groupSubwayArrivals', () => {
+  function arrival(
+    station: string,
+    line: string,
+    direction = '',
+    message = '',
+  ): SubwayArrival {
+    return { station, line, direction, terminal: '', message, messageDetail: '' }
+  }
+
+  it('같은 역·같은 호선의 열차를 한 묶음으로 만든다', () => {
+    const groups = groupSubwayArrivals([
+      arrival('강남', '2호선', '성수행'),
+      arrival('강남', '2호선', '성수행'),
+    ])
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0].station).toBe('강남')
+    expect(groups[0].line).toBe('2호선')
+    expect(groups[0].arrivals).toHaveLength(2)
+  })
+
+  it('같은 역이라도 호선이 다르면 나눈다', () => {
+    // 강남역에는 2호선과 신분당선이 함께 온다. 역명만으로 묶으면 서로 다른
+    // 노선의 열차가 한 덩어리로 보인다(detail_page.png).
+    const groups = groupSubwayArrivals([
+      arrival('강남', '2호선'),
+      arrival('강남', '신분당선'),
+    ])
+
+    expect(groups).toHaveLength(2)
+    expect(groups.map((group) => group.line)).toEqual(['2호선', '신분당선'])
+  })
+
+  it('호선이 같아도 역이 다르면 나눈다', () => {
+    const groups = groupSubwayArrivals([
+      arrival('신논현', '신분당선'),
+      arrival('강남', '신분당선'),
+    ])
+
+    expect(groups).toHaveLength(2)
+    expect(groups.map((group) => group.station)).toEqual(['신논현', '강남'])
+  })
+
+  it('묶음의 순서는 처음 나온 차례를 따른다', () => {
+    const groups = groupSubwayArrivals([
+      arrival('신논현', '9호선'),
+      arrival('강남', '2호선'),
+      arrival('신논현', '9호선'),
+    ])
+
+    expect(groups.map((group) => group.station)).toEqual(['신논현', '강남'])
+  })
+
+  it('묶음 안의 순서도 응답 그대로 둔다', () => {
+    // 도착 시각으로 다시 정렬하지 않는다 — message가 「4분 20초 후」일 수도
+    // 「전역 출발」일 수도 있어 둘을 한 축에 세울 방법이 없다. detail_page.png의
+    // 강남 2호선도 4분·8분·2분 순으로, 시각순이 아니라 응답순이다.
+    const groups = groupSubwayArrivals([
+      arrival('강남', '2호선', '성수행', '4분 20초 후'),
+      arrival('강남', '2호선', '성수행', '8분 50초 후'),
+      arrival('강남', '2호선', '성수행', '2분 20초 후'),
+    ])
+
+    expect(groups[0].arrivals.map((entry) => entry.message)).toEqual([
+      '4분 20초 후',
+      '8분 50초 후',
+      '2분 20초 후',
+    ])
+  })
+
+  it('입력 배열을 건드리지 않는다', () => {
+    const input = [arrival('강남', '2호선'), arrival('신논현', '9호선')]
+    groupSubwayArrivals(input)
+    expect(input.map((entry) => entry.station)).toEqual(['강남', '신논현'])
+  })
+
+  it('빈 목록은 빈 묶음이다', () => {
+    expect(groupSubwayArrivals([])).toEqual([])
+  })
+})
+
+describe('hasAnyCityInfo — 지하철', () => {
+  // 새 섹션을 더할 때 hasAnyCityInfo도 같이 고쳐야 한다. 빠뜨리면 지하철만
+  // 있는 명소가 「정보 없음」으로 뜨는데 화면에는 지하철이 그려져 있다.
+  it('지하철 도착만 있어도 true다', () => {
+    expect(
+      hasAnyCityInfo({
+        ...EMPTY,
+        subway: [
+          {
+            station: '강남',
+            line: '2호선',
+            direction: '성수행',
+            terminal: '',
+            message: '4분 20초 후',
+            messageDetail: '',
+          },
+        ],
+      }),
+    ).toBe(true)
   })
 })

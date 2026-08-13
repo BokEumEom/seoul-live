@@ -57,6 +57,7 @@ const EMPTY_CITY_INFO: CityInfo = {
   bikes: [],
   events: [],
   alerts: [],
+  subway: [],
 }
 
 function ok<T>(data: T): UseQueryResult<T> {

@@ -114,6 +114,66 @@ export interface AccidentControl {
   readonly expectedClearAt: string
 }
 
+/** SUB_STTS의 한 줄 — 곧 도착하는 열차 하나. 명세 62~78행. */
+export interface SubwayArrival {
+  /** SUB_STN_NM — 지하철역명 */
+  readonly station: string
+  /**
+   * 호선 이름. SUB_LINE → SUB_ROUTE_NM → SUB_STN_LINE 순으로 처음 채워진 것을 쓴다.
+   *
+   * **셋 중 무엇이 「9호선」·「신분당선」으로 오는지 모른다.** 명세에 출력명만
+   * 있고(「지하철호선」·「지하철노선명」·「지하철역 호선」) 값의 예시가 없다.
+   * 셋 다 비면 화면이 호선 없이 역명만 적는다 — 틀린 호선을 적는 것보다 낫다.
+   */
+  readonly line: string
+  /** SUB_DIR — 지하철방향 */
+  readonly direction: string
+  /** SUB_TERMINAL — 종착역 */
+  readonly terminal: string
+  /**
+   * SUB_ARMG1이 비면 SUB_ARMG2. 「5분 30초 후」·「전역 출발」 같은 원문이다.
+   *
+   * 값 목록을 모르므로 `ROAD_TRAFFIC_IDX`와 같이 **그대로 보여주고** 파싱하지
+   * 않는다. 「분」을 숫자로 뽑으려 들면 「전역 출발」에서 무엇을 뽑을지가 없다.
+   */
+  readonly message: string
+  /** SUB_ARMG2. `message`와 다를 때만 채운다 — 같은 말을 두 번 적지 않는다 */
+  readonly messageDetail: string
+}
+
+/** 같은 역·같은 호선의 도착 열차를 묶은 것. 화면이 역 이름을 한 번만 적는다. */
+export interface SubwayLineArrivals {
+  readonly station: string
+  readonly line: string
+  readonly arrivals: readonly SubwayArrival[]
+}
+
+/**
+ * 역·호선으로 묶는다. **순서는 응답 그대로 둔다.**
+ *
+ * 도착 시각으로 다시 정렬하지 않는 이유는 정렬 기준을 만들 수 없어서다 —
+ * `message`가 「4분 20초 후」일 수도 「전역 출발」일 수도 있어 둘을 한 축에
+ * 세울 방법이 없다. 서울 API가 내려준 차례가 유일하게 근거 있는 순서다.
+ */
+export function groupSubwayArrivals(
+  arrivals: readonly SubwayArrival[],
+): readonly SubwayLineArrivals[] {
+  // 역명과 호선이 함께 키다. 강남역에 2호선과 신분당선이 함께 오는데 역명만으로
+  // 묶으면 서로 다른 노선의 열차가 한 덩어리로 보인다(detail_page.png).
+  const keyOf = (arrival: SubwayArrival) => `${arrival.station} ${arrival.line}`
+
+  // Set이 처음 나온 순서를 지킨다. 누산기에 push하지 않으므로 입력도 중간값도
+  // 건드리지 않는다 — 목록이 한 자릿수라 filter를 다시 도는 비용은 무시할 만하다.
+  return [...new Set(arrivals.map(keyOf))].map((key) => {
+    const bucket = arrivals.filter((arrival) => keyOf(arrival) === key)
+    return {
+      station: bucket[0].station,
+      line: bucket[0].line,
+      arrivals: bucket,
+    }
+  })
+}
+
 export interface CityInfo {
   readonly areaName: string
   readonly areaCode: string
@@ -124,6 +184,7 @@ export interface CityInfo {
   readonly bikes: readonly BikeStation[]
   readonly events: readonly CulturalEvent[]
   readonly alerts: readonly CityAlert[]
+  readonly subway: readonly SubwayArrival[]
 }
 
 // 통합대기환경등급을 혼잡도와 같은 네 톤에 겹친다. 색 토큰을 하나만 유지하려는
@@ -252,6 +313,7 @@ export function hasAnyCityInfo(info: CityInfo): boolean {
     info.parking.length > 0 ||
     info.bikes.length > 0 ||
     info.events.length > 0 ||
-    info.alerts.length > 0
+    info.alerts.length > 0 ||
+    info.subway.length > 0
   )
 }
