@@ -24,9 +24,10 @@ import {
   type MapUnavailableReason,
 } from '../components/map/MapUnavailableNotice'
 import { RecenterButton } from '../components/map/RecenterButton'
-import { AREA_CATALOG, AREA_NAMES } from '../data/areas'
+import { AREA_CATALOG, AREA_NAMES, findAreaByName } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
 import {
+  centerBelowSheet,
   DEFAULT_ZOOM,
   markerZIndex,
   SEOUL_CENTER,
@@ -40,7 +41,7 @@ import {
   type FilterKey,
 } from '../domain/presets'
 import { searchAreas } from '../domain/search'
-import type { Detent } from '../domain/sheet'
+import { SHEET_RATIO, type Detent } from '../domain/sheet'
 import { summarize } from '../domain/summary'
 import type { Coords } from '../domain/types'
 import { useCachedCityAlerts } from '../hooks/useCachedCityAlerts'
@@ -56,6 +57,15 @@ import {
 
 /** 재조정 버튼을 눌렀을 때의 줌. 주변 명소가 몇 곳 들어오는 정도다. */
 const RECENTER_ZOOM = 14
+
+/**
+ * 명소를 열었을 때의 줌. 그 명소와 걸어갈 만한 주변이 함께 들어온다.
+ *
+ * `RECENTER_ZOOM`(14)보다 한 칸 깊다 — 「내 주변」은 여러 곳을 훑는 조작이고
+ * 이쪽은 한 곳을 보는 조작이다. `LABEL_MIN_ZOOM`(12)을 넘으므로 마커에 혼잡도
+ * 라벨도 함께 붙는다.
+ */
+const AREA_ZOOM = 15
 
 export function HomeScreen() {
   const snapshots = useAreaSnapshots(AREA_NAMES)
@@ -182,7 +192,38 @@ export function HomeScreen() {
     setSelectedName(name)
     setView('list')
     setDetent('half')
+    moveMapTo(name)
     requestSheetFocus()
+  }
+
+  // **서울 인파레이더가 그렇게 한다** — 목록에서 고르면 지도가 그리로 간다.
+  // 상세가 half에서 열리게 되면서 지도가 계속 보이는데, 따라가지 않으면 상세는
+  // 경복궁을 말하는 동안 지도는 서울 전역인 채로 남는다.
+  //
+  // 중심을 명소 좌표 그대로 두지 않는다. 지도는 뷰포트를 꽉 채우고 시트가 그 위를
+  // 덮으므로 지도의 중심은 언제나 화면 한가운데인데(390×844에서 y=422), half
+  // 시트의 상단이 y=371이라 **명소가 시트 뒤로 들어가 하나도 안 보인다.**
+  // 얼마나 비켜 잡을지는 `centerBelowSheet`가 화면 높이와 줌으로 계산한다.
+  //
+  // `SHEET_RATIO.half`를 넘기는 것은 `openArea`가 언제나 half로 연다는 바로 위
+  // 규칙에서 온다. 둘이 갈리면 지도가 엉뚱한 자리를 잡으므로 함께 고쳐야 한다.
+  //
+  // 카탈로그에 없는 이름이면 지도를 건드리지 않는다. 화면에서 오는 이름은 전부
+  // 카탈로그에서 나온 것이라(목록 행·마커·오늘의 서울·근처 여유로운 곳) 닿지
+  // 않는 가지지만, 없는 곳으로 지도를 던지느니 그대로 두는 편이 낫다 —
+  // `AreaDetail`도 같은 조회에 같은 태도를 취한다.
+  function moveMapTo(name: string): void {
+    const entry = findAreaByName(name)
+    if (entry === undefined) return
+    setCenter(
+      centerBelowSheet(
+        { lat: entry.lat, lng: entry.lng },
+        AREA_ZOOM,
+        window.innerHeight,
+        SHEET_RATIO.half,
+      ),
+    )
+    setZoom(AREA_ZOOM)
   }
 
   const list = useMemo(

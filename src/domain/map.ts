@@ -22,6 +22,51 @@ export const DEFAULT_ZOOM = 11
  */
 export const LABEL_MIN_ZOOM = 12
 
+/** 웹 메르카토르 타일 한 변(px). 줌 z에서 세계는 `TILE_SIZE * 2^z` 픽셀이다. */
+const TILE_SIZE = 256
+
+/**
+ * 화면 세로 1픽셀이 몇 도의 위도인가.
+ *
+ * 경도는 세계 한 바퀴(360°)가 `TILE_SIZE * 2^zoom` 픽셀에 균등하게 펴지므로
+ * 위도와 무관하지만, **위도는 메르카토르라 극으로 갈수록 늘어난다** — 같은
+ * 1픽셀이 서울(37.5°)에서는 적도의 79%에 해당하는 위도만 덮는다. `cos`를
+ * 빼먹으면 서울에서 21% 어긋난 자리에 지도를 잡는다.
+ */
+export function latitudeDegreesPerPixel(latitude: number, zoom: number): number {
+  const degreesPerPixel = 360 / (TILE_SIZE * 2 ** zoom)
+  return degreesPerPixel * Math.cos((latitude * Math.PI) / 180)
+}
+
+/**
+ * 시트가 아래를 덮은 지도에서, `target`이 **보이는 띠의 한가운데**에 놓이도록
+ * 지도 중심을 남쪽으로 비켜 잡는다.
+ *
+ * 지도는 뷰포트를 꽉 채우고 시트가 그 위를 덮으므로, 지도의 중심은 언제나
+ * 화면 한가운데다 — 390×844에서 y=422인데 half 시트의 상단이 y=371이다.
+ * 명소를 그냥 중심에 놓으면 **시트 뒤로 들어가 하나도 안 보인다.** 「목록에서
+ * 고르면 지도가 그리로 간다」가 눈에 보이려면 이 보정이 있어야 한다.
+ *
+ * `viewportHeight`가 0이나 NaN으로 오면(측정 전 프레임, 일부 웹뷰) 옮기지
+ * 않는다 — NaN 좌표를 넘기면 지도가 통째로 죽는다. 덜 옮기는 편이 낫다.
+ */
+export function centerBelowSheet(
+  target: Coords,
+  zoom: number,
+  viewportHeight: number,
+  sheetRatio: number,
+): Coords {
+  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) {
+    return target
+  }
+  const visibleHeight = viewportHeight * (1 - sheetRatio)
+  const offsetPixels = (viewportHeight - visibleHeight) / 2
+  return {
+    lat: target.lat - offsetPixels * latitudeDegreesPerPixel(target.lat, zoom),
+    lng: target.lng,
+  }
+}
+
 export interface MapMarker {
   readonly entry: AreaCatalogEntry
   readonly level: CongestionLevel | null

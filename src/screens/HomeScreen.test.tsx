@@ -308,6 +308,27 @@ describe('HomeScreen', () => {
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
   })
 
+  // 서울 인파레이더가 그렇게 한다 — 목록에서 고르면 지도가 그리로 간다.
+  // 시트가 half에 머물게 되면서 지도가 계속 보이니, 따라가지 않으면 상세는
+  // 경복궁을 말하는데 지도는 서울 전역인 채로 남는다.
+  it('명소를 고르면 지도가 그 명소로 따라간다', async () => {
+    render(<HomeScreen />)
+    const map = screen.getByRole('region', { name: '지도' })
+    expect(map).toHaveAttribute('data-center', '37.5665,126.978') // 서울 전역
+
+    await userEvent.click(sheetRow(/경복궁/))
+
+    expect(map).toHaveAttribute('data-zoom', '15')
+    const [lat, lng] = (map.getAttribute('data-center') ?? '').split(',').map(Number)
+    expect(lng).toBe(126.977) // 경복궁의 경도 그대로
+    // **중심은 명소보다 남쪽이다.** 지도가 뷰포트를 꽉 채우고 시트가 아래를
+    // 덮으므로, 명소를 지도 한가운데 놓으면 시트 뒤로 들어가 안 보인다.
+    // 얼마나 비켜 잡는지는 `centerBelowSheet`가 픽셀로 잠근다 — 여기서는
+    // 「비켜 잡되 화면 밖으로 던지지는 않는다」만 본다.
+    expect(lat).toBeLessThan(37.5796)
+    expect(lat).toBeGreaterThan(37.5796 - 0.02)
+  })
+
   // half에 머무는 것의 눈에 보이는 값이다. full은 검색 바·칩 열·「내 주변」을
   // 통째로 걷어내므로(아래 테스트들) 상세를 열 때마다 지도 위 조작부가 전부
   // 사라졌다 — 다른 곳을 찾으려면 시트부터 내려야 했다.
