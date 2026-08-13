@@ -277,6 +277,19 @@ detail_page.png의 「티맵 안내」를 붙여 카카오맵·네이버·티맵
 
 **지도를 못 쓰면 시트를 절반에 묶는다.** `sheetDetent = mapReady ? detent : 'half'`가 그 규칙이 사는 유일한 자리다. 오버레이·FAB·시트가 모두 이 값을 보므로 규칙을 여러 곳에 흩지 마라.
 
+### 자체 Map ID를 넣었다 (2026-08-13)
+
+`VITE_GOOGLE_MAPS_MAP_ID`가 채워져 **`DEMO_MAP_ID` 폴백을 더 이상 타지 않는다.** 실측으로 확인했다: `googleMapsMapId()`가 자체 ID를 돌려주고, `AdvancedMarker` 30개가 그대로 렌더되며 다른 콘솔 오류가 없다.
+
+**벡터로 뜨는지는 이 저장소의 검증 수단으로 확인할 수 없다.** 헤드리스 크롬에서 「Attempted to load a Vector Map, but failed. Falling back to Raster」가 뜨는데, **이 오류는 Map ID 설정과 무관하다** — 구글이 벡터로 제공하는 `DEMO_MAP_ID`를 같은 브라우저에서 나란히 재도 똑같이 `RASTER`가 나온다(`map.getRenderingType()`으로 확인). 원인은 환경이다:
+
+- `--disable-gpu` 헤드리스에는 WebGL이 아예 없다(`getContext('webgl')`이 null).
+- `--enable-unsafe-swiftshader --use-angle=swiftshader`로 소프트웨어 WebGL을 켜면 WebGL은 생기지만(`ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device ...))`) **Google Maps가 이 렌더러를 벡터 지도에 쓰지 않는다.**
+
+**확인법(사람이 해야 한다):** GPU가 있는 보통 크롬으로 앱을 열고 DevTools 콘솔을 본다. 「Attempted to load a Vector Map, but failed」가 **없으면** 벡터로 뜬 것이다. 있으면 `chrome://gpu`에서 WebGL이 하드웨어 가속인지 먼저 보고, 그래도 뜨면 그때가 Map ID를 벡터로 다시 만들 자리다.
+
+**래스터로 떨어져도 앱은 선다.** 마커 30개가 그대로 렌더되는 것을 확인했다 — 벡터 여부는 기울기·회전·커스텀 스타일의 문제이지 마커의 문제가 아니다. 기울기·회전은 Map ID에서 **둘 다 껐다**(`disableDefaultUI` 때문에 되돌릴 컨트롤이 화면에 없어서다).
+
 ### 인증키가 들어왔다 — 실데이터로 돈다 (2026-08-13)
 
 **목업을 벗어났다.** `.env`의 `SEOUL_API_KEY`로 실호출이 되고 `VITE_USE_MOCK=false`다. sample 키가 아닌 것도 확인했다 — 강남역을 요청하면 강남역이, 여의도한강공원을 요청하면 그곳이 온다.
