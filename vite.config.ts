@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { fetchArea } from './api/_lib/seoul.js'
 import { isAllowedAreaName } from './api/_lib/allowed-areas.js'
+import { mapWithConcurrency } from './api/_lib/concurrency.js'
+
+/** 배포의 api/citydata-bulk.ts와 같은 값. 근거는 그 파일과 concurrency.ts 주석. */
+const UPSTREAM_CONCURRENCY = 8
 
 /**
  * 개발 서버에서 `/api/*`를 대신 처리한다. **개발 전용이고 배포에는 안 들어간다** —
@@ -56,17 +60,19 @@ function seoulApiDevServer(env: Record<string, string>): Plugin {
               .map((name) => name.trim())
               .filter((name) => name !== '' && isAllowedAreaName(name))
 
-            const results = await Promise.all(
-              names.map(async (name) => {
-                try {
-                  return [name, await fetchArea(name)] as const
-                } catch {
-                  // 한 곳이 실패해도 나머지는 살린다(배포 쪽과 같은 규칙).
-                  return [name, null] as const
-                }
-              }),
-            )
-            send(200, Object.fromEntries(results))
+            // 동시 연결을 배포와 같은 8개로 묶는다. 서울 API는 레거시라
+            // 30개를 한꺼번에 열면 연결 거부·스로틀링을 부른다 — 개발에서만
+            // 다르게 두면 로컬에서 안 나던 실패가 배포에서만 난다.
+            const settled = await mapWithConcurrency(names, UPSTREAM_CONCURRENCY, fetchArea)
+            const results = names.map((name, index) => {
+              const outcome = settled[index]
+              // 한 곳이 실패해도 나머지는 살린다(배포 쪽과 같은 규칙).
+              return [name, outcome.status === 'fulfilled' ? outcome.value : null] as const
+            })
+            // **봉투를 `{ results }`로 감싼다.** 배포의 api/citydata-bulk.ts가
+            // 그렇게 주고 클라이언트의 parseBulkEnvelope가 그 모양만 받는다.
+            // 평평하게 주면 스키마에서 걸려 30곳이 전부 「정보 없음」이 된다.
+            send(200, { results: Object.fromEntries(results) })
             return
           }
 

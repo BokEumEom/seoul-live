@@ -281,6 +281,12 @@ detail_page.png의 「티맵 안내」를 붙여 카카오맵·네이버·티맵
 
 **목업을 벗어났다.** `.env`의 `SEOUL_API_KEY`로 실호출이 되고 `VITE_USE_MOCK=false`다. sample 키가 아닌 것도 확인했다 — 강남역을 요청하면 강남역이, 여의도한강공원을 요청하면 그곳이 온다.
 
+**개발 미들웨어의 봉투를 배포와 맞춰야 한다.** 처음 붙였을 때 일괄 조회를 `{이름: 응답}`으로 평평하게 돌려줬는데, 배포의 `api/citydata-bulk.ts`는 `{ results: {이름: 응답} }`으로 감싼다. 클라이언트의 `parseBulkEnvelope`가 그 모양만 받으므로 **30곳이 전부 「정보 없음」으로 떴다** — 단일 조회와 상세는 멀쩡해서 원인이 위치나 파서에 있는 것처럼 보였다. 동시 연결 수도 배포와 같은 8로 묶었다(안 묶으면 로컬에서 안 나던 실패가 배포에서만 난다).
+
+**「내 주변」은 브라우저에서 정상이다.** 토스 SDK의 `Device.getLocation`은 웹뷰 밖에서 **평범한 `Error`**를 던진다(「apps-in-toss 웹뷰 환경이 아니에요」) — `GetCurrentLocationPermissionError`가 아니다. 그래서 `requestCoords`가 거부로 오해하지 않고 `navigator.geolocation`으로 떨어진다. 실측으로 확인했다: 좌표가 잡히면 위치 안내가 사라지고 FAB·「거리순」이 살아나며 목록이 `강남역 10m → 가로수길 2.5km → 잠원한강공원 2.7km`로 거리순 정렬된다.
+
+**헤드리스 크롬은 위치 권한을 끝내 안 준다.** `Browser.grantPermissions`가 OK를 돌려주고 `Emulation.setGeolocationOverride`를 걸어도 `getCurrentPosition`이 `code 1(User denied)`로 떨어진다. 그래서 화면이 「위치를 허용하면…」을 띄우는데 **이건 앱이 아니라 harness 쪽 제약이다.** 확인하려면 `Page.addScriptToEvaluateOnNewDocument`로 `navigator.geolocation`을 대역으로 세워라 — 우리 코드가 브리지 실패 뒤 웹 표준으로 떨어지는지는 그걸로 본다.
+
 **개발 서버가 `/api/*`를 직접 처리한다.** `vite.config.ts`의 `seoul-api-dev-server` 플러그인이 `api/_lib/seoul.ts`의 `fetchArea`를 그대로 재사용해 세 엔드포인트를 흉내 낸다(`citydata`·`cityinfo`·`citydata-bulk`). Vercel CLI 없이 로컬에서 실데이터를 볼 수 있고, **인증키는 Node 쪽에만 머문다** — `import.meta.env`로 읽지 않으므로 번들에 안 들어간다. 빌드 산출물을 키 문자열로 검색해 확인했다.
 
 **인증키에 `VITE_` 접두사를 붙이면 안 된다.** Vite는 `VITE_`로 시작하는 것만 클라이언트에 노출하는데, 서울 키가 번들에 들어가면 누구나 꺼내 하루 1,000회를 태울 수 있다. Google Maps 키는 반대로 **번들에 들어가는 게 정상**이다(타일을 브라우저가 직접 받는다) — 보호는 은닉이 아니라 Cloud Console의 리퍼러·API 제한이다.
