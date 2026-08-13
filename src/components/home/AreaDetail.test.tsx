@@ -259,7 +259,11 @@ describe('AreaDetail', () => {
     useAreaSnapshot.mockReturnValue(failed<AreaSnapshot>())
     renderDetail()
     expect(screen.getByRole('button', { name: '저장' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '카카오맵 길찾기' })).toBeInTheDocument()
+    // 길찾기 셋이 전부 남아야 한다. 하나만 세면 나머지가 혼잡도 응답에 묶여도
+    // 이 테스트가 통과한다.
+    expect(screen.getByRole('link', { name: '카카오맵' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '네이버' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '티맵' })).toBeInTheDocument()
   })
 
   it('뒤로 버튼이 콜백을 부른다', async () => {

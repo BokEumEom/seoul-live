@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { kakaoMapSearchUrl, naverMapSearchUrl } from '../../domain/mapLinks'
+import { kakaoMapSearchUrl, naverMapSearchUrl, tmapRouteUrl } from '../../domain/mapLinks'
 import type { AreaCatalogEntry } from '../../domain/types'
 import { openExternalUrl, shareMessage } from '../../platform/links'
 import { Icon, type IconName } from '../common/Icon'
@@ -15,8 +15,8 @@ interface Props {
 interface MapLink {
   readonly label: string
   readonly icon: IconName
-  /** 인코딩되지 않은 명소 이름을 받는다. 인코딩은 빌더가 한다. */
-  readonly href: (name: string) => string
+  /** 카탈로그 항목을 통째로 받는다 — 티맵은 이름이 아니라 좌표로 목적지를 넘긴다. */
+  readonly href: (entry: AreaCatalogEntry) => string
   readonly className: string
 }
 
@@ -24,18 +24,33 @@ interface MapLink {
 // 네이버에 흰 글자를 얹으면 2.25:1로 무너졌다(카카오는 원래 어두운 글자라
 // 문제가 없었다). 둘 다 `text-on-surface`로 맞춘다: 네이버 7.63, 카카오 13.43.
 // 값과 근거는 index.css의 `--color-brand-*` 주석에, 대비는 `tokens.test.ts`에.
+// 라벨에서 「길찾기」를 뺐다. 셋이 한 줄에 서면서 320px에서 버튼 하나에 배정되는
+// 폭이 138px → **87px**로 줄었는데 「카카오맵 길찾기」는 그 폭에 못 들어간다.
+// 헤드리스 크롬 실측(320/360/390px): 배정 87/101/111px, 필요 75(카카오맵)·
+// 63(네이버)·53(티맵)px. 셋 다 같은 top이고 높이가 48px 그대로라 줄바꿈이 없다.
+// **라벨을 늘릴 때는 다시 재라** — 320px의 여유가 12px뿐이다.
 const MAP_LINKS: readonly MapLink[] = [
   {
-    label: '카카오맵 길찾기',
+    label: '카카오맵',
     icon: 'pin',
-    href: kakaoMapSearchUrl,
+    href: (entry) => kakaoMapSearchUrl(entry.name),
     className: 'bg-brand-kakao text-on-surface',
   },
   {
-    label: '네이버 길찾기',
+    label: '네이버',
     icon: 'map',
-    href: naverMapSearchUrl,
+    href: (entry) => naverMapSearchUrl(entry.name),
     className: 'bg-brand-naver text-on-surface',
+  },
+  {
+    // 티맵 로고 색을 토큰으로 들이지 않았다. 카카오·네이버는 시안이 브랜드
+    // 배경을 쓰지만 셋째까지 색을 채우면 한 줄이 신호등이 된다 — 이것만
+    // 테두리형으로 두어 「길찾기 둘 + 내비 하나」로 읽히게 했다.
+    label: '티맵',
+    icon: 'navigation',
+    href: (entry) => tmapRouteUrl(entry.name, entry),
+    className:
+      'border border-outline-variant bg-surface-container-lowest text-on-surface',
   },
 ]
 
@@ -62,12 +77,12 @@ export function ActionButtons({ entry, saved, onSave }: Props) {
         {MAP_LINKS.map((link) => (
           <a
             key={link.label}
-            href={link.href(entry.name)}
+            href={link.href(entry)}
             target="_blank"
             rel="noreferrer"
             onClick={(event) => {
               event.preventDefault()
-              void openExternalUrl(link.href(entry.name))
+              void openExternalUrl(link.href(entry))
             }}
             className={`${ACTION_BASE} ${link.className}`}
           >
