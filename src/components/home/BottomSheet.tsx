@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent, type ReactNode } from 'react'
+import { useState, useRef, type PointerEvent, type ReactNode } from 'react'
 import {
   clampSheetRatio,
   nearestDetent,
@@ -46,10 +46,16 @@ const DETENT_LABEL: Readonly<Record<Detent, string>> = {
 // 608px어치 내용에 영원히 닿지 못한다. 남은 것은 매 프레임 리플로우라는 성능
 // 논거뿐이고, 그건 실기기 없이 판단할 수 없다.
 //
-// 끄는 동안에는 높이가 변하지 않고 손을 뗄 때 한 번에 단계로 붙는다. 단계
-// 밖의 중간 높이를 표현할 수단이 이 인터페이스(`detent` 하나)에 없어서다.
-// 손끝을 따라오게 하려면 시트가 제 높이를 따로 들고 있어야 하는데, 그 상태가
-// 부모의 `detent`와 둘로 갈리는 쪽이 더 위험하다.
+// **끄는 동안 높이가 손끝을 따라온다.** 예전에는 손을 뗄 때 한 번에 단계로
+// 붙였는데, 시트가 손에 붙어 있지 않아 「고정된 것」처럼 느껴진다는 지적을 받았다.
+// 지금은 시트가 끄는 동안만 제 높이(`dragRatio`)를 들고, 놓는 순간 그것을
+// 버리고 부모가 준 `detent`로 돌아간다 — 두 상태가 **동시에** 살아 있는 구간이
+// 제스처 하나뿐이라 부모의 `detent`와 갈릴 여지가 없다.
+//
+// 놓을 때는 가장 가까운 단계로 붙는다(Google Maps의 시트와 같은 규칙 —
+// 설계 §2.2가 그 화면을 참조한다). 임의 높이로 눌러앉게 하려면 `detent` 하나인
+// 이 인터페이스를 비율까지 나르도록 넓혀야 하고, `RecenterButton`의 위치가
+// `SHEET_RATIO[detent]`에서 파생되므로 그쪽도 함께 가야 한다.
 //
 // 토스 웹뷰에서 이 드래그와 지도 팬 제스처가 충돌하는지는 실기기로만 확인된다
 // — 설계 문서 §6.
@@ -65,14 +71,21 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
   // click이 도착할 때는 이미 거짓이다. 클릭 핸들러가 소비할 몫이 따로 있어야
   // 끌어서 붙인 단계가 곧바로 한 칸 더 굴러가는 일이 없다.
   const draggedRef = useRef(false)
+  // 끄는 동안에만 채워진다. 놓거나 취소하면 null로 돌아가 부모의 detent를 따른다.
+  const [dragRatio, setDragRatio] = useState<number | null>(null)
 
-  function detentFromY(clientY: number): Detent | null {
+  function ratioFromY(clientY: number): number | null {
     const rect = sheetRef.current?.parentElement?.getBoundingClientRect()
     if (rect === undefined || rect.height === 0) {
       return null
     }
     // 시트는 아래에 붙어 있다. 손끝이 위로 갈수록 높이가 커진다.
-    return nearestDetent(clampSheetRatio((rect.bottom - clientY) / rect.height))
+    return clampSheetRatio((rect.bottom - clientY) / rect.height)
+  }
+
+  function detentFromY(clientY: number): Detent | null {
+    const ratio = ratioFromY(clientY)
+    return ratio === null ? null : nearestDetent(ratio)
   }
 
   // 캡처 해제는 정리 작업이라 실패해도 할 일이 없다. 명세상
@@ -115,9 +128,13 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
     if (pointerIdRef.current !== event.pointerId) {
       return
     }
-    // 좌표를 보지 않는다. 끄는 동안 높이가 변하지 않으니 여기서 비율을 낼
-    // 이유가 없다 — 움직였다는 사실만 남긴다.
     movedRef.current = true
+    // 손끝을 따라간다. 부모가 접혀 비율을 못 내면 마지막 높이를 그대로 둔다 —
+    // 0으로 떨어뜨리면 시트가 순간적으로 사라진다.
+    const ratio = ratioFromY(event.clientY)
+    if (ratio !== null) {
+      setDragRatio(ratio)
+    }
   }
 
   function handlePointerUp(event: PointerEvent<HTMLButtonElement>): void {
@@ -132,6 +149,8 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
     // 복구 경로가 없어서 손잡이가 세션 내내 죽는다.
     pointerIdRef.current = null
     releaseCapture(event)
+    // 끌던 높이를 놓아준다. 이 뒤로는 부모가 준 detent가 다시 높이의 주인이다.
+    setDragRatio(null)
 
     // 손잡이를 스치기만 해도 시트가 튀면 목록을 만지기 무서워진다.
     if (!movedRef.current) {
@@ -162,6 +181,8 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
     }
     pointerIdRef.current = null
     movedRef.current = false
+    // 없던 일이 된 제스처다 — 끌던 높이도 함께 버리고 원래 단계로 돌아간다.
+    setDragRatio(null)
     // 없던 일이 된 제스처는 드래그도 아니다. 취소 뒤에는 click이 오지 않는 게
     // 보통이지만, 남겨 두면 그다음 탭이 삼켜진다.
     draggedRef.current = false
@@ -182,6 +203,9 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
     onDetentChange(NEXT_DETENT[detent])
   }
 
+  // 끄는 동안에는 손끝이, 그 밖에는 부모의 단계가 높이의 주인이다.
+  const ratio = dragRatio ?? SHEET_RATIO[detent]
+
   return (
     <div
       ref={sheetRef}
@@ -191,10 +215,14 @@ export function BottomSheet({ detent, onDetentChange, children }: Props) {
       // 화면에는 차이가 없지만 인라인 스타일을 읽는 사람과 테스트가 그 값을
       // 마주하게 된다. 소수 둘째 자리까지 남기므로 0.01%보다 세밀한 비율을
       // 쓰게 되면 그때는 이 자리를 다시 봐야 한다.
-      style={{ height: `${Number((SHEET_RATIO[detent] * 100).toFixed(2))}%` }}
+      style={{ height: `${Number((ratio * 100).toFixed(2))}%` }}
       // 여기에 `overflow-hidden`을 걸지 마라. 손잡이의 히트 영역이 이 상자
       // 위로 20px 나가 있어서 조용히 잘린다 — 아래 손잡이 주석을 볼 것.
-      className="absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-action bg-surface-container-lowest shadow-floating transition-[height] duration-200 ease-out"
+      // 끄는 동안에는 전환을 끈다. 켜 두면 손끝보다 200ms 늦게 따라와
+      // 고무줄처럼 늘어진다.
+      className={`absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-action bg-surface-container-lowest shadow-floating${
+        dragRatio === null ? ' transition-[height] duration-200 ease-out' : ''
+      }`}
     >
       <button
         type="button"

@@ -371,3 +371,90 @@ describe('BottomSheet', () => {
     expect(paddingClasses(scroller)).toEqual([])
   })
 })
+
+describe('BottomSheet — 손끝을 따라온다', () => {
+  // 예전에는 끄는 동안 높이가 그대로였고 손을 뗄 때 한 번에 단계로 붙었다.
+  // 시트가 손에 붙어 있지 않으니 「고정된 것」처럼 느껴진다는 지적을 받았다.
+  // 이제 끄는 동안 높이가 손끝을 따라오고, 놓을 때 가장 가까운 단계로 붙는다
+  // (Google Maps의 시트와 같은 규칙 — 설계 §2.2가 그 화면을 참조한다).
+  it('끄는 동안 높이가 손끝을 따라온다', () => {
+    const { handle, sheet } = setup(vi.fn(), 'half')
+    expect(sheet.style.height).toBe('56%')
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 400 })
+    // 뷰포트 800에서 위로 끌면 (800 - 240) / 800 = 0.7
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 240 })
+
+    expect(sheet.style.height).toBe('70%')
+  })
+
+  it('단계 사이의 중간 높이도 그대로 그린다', () => {
+    // 단계에 붙여 버리면 손끝과 시트가 어긋난다.
+    const { handle, sheet } = setup(vi.fn(), 'half')
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 400 })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 500 })
+
+    // (800 - 500) / 800 = 0.375 — peek(0.16)도 half(0.56)도 아니다.
+    expect(sheet.style.height).toBe('37.5%')
+  })
+
+  it('끝을 넘겨 끌어도 범위 안에 머문다', () => {
+    const { handle, sheet } = setup(vi.fn(), 'half')
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 400 })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: -200 })
+
+    // full(0.92)을 넘지 않는다.
+    expect(sheet.style.height).toBe('92%')
+  })
+
+  it('놓으면 가장 가까운 단계로 붙는다', () => {
+    const onDetentChange = vi.fn()
+    const { handle, sheet } = setup(onDetentChange, 'half')
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 400 })
+    // (800 - 150) / 800 = 0.8125 — half(0.56)보다 full(0.92)에 가깝다.
+    // 0.70은 오히려 half 쪽이 가까워서 여기 쓰면 안 된다.
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 150 })
+    fireEvent.pointerUp(handle, { pointerId: 1, clientY: 150 })
+
+    expect(onDetentChange).toHaveBeenCalledWith('full')
+    // 자유 높이를 놓아주고 부모가 준 단계를 다시 따른다. 부모가 아직 half를
+    // 주고 있으므로 화면은 half다 — 자유 높이가 눌러앉지 않는다.
+    expect(sheet.style.height).toBe('56%')
+  })
+
+  it('끄는 동안에는 높이 전환 애니메이션을 끈다', () => {
+    // 켜 두면 손끝보다 200ms 늦게 따라와 고무줄처럼 늘어진다.
+    const { handle, sheet } = setup(vi.fn(), 'half')
+    expect(sheet.className).toContain('transition-[height]')
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 400 })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 300 })
+
+    expect(sheet.className).not.toContain('transition-[height]')
+  })
+
+  it('취소되면 끌던 높이를 버리고 원래 단계로 돌아간다', () => {
+    const { handle, sheet } = setup(vi.fn(), 'half')
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 400 })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 240 })
+    expect(sheet.style.height).toBe('70%')
+
+    fireEvent.pointerCancel(handle, { pointerId: 1 })
+
+    expect(sheet.style.height).toBe('56%')
+    expect(sheet.className).toContain('transition-[height]')
+  })
+
+  it('다른 포인터의 움직임은 높이를 바꾸지 않는다', () => {
+    const { handle, sheet } = setup(vi.fn(), 'half')
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 400 })
+    fireEvent.pointerMove(handle, { pointerId: 2, clientY: 100 })
+
+    expect(sheet.style.height).toBe('56%')
+  })
+})
