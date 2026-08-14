@@ -1,4 +1,9 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query'
+import {
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type UseQueryResult,
+} from '@tanstack/react-query'
 import { z } from 'zod'
 import type { CityInfo } from '../domain/cityInfo'
 import type { AreaSnapshot } from '../domain/types'
@@ -49,11 +54,61 @@ export function shouldRetry(failureCount: number, error: Error): boolean {
   return failureCount < MAX_RETRIES
 }
 
+/** 목록이 이미 받아 둔 한 곳. `undefined`면 받아 둔 적이 없다는 뜻이다. */
+interface SeededSnapshot {
+  readonly snapshot: AreaSnapshot
+  /** 그 값을 **언제** 받았는지. 이걸 빼면 묵은 값이 새 값 행세를 한다. */
+  readonly updatedAt: number
+}
+
+// 홈의 일괄 조회가 30곳을 통째로 받아 두는데, 상세가 그중 한 곳을 **다시** 물었다.
+// 이미 메모리에 있는 값을 받으려고 왕복 한 번을 더 기다렸고 그동안 스켈레톤이
+// 떴다 — 서울 인파레이더가 즉시 열리는 것과 갈리던 자리다. 게다가 그 왕복은
+// CDN 캐시 키가 따로라 하루 1,000회에서 **또 한 번**을 썼다(최악 30곳 × 24 = 720회).
+//
+// 일괄 조회의 결과는 자리순 배열이고 이름은 queryKey에 들어 있다. 그래서 키에서
+// 이름을 꺼내 자리를 찾는다. `getQueriesData`로 접두어 검색을 하는 이유는 홈이
+// 넘기는 명소 목록이 언제 달라져도(필터·즐겨찾기) 여기가 안 깨지게 하기 위해서다.
+export function findSeededSnapshot(
+  client: QueryClient,
+  areaName: string,
+): SeededSnapshot | undefined {
+  const entries = client.getQueriesData<readonly (AreaSnapshot | null)[]>({
+    queryKey: ['areas'],
+  })
+
+  for (const [key, data] of entries) {
+    const names: unknown = key[1]
+    if (!Array.isArray(names) || data === undefined) {
+      continue
+    }
+    const index = names.indexOf(areaName)
+    // 일괄 조회는 명소 하나가 실패하면 그 자리를 null로 준다(client.ts).
+    // null을 「받아 둔 값」으로 세면 상세가 영영 빈 화면이 된다.
+    const snapshot = index === -1 ? null : (data[index] ?? null)
+    if (snapshot === null) {
+      continue
+    }
+    return { snapshot, updatedAt: client.getQueryState(key)?.dataUpdatedAt ?? 0 }
+  }
+  return undefined
+}
+
 export function useAreaSnapshot(
   areaName: string | undefined,
 ): UseQueryResult<AreaSnapshot> {
+  const client = useQueryClient()
+  const seeded = areaName === undefined ? undefined : findSeededSnapshot(client, areaName)
+
   return useQuery({
     queryKey: ['area', areaName],
+    // 목록에서 받아 둔 값을 첫 값으로 깐다. 이 훅의 캐시 항목이 아직 없을 때만
+    // 쓰이므로, 한 번 조회된 뒤에는 이 값이 최신을 덮어쓰지 않는다.
+    initialData: seeded?.snapshot,
+    // **받은 시각을 같이 넘기는 것이 핵심이다.** 안 넘기면 「방금 받은 값」으로
+    // 취급되어 아무리 묵어도 다시 받지 않는다. 넘기면 staleTime(5분)이 목록을
+    // 받은 시점부터 세어져서, 오래됐으면 화면은 즉시 그리면서 뒤에서 새로 받는다.
+    initialDataUpdatedAt: seeded?.updatedAt,
     // `enabled: Boolean(areaName)`가 areaName이 undefined일 때 queryFn 자체를 호출하지
     // 않게 막아주지만, 그건 런타임 보장이지 TypeScript가 아는 사실이 아니다. `areaName as
     // string` 단언 대신 가드로 좁히면 캐스트 없이도 타입이 맞고, enabled의 동작이 훗날
