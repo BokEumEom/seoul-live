@@ -7,6 +7,7 @@ import { WeeklyPatternCard } from './WeeklyPatternCard'
 import { useLocation } from '../../app/locationContext'
 import { findAreaByName } from '../../data/areas'
 import { useAreaSnapshot } from '../../data/queries'
+import type { FacilityLocation } from '../../domain/cityInfo'
 import { useFavorites } from '../../hooks/useFavorites'
 import { ErrorState } from '../common/ErrorState'
 import { Icon } from '../common/Icon'
@@ -20,13 +21,15 @@ interface Props {
   readonly onBack: () => void
   /** "근처 쾌적한 장소"에서 다른 명소로 갈아탈 때. */
   readonly onSelectArea: (name: string) => void
+  /** 주차장·따릉이 줄의 아이콘이 누르는 것. 지도는 `HomeScreen`이 갖는다. */
+  readonly onShowOnMap: (place: FacilityLocation) => void
 }
 
 // 상세의 절 순서를 소유하는 파일이다. 각 절의 내용은 옆 파일들이 갖는다 —
 // 여기서 결정되는 것은 「무엇이 어떤 차례로 오는가」뿐이고, 그 차례가 곧
 // 설계 §2.6의 Google Maps 장소 카드 순서다.
 // 상단바와 뒤로가기 화살표는 없다 — 목록 자리에만 들어가고 지도는 위에 남는다.
-export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
+export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Props) {
   const entry = findAreaByName(areaName)
 
   // 카탈로그에 없는 이름은 조회하지 않는다. 프록시의 허용 목록에 걸려 400이 오고
@@ -144,7 +147,7 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
         </>
       )}
 
-      <CityInfoPanel areaName={areaName} />
+      <CityInfoPanel areaName={areaName} onShowOnMap={onShowOnMap} />
 
       <NearbyCalmSection exclude={entry.name} onSelectArea={onSelectArea} />
     </div>

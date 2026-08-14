@@ -314,6 +314,54 @@ describe('HomeScreen', () => {
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
   })
 
+  // 서울 인파레이더가 그렇게 한다 — 주차장·따릉이 줄의 아이콘을 누르면 지도가
+  // 그 자리로 간다. 이름만으로는 「1번 대여소」가 어느 쪽인지 알 수 없다.
+  it('따릉이 대여소를 누르면 지도가 그 자리로 가고 시트가 내려온다', async () => {
+    useCityInfo.mockReturnValue({
+      data: {
+        areaName: '강남역',
+        areaCode: 'POI014',
+        weather: null,
+        roadTraffic: null,
+        accidents: [],
+        parking: [],
+        bikes: [
+          {
+            name: '광화문역 5번출구',
+            coords: { lat: 37.5698, lng: 126.9775 },
+            bikes: 6,
+            racks: 21,
+          },
+        ],
+        events: [],
+        alerts: [],
+        subway: [],
+      },
+      isPending: false,
+      isError: false,
+    } as unknown as UseQueryResult<CityInfo>)
+    render(<HomeScreen />)
+    await userEvent.click(areaButtons(/강남역/)[0])
+    await userEvent.click(sheetHandle()) // half → full. 도시 정보는 아래쪽이라
+    expect(sheetHandle()).toHaveAccessibleName(/현재 전체/)
+
+    await userEvent.click(
+      screen.getByRole('button', { name: '광화문역 5번출구 지도에서 보기' }),
+    )
+
+    // **시트가 내려오는 것이 핵심이다.** 이 아이콘은 도시 정보 절에 있어
+    // 사용자는 거의 언제나 full로 올린 채 누르는데, 그대로 두면 지도가
+    // 옮겨간 것을 볼 수가 없다 — 누른 보람이 화면에 하나도 안 나타난다.
+    expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
+
+    const map = screen.getByRole('region', { name: '지도' })
+    // 시설 하나를 짚을 때는 명소(15)보다 당겨야 어느 골목인지 구별된다.
+    expect(map).toHaveAttribute('data-zoom', '17')
+    // 중심은 좌표 그대로가 아니다 — 시트가 덮은 만큼 위로 비켜 잡는다.
+    // 그래서 위도만 확인하고 경도는 그대로여야 한다.
+    expect(map.getAttribute('data-center')).toMatch(/,126.9775$/)
+  })
+
   // 서울 인파레이더가 그렇게 한다 — 목록에서 고르면 지도가 그리로 간다.
   // 시트가 half에 머물게 되면서 지도가 계속 보이니, 따라가지 않으면 상세는
   // 경복궁을 말하는데 지도는 서울 전역인 채로 남는다.

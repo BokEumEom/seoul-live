@@ -3,6 +3,8 @@ import {
   sortParkingByAvailable,
   type ParkingLot,
 } from '../../domain/cityInfo'
+import { toFacilityLocation, type FacilityLocation } from '../../domain/cityInfo'
+import { ShowOnMapButton } from './ShowOnMapButton'
 import { ToneBadge } from '../common/ToneBadge'
 
 /** 한 명소에 주차장이 수십 곳 딸려 오는 경우가 있다. 여유 많은 순으로 몇 곳만 보여준다. */
@@ -30,9 +32,10 @@ function describe(lot: ParkingLot): string {
 
 interface Props {
   readonly lots: readonly ParkingLot[]
+  readonly onShowOnMap: (place: FacilityLocation) => void
 }
 
-export function ParkingList({ lots }: Props) {
+export function ParkingList({ lots, onShowOnMap }: Props) {
   const visible = sortParkingByAvailable(lots, VISIBLE_LIMIT)
 
   return (
@@ -46,10 +49,13 @@ export function ParkingList({ lots }: Props) {
                 <p className="mt-0.5 text-label-sm text-on-surface-variant">{describe(lot)}</p>
               )}
             </div>
-            <ToneBadge
-              tone={parkingTone(lot.available, lot.capacity)}
-              label={availabilityLabel(lot)}
-            />
+            <div className="flex shrink-0 items-center gap-1">
+              <ToneBadge
+                tone={parkingTone(lot.available, lot.capacity)}
+                label={availabilityLabel(lot)}
+              />
+              <ShowOnMapButton place={toFacilityLocation(lot)} onShow={onShowOnMap} />
+            </div>
           </li>
         ))}
       </ul>

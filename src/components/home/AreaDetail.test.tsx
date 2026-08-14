@@ -99,7 +99,7 @@ function before(first: Element, second: Element): boolean {
 
 function renderDetail(areaName = '강남역') {
   return render(
-    <AreaDetail areaName={areaName} onBack={() => {}} onSelectArea={() => {}} />,
+    <AreaDetail onShowOnMap={() => undefined} areaName={areaName} onBack={() => {}} onSelectArea={() => {}} />,
   )
 }
 
@@ -179,7 +179,7 @@ describe('AreaDetail', () => {
       ok({
         ...EMPTY_CITY_INFO,
         parking: [
-          { name: '주차장', capacity: 100, available: 45, liveAvailable: true, paid: null },
+          { name: '주차장', coords: null, capacity: 100, available: 45, liveAvailable: true, paid: null },
         ],
         events: [{ name: '행사', period: '', place: '', free: null, url: '' }],
       }),
@@ -197,7 +197,7 @@ describe('AreaDetail', () => {
       ok({
         ...EMPTY_CITY_INFO,
         parking: [
-          { name: '주차장', capacity: 100, available: 45, liveAvailable: true, paid: null },
+          { name: '주차장', coords: null, capacity: 100, available: 45, liveAvailable: true, paid: null },
         ],
       }),
     )
@@ -215,6 +215,55 @@ describe('AreaDetail', () => {
     renderDetail()
 
     expect(screen.queryByRole('button', { name: /주차/ })).not.toBeInTheDocument()
+  })
+
+  it('좌표가 있는 주차장·따릉이는 지도에서 볼 수 있다', async () => {
+    // **서울 인파레이더가 그렇게 한다** — 줄 오른쪽 아이콘을 누르면 지도가
+    // 그 자리로 간다. 이름만으로는 「1번 대여소」가 어느 쪽인지 알 수 없다.
+    const onShowOnMap = vi.fn()
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        bikes: [
+          { name: '광화문역 5번출구', coords: { lat: 37.5698, lng: 126.9775 }, bikes: 6, racks: 21 },
+        ],
+      }),
+    )
+    render(
+      <AreaDetail
+        areaName="강남역"
+        onBack={() => undefined}
+        onSelectArea={() => undefined}
+        onShowOnMap={onShowOnMap}
+      />,
+    )
+
+    // 아이콘만 있는 버튼이라 이름이 붙어야 한다. 「지도에서 보기」만 적으면
+    // 한 화면에 같은 이름의 버튼이 열 개가 되어 구별되지 않는다.
+    await userEvent.click(
+      screen.getByRole('button', { name: '광화문역 5번출구 지도에서 보기' }),
+    )
+
+    expect(onShowOnMap).toHaveBeenCalledWith({
+      name: '광화문역 5번출구',
+      coords: { lat: 37.5698, lng: 126.9775 },
+    })
+  })
+
+  it('좌표가 없으면 지도 버튼을 만들지 않는다', () => {
+    // 실응답에도 LAT/LNG가 빈 문자열로 오는 주차장이 있다. 눌러도 아무 일이
+    // 안 일어나는 버튼은 고장으로 보인다.
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        parking: [
+          { name: '좌표없음', coords: null, capacity: 100, available: 40, liveAvailable: true, paid: null },
+        ],
+      }),
+    )
+    renderDetail()
+
+    expect(screen.queryByRole('button', { name: /지도에서 보기/ })).not.toBeInTheDocument()
   })
 
   it('지하철 도착은 언제 기준인지 같이 적는다', () => {
@@ -321,7 +370,7 @@ describe('AreaDetail', () => {
   it('뒤로 버튼이 콜백을 부른다', async () => {
     const onBack = vi.fn()
     render(
-      <AreaDetail areaName="강남역" onBack={onBack} onSelectArea={() => {}} />,
+      <AreaDetail onShowOnMap={() => undefined} areaName="강남역" onBack={onBack} onSelectArea={() => {}} />,
     )
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
     expect(onBack).toHaveBeenCalledTimes(1)
@@ -335,7 +384,7 @@ describe('AreaDetail', () => {
   // (2) 부모를 block으로 바꿔 w-fit이 필요 없어져도 거짓 통과한다. 이 테스트가
   // 지키는 건 "폭이 글자만큼이다"가 아니라 "그 결정을 지웠는가"다.
   it('목록으로 버튼이 글자 폭만 차지한다', () => {
-    render(<AreaDetail areaName="강남역" onBack={() => {}} onSelectArea={() => {}} />)
+    render(<AreaDetail onShowOnMap={() => undefined} areaName="강남역" onBack={() => {}} onSelectArea={() => {}} />)
     expect(screen.getByRole('button', { name: '목록으로' })).toHaveClass('w-fit')
   })
 
@@ -410,7 +459,7 @@ describe('AreaDetail', () => {
     expect(screen.getByRole('status')).toHaveTextContent('강남역 저장됨')
 
     rerender(
-      <AreaDetail areaName="경복궁" onBack={() => {}} onSelectArea={() => {}} />,
+      <AreaDetail onShowOnMap={() => undefined} areaName="경복궁" onBack={() => {}} onSelectArea={() => {}} />,
     )
     expect(screen.getByRole('status')).toBeEmptyDOMElement()
   })

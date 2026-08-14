@@ -19,11 +19,11 @@ function info(overrides: Partial<CityInfo> = {}): CityInfo {
 }
 
 function lot(capacity: number | null, available: number | null): ParkingLot {
-  return { name: '주차장', capacity, available, liveAvailable: true, paid: null }
+  return { name: '주차장', coords: null, capacity, available, liveAvailable: true, paid: null }
 }
 
 function station(bikes: number | null): BikeStation {
-  return { name: '대여소', bikes, racks: 10 }
+  return { name: '대여소', coords: null, bikes, racks: 10 }
 }
 
 describe('parkingVacancyRate', () => {

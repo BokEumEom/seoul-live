@@ -1,4 +1,10 @@
-import { sortBikesByStock, type BikeStation } from '../../domain/cityInfo'
+import {
+  sortBikesByStock,
+  toFacilityLocation,
+  type BikeStation,
+  type FacilityLocation,
+} from '../../domain/cityInfo'
+import { ShowOnMapButton } from './ShowOnMapButton'
 import { ToneBadge } from '../common/ToneBadge'
 
 const VISIBLE_LIMIT = 5
@@ -24,9 +30,10 @@ function stockLabel(bikes: number | null): string {
 
 interface Props {
   readonly stations: readonly BikeStation[]
+  readonly onShowOnMap: (place: FacilityLocation) => void
 }
 
-export function BikeList({ stations }: Props) {
+export function BikeList({ stations, onShowOnMap }: Props) {
   const visible = sortBikesByStock(stations, VISIBLE_LIMIT)
 
   return (
@@ -42,7 +49,10 @@ export function BikeList({ stations }: Props) {
                 </p>
               )}
             </div>
-            <ToneBadge tone={stockTone(station.bikes)} label={stockLabel(station.bikes)} />
+            <div className="flex shrink-0 items-center gap-1">
+              <ToneBadge tone={stockTone(station.bikes)} label={stockLabel(station.bikes)} />
+              <ShowOnMapButton place={toFacilityLocation(station)} onShow={onShowOnMap} />
+            </div>
           </li>
         ))}
       </ul>

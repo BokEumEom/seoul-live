@@ -119,6 +119,21 @@ function buildWeather(seed: number, now: Date): Record<string, unknown> {
 
 const PARKING_KINDS = ['공영주차장', '노외주차장', '민영주차장'] as const
 
+/**
+ * 명소 좌표 근처에 흩뿌린다. 실데이터의 주차장·따릉이가 그 명소 주변에 있는
+ * 것과 같은 모양이라야 「지도에서 보기」를 목업으로 확인할 수 있다.
+ *
+ * 0.004도는 위도로 약 440m, 경도로 약 350m다 — 걸어갈 만한 거리다.
+ */
+function scatter(areaName: string, mixed: number): { lat: number; lng: number } {
+  const entry = findAreaByName(areaName)
+  const base = entry ?? { lat: 37.5665, lng: 126.978 }
+  return {
+    lat: base.lat + (((mixed % 9) - 4) * 0.004) / 4,
+    lng: base.lng + ((((mixed >> 3) % 9) - 4) * 0.004) / 4,
+  }
+}
+
 function buildParking(areaName: string, seed: number, now: Date): readonly unknown[] {
   const count = mixSeed(seed, PARKING_SALT) % 4
   return Array.from({ length: count }, (_, index) => {
@@ -126,8 +141,12 @@ function buildParking(areaName: string, seed: number, now: Date): readonly unkno
     const capacity = 50 + (mixed % 8) * 50
     // 5곳 중 1곳은 만차로 둔다. 만차 배지를 목업으로 확인할 수 있어야 한다.
     const full = mixed % 5 === 0
+    const at = scatter(areaName, mixed)
     return {
       PRK_NM: `${areaName} ${PARKING_KINDS[index % PARKING_KINDS.length]}`,
+      // 실응답은 문자열로 준다(docs/fixtures/citydata-광화문덕수궁.json).
+      LAT: String(at.lat),
+      LNG: String(at.lng),
       CPCTY: String(capacity),
       CUR_PRK_CNT: full ? '0' : String(mixed % capacity),
       CUR_PRK_TIME: formatSeoulTime(now),
@@ -142,8 +161,12 @@ function buildBikes(areaName: string, seed: number): readonly unknown[] {
   return Array.from({ length: count }, (_, index) => {
     const mixed = mixSeed(seed, BIKE_SALT * 10 + index)
     const racks = 8 + (mixed % 15)
+    const at = scatter(areaName, mixed)
     return {
       SBIKE_SPOT_NM: `${areaName} ${index + 1}번 대여소`,
+      // **실응답은 숫자로 주고 X가 경도, Y가 위도다.** 주차장과 다르다.
+      SBIKE_X: at.lng,
+      SBIKE_Y: at.lat,
       SBIKE_SPOT_ID: `ST-${1000 + (mixed % 900)}`,
       SBIKE_PARKING_CNT: String(mixed % (racks + 1)),
       SBIKE_RACK_CNT: String(racks),

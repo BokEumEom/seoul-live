@@ -45,7 +45,7 @@ function renderInSheet(info: CityInfo): HTMLElement {
 const WITH_PARKING: CityInfo = {
   ...EMPTY,
   parking: [
-    { name: '주차장', capacity: 100, available: 45, liveAvailable: true, paid: null },
+    { name: '주차장', coords: null, capacity: 100, available: 45, liveAvailable: true, paid: null },
   ],
 }
 

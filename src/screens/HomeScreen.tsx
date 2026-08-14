@@ -9,6 +9,7 @@ import { useLocation } from '../app/locationContext'
 import { ErrorState } from '../components/common/ErrorState'
 import { SkeletonRows } from '../components/common/SkeletonCard'
 import { AreaDetail } from '../components/home/AreaDetail'
+import type { FacilityLocation } from '../domain/cityInfo'
 import { BottomSheet } from '../components/home/BottomSheet'
 import { FilterChips } from '../components/home/FilterChips'
 import { SearchBar } from '../components/home/SearchBar'
@@ -19,6 +20,7 @@ import { CategoryFilter } from '../components/list/CategoryFilter'
 import { LocationNotice } from '../components/list/LocationNotice'
 import { SortSegmented } from '../components/list/SortSegmented'
 import { CongestionMarker } from '../components/map/CongestionMarker'
+import { FacilityMarker } from '../components/map/FacilityMarker'
 import {
   MapUnavailableNotice,
   type MapUnavailableReason,
@@ -68,6 +70,9 @@ const RECENTER_ZOOM = 14
  * 라벨도 함께 붙는다.
  */
 const AREA_ZOOM = 15
+// 시설 하나를 짚을 때는 더 당긴다. 명소는 「이 동네」라 15가 맞지만 주차장은
+// 「이 건물」이라, 같은 줌으로 두면 핀이 어느 골목인지 구별되지 않는다.
+const FACILITY_ZOOM = 17
 
 export function HomeScreen() {
   const snapshots = useAreaSnapshots(AREA_NAMES)
@@ -92,6 +97,8 @@ export function HomeScreen() {
   const [detent, setDetent] = useState<Detent>('half')
   // 시트를 끄는 동안에만 채워진다. 시트가 제 높이를 그렇게 들고 있고, 지도가
   // 그 높이를 따라가야 해서 여기까지 올라왔다 — `BottomSheet`의 주석 참조.
+  // 지도에서 짚어 둔 주차장·따릉이 한 곳. 명소를 갈아타면 지운다.
+  const [focusedFacility, setFocusedFacility] = useState<FacilityLocation | null>(null)
   const [dragRatio, setDragRatio] = useState<number | null>(null)
   const [view, setView] = useState<'list' | 'today'>('list')
 
@@ -199,8 +206,24 @@ export function HomeScreen() {
     setSelectedName(name)
     setView('list')
     setDetent('half')
+    // 앞 명소에서 짚어 둔 주차장·따릉이 핀을 지운다. 안 지우면 경복궁 상세를
+    // 보는데 지도에는 강남역 주차장 핀이 떠 있게 된다.
+    setFocusedFacility(null)
     moveMapTo(name)
     requestSheetFocus()
+  }
+
+  // **서울 인파레이더가 그렇게 한다** — 주차장·따릉이 줄의 아이콘을 누르면
+  // 지도가 그 자리로 간다. 이름만으로는 「광화문역 5번출구」가 어느 쪽인지,
+  // 걸어서 얼마인지 알 길이 없다.
+  //
+  // 단계를 half로 되돌리는 것이 핵심이다. 이 아이콘은 도시 정보 절에 있어
+  // 사용자는 거의 언제나 시트를 full로 올린 채 누르는데, 그대로 두면 지도가
+  // 옮겨간 것을 **볼 수가 없다** — 누른 보람이 화면에 하나도 안 나타난다.
+  function showFacilityOnMap(place: FacilityLocation): void {
+    setFocusedFacility(place)
+    setDetent('half')
+    focusMapOn(place.coords, FACILITY_ZOOM)
   }
 
   // **서울 인파레이더가 그렇게 한다** — 목록에서 고르면 지도가 그리로 간다.
@@ -420,6 +443,15 @@ export function HomeScreen() {
           </AdvancedMarker>
         )}
 
+        {/* 방금 짚은 주차장·따릉이. 명소 핀보다 위에 온다 — 사용자가 직접
+            누른 결과라 무엇에도 가리면 안 된다. `markerZIndex`의 최댓값(4)보다
+            큰 수를 쓴다. */}
+        {focusedFacility !== null && (
+          <AdvancedMarker position={focusedFacility.coords} zIndex={10}>
+            <FacilityMarker name={focusedFacility.name} />
+          </AdvancedMarker>
+        )}
+
         {markers.map((marker) => (
           <AdvancedMarker
             key={marker.entry.code}
@@ -592,6 +624,7 @@ export function HomeScreen() {
           requestSheetFocus()
         }}
         onSelectArea={openArea}
+        onShowOnMap={showFacilityOnMap}
       />
     ) : view === 'today' ? (
       <TodayScreen

@@ -11,6 +11,7 @@ import type {
   SubwayArrival,
   Weather,
 } from '../domain/cityInfo'
+import type { Coords } from '../domain/types'
 import { AreaNameMismatchError, seoulApiErrorFrom } from './schema'
 
 // `citydata` 응답을 CityInfo로 옮긴다. `citydata_ppltn`을 다루는 schema.ts와 달리
@@ -197,12 +198,42 @@ function toAccidents(rows: readonly Row[]): readonly AccidentControl[] {
   )
 }
 
+/**
+ * 지도에 찍을 수 있는 좌표만 돌려준다.
+ *
+ * **위경도 축을 헷갈리기 쉬운 자리다.** 따릉이는 `SBIKE_X`가 경도,
+ * `SBIKE_Y`가 위도로 온다(실응답 확인: X 126.977 / Y 37.569). 주차장은
+ * `LAT`/`LNG`로 이름 그대로다. 그래서 호출부가 어느 키가 무엇인지 정하고
+ * 이 함수는 받은 순서대로만 쓴다.
+ *
+ * 범위를 보는 이유는 축이 뒤집힌 값을 조용히 통과시키지 않기 위해서다 —
+ * 뒤집히면 위도 126이 되는데 그건 지구에 없는 값이라 여기서 걸린다.
+ * 빈 문자열·누락은 실응답에도 있는 정상 상태라 `null`이 답이다.
+ */
+function coordsOrNull(row: Row, latKey: string, lngKey: string): Coords | null {
+  const lat = numberOrNull(row, latKey)
+  const lng = numberOrNull(row, lngKey)
+  if (lat === null || lng === null) {
+    return null
+  }
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    return null
+  }
+  // 0,0은 서아프리카 앞바다다. 좌표를 못 채운 행이 이 값으로 오는 경우가 있어
+  // 「모른다」로 접는다 — 지도가 대서양으로 날아가는 편보다 낫다.
+  if (lat === 0 && lng === 0) {
+    return null
+  }
+  return { lat, lng }
+}
+
 function toParking(rows: readonly Row[]): readonly ParkingLot[] {
   return named(
     rows,
     'PRK_NM',
     (row, name): ParkingLot => ({
       name,
+      coords: coordsOrNull(row, 'LAT', 'LNG'),
       capacity: numberOrNull(row, 'CPCTY'),
       available: numberOrNull(row, 'CUR_PRK_CNT'),
       liveAvailable: text(row, 'CUR_PRK_YN').toUpperCase() === 'Y',
@@ -217,6 +248,8 @@ function toBikes(rows: readonly Row[]): readonly BikeStation[] {
     'SBIKE_SPOT_NM',
     (row, name): BikeStation => ({
       name,
+      // X가 경도, Y가 위도다. 이름만 보고 순서를 정하면 뒤집힌다.
+      coords: coordsOrNull(row, 'SBIKE_Y', 'SBIKE_X'),
       bikes: numberOrNull(row, 'SBIKE_PARKING_CNT'),
       racks: numberOrNull(row, 'SBIKE_RACK_CNT'),
     }),

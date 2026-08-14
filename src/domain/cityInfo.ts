@@ -1,8 +1,28 @@
 import type { CongestionTone } from './congestion'
+import type { Coords } from './types'
 
 // 「더보기」(도시정보) 화면이 쓰는 타입과 순수 함수. 혼잡도(citydata_ppltn)와 달리
 // 이쪽 값들은 서울 API가 "없으면 아예 안 보내거나 빈 문자열로 보내는" 필드가 많아
 // 숫자·문자열 모두 null을 정상 상태로 취급한다. 화면이 아니라 여기서 흡수한다.
+
+/**
+ * 지도에서 짚어 줄 수 있는 시설 하나. 주차장·따릉이 대여소가 이 모양이 된다.
+ *
+ * 좌표가 **있는** 것만 이 타입이 된다(`ParkingLot.coords`는 `null`일 수 있다) —
+ * 화면이 「좌표가 있나」를 매번 되묻지 않게 경계를 여기서 긋는다.
+ */
+export interface FacilityLocation {
+  readonly name: string
+  readonly coords: Coords
+}
+
+/** 좌표가 있는 것만 지도로 보낼 수 있는 모양으로 바꾼다. */
+export function toFacilityLocation(place: {
+  readonly name: string
+  readonly coords: Coords | null
+}): FacilityLocation | null {
+  return place.coords === null ? null : { name: place.name, coords: place.coords }
+}
 
 /** FCST24HOURS의 한 칸. 명세 200~206행. */
 export interface HourlyForecast {
@@ -45,6 +65,13 @@ export interface Weather {
 
 export interface ParkingLot {
   readonly name: string
+  /**
+   * `LAT`/`LNG`. 지도에서 자리를 짚어 주는 데 쓴다.
+   *
+   * `null`일 수 있다 — 실응답에도 빈 문자열로 오는 행이 있고, 좌표 없는
+   * 주차장에 「지도에서 보기」를 띄우면 눌러도 아무 일이 안 일어난다.
+   */
+  readonly coords: Coords | null
   /** CPCTY — 총 수용 면수 */
   readonly capacity: number | null
   /** CUR_PRK_CNT — 지금 댈 수 있는 면수 */
@@ -57,6 +84,14 @@ export interface ParkingLot {
 
 export interface BikeStation {
   readonly name: string
+  /**
+   * `SBIKE_Y`(위도)와 `SBIKE_X`(경도).
+   *
+   * **축 이름이 위경도와 반대다.** X가 경도, Y가 위도다 — 실응답에서
+   * `SBIKE_X: 126.977`, `SBIKE_Y: 37.569`로 확인했다(광화문·덕수궁).
+   * 뒤집으면 지도가 서울이 아니라 중국 어딘가로 간다.
+   */
+  readonly coords: Coords | null
   /** SBIKE_PARKING_CNT — 거치된 자전거 수(= 지금 빌릴 수 있는 대수) */
   readonly bikes: number | null
   /** SBIKE_RACK_CNT — 거치대 수 */

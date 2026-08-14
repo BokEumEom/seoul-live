@@ -126,6 +126,7 @@ describe('parseCityInfoResponse — 주차장', () => {
     expect(info.parking).toEqual([
       {
         name: '세종로 공영주차장',
+        coords: null,
         capacity: 300,
         available: 42,
         liveAvailable: true,
@@ -133,12 +134,41 @@ describe('parseCityInfoResponse — 주차장', () => {
       },
       {
         name: '실시간 없음',
+        coords: null,
         capacity: 120,
         available: null,
         liveAvailable: false,
         paid: false,
       },
     ])
+  })
+
+  it('좌표를 읽는다', () => {
+    // 실응답(docs/fixtures/citydata-광화문덕수궁.json)에서 확인한 필드다.
+    // 문자열로 오고 이름은 LAT/LNG 그대로다 — 따릉이와 다르다.
+    const info = parseCityInfoResponse(
+      payload({
+        PRK_STTS: [{ PRK_NM: '백영북창빌딩', LAT: '37.564441', LNG: '126.977556' }],
+      }),
+      AREA,
+    )
+    expect(info.parking[0].coords).toEqual({ lat: 37.564441, lng: 126.977556 })
+  })
+
+  it('좌표가 없거나 비면 모른다고 한다', () => {
+    // 실응답에도 빈 문자열로 오는 행이 있다. 좌표 없는 주차장에
+    // 「지도에서 보기」를 띄우면 눌러도 아무 일이 안 일어난다.
+    const info = parseCityInfoResponse(
+      payload({
+        PRK_STTS: [
+          { PRK_NM: '빈값', LAT: '', LNG: '' },
+          { PRK_NM: '없음' },
+          { PRK_NM: '영점', LAT: '0', LNG: '0' },
+        ],
+      }),
+      AREA,
+    )
+    expect(info.parking.map((lot) => lot.coords)).toEqual([null, null, null])
   })
 
   // PAY_YN이 'Y'/'N'으로 오는지 '유료'/'무료'로 오는지 실제 응답으로 확정하지
@@ -186,7 +216,41 @@ describe('parseCityInfoResponse — 따릉이', () => {
       }),
       AREA,
     )
-    expect(info.bikes).toEqual([{ name: '광화문역 3번출구', bikes: 7, racks: 15 }])
+    expect(info.bikes).toEqual([
+      { name: '광화문역 3번출구', coords: null, bikes: 7, racks: 15 },
+    ])
+  })
+
+  it('X가 경도이고 Y가 위도다', () => {
+    // **이 테스트가 축이 뒤집히는 것을 막는다.** 이름만 보면 X를 위도로
+    // 읽기 쉬운데, 실응답은 SBIKE_X 126.977 / SBIKE_Y 37.569다
+    // (docs/fixtures/citydata-광화문덕수궁.json). 뒤집으면 지도가 서울이
+    // 아니라 중국 어딘가로 간다.
+    //
+    // 값이 문자열이 아니라 **숫자로** 오는 것도 실응답에서 확인한 사실이다.
+    const info = parseCityInfoResponse(
+      payload({
+        SBIKE_STTS: [
+          { SBIKE_SPOT_NM: '광화문역 5번출구', SBIKE_X: 126.97756958, SBIKE_Y: 37.56989288 },
+        ],
+      }),
+      AREA,
+    )
+
+    expect(info.bikes[0].coords).toEqual({ lat: 37.56989288, lng: 126.97756958 })
+  })
+
+  it('위경도 범위를 벗어난 좌표는 버린다', () => {
+    // 축이 뒤집혀 오면 위도가 126이 된다 — 지구에 없는 값이라 여기서 걸린다.
+    // 조용히 통과시키면 지도가 엉뚱한 데로 날아가고 원인을 찾기 어렵다.
+    const info = parseCityInfoResponse(
+      payload({
+        SBIKE_STTS: [{ SBIKE_SPOT_NM: '뒤집힘', SBIKE_X: 37.5, SBIKE_Y: 126.9 }],
+      }),
+      AREA,
+    )
+
+    expect(info.bikes[0].coords).toBeNull()
   })
 
   it('이름이 없는 항목은 버린다', () => {

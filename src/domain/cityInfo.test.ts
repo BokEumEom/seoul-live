@@ -16,11 +16,11 @@ import {
 } from './cityInfo'
 
 function lot(name: string, available: number | null, capacity: number | null): ParkingLot {
-  return { name, available, capacity, liveAvailable: true, paid: null }
+  return { name, coords: null, available, capacity, liveAvailable: true, paid: null }
 }
 
 function station(name: string, bikes: number | null): BikeStation {
-  return { name, bikes, racks: 10 }
+  return { name, coords: null, bikes, racks: 10 }
 }
 
 const EMPTY: CityInfo = {
