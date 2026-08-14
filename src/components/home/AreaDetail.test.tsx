@@ -401,14 +401,17 @@ describe('AreaDetail', () => {
       'H2 강남역',
       'H3 지금 얼마나 붐비나',
       'H4 지금 누가 있나',
-      'H3 시간대별 예상',
+      'H3 시간대별 인파',
       'H3 요일×시간 패턴',
     ])
   })
 
-  it('예측 섹션 제목이 시간대별 예상이다', () => {
+  // **「예상」이 아니라 「인파」다.** 이 절의 첫 막대는 예보가 아니라 지금
+  // 실측이고, 막대 높이도 단계가 아니라 인원이 됐다. 「시간대별 예상」이라고
+  // 쓰면 지금 값까지 예상으로 읽힌다.
+  it('인파 섹션 제목이 시간대별 인파다', () => {
     renderDetail()
-    expect(screen.getByRole('heading', { name: '시간대별 예상' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '시간대별 인파' })).toBeInTheDocument()
   })
 
   it('인구 구성이 있으면 보여준다', () => {
@@ -438,10 +441,10 @@ describe('AreaDetail', () => {
     expect(before(screen.getByRole('heading', { name: '강남역' }), save)).toBe(true)
   })
 
-  it('인구 구성이 시간대별 예상보다 위에 있다', () => {
+  it('인구 구성이 시간대별 인파보다 위에 있다', () => {
     renderDetail()
     const who = screen.getByRole('heading', { name: '지금 누가 있나' })
-    expect(before(who, screen.getByRole('heading', { name: '시간대별 예상' }))).toBe(
+    expect(before(who, screen.getByRole('heading', { name: '시간대별 인파' }))).toBe(
       true,
     )
   })

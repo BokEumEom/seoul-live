@@ -110,10 +110,16 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
           <CongestionCard snapshot={snapshot} pattern={pattern} />
 
           <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-            {/* "예측"은 시스템 용어에 가깝다. Google Maps의 「인기 시간대」 자리다. */}
-            <h3 className="text-headline-sm text-on-surface">시간대별 예상</h3>
+            {/* "예측"은 시스템 용어에 가깝다. Google Maps의 「인기 시간대」 자리다.
+                **「24시간 인파 흐름」이라고 쓰지 않는다** — 샘플(서울 인파레이더)의
+                제목이지만 그쪽은 과거까지 그린다. 서울 API의 요청 인자에 날짜가
+                없어 우리는 과거를 못 받고, 실데이터에서 예보는 12개다. */}
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="text-headline-sm text-on-surface">시간대별 인파</h3>
+              <span className="text-label-sm text-outline">막대 = 예상 인원</span>
+            </div>
             <div className="mt-3">
-              <ForecastChart forecasts={snapshot.forecasts} />
+              <ForecastChart snapshot={snapshot} />
             </div>
           </section>
 
