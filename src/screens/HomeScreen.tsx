@@ -607,7 +607,7 @@ export function HomeScreen() {
     )
 
   return (
-    <div className="relative size-full overflow-hidden">
+    <div className="relative size-full clip-strict">
       {/* 지도가 뷰포트를 꽉 채우고 시트가 그 위를 덮는다. 공간을 나눠 갖지
           않으므로 상세를 열어도 지도는 뒤에서 온전한 크기로 살아 있다.
 

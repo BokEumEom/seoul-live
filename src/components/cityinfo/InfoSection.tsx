@@ -37,7 +37,7 @@ export function InfoSection({ title, id, icon, count, note, children }: Props) {
       // 스크린리더가 「무엇에 왔는지」를 말할 수 없다. 제목을 가리키면
       // `region`이 되어 「주차장, 리전」으로 읽힌다.
       aria-labelledby={headingId}
-      className="mx-4 scroll-mt-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4"
+      className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4"
     >
       {/* 제목·아이콘·개수가 한 줄이다. 개수를 제목 문자열에 이어 붙이지 않는
           이유는 접근성 이름 때문이다 — `heading` 이름이 「주차장 12」가 되면

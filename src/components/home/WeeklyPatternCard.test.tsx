@@ -30,6 +30,34 @@ describe('WeeklyPatternCard', () => {
     expect(screen.queryByText('월요일 15시 여유')).not.toBeInTheDocument()
   })
 
+  it('오늘 요일을 짚어 준다', () => {
+    // **7×8 표에서 어느 줄이 오늘인지 알 수 없었다.** 지금 시간대 열은
+    // 짚어 주면서 오늘 행은 안 짚어서, 「지금 이 시각」이 일곱 요일에
+    // 걸쳐 있는 것처럼 보였다 — 사용자가 표 안에서 제 위치를 못 찾는다.
+    render(<WeeklyPatternCard pattern={{}} now={MONDAY_14} />)
+
+    const monday = screen.getAllByRole('rowheader')[0]
+    expect(monday).toHaveTextContent('월')
+    expect(monday).toHaveAttribute('aria-current', 'date')
+
+    // 오늘이 아닌 행에는 붙으면 안 된다. 전부에 붙으면 아무것도 안 짚는 것과 같다.
+    expect(screen.getAllByRole('rowheader')[1]).not.toHaveAttribute('aria-current')
+  })
+
+  it('오늘 이 시각 칸을 하나만 짚는다', () => {
+    // 행과 열이 만나는 칸이 「지금 여기」다. 열만 짚으면 일곱 칸이 함께
+    // 강조되어 어느 것이 오늘인지 여전히 알 수 없다.
+    render(<WeeklyPatternCard pattern={{}} now={MONDAY_14} />)
+
+    const marked = screen
+      .getAllByRole('cell')
+      .filter((cell) => cell.querySelector('[data-now]') !== null)
+
+    expect(marked).toHaveLength(1)
+    // 2026-08-03(월) 14:35 → 월요일 12시 칸(bucket 4)이다.
+    expect(marked[0]).toHaveTextContent('월요일 12시')
+  })
+
   it('56칸을 모두 그린다', () => {
     render(<WeeklyPatternCard pattern={{}} now={MONDAY_14} />)
     expect(screen.getAllByText(/관측 없음$/)).toHaveLength(56)

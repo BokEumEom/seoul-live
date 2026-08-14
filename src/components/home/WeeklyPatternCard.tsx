@@ -26,9 +26,23 @@ const BUCKETS: readonly number[] = Array.from({ length: PATTERN_BUCKETS }, (_, i
 // 요일×시간은 2차원 표다. div 격자로 그리면 스크린리더가 어느 칸이 어느 요일·
 // 시간인지 알 길이 없다. 진짜 <table>로 두면 행·열 머리글이 칸마다 자동으로
 // 딸려 읽힌다 — 56칸에 각각 맥락을 손으로 붙이지 않아도 된다.
+//
+// **샘플(서울 인파레이더)은 7×24인데 우리는 7×8이다. 따라가지 않는다.**
+// 그쪽은 서버에 과거를 쌓아 두고 「표본 265일간」을 그린다. 우리는 서울 API가
+// 과거를 안 줘서(요청 인자에 날짜가 없다) 이 기기에서 상세를 열 때마다 한 칸씩
+// 쌓는다 — 56칸도 다 채우려면 56번을 서로 다른 요일·시간대에 열어야 한다.
+// 168칸으로 늘리면 표가 세 배로 비고, 「관측 없음」이 화면의 거의 전부가 된다.
+// 칸 크기도 문제다: 390px에서 24열이면 한 칸이 12.5px다.
+//
+// 서버 수집이 생기면(PLAN.md 4차) 그때 24열이 맞다. 바꿀 자리는
+// `PATTERN_BUCKET_HOURS` 하나이고, 표시·저장·라벨이 전부 거기서 파생된다.
 export function WeeklyPatternCard({ pattern, now }: Props) {
   const total = observationTotal(pattern)
   const currentBucket = Math.floor(now.getHours() / PATTERN_BUCKET_HOURS)
+  // **오늘이 어느 행인지도 짚어야 한다.** 지금 시간대 열만 짚었을 때는
+  // 「지금 이 시각」이 일곱 요일에 걸쳐 강조되어, 표 안에서 제 위치를
+  // 찾을 수가 없었다. 행과 열이 만나는 한 칸이 「지금 여기」다.
+  const currentDay = now.getDay()
 
   return (
     <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
@@ -75,18 +89,35 @@ export function WeeklyPatternCard({ pattern, now }: Props) {
             <tr key={day}>
               <th
                 scope="row"
-                className="pr-1 text-right text-label-sm font-normal text-on-surface-variant"
+                aria-current={day === currentDay ? 'date' : undefined}
+                className={`pr-1 text-right text-label-sm ${
+                  day === currentDay
+                    ? 'font-semibold text-primary'
+                    : 'font-normal text-on-surface-variant'
+                }`}
               >
                 {DAY_LABEL[day]}
               </th>
               {BUCKETS.map((bucket) => {
                 const level = cellLevel(pattern, day, bucket)
+                const isNow = day === currentDay && bucket === currentBucket
                 return (
                   <td key={bucket} className="p-0">
                     <div
+                      data-now={isNow ? '' : undefined}
                       className={`h-5 rounded-sm ${
                         level === null ? EMPTY_CELL_CLASS : TONE_FILL_CLASS[congestionTone(level)]
-                      } ${bucket === currentBucket ? 'ring-1 ring-primary' : ''}`}
+                      } ${
+                        // 「지금 여기」한 칸은 굵게, 그 시각의 다른 요일은 옅게.
+                        // 색을 바꾸지 않고 테두리로 짚는 이유는 채움이 이미
+                        // 혼잡도를 말하고 있어서다 — `ForecastChart`의 「지금」
+                        // 막대와 같은 규칙이다.
+                        isNow
+                          ? 'ring-2 ring-on-surface ring-inset'
+                          : bucket === currentBucket
+                            ? 'ring-1 ring-primary'
+                            : ''
+                      }`}
                     >
                       {/* 색만으로 값을 전하지 않는다. 행·열 머리글은 표가
                           붙여주지만 **값 자체는 칸 안에 있어야** 읽힌다. */}

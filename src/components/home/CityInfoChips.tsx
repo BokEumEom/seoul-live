@@ -59,14 +59,24 @@ export function CityInfoChips({ areaName }: Props) {
   )
 }
 
+/** 절 위에 남기는 숨쉴 틈. 카드가 시트 맨 위에 딱 붙으면 잘린 것처럼 보인다. */
+const SCROLL_GAP_PX = 8
+
 /**
- * 그 절로 화면을 옮기고 **포커스도 함께 옮긴다.**
+ * 그 절로 **시트만** 스크롤하고 포커스도 함께 옮긴다.
  *
  * `<a href="#id">`를 쓰지 않는 이유는 주소창이다. 미니앱은 주소를 사용자에게
  * 안 보여주지만 해시는 히스토리에 쌓여, 뒤로가기가 「앞 절로 돌아가기」가 된다.
  *
+ * **`scrollIntoView`도 쓰지 않는다. 이게 진짜 이유다.** 그 함수는 스크롤 가능한
+ * **조상을 전부 거슬러 올라가며** 스크롤한다. 홈 화면 루트(`relative size-full`)가
+ * 스크롤 가능한 상태라 함께 524px 밀렸고, **지도가 화면 밖으로 사라졌다**
+ * (390×844 실측). 시트 안의 절로 가려던 조작이 화면 절반을 날린 것이다.
+ * 그래서 스크롤할 상자를 직접 지목한다 — 시트 내용 상자 하나만 움직인다.
+ *
  * 포커스를 같이 옮기지 않으면 키보드·스크린리더 사용자는 화면만 움직이고
- * 제자리에 남는다 — 다음 탭이 칩 줄의 다음 칩으로 가버린다.
+ * 제자리에 남는다 — 다음 탭이 칩 줄의 다음 칩으로 가버린다. `preventScroll`은
+ * 브라우저가 포커스를 이유로 위 조상들을 다시 스크롤하는 것을 막는다.
  *
  * **부드러운 스크롤을 여기서 판단한다.** `index.css`의 `prefers-reduced-motion`
  * 블록은 CSS의 `scroll-behavior`를 끄지만, JS로 `behavior: 'smooth'`를 직접
@@ -77,8 +87,17 @@ function scrollToSection(domId: string): void {
   if (target === null) {
     return
   }
-  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  target.scrollIntoView({ block: 'start', behavior: still ? 'auto' : 'smooth' })
-  // 스크롤을 브라우저가 맡았으니 포커스는 그것을 되돌리지 않게 조용히 옮긴다.
+
+  // `data-sheet-content`는 시트가 지키기로 한 계약이다(`BottomSheet` 주석).
+  const box = target.closest('[data-sheet-content]')
+  if (box instanceof HTMLElement) {
+    const offset = target.getBoundingClientRect().top - box.getBoundingClientRect().top
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    box.scrollTo({
+      top: box.scrollTop + offset - SCROLL_GAP_PX,
+      behavior: still ? 'auto' : 'smooth',
+    })
+  }
+
   target.focus({ preventScroll: true })
 }
