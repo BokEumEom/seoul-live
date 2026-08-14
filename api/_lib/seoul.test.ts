@@ -54,20 +54,34 @@ describe('cityInfoCacheTtlSeconds', () => {
     expect(cityInfoCacheTtlSeconds()).toBe(10_800)
   })
 
-  it('전용 환경변수가 없으면 혼잡도와 같은 TTL로 떨어진다', () => {
+  it('전용 환경변수가 없으면 3시간으로 떨어진다', () => {
+    // **혼잡도와 같은 TTL로 떨어지면 안 된다.** 도시정보는 이제 상세를 열 때마다
+    // 자동으로 조회되므로 호출량이 사용자 행동에 열려 있다. 혼잡도의 1시간을
+    // 따라가면 최악 30곳 × 24 = 720회/일이 되고, 혼잡도의 720회와 합쳐
+    // 1,440회로 하루 1,000회 한도를 넘긴다. 3시간이면 240회라 합계 960회다.
     vi.stubEnv('CACHE_TTL_SECONDS', '600')
     vi.stubEnv('CITYINFO_CACHE_TTL_SECONDS', undefined)
-    expect(cityInfoCacheTtlSeconds()).toBe(600)
+    expect(cityInfoCacheTtlSeconds()).toBe(10_800)
+  })
+
+  it('혼잡도를 더 길게 캐시하면 도시정보는 그보다 짧아지지 않는다', () => {
+    // 도시정보는 혼잡도와 같은 한도를 쓰면서 더 느리게 변한다(날씨는 정시,
+    // 문화행사는 하루 단위). 혼잡도보다 자주 받을 이유가 없다 — 운영자가
+    // 한도 때문에 혼잡도를 6시간으로 늘렸는데 도시정보만 3시간이면
+    // 도시정보가 더 비싼 쪽이 된다.
+    vi.stubEnv('CACHE_TTL_SECONDS', '21600')
+    vi.stubEnv('CITYINFO_CACHE_TTL_SECONDS', undefined)
+    expect(cityInfoCacheTtlSeconds()).toBe(21_600)
   })
 
   it('소수·0 이하는 무시한다 (delta-seconds는 양의 정수만 유효하다)', () => {
     vi.stubEnv('CACHE_TTL_SECONDS', '600')
 
     vi.stubEnv('CITYINFO_CACHE_TTL_SECONDS', '300.5')
-    expect(cityInfoCacheTtlSeconds()).toBe(600)
+    expect(cityInfoCacheTtlSeconds()).toBe(10_800)
 
     vi.stubEnv('CITYINFO_CACHE_TTL_SECONDS', '-1')
-    expect(cityInfoCacheTtlSeconds()).toBe(600)
+    expect(cityInfoCacheTtlSeconds()).toBe(10_800)
   })
 })
 

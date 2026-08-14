@@ -16,20 +16,33 @@ export function cacheTtlSeconds(): number {
   return Number.isInteger(raw) && raw > 0 ? raw : 3_600
 }
 
-// 「더보기」(citydata)용 TTL을 혼잡도와 따로 둔다. 두 서비스가 같은 하루 1,000회
+// 도시정보(citydata)용 TTL을 혼잡도와 따로 둔다. 두 서비스가 같은 하루 1,000회
 // 한도를 나눠 쓰기 때문이다.
 //
-//   혼잡도  30곳 ÷ TTL 1시간 = 720회/일 (고정)
-//   더보기  사용자가 본 명소 수 ÷ TTL. 최악의 경우(30곳을 매시간) 또 720회/일
+//   혼잡도    30곳 ÷ TTL 1시간 = 720회/일 (고정)
+//   도시정보  본 명소 수 ÷ TTL. 상세를 열면 자동으로 조회되므로 최악은 30곳이다.
 //
-// 둘을 더하면 1,440회로 한도를 넘는다. 실제로는 더보기를 30곳 전부 매시간 여는
-// 일이 없어 훨씬 적지만, "안 넘는다"고 단정할 근거는 없다. 이 값을 늘리면 더보기
-// 쪽 호출량이 그만큼 준다 — 대신 주차 여유 면수가 그만큼 묵은 값이 된다.
-// 활용갤러리에 등록해 한도가 풀리면 이 손잡이는 의미가 없어진다.
+// **예전에는 이 값이 없으면 혼잡도와 같은 TTL로 떨어졌다.** 그때는 도시정보가
+// 접힌 채로 시작해서 사용자가 「더보기」를 눌러야만 나갔기 때문에 최악을
+// 상정할 필요가 적었다. 지금은 상세를 열면 자동으로 나가므로 혼잡도의 1시간을
+// 따라가면 720회가 되고, 혼잡도의 720회와 합쳐 1,440회로 한도를 넘는다.
+//
+//   3시간 → 30곳 × 8 = 240회/일. 합계 960회로 한도 안이다.
+//
+// 대신 주차 여유 면수와 지하철 도착이 그만큼 묵는다 — 그래서 그 두 절은
+// 화면에 관측 시각을 같이 적는다. 활용갤러리에 등록해 한도가 풀리면 이
+// 손잡이는 의미가 없어지고 1시간으로 되돌리면 된다.
+const DEFAULT_CITYINFO_TTL_SECONDS = 3 * 60 * 60
+
 export function cityInfoCacheTtlSeconds(): number {
   const raw = Number(process.env.CITYINFO_CACHE_TTL_SECONDS)
   // 정수만 받는 이유는 cacheTtlSeconds와 같다(RFC 9111 §1.2.2).
-  return Number.isInteger(raw) && raw > 0 ? raw : cacheTtlSeconds()
+  if (Number.isInteger(raw) && raw > 0) {
+    return raw
+  }
+  // 혼잡도보다 짧게 캐시하지 않는다. 도시정보는 같은 한도를 쓰면서 더 느리게
+  // 변하므로(날씨는 정시, 문화행사는 하루 단위) 더 자주 받을 이유가 없다.
+  return Math.max(DEFAULT_CITYINFO_TTL_SECONDS, cacheTtlSeconds())
 }
 
 export function apiKey(): string {

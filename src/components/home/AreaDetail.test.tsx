@@ -155,40 +155,51 @@ describe('AreaDetail', () => {
     expect(screen.getByText('명소를 찾을 수 없어요.')).toBeInTheDocument()
   })
 
-  it('도시 정보는 접힌 채로 시작하고 조회하지 않는다', () => {
+  it('상세를 열면 도시 정보도 함께 연다', () => {
+    // **예전에는 접힌 채로 시작해서 「더보기」를 눌러야 조회됐다.** 하루 1,000회
+    // 한도를 지키려던 것인데, 그 결과 서울 인파레이더가 한 화면에 다 펼쳐 주는
+    // 것을 우리는 탭 한 번 뒤에 감춰 뒀다. 한도는 상세의 중복 혼잡도 호출을
+    // 없애고(720회/일) 도시정보 캐시를 3시간으로 늘려 되찾았다 —
+    // `api/_lib/seoul.ts`의 `cityInfoCacheTtlSeconds` 주석.
     renderDetail()
-    expect(screen.getByRole('button', { name: /이곳의 도시 정보/ })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
-    // 접힌 동안은 undefined를 넘겨 useCityInfo의 enabled를 끈다.
-    expect(useCityInfo).toHaveBeenCalledWith(undefined)
-    expect(useCityInfo).not.toHaveBeenCalledWith('강남역')
-  })
 
-  it('펼치면 그때 조회한다', async () => {
-    renderDetail()
-    await userEvent.click(screen.getByRole('button', { name: /이곳의 도시 정보/ }))
     expect(useCityInfo).toHaveBeenCalledWith('강남역')
-    expect(screen.getByRole('button', { name: /이곳의 도시 정보/ })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    )
-  })
-
-  it('다시 접으면 조회를 끈다', async () => {
-    renderDetail()
-    const toggleButton = screen.getByRole('button', { name: /이곳의 도시 정보/ })
-    await userEvent.click(toggleButton)
-    useCityInfo.mockClear()
-    await userEvent.click(toggleButton)
-    expect(useCityInfo).toHaveBeenCalledWith(undefined)
-    expect(useCityInfo).not.toHaveBeenCalledWith('강남역')
+    expect(useCityInfo).not.toHaveBeenCalledWith(undefined)
+    // 펼치라고 누를 것이 남아 있으면 안 된다.
+    expect(screen.queryByRole('button', { name: /이곳의 도시 정보/ })).not.toBeInTheDocument()
   })
 
   // 파서와 카드가 각각 통과해도 **패널이 둘을 안 부르면** 화면에는 아무것도 안
   // 뜬다. 배선을 따로 잠근다 — 새 섹션을 더할 때 가장 조용히 빠지는 자리다.
-  it('펼치면 도로소통 섹션이 뜬다', async () => {
+  it('지하철 도착은 언제 기준인지 같이 적는다', () => {
+    // 「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다. 도시정보를 3시간
+    // 캐시로 받기로 한 이상(쿼터), 기준을 안 적으면 3시간 전 열차를 지금 오는
+    // 것처럼 보여주게 된다.
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        subway: [
+          {
+            station: '강남',
+            line: '2호선',
+            direction: '외선',
+            terminal: '성수',
+            message: '4분 20초 후 (역삼)',
+          },
+        ],
+      }),
+    )
+    renderDetail()
+
+    // 절 안에서 찾는다. 주차장·따릉이도 같은 취지의 문구를 달고 있어서
+    // 화면 전체에서 찾으면 「여럿 찾음」으로 죽거나 엉뚱한 절을 잡는다.
+    const heading = screen.getByRole('heading', { name: '지하철 도착' })
+    const section = heading.closest('section')
+    expect(section).not.toBeNull()
+    expect(within(section as HTMLElement).getByText(/최대 3시간 전 기준/)).toBeInTheDocument()
+  })
+
+  it('도로소통 섹션이 뜬다', () => {
     useCityInfo.mockReturnValue(
       ok({
         ...EMPTY_CITY_INFO,
@@ -201,12 +212,11 @@ describe('AreaDetail', () => {
       }),
     )
     renderDetail()
-    await userEvent.click(screen.getByRole('button', { name: /이곳의 도시 정보/ }))
     expect(screen.getByRole('heading', { name: '도로소통' })).toBeInTheDocument()
     expect(screen.getByText('강남대로가 서행하고 있어요.')).toBeInTheDocument()
   })
 
-  it('사고통제만 있어도 섹션이 뜬다', async () => {
+  it('사고통제만 있어도 섹션이 뜬다', () => {
     useCityInfo.mockReturnValue(
       ok({
         ...EMPTY_CITY_INFO,
@@ -222,7 +232,6 @@ describe('AreaDetail', () => {
       }),
     )
     renderDetail()
-    await userEvent.click(screen.getByRole('button', { name: /이곳의 도시 정보/ }))
     expect(screen.getByRole('heading', { name: '도로소통' })).toBeInTheDocument()
     expect(screen.getByText('강남대로 1개 차로 통제')).toBeInTheDocument()
   })
@@ -230,25 +239,22 @@ describe('AreaDetail', () => {
   // 도로 정보가 하나도 없으면 제목만 있는 빈 섹션이 남으면 안 된다. 주차장·
   // 따릉이처럼 「없어요」를 쓰지 않는 이유는, 도로소통은 안 오는 게 흔한
   // 필드라 명소마다 「도로 정보가 없어요」가 상시로 뜨게 되기 때문이다.
-  it('도로 정보가 없으면 섹션을 만들지 않는다', async () => {
+  it('도로 정보가 없으면 섹션을 만들지 않는다', () => {
     renderDetail()
-    await userEvent.click(screen.getByRole('button', { name: /이곳의 도시 정보/ }))
     expect(screen.queryByRole('heading', { name: '도로소통' })).not.toBeInTheDocument()
   })
 
-  it('도시 정보가 실패해도 혼잡도는 그대로 남는다', async () => {
+  it('도시 정보가 실패해도 혼잡도는 그대로 남는다', () => {
     useCityInfo.mockReturnValue(failed<CityInfo>())
     renderDetail()
-    await userEvent.click(screen.getByRole('button', { name: /이곳의 도시 정보/ }))
     expect(screen.getByText('다소 혼잡')).toBeInTheDocument()
     expect(screen.getByText('도시 정보를 가져오지 못했어요.')).toBeInTheDocument()
   })
 
-  it('혼잡도가 실패해도 도시 정보는 펼칠 수 있다', async () => {
+  it('혼잡도가 실패해도 도시 정보는 나온다', () => {
     useAreaSnapshot.mockReturnValue(failed<AreaSnapshot>())
     renderDetail()
     expect(screen.getByText('혼잡도 정보를 가져오지 못했어요.')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: /이곳의 도시 정보/ }))
     expect(useCityInfo).toHaveBeenCalledWith('강남역')
   })
 

@@ -96,7 +96,10 @@ describe('cityinfo 핸들러', () => {
     )
   })
 
-  it('전용 TTL이 없으면 혼잡도와 같은 TTL로 캐시한다', async () => {
+  it('전용 TTL이 없으면 3시간으로 캐시한다', async () => {
+    // 혼잡도(여기서는 10분)를 따라가면 안 된다. 도시정보는 상세를 열 때마다
+    // 자동으로 조회되므로, 짧게 캐시하면 하루 1,000회 한도를 바로 넘긴다 —
+    // 계산은 `seoul.ts`의 `cityInfoCacheTtlSeconds` 주석에 있다.
     vi.stubEnv('SEOUL_API_KEY', 'test-key')
     vi.stubEnv('CACHE_TTL_SECONDS', '600')
     vi.stubGlobal(
@@ -109,7 +112,7 @@ describe('cityinfo 핸들러', () => {
 
     expect(res.setHeader).toHaveBeenCalledWith(
       'Cache-Control',
-      'public, s-maxage=600, stale-while-revalidate=1200',
+      'public, s-maxage=10800, stale-while-revalidate=21600',
     )
     expect(res.status).toHaveBeenCalledWith(200)
     expect(res.json).toHaveBeenCalledWith({ CITYDATA: {} })
