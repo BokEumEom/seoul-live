@@ -1,6 +1,30 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+
+/**
+ * `src/` 아래 컴포넌트 원문을 한 덩어리로 읽는다. **테스트 파일은 뺀다** —
+ * 거기 적힌 클래스명은 화면이 아니라 단언이라, 세면 「쓰지 않는 색인데
+ * 테스트에만 나오는 것」이 쓰이는 것으로 잡힌다.
+ *
+ * 다크 모드 완결성 검사가 이걸 쓴다: 화면에서 쓰는 색 토큰인데 다크 값이
+ * 없으면 밤에 그 자리만 라이트 색이 남는다.
+ */
+function readSourceFiles(dir: string): string {
+  return readdirSync(dir, { withFileTypes: true })
+    .map((entry) => {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        return readSourceFiles(path)
+      }
+      if (!/\.tsx?$/.test(entry.name) || entry.name.includes('.test.')) {
+        return ''
+      }
+      return readFileSync(path, 'utf8')
+    })
+    .join('\n')
+}
 
 export default defineConfig({
   plugins: [react()],
@@ -23,6 +47,7 @@ export default defineConfig({
     __DESIGN_MD__: JSON.stringify(
       readFileSync('stitch_ui/seoul_flow/DESIGN.md', 'utf8'),
     ),
+    __SRC_SOURCES__: JSON.stringify(readSourceFiles('src')),
   },
   test: {
     environment: 'jsdom',

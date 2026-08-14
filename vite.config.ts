@@ -149,8 +149,11 @@ function pwa(): Plugin[] {
       orientation: 'portrait',
       // 상태 표시줄 색이다. 화면 맨 위는 지도 위에 뜬 흰 검색 바라 표면색이 맞다.
       // 파랑(`--color-primary`)을 넣으면 검색 바와 경계가 생겨 오히려 튄다.
-      theme_color: '#faf8ff',
-      background_color: '#faf8ff',
+      // 매니페스트에는 색을 한 벌만 적을 수 있다(다크용 필드가 없다).
+      // 설치 화면과 스플래시가 이 값을 쓰므로 라이트 표면색으로 둔다 —
+      // 주소창 쪽 다크 대응은 index.html의 `theme-color` 두 줄이 한다.
+      theme_color: '#fffbf4',
+      background_color: '#fffbf4',
       icons: [
         { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
         { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },

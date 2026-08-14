@@ -22,7 +22,10 @@ interface MapLink {
 
 // 배경은 남의 브랜드 색이라 우리가 못 고친다 — 맞출 수 있는 것은 글자 쪽이다.
 // 네이버에 흰 글자를 얹으면 2.25:1로 무너졌다(카카오는 원래 어두운 글자라
-// 문제가 없었다). 둘 다 `text-on-surface`로 맞춘다: 네이버 7.63, 카카오 13.43.
+// 문제가 없었다). 둘 다 `text-brand-ink`로 맞춘다: 네이버 7.32, 카카오 12.90.
+// **`text-on-surface`가 아닌 이유가 다크 모드다.** 그 토큰은 밤에 크림색으로
+// 뒤집히는데, 배경인 카카오 노랑은 남의 자산이라 그대로다 — 노랑 위의 크림
+// 글자는 1.2:1로 통째로 사라진다. `--color-brand-ink`는 어느 모드에서도 안 바뀐다.
 // 값과 근거는 index.css의 `--color-brand-*` 주석에, 대비는 `tokens.test.ts`에.
 // 라벨에서 「길찾기」를 뺐다. 셋이 한 줄에 서면서 320px에서 버튼 하나에 배정되는
 // 폭이 138px → **87px**로 줄었는데 「카카오맵 길찾기」는 그 폭에 못 들어간다.
@@ -34,13 +37,13 @@ const MAP_LINKS: readonly MapLink[] = [
     label: '카카오맵',
     icon: 'pin',
     href: (entry) => kakaoMapSearchUrl(entry.name),
-    className: 'bg-brand-kakao text-on-surface',
+    className: 'bg-brand-kakao text-brand-ink',
   },
   {
     label: '네이버',
     icon: 'map',
     href: (entry) => naverMapSearchUrl(entry.name),
-    className: 'bg-brand-naver text-on-surface',
+    className: 'bg-brand-naver text-brand-ink',
   },
   {
     // 티맵 로고 색을 토큰으로 들이지 않았다. 카카오·네이버는 시안이 브랜드

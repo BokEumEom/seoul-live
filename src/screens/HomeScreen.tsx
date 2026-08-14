@@ -399,6 +399,11 @@ export function HomeScreen() {
         zoom={zoom}
         onCameraChanged={handleCameraChanged}
         reuseMaps
+        // **지도도 밤에는 어두워야 한다.** 화면의 절반이 지도라, 시트만 어두워지면
+        // 밤에 앱을 열 때 나머지 절반이 그대로 밝은 채로 남아 눈이 부신다.
+        // 우리 CSS 변수는 남의 캔버스 안까지 못 미치므로 지도에게 따로 말한다.
+        // `FOLLOW_SYSTEM`이라 우리 `prefers-color-scheme` 블록과 같은 신호를 본다.
+        colorScheme="FOLLOW_SYSTEM"
         // 지도는 심사 체크리스트가 제스처 확대·축소를 명시적으로 허용하는 용례다.
         gestureHandling="greedy"
         disableDefaultUI

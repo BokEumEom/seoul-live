@@ -19,14 +19,17 @@
   --color-inverse-primary: #b4c5ff;
   --color-surface-tint: #0053db;
 
-  --color-secondary: #545f73;
+  /* 보조. 표면과 같은 이유로 따뜻한 쪽이다 — `bg-secondary-container`가
+     「근처 쾌적한 장소」·「평소 대비」처럼 표면 위에 얹히는 상자라, 차가운
+     파랑 상자만 남으면 크림 배경에서 그 상자만 떠 보인다. */
+  --color-secondary: #5f5647;
   --color-on-secondary: #ffffff;
-  --color-secondary-container: #d5e0f8;
-  --color-on-secondary-container: #586377;
-  --color-secondary-fixed: #d8e3fb;
-  --color-secondary-fixed-dim: #bcc7de;
-  --color-on-secondary-fixed: #111c2d;
-  --color-on-secondary-fixed-variant: #3c475a;
+  --color-secondary-container: #f0e6d6;
+  --color-on-secondary-container: #4a4234;
+  --color-secondary-fixed: #f0e6d6;
+  --color-secondary-fixed-dim: #d4c8b5;
+  --color-on-secondary-fixed: #1e1810;
+  --color-on-secondary-fixed-variant: #4a4234;
 
   --color-tertiary: #943700;
   --color-on-tertiary: #ffffff;
@@ -37,25 +40,32 @@
   --color-on-tertiary-fixed: #360f00;
   --color-on-tertiary-fixed-variant: #7d2d00;
 
-  /* 표면 */
-  --color-background: #faf8ff;
-  --color-on-background: #191b23;
-  --color-surface: #faf8ff;
-  --color-surface-dim: #d9d9e5;
-  --color-surface-bright: #faf8ff;
-  --color-surface-variant: #e1e2ed;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f3f3fe;
-  --color-surface-container: #ededf9;
-  --color-surface-container-high: #e7e7f3;
-  --color-surface-container-highest: #e1e2ed;
-  --color-inverse-surface: #2e3039;
-  --color-inverse-on-surface: #f0f0fb;
+  /* 표면. **중립색이 따뜻한 쪽이다.** 예전에는 파랑-보라 기운(#faf8ff, 색상
+     ~250°)이었는데, 그 위에 놓인 혼잡도 4색이 전부 따뜻한 계열(초록·노랑·
+     주황·빨강)이라 배경과 데이터가 서로 밀어냈다. 배경을 크림 쪽(색상 ~38°)
+     으로 옮기면 같은 4색이 배경에 얹힌 것처럼 앉는다.
 
-  --color-on-surface: #191b23;
-  --color-on-surface-variant: #434655;
-  --color-outline: #737686;
-  --color-outline-variant: #c3c6d7;
+     강조색(primary)은 파랑 그대로다. 따뜻한 강조색은 혼잡도의 주황
+     (`--color-busy` #ea580c)과 색상이 붙어 「길찾기 버튼」과 「약간 붐빔」이
+     같은 색으로 읽힌다 — 이 앱에서 색은 값이라 그 혼동이 특히 비싸다. */
+  --color-background: #fffbf4;
+  --color-on-background: #241e17;
+  --color-surface: #fffbf4;
+  --color-surface-dim: #e6ded0;
+  --color-surface-bright: #fffbf4;
+  --color-surface-variant: #ede3d0;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #fdf6ec;
+  --color-surface-container: #f8f0e3;
+  --color-surface-container-high: #f3ead9;
+  --color-surface-container-highest: #ede3d0;
+  --color-inverse-surface: #3a3229;
+  --color-inverse-on-surface: #faefe1;
+
+  --color-on-surface: #241e17;
+  --color-on-surface-variant: #544a3d;
+  --color-outline: #7d7163;
+  --color-outline-variant: #e7dccb;
 
   --color-error: #ba1a1a;
   --color-on-error: #ffffff;
@@ -98,6 +108,13 @@
      답이고(네이버 7.63, 카카오 13.43) 카카오는 원래 그렇게 쓰고 있었다. */
   --color-brand-kakao: #fee500;
   --color-brand-naver: #03c75a;
+
+  /* 그 두 버튼의 **글자색**. 예전에는 `--color-on-surface`를 썼는데, 다크 모드가
+     생기면서 그게 크림색으로 뒤집힌다 — 카카오 노랑 위의 크림 글자는 1.2:1로
+     통째로 사라진다. 브랜드 배경은 남의 자산이라 다크에서도 그대로여야 하므로
+     그 위의 글자도 뒤집히면 안 된다. 그래서 **어느 모드에서도 안 바뀌는**
+     토큰을 따로 둔다(카카오 12.90, 네이버 7.32). */
+  --color-brand-ink: #241e17;
 
   /* 요일×시간 히트맵 전용. **배지·핀 토큰을 재사용하면 안 된다** — 배지 대비
      때와 같은 사정으로 요구가 다르다. 핀은 지도 타일 위에서 색상으로 갈려야
@@ -191,6 +208,144 @@
 
   /* Level 2 — 하단 탭바와 FAB. DESIGN.md의 "12% opacity, 8px blur, 4px offset" */
   --shadow-floating: 0 4px 8px rgb(0 0 0 / 0.12);
+
+  /* ── 다크 팔레트 ────────────────────────────────────────────────────────
+     **이름을 따로 두고, 아래 미디어 쿼리에서 갈아 끼운다.** 같은 이름에 색을
+     두 번 적으면 `tokens.test.ts`가 파일에서 색을 읽을 때 뒤엣것만 보게 되어
+     라이트 값의 대비를 재는 척하면서 실은 다크 값을 잰다. 값은 한 이름에 한
+     번만 적고, 바꿔 끼우는 일은 `var()`로 한다 — 그러면 정규식이 안 걸린다.
+
+     중립은 라이트와 같은 따뜻한 색상(~35°)에 명도만 뒤집었다. 회색을 그대로
+     어둡게 하면 낮과 밤이 다른 앱처럼 보인다.
+
+     **혼잡도 4색도 갈아 끼운다.** 짙은 #dc2626·#059669는 어두운 카드 위에서
+     서로 뭉개진다. 지도 타일도 함께 어두워지므로(아래 `colorScheme`) 핀 색이
+     밝아지는 편이 지도에서도 낫다.
+
+     히트맵 램프는 **방향이 뒤집힌다.** 라이트에서는 붐빌수록 어두워지지만
+     어두운 배경에서 같은 방향으로 가면 「붐빔」이 배경에 잠겨 사라진다.
+     다크에서는 붐빌수록 밝아진다 — 단조성과 이웃 간격은 라이트와 똑같이
+     `tokens.test.ts`가 잠근다(지금 1.68 / 1.70 / 1.68). */
+  --color-dark-background: #16120c;
+  --color-dark-on-background: #f0e5d7;
+  --color-dark-surface: #16120c;
+  --color-dark-surface-dim: #16120c;
+  --color-dark-surface-bright: #3d352b;
+  --color-dark-surface-variant: #4d4539;
+  /* **밤에는 카드가 배경보다 밝다.** Material 3의 다크 램프는 `-lowest`가
+     표면보다 어둡지만, 이 앱은 그 토큰을 「카드 바탕」으로 쓴다 — 낮에는
+     크림 배경 위의 흰 카드라 떠 보이는데, M3를 글자 그대로 따르면 밤에만
+     카드가 가라앉아 본문 자리가 구멍처럼 파인다(390px 실측에서 보였다).
+     쓰임을 따라 방향을 맞춘다. */
+  --color-dark-surface-container-lowest: #1e1912;
+  --color-dark-surface-container-low: #241e16;
+  --color-dark-surface-container: #2a231a;
+  --color-dark-surface-container-high: #332b21;
+  --color-dark-surface-container-highest: #3d342a;
+  --color-dark-inverse-surface: #f0e5d7;
+  --color-dark-inverse-on-surface: #362f27;
+
+  --color-dark-on-surface: #f0e5d7;
+  --color-dark-on-surface-variant: #d4c7b4;
+  --color-dark-outline: #9d9080;
+  --color-dark-outline-variant: #4d4539;
+
+  /* 파랑은 그대로 쓸 수 없다 — #004ac6은 어두운 표면에서 1.4:1이라 글자가
+     안 보인다. 라이트의 `--color-inverse-primary`와 같은 값이다. */
+  --color-dark-primary: #b4c5ff;
+  --color-dark-on-primary: #002a78;
+  --color-dark-secondary: #d0c3b0;
+  --color-dark-secondary-container: #3c342a;
+
+  --color-dark-error-container: #93000a;
+  --color-dark-on-error-container: #ffdad6;
+
+  --color-dark-calm: #34d399;
+  --color-dark-calm-container: #06402f;
+  --color-dark-on-calm-container: #a7f3d0;
+  --color-dark-normal: #fbbf24;
+  --color-dark-normal-container: #653008;
+  --color-dark-on-normal-container: #fde68a;
+  --color-dark-busy: #fb923c;
+  --color-dark-busy-container: #6b2710;
+  --color-dark-on-busy-container: #fed7aa;
+  --color-dark-crowded: #f87171;
+  --color-dark-crowded-container: #6e1a1a;
+  --color-dark-on-crowded-container: #fecaca;
+
+  --color-dark-heat-calm: #14532d;
+  --color-dark-heat-normal: #9a5b0a;
+  --color-dark-heat-busy: #d97706;
+  --color-dark-heat-crowded: #fca5a5;
+}
+
+/* 시스템 설정을 따른다. 토글을 두지 않는 이유는 이 앱에 설정 화면이 없고,
+   기기 설정과 어긋나는 앱이 하나 늘 뿐이기 때문이다.
+
+   `@theme` 밖에 두고 `:root`를 직접 다시 쓴다. Tailwind v4의 유틸리티는
+   `background-color: var(--color-surface)`처럼 **변수를 참조**하므로, 변수만
+   갈아 끼우면 `bg-surface`가 붙은 자리 전부가 따라온다 — 클래스를 하나도
+   고치지 않아도 된다. `:root`끼리는 명시도가 같아 나중에 온 이 블록이 이긴다.
+
+   **여기 적힌 이름이 곧 「다크에서 살아 있는 토큰」의 목록이다.** 화면에서
+   쓰는 색인데 여기 없으면 밤에 라이트 값이 그대로 남아 배경과 뭉개진다.
+   `tokens.test.ts`가 src의 클래스를 훑어 이 목록과 대조하므로, 새 색을 쓰기
+   시작하면 거기서 죽는다. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: var(--color-dark-background);
+    --color-on-background: var(--color-dark-on-background);
+    --color-surface: var(--color-dark-surface);
+    --color-surface-dim: var(--color-dark-surface-dim);
+    --color-surface-bright: var(--color-dark-surface-bright);
+    --color-surface-variant: var(--color-dark-surface-variant);
+    --color-surface-container-lowest: var(--color-dark-surface-container-lowest);
+    --color-surface-container-low: var(--color-dark-surface-container-low);
+    --color-surface-container: var(--color-dark-surface-container);
+    --color-surface-container-high: var(--color-dark-surface-container-high);
+    --color-surface-container-highest: var(--color-dark-surface-container-highest);
+    --color-inverse-surface: var(--color-dark-inverse-surface);
+    --color-inverse-on-surface: var(--color-dark-inverse-on-surface);
+
+    --color-on-surface: var(--color-dark-on-surface);
+    --color-on-surface-variant: var(--color-dark-on-surface-variant);
+    --color-outline: var(--color-dark-outline);
+    --color-outline-variant: var(--color-dark-outline-variant);
+
+    --color-primary: var(--color-dark-primary);
+    --color-on-primary: var(--color-dark-on-primary);
+    --color-secondary: var(--color-dark-secondary);
+    --color-secondary-container: var(--color-dark-secondary-container);
+
+    --color-error-container: var(--color-dark-error-container);
+    --color-on-error-container: var(--color-dark-on-error-container);
+
+    --color-calm: var(--color-dark-calm);
+    --color-calm-container: var(--color-dark-calm-container);
+    --color-on-calm-container: var(--color-dark-on-calm-container);
+    --color-normal: var(--color-dark-normal);
+    --color-normal-container: var(--color-dark-normal-container);
+    --color-on-normal-container: var(--color-dark-on-normal-container);
+    --color-busy: var(--color-dark-busy);
+    --color-busy-container: var(--color-dark-busy-container);
+    --color-on-busy-container: var(--color-dark-on-busy-container);
+    --color-crowded: var(--color-dark-crowded);
+    --color-crowded-container: var(--color-dark-crowded-container);
+    --color-on-crowded-container: var(--color-dark-on-crowded-container);
+
+    --color-heat-calm: var(--color-dark-heat-calm);
+    --color-heat-normal: var(--color-dark-heat-normal);
+    --color-heat-busy: var(--color-dark-heat-busy);
+    --color-heat-crowded: var(--color-dark-heat-crowded);
+
+    /* 어두운 배경에서는 검은 그림자가 안 보인다. 떠 있다는 사실을 그림자로만
+       말하던 자리(하단 시트·FAB)가 밤에 평평해진다 — 짙게 해서 되살린다. */
+    --shadow-floating: 0 4px 12px rgb(0 0 0 / 0.5);
+  }
+
+  /* 브랜드 색과 그 위의 글자는 **그대로 둔다.** 남의 자산이라 밤이라고 바꿀
+     수 없고, 배경이 안 바뀌니 글자도 안 바뀌어야 한다. `--color-brand-ink`가
+     여기 없는 것이 그 뜻이다. */
 }
 
 /* 키보드·스위치 사용자가 지금 어디에 있는지 아는 유일한 표시다. 이 앱에는
@@ -240,6 +395,13 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* 브라우저 기본 UI(스크롤바·폼 컨트롤·캐럿)에게 두 모드를 다 지원한다고
+   알린다. 없으면 다크에서 스크롤바만 밝게 남는다. `index.html`의 같은 이름
+   메타와 짝이다 — 한쪽만 두면 첫 페인트 전후로 갈린다. */
+:root {
+  color-scheme: light dark;
 }
 
 html, body, #root {

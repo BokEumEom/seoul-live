@@ -8,6 +8,11 @@ const CSS = __INDEX_CSS__
 declare const __DESIGN_MD__: string
 const DESIGN = __DESIGN_MD__
 
+/** `src/`의 컴포넌트 원문(테스트 제외). 같은 경로로 들어온다 — 여기서
+    `node:fs`를 부르면 브라우저용 tsconfig가 죽는다(vitest.config.ts 주석). */
+declare const __SRC_SOURCES__: string
+const SOURCES = __SRC_SOURCES__
+
 // `@theme` 블록에서 색 토큰을 읽는다. **값을 여기에 리터럴로 옮겨 적지 않는다** —
 // 그러면 색을 고칠 때 테스트도 같이 고치게 되어 아무것도 못 죽인다. 파일에서
 // 읽어 계산하므로 누가 대비를 되돌리면 여기서 죽는다(되돌려 확인했다).
@@ -188,5 +193,162 @@ describe('히트맵 램프', () => {
     )
 
     expect(Math.min(...neighbours)).toBeGreaterThanOrEqual(1.5)
+  })
+})
+
+// ── 다크 모드 ──────────────────────────────────────────────────────────────
+//
+// 라이트에서 재던 것들을 밤에도 그대로 재야 한다. 다크 팔레트를 눈으로만 고르면
+// 「어두우니까 대충 밝은 글자」로 끝나고, 실제로 무너지는 자리는 배지처럼 옅은
+// 배경에 작은 글자가 얹히는 곳인데 그건 재 보기 전에는 안 보인다.
+
+/** `--color-dark-<name>`. 라이트 토큰과 이름공간을 나눠 둔 이유는 index.css 주석에. */
+function darkToken(name: string): string {
+  return token(`dark-${name}`)
+}
+
+/** 다크 블록이 실제로 갈아 끼우는 이름 → 갈아 끼울 값의 이름. */
+function darkOverrides(): Map<string, string> {
+  const block = CSS.match(
+    /@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/,
+  )
+  if (block === null) {
+    throw new Error('다크 모드 블록을 index.css에서 찾지 못했다')
+  }
+  return new Map(
+    [...block[1].matchAll(/--color-([a-z0-9-]+):\s*var\(--color-dark-([a-z0-9-]+)\)/g)].map(
+      (found) => [found[1], found[2]],
+    ),
+  )
+}
+
+describe('다크 모드 대비', () => {
+  it.each([
+    ['여유', 'on-calm-container', 'calm-container'],
+    ['보통', 'on-normal-container', 'normal-container'],
+    ['약간 붐빔', 'on-busy-container', 'busy-container'],
+    ['붐빔', 'on-crowded-container', 'crowded-container'],
+  ] as const)('%s 배지가 4.5:1을 넘는다', (_level, fg, bg) => {
+    expect(contrast(darkToken(fg), darkToken(bg))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it.each([
+    ['본문', 'on-surface', 'surface'],
+    ['본문(카드 위)', 'on-surface', 'surface-container-lowest'],
+    ['보조 글자', 'on-surface-variant', 'surface-container-lowest'],
+    // 12px 글자에 쓰이므로 large text 완화가 없다 — 라이트와 같은 이유다.
+    ['작은 글자', 'outline', 'surface-container-lowest'],
+    ['강조', 'primary', 'surface-container-lowest'],
+    ['버튼 글자', 'on-primary', 'primary'],
+    ['보조 상자 위 강조', 'primary', 'secondary-container'],
+  ] as const)('%s가 4.5:1을 넘는다', (_what, fg, bg) => {
+    expect(contrast(darkToken(fg), darkToken(bg))).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+// 라이트에서는 붐빌수록 **어두워**진다. 다크에서 같은 방향으로 가면 「붐빔」이
+// 배경(#16120c)에 잠겨 사라진다 — 그래서 방향이 뒤집힌다. 방향만 뒤집고 간격
+// 기준은 그대로 둔다(1.5는 20px 칸에서 명도 차가 눈에 띄기 시작하는 선).
+describe('다크 히트맵 램프', () => {
+  const RAMP = ['heat-calm', 'heat-normal', 'heat-busy', 'heat-crowded'] as const
+
+  it('붐빌수록 밝아진다', () => {
+    const levels = RAMP.map((name) => luminance(darkToken(name)))
+
+    expect(levels).toEqual([...levels].toSorted((a, b) => a - b))
+  })
+
+  it('이웃한 두 단계가 눈으로 갈린다', () => {
+    const neighbours = RAMP.slice(1).map((name, at) =>
+      contrast(darkToken(RAMP[at]), darkToken(name)),
+    )
+
+    expect(Math.min(...neighbours)).toBeGreaterThanOrEqual(1.5)
+  })
+
+  // 가장 옅은 칸도 카드 배경에서 보여야 한다. 라이트의 `heat-calm`(#d1fae5)은
+  // 흰 카드와 1.13이라 거의 안 보이는데, 그건 「여유」가 눈에 안 띄어도 되는
+  // 값이라 넘어간 것이다. 다크에서는 배경이 거의 검정이라 그 여유가 없다.
+  it('가장 옅은 칸도 카드에서 보인다', () => {
+    expect(
+      contrast(darkToken('heat-calm'), darkToken('surface-container-lowest')),
+    ).toBeGreaterThanOrEqual(1.5)
+  })
+})
+
+// **이 테스트가 다크 모드의 완결성을 잠근다.** 화면 어딘가에서 쓰는 색인데
+// 다크 블록에 없으면, 밤에 그 자리만 라이트 값이 남아 배경과 뭉개진다 —
+// 새 색을 쓰기 시작할 때 가장 조용히 빠지는 자리라 사람이 기억할 일이 아니다.
+describe('다크 모드 완결성', () => {
+  /** 브랜드 배경과 그 위의 글자. 남의 자산이라 밤이라고 바꿀 수 없다. */
+  const EXEMPT: ReadonlySet<string> = new Set(['brand-kakao', 'brand-naver', 'brand-ink'])
+
+  const UTILITIES = [
+    'bg',
+    'text',
+    'border',
+    'ring',
+    'fill',
+    'stroke',
+    'outline',
+    'divide',
+    'from',
+    'via',
+    'to',
+    'shadow',
+    'accent',
+    'caret',
+    'decoration',
+  ] as const
+
+  /** `src/`에서 실제로 쓰이는 색 토큰 이름. 테스트 파일은 세지 않는다. */
+  function usedColorTokens(): readonly string[] {
+    const sources = SOURCES
+    const defined = [...CSS.matchAll(/--color-([a-z0-9-]+):\s*#/g)]
+      .map((found) => found[1])
+      .filter((name) => !name.startsWith('dark-'))
+
+    return defined.filter((name) =>
+      // 뒤에 다른 글자가 붙지 않는 것만 센다 — 안 그러면 `bg-surface`가
+      // `bg-surface-container`에도 걸려 쓰지 않는 토큰이 쓰인 것으로 잡힌다.
+      new RegExp(`\\b(?:${UTILITIES.join('|')})-${name}(?![a-z0-9-])`).test(sources),
+    )
+  }
+
+  it('화면에서 쓰는 색은 전부 다크 값을 갖는다', () => {
+    const overridden = darkOverrides()
+    const missing = usedColorTokens().filter(
+      (name) => !EXEMPT.has(name) && !overridden.has(name),
+    )
+
+    expect(missing).toEqual([])
+  })
+
+  it('다크에서 갈아 끼우는 값은 전부 실제로 정의돼 있다', () => {
+    const undefinedTargets = [...darkOverrides().values()].filter((target) => {
+      try {
+        darkToken(target)
+        return false
+      } catch {
+        return true
+      }
+    })
+
+    expect(undefinedTargets).toEqual([])
+  })
+
+  // 위 둘이 빈 배열끼리 비교하며 조용히 통과하는 것을 막는다. 소스를 못 읽거나
+  // 정규식이 깨지면 「전부 갖췄다」가 언제나 참이 된다.
+  it('양쪽에서 실제로 이름을 읽어낸다', () => {
+    expect(usedColorTokens().length).toBeGreaterThan(20)
+    expect(darkOverrides().size).toBeGreaterThan(20)
+  })
+
+  // 브랜드 버튼 글자는 밤에도 안 바뀌어야 한다. 바뀌면 카카오 노랑 위에 크림
+  // 글자가 얹혀 1.2:1로 사라진다 — 배경을 못 바꾸니 글자도 못 바꾼다.
+  it('브랜드 글자색은 다크에서 갈아 끼우지 않는다', () => {
+    expect(darkOverrides().has('brand-ink')).toBe(false)
+    expect(contrast(token('brand-ink'), token('brand-kakao'))).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(token('brand-ink'), token('brand-naver'))).toBeGreaterThanOrEqual(4.5)
   })
 })
