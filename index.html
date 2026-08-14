@@ -14,20 +14,17 @@
       `theme_color`가 파랑이 아니라 표면색인 이유도 그쪽에 적어 뒀다.
     -->
     <!--
-      두 벌인 이유가 다크 모드다. 브라우저는 `media`가 맞는 첫 줄을 쓰므로
-      순서가 곧 우선순위다. 한 벌만 두면 밤에 주소창만 크림색으로 남아
-      화면 위쪽에 밝은 띠가 생긴다. 값은 `index.css`의 `--color-surface`와
-      그 다크 짝(`--color-dark-surface`)이다 — 갈리면 주소창과 화면 맨
-      윗줄 사이에 경계선이 보인다.
-    -->
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16120c" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fffbf4" />
+      **`media`로 나누지 않는다.** 예전에는 `prefers-color-scheme`로 두 벌을
+      뒀는데, 테마가 기기 설정이 아니라 사용자가 고른 값을 따르게 되면서
+      (기본은 밝게 — `src/domain/theme.ts`) 그 방식은 틀린 답을 준다:
+      폰이 어두운 사용자가 앱을 밝게 쓰면 주소창만 검게 남는다.
 
-    <!--
-      브라우저 기본 UI(스크롤바, 폼 컨트롤, `input` 캐럿)에게 두 모드를 다
-      지원한다고 알린다. 이게 없으면 다크에서 스크롤바만 밝게 남는다.
+      여기에는 기본값만 적고, 실제 값은 테마를 칠할 때 JS가 함께 고친다
+      (`src/hooks/themeStore.ts`의 `apply`). 값은 `index.css`의
+      `--color-surface`와 같아야 한다 — 갈리면 주소창과 화면 맨 윗줄 사이에
+      경계선이 보인다.
     -->
-    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#fffbf4" />
 
     <!--
       iOS는 웹 매니페스트를 반쪽만 읽는다. 홈 화면 아이콘과 전체화면 여부는

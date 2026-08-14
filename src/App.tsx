@@ -1,5 +1,6 @@
 import { LocationProvider } from './app/LocationProvider'
 import { QueryProvider } from './app/QueryProvider'
+import { useAppTheme } from './hooks/themeStore'
 import { HomeScreen } from './screens/HomeScreen'
 
 // 화면이 하나다. 즐겨찾기는 필터 칩이 됐고 「오늘의 서울」은 시트 안 뷰가 돼서
@@ -17,6 +18,11 @@ import { HomeScreen } from './screens/HomeScreen'
 // `HomeScreen` 루트가 `size-full`(= `height: 100%`)이라 높이가 auto인 부모를
 // 만나면 지도가 0px로 접힌다.
 function AppShell() {
+  // 저장해 둔 화면 테마를 읽어 칠하고, 「기기 설정」을 고른 사용자를 위해
+  // 기기 변화를 듣는다. 여기서 부르는 이유는 `useAppTheme` 주석에 있다 —
+  // 설정 UI는 「오늘의 서울」 안이라 열지 않으면 영영 안 그려진다.
+  useAppTheme()
+
   return (
     <main className="h-dvh bg-surface">
       {/* 눈에 보이는 제목은 두지 않는다(위 참조). 그래도 h1은 남긴다:

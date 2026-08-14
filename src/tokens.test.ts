@@ -209,9 +209,7 @@ function darkToken(name: string): string {
 
 /** 다크 블록이 실제로 갈아 끼우는 이름 → 갈아 끼울 값의 이름. */
 function darkOverrides(): Map<string, string> {
-  const block = CSS.match(
-    /@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/,
-  )
+  const block = CSS.match(/:root\[data-theme='dark'\]\s*\{([^}]*)\}/)
   if (block === null) {
     throw new Error('다크 모드 블록을 index.css에서 찾지 못했다')
   }

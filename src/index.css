@@ -279,74 +279,84 @@
   --color-dark-heat-crowded: #fca5a5;
 }
 
-/* 시스템 설정을 따른다. 토글을 두지 않는 이유는 이 앱에 설정 화면이 없고,
-   기기 설정과 어긋나는 앱이 하나 늘 뿐이기 때문이다.
+/* **기기 설정이 아니라 `data-theme` 속성을 본다.**
+
+   예전에는 `@media (prefers-color-scheme: dark)`였는데, 그러면 폰이 어두운
+   사용자에게 다크가 **기본**이 된다. 하려던 것은 다크 모드를 **지원**하는
+   것이지 기본으로 삼는 것이 아니다 — 이 앱의 얼굴은 밝은 크림색이다.
+   기본은 밝게이고(`domain/theme.ts`의 `DEFAULT_THEME`), 기기를 따르고 싶은
+   사용자는 「시스템」을 고른다. 미디어 쿼리를 읽는 일은 JS로 옮겼다
+   (`hooks/themeStore.ts`) — 여기서 `[data-theme='system']`까지 함께 보면
+   이 블록을 두 벌로 적어야 하고, 두 벌이 되는 순간 갈린다.
 
    `@theme` 밖에 두고 `:root`를 직접 다시 쓴다. Tailwind v4의 유틸리티는
    `background-color: var(--color-surface)`처럼 **변수를 참조**하므로, 변수만
    갈아 끼우면 `bg-surface`가 붙은 자리 전부가 따라온다 — 클래스를 하나도
-   고치지 않아도 된다. `:root`끼리는 명시도가 같아 나중에 온 이 블록이 이긴다.
+   고치지 않아도 된다. 속성 선택자라 `:root`만 있는 `@theme`보다 명시도가
+   높아 확실히 이긴다.
 
    **여기 적힌 이름이 곧 「다크에서 살아 있는 토큰」의 목록이다.** 화면에서
    쓰는 색인데 여기 없으면 밤에 라이트 값이 그대로 남아 배경과 뭉개진다.
    `tokens.test.ts`가 src의 클래스를 훑어 이 목록과 대조하므로, 새 색을 쓰기
    시작하면 거기서 죽는다. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: var(--color-dark-background);
-    --color-on-background: var(--color-dark-on-background);
-    --color-surface: var(--color-dark-surface);
-    --color-surface-dim: var(--color-dark-surface-dim);
-    --color-surface-bright: var(--color-dark-surface-bright);
-    --color-surface-variant: var(--color-dark-surface-variant);
-    --color-surface-container-lowest: var(--color-dark-surface-container-lowest);
-    --color-surface-container-low: var(--color-dark-surface-container-low);
-    --color-surface-container: var(--color-dark-surface-container);
-    --color-surface-container-high: var(--color-dark-surface-container-high);
-    --color-surface-container-highest: var(--color-dark-surface-container-highest);
-    --color-inverse-surface: var(--color-dark-inverse-surface);
-    --color-inverse-on-surface: var(--color-dark-inverse-on-surface);
+:root[data-theme='dark'] {
+  --color-background: var(--color-dark-background);
+  --color-on-background: var(--color-dark-on-background);
+  --color-surface: var(--color-dark-surface);
+  --color-surface-dim: var(--color-dark-surface-dim);
+  --color-surface-bright: var(--color-dark-surface-bright);
+  --color-surface-variant: var(--color-dark-surface-variant);
+  --color-surface-container-lowest: var(--color-dark-surface-container-lowest);
+  --color-surface-container-low: var(--color-dark-surface-container-low);
+  --color-surface-container: var(--color-dark-surface-container);
+  --color-surface-container-high: var(--color-dark-surface-container-high);
+  --color-surface-container-highest: var(--color-dark-surface-container-highest);
+  --color-inverse-surface: var(--color-dark-inverse-surface);
+  --color-inverse-on-surface: var(--color-dark-inverse-on-surface);
 
-    --color-on-surface: var(--color-dark-on-surface);
-    --color-on-surface-variant: var(--color-dark-on-surface-variant);
-    --color-outline: var(--color-dark-outline);
-    --color-outline-variant: var(--color-dark-outline-variant);
+  --color-on-surface: var(--color-dark-on-surface);
+  --color-on-surface-variant: var(--color-dark-on-surface-variant);
+  --color-outline: var(--color-dark-outline);
+  --color-outline-variant: var(--color-dark-outline-variant);
 
-    --color-primary: var(--color-dark-primary);
-    --color-on-primary: var(--color-dark-on-primary);
-    --color-secondary: var(--color-dark-secondary);
-    --color-secondary-container: var(--color-dark-secondary-container);
+  --color-primary: var(--color-dark-primary);
+  --color-on-primary: var(--color-dark-on-primary);
+  --color-secondary: var(--color-dark-secondary);
+  --color-secondary-container: var(--color-dark-secondary-container);
 
-    --color-error-container: var(--color-dark-error-container);
-    --color-on-error-container: var(--color-dark-on-error-container);
+  --color-error-container: var(--color-dark-error-container);
+  --color-on-error-container: var(--color-dark-on-error-container);
 
-    --color-calm: var(--color-dark-calm);
-    --color-calm-container: var(--color-dark-calm-container);
-    --color-on-calm-container: var(--color-dark-on-calm-container);
-    --color-normal: var(--color-dark-normal);
-    --color-normal-container: var(--color-dark-normal-container);
-    --color-on-normal-container: var(--color-dark-on-normal-container);
-    --color-busy: var(--color-dark-busy);
-    --color-busy-container: var(--color-dark-busy-container);
-    --color-on-busy-container: var(--color-dark-on-busy-container);
-    --color-crowded: var(--color-dark-crowded);
-    --color-crowded-container: var(--color-dark-crowded-container);
-    --color-on-crowded-container: var(--color-dark-on-crowded-container);
+  --color-calm: var(--color-dark-calm);
+  --color-calm-container: var(--color-dark-calm-container);
+  --color-on-calm-container: var(--color-dark-on-calm-container);
+  --color-normal: var(--color-dark-normal);
+  --color-normal-container: var(--color-dark-normal-container);
+  --color-on-normal-container: var(--color-dark-on-normal-container);
+  --color-busy: var(--color-dark-busy);
+  --color-busy-container: var(--color-dark-busy-container);
+  --color-on-busy-container: var(--color-dark-on-busy-container);
+  --color-crowded: var(--color-dark-crowded);
+  --color-crowded-container: var(--color-dark-crowded-container);
+  --color-on-crowded-container: var(--color-dark-on-crowded-container);
 
-    --color-heat-calm: var(--color-dark-heat-calm);
-    --color-heat-normal: var(--color-dark-heat-normal);
-    --color-heat-busy: var(--color-dark-heat-busy);
-    --color-heat-crowded: var(--color-dark-heat-crowded);
+  --color-heat-calm: var(--color-dark-heat-calm);
+  --color-heat-normal: var(--color-dark-heat-normal);
+  --color-heat-busy: var(--color-dark-heat-busy);
+  --color-heat-crowded: var(--color-dark-heat-crowded);
 
-    /* 어두운 배경에서는 검은 그림자가 안 보인다. 떠 있다는 사실을 그림자로만
-       말하던 자리(하단 시트·FAB)가 밤에 평평해진다 — 짙게 해서 되살린다. */
-    --shadow-floating: 0 4px 12px rgb(0 0 0 / 0.5);
-  }
+  /* 어두운 배경에서는 검은 그림자가 안 보인다. 떠 있다는 사실을 그림자로만
+     말하던 자리(하단 시트·FAB)가 밤에 평평해진다 — 짙게 해서 되살린다. */
+  --shadow-floating: 0 4px 12px rgb(0 0 0 / 0.5);
 
-  /* 브랜드 색과 그 위의 글자는 **그대로 둔다.** 남의 자산이라 밤이라고 바꿀
-     수 없고, 배경이 안 바뀌니 글자도 안 바뀌어야 한다. `--color-brand-ink`가
-     여기 없는 것이 그 뜻이다. */
+  /* 브라우저 기본 UI도 함께 어두워진다. 위 `:root`의 `light`를 덮는다. */
+  color-scheme: dark;
 }
+
+/* 브랜드 색과 그 위의 글자는 **그대로 둔다.** 남의 자산이라 밤이라고 바꿀
+   수 없고, 배경이 안 바뀌니 글자도 안 바뀌어야 한다. `--color-brand-ink`가
+   여기 없는 것이 그 뜻이다. */
+
 
 /* 키보드·스위치 사용자가 지금 어디에 있는지 아는 유일한 표시다. 이 앱에는
    포커스 스타일이 한 줄도 없었고 브라우저 기본 링에 얹혀 있었는데, 검색
@@ -414,11 +424,13 @@
   overflow: clip;
 }
 
-/* 브라우저 기본 UI(스크롤바·폼 컨트롤·캐럿)에게 두 모드를 다 지원한다고
-   알린다. 없으면 다크에서 스크롤바만 밝게 남는다. `index.html`의 같은 이름
-   메타와 짝이다 — 한쪽만 두면 첫 페인트 전후로 갈린다. */
+/* 브라우저 기본 UI(스크롤바·폼 컨트롤·캐럿)가 어느 쪽을 그릴지.
+   **`light dark`로 두면 안 된다** — 그건 「기기 설정을 따라라」는 뜻이라,
+   폰이 어두운 사용자가 앱을 밝게 쓰면 스크롤바와 입력창만 검게 남는다.
+   테마는 우리가 정하므로 여기도 우리가 정한다. 다크 값은 아래
+   `[data-theme='dark']` 블록에 있다. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
 html, body, #root {

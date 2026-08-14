@@ -8,6 +8,7 @@ import { CategoryAverages } from '../components/today/CategoryAverages'
 import { RankList } from '../components/today/RankList'
 import { RecommendationCard } from '../components/today/RecommendationCard'
 import { SummaryCard } from '../components/today/SummaryCard'
+import { ThemeSetting } from '../components/today/ThemeSetting'
 import { AREA_CATALOG, AREA_NAMES } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
 import {
@@ -132,6 +133,8 @@ export function TodayScreen({ onSelectArea, onBack }: Props) {
               </div>
             </section>
           )}
+
+          <ThemeSetting />
 
           <p className="mt-6 px-4 text-label-sm text-outline">
             출처: 서울 열린데이터광장 실시간 도시데이터 · 5분마다 갱신
