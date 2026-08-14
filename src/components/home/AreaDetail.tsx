@@ -1,4 +1,5 @@
 import { AreaHero } from './AreaHero'
+import { CityInfoChips } from './CityInfoChips'
 import { CityInfoPanel } from './CityInfoPanel'
 import { CongestionCard } from './CongestionCard'
 import { NearbyCalmSection } from './NearbyCalmSection'
@@ -87,6 +88,20 @@ export function AreaDetail({ areaName, onBack, onSelectArea }: Props) {
         saved={starred}
         onSave={() => toggle(areaName)}
       />
+
+      {/* 요약 칩 한 줄. 샘플(서울 인파레이더)의 「주차 45% · 정체 · 행사 12」
+          자리이고, 아래 도시 정보 절들의 목차 노릇도 한다 — 도시 정보가 통째로
+          펼쳐지면서 상세가 매우 길어졌기 때문이다.
+
+          **액션 행 다음, 혼잡도 앞이다.** 샘플은 이름 바로 아래에 두지만 우리는
+          그 자리에 길찾기·저장이 있다(설계 §2.6). 그 셋은 혼잡도 응답 없이도
+          성립해서 앞에 있어야 하고, 칩은 도시정보가 도착해야 생기므로
+          그 뒤가 맞다 — 반대로 두면 칩이 늦게 도착하면서 액션 행을 밀어낸다.
+
+          추가 호출은 0이다. 이미 받아 둔 응답을 다시 셀 뿐이다. */}
+      <div className="px-4">
+        <CityInfoChips areaName={areaName} />
+      </div>
 
       {query.isPending && (
         <div className="px-4">

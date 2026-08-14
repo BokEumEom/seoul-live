@@ -1,5 +1,7 @@
 import { useCityInfo } from '../../data/queries'
+
 import { hasAnyCityInfo } from '../../domain/cityInfo'
+import { cityInfoSectionDomId } from '../../domain/cityInfoSummary'
 import { AccidentList } from '../cityinfo/AccidentList'
 import { AlertBanner } from '../cityinfo/AlertBanner'
 import { BikeList } from '../cityinfo/BikeList'
@@ -74,7 +76,7 @@ export function CityInfoPanel({ areaName }: Props) {
           어떤가)이고, 시트가 좁아 관련 정보를 두 섹션으로 나누면 제목만 두 줄
           더 먹는다. 사고가 없으면 목록만 빠진다. */}
       {(info.roadTraffic !== null || info.accidents.length > 0) && (
-        <InfoSection title="도로소통" icon="road">
+        <InfoSection title="도로소통" id={cityInfoSectionDomId('road')} icon="road">
           {info.roadTraffic !== null && <RoadTrafficCard traffic={info.roadTraffic} />}
           {info.accidents.length > 0 && (
             <div className={info.roadTraffic === null ? '' : 'mt-3'}>
@@ -89,6 +91,7 @@ export function CityInfoPanel({ areaName }: Props) {
       {info.subway.length > 0 && (
         <InfoSection
           title="지하철 도착"
+          id={cityInfoSectionDomId('subway')}
           icon="subway"
           count={info.subway.length}
           // **「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다.** 기준을 안
@@ -102,6 +105,7 @@ export function CityInfoPanel({ areaName }: Props) {
 
       <InfoSection
         title="주차장"
+        id={cityInfoSectionDomId('parking')}
         icon="parking"
         count={info.parking.length}
         note="잔여 면수는 최대 3시간 전 기준이에요"
@@ -115,6 +119,7 @@ export function CityInfoPanel({ areaName }: Props) {
 
       <InfoSection
         title="따릉이"
+        id={cityInfoSectionDomId('bikes')}
         icon="bike"
         count={info.bikes.length}
         note="거치 대수는 최대 3시간 전 기준이에요"
@@ -126,7 +131,12 @@ export function CityInfoPanel({ areaName }: Props) {
         )}
       </InfoSection>
 
-      <InfoSection title="문화행사" icon="event" count={info.events.length}>
+      <InfoSection
+        title="문화행사"
+        id={cityInfoSectionDomId('events')}
+        icon="event"
+        count={info.events.length}
+      >
         {info.events.length === 0 ? (
           <EmptyNote>진행 중인 문화행사가 없어요.</EmptyNote>
         ) : (

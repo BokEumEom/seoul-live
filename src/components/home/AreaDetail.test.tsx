@@ -171,6 +171,52 @@ describe('AreaDetail', () => {
 
   // 파서와 카드가 각각 통과해도 **패널이 둘을 안 부르면** 화면에는 아무것도 안
   // 뜬다. 배선을 따로 잠근다 — 새 섹션을 더할 때 가장 조용히 빠지는 자리다.
+  it('도시 정보를 요약한 칩 줄을 상세 위쪽에 세운다', () => {
+    // 샘플(서울 인파레이더)의 「주차 45% · 정체 · 행사 12」 자리다.
+    // **추가 호출이 0인 것이 핵심이다** — 도시 정보가 상세를 열 때 자동으로
+    // 조회되므로 이미 받아 둔 응답을 다시 세기만 한다.
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        parking: [
+          { name: '주차장', capacity: 100, available: 45, liveAvailable: true, paid: null },
+        ],
+        events: [{ name: '행사', period: '', place: '', free: null, url: '' }],
+      }),
+    )
+    renderDetail()
+
+    expect(screen.getByRole('button', { name: '주차 45%' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '행사 1' })).toBeInTheDocument()
+  })
+
+  it('칩을 누르면 그 절로 포커스를 옮긴다', async () => {
+    // 화면만 옮기고 포커스를 두고 오면 키보드·스크린리더 사용자는 제자리에
+    // 남아, 다음 탭이 절이 아니라 칩 줄의 다음 칩으로 간다.
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        parking: [
+          { name: '주차장', capacity: 100, available: 45, liveAvailable: true, paid: null },
+        ],
+      }),
+    )
+    renderDetail()
+
+    await userEvent.click(screen.getByRole('button', { name: '주차 45%' }))
+
+    // 이름을 가진 리전이어야 포커스가 왔을 때 「주차장」이라고 읽힌다.
+    const section = screen.getByRole('region', { name: '주차장' })
+    expect(section).toHaveFocus()
+  })
+
+  it('도시 정보가 하나도 없으면 칩 줄을 만들지 않는다', () => {
+    // 빈 띠가 액션 행과 혼잡도 사이에 남으면 명소마다 카드 시작 높이가 달라진다.
+    renderDetail()
+
+    expect(screen.queryByRole('button', { name: /주차/ })).not.toBeInTheDocument()
+  })
+
   it('지하철 도착은 언제 기준인지 같이 적는다', () => {
     // 「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다. 도시정보를 3시간
     // 캐시로 받기로 한 이상(쿼터), 기준을 안 적으면 3시간 전 열차를 지금 오는
