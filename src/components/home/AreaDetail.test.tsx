@@ -266,6 +266,26 @@ describe('AreaDetail', () => {
     expect(screen.queryByRole('button', { name: /지도에서 보기/ })).not.toBeInTheDocument()
   })
 
+  it('따릉이·주차장에 명소에서의 거리를 적는다', () => {
+    // 샘플(서울 인파레이더)의 「광화문역 5번출구 120m 19대」다. 이름만 있으면
+    // 「5번출구」가 걸어갈 만한 거리인지 알 수 없다.
+    //
+    // **기준점은 사용자 위치가 아니라 명소 중심이다.** 상세는 지금 있는 곳이
+    // 아니라 가려는 곳을 보는 화면이라, 부산에서 강남역을 열어도 뜻이 있어야
+    // 한다. 강남역 카탈로그 좌표는 37.498/127.0276이고 아래는 북쪽 약 220m다.
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        bikes: [
+          { name: '가까운 대여소', coords: { lat: 37.5, lng: 127.0276 }, bikes: 6, racks: 21 },
+        ],
+      }),
+    )
+    renderDetail()
+
+    expect(screen.getByText(/220m/)).toBeInTheDocument()
+  })
+
   it('지하철 도착은 언제 기준인지 같이 적는다', () => {
     // 「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다. 도시정보를 3시간
     // 캐시로 받기로 한 이상(쿼터), 기준을 안 적으면 3시간 전 열차를 지금 오는

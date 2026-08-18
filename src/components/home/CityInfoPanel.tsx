@@ -2,6 +2,7 @@ import { useCityInfo } from '../../data/queries'
 
 import { hasAnyCityInfo, type FacilityLocation } from '../../domain/cityInfo'
 import { cityInfoSectionDomId } from '../../domain/cityInfoSummary'
+import type { Coords } from '../../domain/types'
 import { AccidentList } from '../cityinfo/AccidentList'
 import { AlertBanner } from '../cityinfo/AlertBanner'
 import { BikeList } from '../cityinfo/BikeList'
@@ -16,6 +17,8 @@ import { SkeletonList } from '../common/SkeletonCard'
 
 interface Props {
   readonly areaName: string
+  /** 주차장·따릉이까지의 거리를 재는 기준점. 명소 중심이다. */
+  readonly origin: Coords | null
   /** 주차장·따릉이 줄의 아이콘이 누르는 것. 지도는 `HomeScreen`이 갖는다. */
   readonly onShowOnMap: (place: FacilityLocation) => void
 }
@@ -32,7 +35,7 @@ interface Props {
 // **한 번의 조회가 이 절 전부를 가져온다.** `citydata`는 주차장·따릉이·날씨·
 // 문화행사·지하철·재난문자를 한 응답에 담으므로, 안쪽 절을 접어 둬도 호출량은
 // 1원도 줄지 않는다. 즉 무엇을 펼치고 접을지는 순전히 화면 문제다.
-export function CityInfoPanel({ areaName, onShowOnMap }: Props) {
+export function CityInfoPanel({ areaName, origin, onShowOnMap }: Props) {
   const cityInfo = useCityInfo(areaName)
   const info = cityInfo.data
 
@@ -115,7 +118,7 @@ export function CityInfoPanel({ areaName, onShowOnMap }: Props) {
         {info.parking.length === 0 ? (
           <EmptyNote>주변에 주차장 정보가 없어요.</EmptyNote>
         ) : (
-          <ParkingList lots={info.parking} onShowOnMap={onShowOnMap} />
+          <ParkingList lots={info.parking} origin={origin} onShowOnMap={onShowOnMap} />
         )}
       </InfoSection>
 
@@ -129,7 +132,7 @@ export function CityInfoPanel({ areaName, onShowOnMap }: Props) {
         {info.bikes.length === 0 ? (
           <EmptyNote>주변에 따릉이 대여소가 없어요.</EmptyNote>
         ) : (
-          <BikeList stations={info.bikes} onShowOnMap={onShowOnMap} />
+          <BikeList stations={info.bikes} origin={origin} onShowOnMap={onShowOnMap} />
         )}
       </InfoSection>
 

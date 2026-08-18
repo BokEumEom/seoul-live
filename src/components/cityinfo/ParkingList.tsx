@@ -4,6 +4,9 @@ import {
   type ParkingLot,
 } from '../../domain/cityInfo'
 import { toFacilityLocation, type FacilityLocation } from '../../domain/cityInfo'
+import { formatDistance } from '../../domain/distance'
+import { withDistanceFrom } from '../../domain/facilityDistance'
+import type { Coords } from '../../domain/types'
 import { ShowOnMapButton } from './ShowOnMapButton'
 import { ToneBadge } from '../common/ToneBadge'
 
@@ -19,8 +22,13 @@ function availabilityLabel(lot: ParkingLot): string {
   return lot.available === 0 ? '만차' : `${lot.available.toLocaleString()}면`
 }
 
-function describe(lot: ParkingLot): string {
+// 거리를 맨 앞에 둔다 — 어느 주차장으로 갈지 고를 때 먼저 보는 값이다.
+// 총 면수·유무료는 그 뒤다.
+function describe(lot: ParkingLot & { readonly meters: number | null }): string {
   const parts: string[] = []
+  if (lot.meters !== null) {
+    parts.push(formatDistance(lot.meters))
+  }
   if (lot.capacity !== null) {
     parts.push(`총 ${lot.capacity.toLocaleString()}면`)
   }
@@ -32,11 +40,15 @@ function describe(lot: ParkingLot): string {
 
 interface Props {
   readonly lots: readonly ParkingLot[]
+  /** 거리를 재는 기준점. 명소 중심이다 — 근거는 `facilityDistance.ts`. */
+  readonly origin: Coords | null
   readonly onShowOnMap: (place: FacilityLocation) => void
 }
 
-export function ParkingList({ lots, onShowOnMap }: Props) {
-  const visible = sortParkingByAvailable(lots, VISIBLE_LIMIT)
+export function ParkingList({ lots, origin, onShowOnMap }: Props) {
+  // **정렬은 대수순 그대로다(따릉이는 거리순).** 차로 가는 곳이라 200m 더
+  // 가까운 것보다 빈 자리가 있는 쪽이 낫다 — 만차면 거리가 무의미하다.
+  const visible = withDistanceFrom(sortParkingByAvailable(lots, VISIBLE_LIMIT), origin)
 
   return (
     <>

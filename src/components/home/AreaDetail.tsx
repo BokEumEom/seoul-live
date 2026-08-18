@@ -147,7 +147,14 @@ export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Prop
         </>
       )}
 
-      <CityInfoPanel areaName={areaName} onShowOnMap={onShowOnMap} />
+      {/* 기준점은 **명소 중심**이지 사용자 위치가 아니다. 상세는 지금 있는
+          곳이 아니라 가려는 곳을 보는 화면이라, 부산에서 광화문을 열어도
+          「120m」가 뜻을 가져야 한다 — 근거는 `facilityDistance.ts`. */}
+      <CityInfoPanel
+        areaName={areaName}
+        origin={{ lat: entry.lat, lng: entry.lng }}
+        onShowOnMap={onShowOnMap}
+      />
 
       <NearbyCalmSection exclude={entry.name} onSelectArea={onSelectArea} />
     </div>

@@ -1,9 +1,11 @@
 import {
-  sortBikesByStock,
   toFacilityLocation,
   type BikeStation,
   type FacilityLocation,
 } from '../../domain/cityInfo'
+import { formatDistance } from '../../domain/distance'
+import { sortBikesForWalking } from '../../domain/facilityDistance'
+import type { Coords } from '../../domain/types'
 import { ShowOnMapButton } from './ShowOnMapButton'
 import { ToneBadge } from '../common/ToneBadge'
 
@@ -30,11 +32,15 @@ function stockLabel(bikes: number | null): string {
 
 interface Props {
   readonly stations: readonly BikeStation[]
+  /** 거리를 재는 기준점. 명소 중심이다 — 근거는 `facilityDistance.ts`. */
+  readonly origin: Coords | null
   readonly onShowOnMap: (place: FacilityLocation) => void
 }
 
-export function BikeList({ stations, onShowOnMap }: Props) {
-  const visible = sortBikesByStock(stations, VISIBLE_LIMIT)
+export function BikeList({ stations, origin, onShowOnMap }: Props) {
+  // **거리순이다(주차장은 대수순).** 걸어가는 곳이라 500m의 20대보다
+  // 120m의 5대가 낫다 — 빌릴 수 있는 곳을 먼저 세우고 그 안에서 가까운 순.
+  const visible = sortBikesForWalking(stations, origin, VISIBLE_LIMIT)
 
   return (
     <>
@@ -43,11 +49,17 @@ export function BikeList({ stations, onShowOnMap }: Props) {
           <li key={station.name} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-body-md text-on-surface">{station.name}</p>
-              {station.racks !== null && (
-                <p className="mt-0.5 text-label-sm text-on-surface-variant">
-                  거치대 {station.racks}대
-                </p>
-              )}
+              {/* 샘플(서울 인파레이더)의 「120m · 19대」 자리다. 거리를 앞에
+                  두는 이유는 그것이 갈지 말지를 가르는 값이기 때문이다.
+                  거치대 수는 그다음이다 — 반납할 자리를 볼 때만 쓴다. */}
+              <p className="mt-0.5 text-label-sm text-on-surface-variant">
+                {[
+                  station.meters === null ? null : formatDistance(station.meters),
+                  station.racks === null ? null : `거치대 ${String(station.racks)}대`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
               <ToneBadge tone={stockTone(station.bikes)} label={stockLabel(station.bikes)} />

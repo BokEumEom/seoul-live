@@ -20,6 +20,7 @@ describe('ParkingList', () => {
   it('실시간을 제공하지 않는 주차장은 만차가 아니라 미제공으로 쓴다', () => {
     render(
       <ParkingList
+        origin={null}
         onShowOnMap={() => undefined}
         lots={[lot({ name: '미제공', available: null, liveAvailable: false })]}
       />,
@@ -32,6 +33,7 @@ describe('ParkingList', () => {
   it('실시간을 제공하는데 값이 비면 정보 없음으로 쓴다', () => {
     render(
       <ParkingList
+        origin={null}
         onShowOnMap={() => undefined}
         lots={[lot({ name: '값없음', available: null, liveAvailable: true })]}
       />,
@@ -43,6 +45,7 @@ describe('ParkingList', () => {
   it('여유 면수가 0일 때만 만차다', () => {
     render(
       <ParkingList
+        origin={null}
         onShowOnMap={() => undefined}
         lots={[lot({ name: '가득 찬 곳', available: 0 }), lot({ name: '한 자리', available: 1 })]}
       />,
@@ -53,13 +56,13 @@ describe('ParkingList', () => {
   })
 
   it('총 면수와 유무료를 함께 쓴다', () => {
-    render(<ParkingList onShowOnMap={() => undefined} lots={[lot({ name: '유료', capacity: 1_200, paid: true })]} />)
+    render(<ParkingList origin={null} onShowOnMap={() => undefined} lots={[lot({ name: '유료', capacity: 1_200, paid: true })]} />)
 
     expect(screen.getByText('총 1,200면 · 유료')).toBeInTheDocument()
   })
 
   it('총 면수도 유무료도 모르면 설명 줄을 만들지 않는다', () => {
-    render(<ParkingList onShowOnMap={() => undefined} lots={[lot({ name: '모름', capacity: null, paid: null })]} />)
+    render(<ParkingList origin={null} onShowOnMap={() => undefined} lots={[lot({ name: '모름', capacity: null, paid: null })]} />)
 
     expect(screen.getByText('모름')).toBeInTheDocument()
     expect(screen.queryByText(/총 /)).not.toBeInTheDocument()
@@ -70,7 +73,7 @@ describe('ParkingList', () => {
       lot({ name: `주차장${index}`, available: index }),
     )
 
-    render(<ParkingList onShowOnMap={() => undefined} lots={lots} />)
+    render(<ParkingList origin={null} onShowOnMap={() => undefined} lots={lots} />)
 
     // available이 큰 순: 6, 5, 4, 3, 2
     expect(screen.getAllByRole('listitem')).toHaveLength(5)
@@ -80,7 +83,7 @@ describe('ParkingList', () => {
   })
 
   it('다섯 곳 이하면 나머지 안내를 만들지 않는다', () => {
-    render(<ParkingList onShowOnMap={() => undefined} lots={[lot({ name: '하나' })]} />)
+    render(<ParkingList origin={null} onShowOnMap={() => undefined} lots={[lot({ name: '하나' })]} />)
 
     expect(screen.queryByText(/^외 /)).not.toBeInTheDocument()
   })
