@@ -15,7 +15,7 @@ function summary(overrides: Partial<CitySummary> = {}): CitySummary {
 
 describe('SummaryStrip', () => {
   it('붐빔 개수를 한 줄로 보여준다', () => {
-    render(<SummaryStrip summary={summary()} alertCount={0} onOpen={() => {}} />)
+    render(<SummaryStrip summary={summary()} onOpen={() => {}} />)
     expect(screen.getByRole('button', { name: /30곳 중 붐빔 7곳/ })).toBeInTheDocument()
   })
 
@@ -29,25 +29,18 @@ describe('SummaryStrip', () => {
           counted: 22,
           byLevel: { 여유: 12, 보통: 3, '약간 붐빔': 0, 붐빔: 7 },
         })}
-        alertCount={0}
         onOpen={() => {}}
       />,
     )
     expect(screen.getByRole('button', { name: /22곳 중 붐빔 7곳/ })).toBeInTheDocument()
   })
 
-  // 순서까지 잠근다. `toHaveTextContent(/재난문자 2건/)`만 보면 뒤에 붙이는
-  // 구현도 통과하는데, 좁은 시트에서 뒤는 truncate로 잘려 사라지는 자리다.
-  // 색도 함께 단언한다 — data-alert만 보면 색 분기를 통째로 지워도 통과한다.
-  it('재난문자가 있으면 앞에 세우고 경보로 표시한다', () => {
-    render(<SummaryStrip summary={summary()} alertCount={2} onOpen={() => {}} />)
-    const strip = screen.getByRole('button')
-    expect(screen.getByText('재난문자 2건 · 30곳 중 붐빔 7곳')).toBeInTheDocument()
-    expect(strip).toHaveClass('bg-error-container', 'text-on-error-container')
-  })
-
-  it('재난문자가 없으면 경보 표시가 아니다', () => {
-    render(<SummaryStrip summary={summary()} alertCount={0} onOpen={() => {}} />)
+  // **재난문자는 이 줄의 몫이 아니다.** 예전에는 「재난문자 2건」을 앞세우고
+  // 줄을 빨갛게 칠했는데, 지금은 바로 위 `AlertBanner`가 본문을 보여준다.
+  // 이 단언이 되살아난 중복을 막는다 — 배너와 이 줄이 같은 말을 하면 한 줄이
+  // 통째로 낭비되고, 둘 다 빨가면 무엇이 경보인지 흐려진다.
+  it('재난문자를 말하지 않고 경보색도 쓰지 않는다', () => {
+    render(<SummaryStrip summary={summary()} onOpen={() => {}} />)
     const strip = screen.getByRole('button')
     expect(strip).toHaveClass('bg-secondary-container', 'text-primary')
     expect(strip).not.toHaveClass('bg-error-container')
@@ -58,7 +51,6 @@ describe('SummaryStrip', () => {
     render(
       <SummaryStrip
         summary={summary({ counted: 0, byLevel: { 여유: 0, 보통: 0, '약간 붐빔': 0, 붐빔: 0 } })}
-        alertCount={0}
         onOpen={() => {}}
       />,
     )
@@ -71,7 +63,6 @@ describe('SummaryStrip', () => {
     render(
       <SummaryStrip
         summary={summary({ byLevel: { 여유: 30, 보통: 0, '약간 붐빔': 0, 붐빔: 0 } })}
-        alertCount={0}
         onOpen={() => {}}
       />,
     )
@@ -84,19 +75,19 @@ describe('SummaryStrip', () => {
   // `›`는 aria-hidden이라 이름에 섞이면 안 된다 — 섞이면 스크린리더가
   // 「홑화살괄호」 같은 글리프 이름을 읽는다.
   it('무엇이 열리는지 이름에 담고 장식 글리프는 뺀다', () => {
-    render(<SummaryStrip summary={summary()} alertCount={2} onOpen={() => {}} />)
+    render(<SummaryStrip summary={summary()} onOpen={() => {}} />)
     const strip = screen.getByRole('button')
     // 하나의 정규식으로 순서까지 잠근다. 둘로 나눠 단언하면 목적지를 문구
     // 앞에 두는 구현도 통과하는데, 음성 제어는 이름 앞쪽으로 매칭하므로
     // 보이는 문구가 앞에 있어야 한다(WCAG 2.5.3).
-    expect(strip).toHaveAccessibleName(/재난문자 2건 · 30곳 중 붐빔 7곳.*오늘의 서울 열기/)
+    expect(strip).toHaveAccessibleName(/30곳 중 붐빔 7곳.*오늘의 서울 열기/)
     expect(strip).not.toHaveAccessibleName(/›/)
   })
 
   // 이 컴포넌트의 존재 이유가 "한 줄"이다. truncate가 빠지면 긴 문구가 두 줄로
   // 접히고, half 단계에서 명소가 그만큼 밀려난다. 크기도 시안 토큰으로 잠근다.
   it('한 줄을 넘지 않게 자른다', () => {
-    render(<SummaryStrip summary={summary()} alertCount={0} onOpen={() => {}} />)
+    render(<SummaryStrip summary={summary()} onOpen={() => {}} />)
     expect(screen.getByText('30곳 중 붐빔 7곳')).toHaveClass('truncate')
     // py-2도 함께 잠근다. 이 줄이 목록에서 뺏는 높이가 곧 이 컴포넌트의
     // 비용이라(36px = 0.61행) 세로 패딩이 늘면 Task 4가 번 밀도를 도로 먹는다.
@@ -105,7 +96,7 @@ describe('SummaryStrip', () => {
 
   it('누르면 콜백이 불린다', async () => {
     const onOpen = vi.fn()
-    render(<SummaryStrip summary={summary()} alertCount={0} onOpen={onOpen} />)
+    render(<SummaryStrip summary={summary()} onOpen={onOpen} />)
     await userEvent.click(screen.getByRole('button'))
     expect(onOpen).toHaveBeenCalledTimes(1)
   })

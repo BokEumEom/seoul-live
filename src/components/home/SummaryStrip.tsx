@@ -3,7 +3,6 @@ import type { CitySummary } from '../../domain/summary'
 
 interface Props {
   readonly summary: CitySummary
-  readonly alertCount: number
   readonly onOpen: () => void
 }
 
@@ -16,9 +15,12 @@ interface Props {
 // 세는 값은 total이 아니라 counted다. 30곳 중 22곳만 응답한 날에 "30곳 중"이라
 // 쓰면 전체를 봤다는 오해를 준다. counted와 total이 갈리는 사실 자체는 줄이
 // 하나뿐이라 여기서 말하지 못하고 「오늘의 서울」의 SummaryCard가 말한다.
-export function SummaryStrip({ summary, alertCount, onOpen }: Props) {
-  const hasAlert = alertCount > 0
-
+// **재난문자는 더 이상 이 줄이 지지 않는다.** 예전에는 여기에 「재난문자 2건」을
+// 앞세우고 줄 색을 빨강으로 바꿨는데, 건수로는 우산을 챙길 일인지 대피할 일인지
+// 알 수 없었다. 지금은 바로 위 `AlertBanner`가 **본문을 그대로** 보여준다 —
+// 같은 것을 두 줄이 말하면 이 줄의 한 칸이 중복에 낭비되고, 배너가 이미 빨강인데
+// 바로 아래 줄까지 빨가면 무엇이 경보인지 흐려진다.
+export function SummaryStrip({ summary, onOpen }: Props) {
   // counted === 0으로만 갈린다. 붐빔이 0곳인 건 정보가 없는 게 아니라 좋은
   // 소식이라 "30곳 중 붐빔 0곳"으로 그대로 센다.
   const label =
@@ -41,15 +43,9 @@ export function SummaryStrip({ summary, alertCount, onOpen }: Props) {
       //
       // font-medium을 쓰지 않는다 — --text-label-md--font-weight가 이미 500이라
       // 같은 값을 두 번 쓰는 것이고, 나중에 토큰을 고쳐도 여기만 안 따라온다.
-      className={`flex w-full items-center justify-between gap-2 rounded-card px-3 py-2 text-label-md ${
-        hasAlert
-          ? 'bg-error-container text-on-error-container'
-          : 'bg-secondary-container text-primary'
-      }`}
+      className="flex w-full items-center justify-between gap-2 rounded-card bg-secondary-container px-3 py-2 text-label-md text-primary"
     >
-      <span className="truncate">
-        {hasAlert ? t('재난문자 {건수}건 · {요약}', { 건수: alertCount, 요약: label }) : label}
-      </span>
+      <span className="truncate">{label}</span>
       {/* 보이는 문구는 상태 읽어주기라 눌러서 무엇이 열리는지 말해주지 않는다.
           aria-label로 덮으면 보이는 글자와 이름이 어긋나므로(음성 제어가 보이는
           문구로 못 부른다) 목적지만 이름 뒤에 덧댄다. */}

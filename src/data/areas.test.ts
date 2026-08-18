@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AREA_CATEGORIES, CATEGORY_LABEL } from '../domain/types'
-import { AREA_CATALOG, findAreaByName } from './areas'
+import { ALERT_SOURCE_AREA, AREA_CATALOG, findAreaByName } from './areas'
 import { OFFICIAL_AREA_NAMES } from './official-areas'
 
 describe('AREA_CATALOG', () => {
@@ -40,6 +40,12 @@ describe('AREA_CATALOG', () => {
     // 로마자가 비슷한 짝이 실제로 있다.
     const names = AREA_CATALOG.map((area) => area.nameEn)
     expect(new Set(names).size).toBe(names.length)
+  })
+
+  // **오타가 나면 홈의 재난문자가 조용히 사라진다.** 프록시가 허용 목록에
+  // 없는 이름을 400으로 막으므로 화면에는 그냥 「경보 없음」으로 보인다.
+  it('재난문자를 받아 오는 명소가 카탈로그에 있다', () => {
+    expect(findAreaByName(ALERT_SOURCE_AREA)).toBeDefined()
   })
 
   it('모든 좌표가 서울 범위 안에 있다', () => {

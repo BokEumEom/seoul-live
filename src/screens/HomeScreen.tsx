@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from '../app/locationContext'
 import { ErrorState } from '../components/common/ErrorState'
 import { SkeletonRows } from '../components/common/SkeletonCard'
+import { AlertBanner } from '../components/home/AlertBanner'
 import { AreaDetail } from '../components/home/AreaDetail'
 import type { FacilityLocation } from '../domain/cityInfo'
 import { BottomSheet } from '../components/home/BottomSheet'
@@ -58,7 +59,7 @@ import { searchAreas } from '../domain/search'
 import { SHEET_RATIO, type Detent } from '../domain/sheet'
 import { summarize } from '../domain/summary'
 import type { Coords } from '../domain/types'
-import { useCachedCityAlerts } from '../hooks/useCachedCityAlerts'
+import { useCityAlerts } from '../hooks/useCityAlerts'
 import { useFavorites } from '../hooks/useFavorites'
 import { useHomeFilters } from '../hooks/useHomeFilters'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
@@ -98,7 +99,7 @@ export function HomeScreen() {
   const { favorites } = useFavorites()
   // 「오늘의 서울」이 시트 안 뷰가 되면서 요약 줄의 재난문자 개수도 여기서 센다.
   // 캐시에 있는 것만 읽으므로 추가 호출이 없다.
-  const alerts = useCachedCityAlerts()
+  const alerts = useCityAlerts()
   // 지도가 없는 이유를 가르는 데 쓴다 — 아래 `mapUnavailableReason` 주석 참조.
   const online = useOnlineStatus()
 
@@ -597,6 +598,27 @@ export function HomeScreen() {
           )}
         </div>
       )}
+      {/* **재난문자가 목록보다 먼저다.** 서울 인파레이더도 같은 자리에 둔다.
+          시트가 half로 시작하므로 이 줄은 열자마자 보이고, 경보가 없는 날은
+          통째로 빠져 세로 공간을 한 픽셀도 안 쓴다.
+
+          요약 스트립보다 위인 이유: 스트립은 「눌러서 더 보는」 안내이고 이건
+          「지금 읽어야 하는」 것이다. `snapshots.isError`와 무관하게 그린다 —
+          혼잡도 조회가 실패해도 경보는 다른 질의로 서 있고, 오히려 그럴 때
+          더 필요하다.
+
+          여백 없이 그대로 둔다 — 배너가 `mx-4`를 스스로 갖는다. 여기서
+          `<div className="px-4">`로 감싸면 경보가 없는 날에도 빈 div가 남아
+          `gap-3`이 12px을 먹는다. */}
+      <AlertBanner
+        alerts={alerts}
+        onOpen={() => {
+          setView('today')
+          setDetent('full')
+          requestSheetFocus()
+        }}
+      />
+
       {/* 조회가 영구 실패하면 그리지 않는다. 스트립의 빈 상태 문구는
           「아직 받지 못했어요」라 로딩을 뜻하는데, 바로 아래 ErrorState는
           「가져오지 못했어요」라고 말한다 — 같은 자리에서 두 문장이 어긋난다.
@@ -605,7 +627,6 @@ export function HomeScreen() {
         <div className="px-4">
           <SummaryStrip
             summary={summarize(list)}
-            alertCount={alerts.length}
             onOpen={() => {
               setView('today')
               setDetent('full')

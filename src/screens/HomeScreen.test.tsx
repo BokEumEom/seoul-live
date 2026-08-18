@@ -184,6 +184,10 @@ beforeEach(async () => {
  *
  * 어느 쪽을 눌렀는지가 중요한 곳에서는 `mapMarker`·`sheetRow`를 써라.
  */
+function alertFor(message: string) {
+  return { category: '폭염', step: '경보', message, createdAt: '' }
+}
+
 function areaButtons(name: string | RegExp) {
   return screen.getAllByRole('button', { name })
 }
@@ -1237,6 +1241,43 @@ describe('HomeScreen', () => {
     })
 
     expect(screen.getByText(/오프라인이에요/)).toBeInTheDocument()
+  })
+
+  // ── 재난문자 ────────────────────────────────────────────────────────────
+  //
+  // **홈이 스스로 받아 온다.** 예전에는 캐시에 있는 것만 읽어서, 앱을 열고
+  // 아무 명소도 안 눌렀으면 경보가 걸려 있어도 홈에 아무것도 안 떴다.
+  it('상세를 안 열어도 재난문자 본문이 홈에 뜬다', () => {
+    useCityInfo.mockReturnValue({
+      data: { alerts: [alertFor('[서울특별시] 폭염경보 발효')] },
+      isPending: false,
+      isError: false,
+    } as unknown as UseQueryResult<CityInfo>)
+    render(<HomeScreen />)
+
+    expect(screen.getByText(/폭염경보 발효/)).toBeInTheDocument()
+  })
+
+  // **경보는 하루의 대부분에서 0건이다.** 빈 배너가 남으면 시트에서 가장 귀한
+  // 세로 공간을 상시로 먹는다.
+  it('경보가 없으면 배너가 없다', () => {
+    render(<HomeScreen />)
+
+    expect(screen.queryByRole('button', { name: /오늘의 서울 열기/ })).toHaveTextContent(
+      /곳 중 붐빔/,
+    )
+  })
+
+  // 건수만 말하던 요약 줄과 같은 말을 두 번 하지 않는다.
+  it('요약 줄은 재난문자를 말하지 않는다', () => {
+    useCityInfo.mockReturnValue({
+      data: { alerts: [alertFor('폭염경보')] },
+      isPending: false,
+      isError: false,
+    } as unknown as UseQueryResult<CityInfo>)
+    render(<HomeScreen />)
+
+    expect(screen.queryByText(/재난문자 \d건 ·/)).toBeNull()
   })
 
   it('키가 없으면 오프라인보다 키 문제를 먼저 말한다', () => {

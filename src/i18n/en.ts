@@ -143,8 +143,11 @@ export const EN: Readonly<Record<string, string>> = {
   '평균 {속도}km/h': '{속도} km/h avg',
   '기준 {시각}': 'as of {시각}',
   '{시각}까지 통제': 'closed until {시각}',
+  // 한국어는 세는 것마다 단위가 다르고(곳·대·건) 영어는 같다. 키를 하나로
+  // 합치면 한국어가 틀린 단위를 쓰게 되므로 값이 겹치더라도 나눠 둔다.
   '외 {개수}곳': '{개수} more',
   '외 {개수}대': '{개수} more',
+  '외 {개수}건': '{개수} more',
   '최고 {높} · 최저 {낮}': 'High {높} · Low {낮}',
   // 도로소통 지수. **키에 「도로」가 붙어 있는 것이 핵심이다.**
   //
@@ -229,7 +232,6 @@ export const EN: Readonly<Record<string, string>> = {
   '카테고리별 평균': 'Average by category',
   '가까우면서 여유로운 곳 추천': 'Close and quiet — recommended',
   '{개수}곳 중 붐빔 {붐빔}곳': '{붐빔} of {개수} places crowded',
-  '재난문자 {건수}건 · {요약}': '{건수} alerts · {요약}',
   ', 오늘의 서울 열기': ', open Seoul today',
   '출처: 서울 열린데이터광장 실시간 도시데이터 · 5분마다 갱신':
     'Source: Seoul Open Data Plaza live city data · updated every 5 minutes',

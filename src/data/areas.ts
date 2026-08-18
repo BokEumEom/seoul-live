@@ -46,6 +46,26 @@ export const AREA_CATALOG: readonly AreaCatalogEntry[] = [
   { code: 'POI096', name: '북서울꿈의숲', nameEn: 'Dream Forest', lat: 37.6208, lng: 127.0417, category: '공원', purposes: ['kids', 'date'] },
 ]
 
+/**
+ * 홈 화면이 재난문자를 받으려고 도시 정보를 조회하는 **한 곳.**
+ *
+ * **왜 한 곳인가.** 재난문자는 `citydata`에만 있고 그건 명소당 1회 호출이다.
+ * 30곳을 부르면 하루 240회가 더해져 한도(1,000)를 넘는다. 한 곳이면 3시간
+ * 캐시에서 하루 8회이고, **그 8회는 이미 예산 안에 있다** — 도시정보 몫으로
+ * 잡아 둔 「최악 30곳」에 이 명소가 포함되어 있어서 최악의 경우 총량이 안 는다.
+ * 늘어나는 것은 「아무도 이 명소의 상세를 안 연 날」의 실제 호출뿐이다.
+ *
+ * **광화문·덕수궁인 이유**는 서울의 한가운데이고, 이 앱이 실호출로 응답을
+ * 확인해 픽스처까지 떠 둔 유일한 명소이기 때문이다(`docs/fixtures/`).
+ *
+ * **한 곳으로 서울 전체를 덮는다고 단정하지 않는다.** `LIVE_DST_MESSAGE`가
+ * 시 전역인지 자치구 단위인지 명세에 없고, 실응답에서 비어 있는 것만 봤다.
+ * 그래서 화면은 「서울의 재난문자 전부」라고 말하지 않고 **받은 문구를 그대로**
+ * 보여준다 — 재난문자 본문은 언제나 스스로 지역을 밝힌다(「[서울특별시] …」).
+ * 상세를 연 명소가 있으면 그쪽 캐시도 함께 모은다(`useCityAlerts`).
+ */
+export const ALERT_SOURCE_AREA = '광화문·덕수궁'
+
 export function findAreaByName(name: string): AreaCatalogEntry | undefined {
   return AREA_CATALOG.find((area) => area.name === name)
 }
