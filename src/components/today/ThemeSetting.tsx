@@ -3,11 +3,15 @@ import type { ThemeSetting as Setting } from '../../domain/theme'
 import { setTheme, useThemeSetting } from '../../hooks/themeStore'
 
 // 리터럴 배열로 둔다. Tailwind v4는 정적 추출이라 클래스를 조합하지 않는다.
-const OPTIONS: readonly { readonly value: Setting; readonly label: string }[] = [
-  { value: 'light', label: t('밝게') },
-  { value: 'dark', label: t('어둡게') },
-  { value: 'system', label: t('기기 설정') },
-]
+// **상수가 아니라 함수인 이유**는 `SortSegmented`에 한 벌 있다 — 모듈 최상위의
+// `t()`는 import 시점의 언어로 굳는다.
+function options(): readonly { readonly value: Setting; readonly label: string }[] {
+  return [
+    { value: 'light', label: t('밝게') },
+    { value: 'dark', label: t('어둡게') },
+    { value: 'system', label: t('기기 설정') },
+  ]
+}
 
 // **다크 모드는 지원이지 기본이 아니다.** 예전에는 CSS가
 // `prefers-color-scheme`를 직접 봐서 폰이 어두운 사용자에게는 앱이 늘 어두웠다.
@@ -31,7 +35,7 @@ export function ThemeSetting() {
         aria-label={t("화면 테마")}
         className="mt-2 flex gap-1 rounded-full bg-surface-container p-1"
       >
-        {OPTIONS.map((option) => (
+        {options().map((option) => (
           <button
             key={option.value}
             type="button"

@@ -2,11 +2,18 @@ import { t } from '../../i18n/t'
 import type { SortMode } from '../../hooks/useNearbyAreas'
 
 // 리터럴 배열로 둔다. Tailwind v4는 정적 추출이라 클래스를 조합하지 않는다.
-const OPTIONS: readonly { readonly mode: SortMode; readonly label: string }[] = [
-  { mode: 'distance', label: t('거리순') },
-  { mode: 'calm', label: t('여유한 순') },
-  { mode: 'busy', label: t('붐비는 순') },
-]
+//
+// **다만 상수가 아니라 함수다.** 모듈 최상위에서 `t()`를 부르면 import 시점의
+// 언어로 값이 굳어, 언어를 바꿔도 이 세 글자만 한국어로 남는다 — 2026-08-18에
+// 실제로 6개 파일 19개 문자열이 그 상태였고 사전 검사는 전부 초록이었다.
+// 같은 실수를 `i18n.test.ts`의 「모듈 최상위에서 t()를 부르지 않는다」가 막는다.
+function options(): readonly { readonly mode: SortMode; readonly label: string }[] {
+  return [
+    { mode: 'distance', label: t('거리순') },
+    { mode: 'calm', label: t('여유한 순') },
+    { mode: 'busy', label: t('붐비는 순') },
+  ]
+}
 
 interface Props {
   readonly value: SortMode
@@ -28,7 +35,7 @@ export function SortSegmented({ value, canSortByDistance, onChange }: Props) {
       aria-label={t("정렬")}
       className="flex gap-1 rounded-full bg-surface-container p-1"
     >
-      {OPTIONS.map((option) => {
+      {options().map((option) => {
         const disabled = option.mode === 'distance' && !canSortByDistance
         return (
           <button

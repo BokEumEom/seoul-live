@@ -1,3 +1,4 @@
+import { areaDisplayName } from '../../i18n/areaName'
 import { t } from '../../i18n/t'
 import { useState } from 'react'
 import { kakaoMapSearchUrl, naverMapSearchUrl, tmapRouteUrl } from '../../domain/mapLinks'
@@ -33,30 +34,36 @@ interface MapLink {
 // 헤드리스 크롬 실측(320/360/390px): 배정 87/101/111px, 필요 75(카카오맵)·
 // 63(네이버)·53(티맵)px. 셋 다 같은 top이고 높이가 48px 그대로라 줄바꿈이 없다.
 // **라벨을 늘릴 때는 다시 재라** — 320px의 여유가 12px뿐이다.
-const MAP_LINKS: readonly MapLink[] = [
-  {
-    label: t('카카오맵'),
-    icon: 'pin',
-    href: (entry) => kakaoMapSearchUrl(entry.name),
-    className: 'bg-brand-kakao text-brand-ink',
-  },
-  {
-    label: t('네이버'),
-    icon: 'map',
-    href: (entry) => naverMapSearchUrl(entry.name),
-    className: 'bg-brand-naver text-brand-ink',
-  },
-  {
-    // 티맵 로고 색을 토큰으로 들이지 않았다. 카카오·네이버는 시안이 브랜드
-    // 배경을 쓰지만 셋째까지 색을 채우면 한 줄이 신호등이 된다 — 이것만
-    // 테두리형으로 두어 「길찾기 둘 + 내비 하나」로 읽히게 했다.
-    label: t('티맵'),
-    icon: 'navigation',
-    href: (entry) => tmapRouteUrl(entry.name, entry),
-    className:
-      'border border-outline-variant bg-surface-container-lowest text-on-surface',
-  },
-]
+//
+// **상수 배열이 아니라 함수인 이유**는 `SortSegmented`에 한 벌 있다 — 모듈
+// 최상위의 `t()`는 import 시점의 언어로 굳는다. 이 셋은 사전에 항목이 있는데도
+// (KakaoMap·Naver·TMAP) 영어 화면에서 한국어로 남아 있었다.
+function mapLinks(): readonly MapLink[] {
+  return [
+    {
+      label: t('카카오맵'),
+      icon: 'pin',
+      href: (entry) => kakaoMapSearchUrl(entry.name),
+      className: 'bg-brand-kakao text-brand-ink',
+    },
+    {
+      label: t('네이버'),
+      icon: 'map',
+      href: (entry) => naverMapSearchUrl(entry.name),
+      className: 'bg-brand-naver text-brand-ink',
+    },
+    {
+      // 티맵 로고 색을 토큰으로 들이지 않았다. 카카오·네이버는 시안이 브랜드
+      // 배경을 쓰지만 셋째까지 색을 채우면 한 줄이 신호등이 된다 — 이것만
+      // 테두리형으로 두어 「길찾기 둘 + 내비 하나」로 읽히게 했다.
+      label: t('티맵'),
+      icon: 'navigation',
+      href: (entry) => tmapRouteUrl(entry.name, entry),
+      className:
+        'border border-outline-variant bg-surface-container-lowest text-on-surface',
+    },
+  ]
+}
 
 // 한 줄에 나란히 서는 네 버튼의 기하는 함께 움직인다. 색만 갈라 두어 높이나
 // 반경을 고칠 때 한쪽만 고치는 일이 없게 한다(PopulationCard의 CHIP_BASE와 같은 이유).
@@ -78,7 +85,7 @@ export function ActionButtons({ entry, saved, onSave }: Props) {
   return (
     <div className="flex flex-col gap-3 px-4">
       <div className="flex gap-3">
-        {MAP_LINKS.map((link) => (
+        {mapLinks().map((link) => (
           <a
             key={link.label}
             href={link.href(entry)}
@@ -102,7 +109,7 @@ export function ActionButtons({ entry, saved, onSave }: Props) {
           onClick={() => {
             setSaveNotice(
               t('{명소} {동작}', {
-                명소: entry.name,
+                명소: areaDisplayName(entry),
                 동작: saved ? t('저장 해제') : t('저장됨'),
               }),
             )
@@ -120,7 +127,14 @@ export function ActionButtons({ entry, saved, onSave }: Props) {
         <button
           type="button"
           onClick={() => {
-            void shareMessage(t('{명소} 실시간 혼잡도 - 서울 라이브', { 명소: entry.name }))
+            // 지도 앱 링크(위 `href`)는 `entry.name`을 그대로 쓴다 — 그건
+            // 검색어라 한국어여야 카카오맵이 찾는다. 사람이 읽는 이 문장만
+            // 화면 언어를 따른다.
+            void shareMessage(
+              t('{명소} 실시간 혼잡도 - 서울 라이브', {
+                명소: areaDisplayName(entry),
+              }),
+            )
           }}
           className={`${ACTION_BASE} border border-outline-variant bg-surface-container-lowest text-on-surface`}
         >

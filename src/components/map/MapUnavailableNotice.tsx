@@ -22,13 +22,19 @@ export type MapUnavailableReason = 'no-key' | 'load-failed' | 'offline'
 // 되돌려주는 것이다. 여기서 해야 할 말은 **끊긴 동안에도 목록은 선다**는 사실이고,
 // 그건 마지막 기억이라 시각을 함께 말해야 오해가 없다 — 그 시각은 각 명소 카드의
 // 「마지막 업데이트」가 이미 들고 있다.
-const MESSAGE: Readonly<Record<MapUnavailableReason, string>> = {
-  'no-key':
-    t('VITE_GOOGLE_MAPS_API_KEY가 설정되지 않아 지도를 표시할 수 없어요. 아래 목록과 검색은 그대로 쓸 수 있어요.'),
-  'load-failed':
-    t('지도를 불러오지 못했어요. 네트워크 상태를 확인해 주세요. 아래 목록과 검색은 그대로 쓸 수 있어요.'),
-  offline:
-    t('오프라인이에요. 연결되면 지도가 다시 나와요. 아래 목록과 검색은 그대로 쓸 수 있어요.'),
+//
+// **상수 표가 아니라 함수인 이유**는 `SortSegmented`에 한 벌 있다 — 모듈
+// 최상위의 `t()`는 import 시점의 언어로 굳는다.
+function message(reason: MapUnavailableReason): string {
+  const text: Readonly<Record<MapUnavailableReason, string>> = {
+    'no-key':
+      t('VITE_GOOGLE_MAPS_API_KEY가 설정되지 않아 지도를 표시할 수 없어요. 아래 목록과 검색은 그대로 쓸 수 있어요.'),
+    'load-failed':
+      t('지도를 불러오지 못했어요. 네트워크 상태를 확인해 주세요. 아래 목록과 검색은 그대로 쓸 수 있어요.'),
+    offline:
+      t('오프라인이에요. 연결되면 지도가 다시 나와요. 아래 목록과 검색은 그대로 쓸 수 있어요.'),
+  }
+  return text[reason]
 }
 
 interface Props {
@@ -38,7 +44,7 @@ interface Props {
 export function MapUnavailableNotice({ reason }: Props) {
   return (
     <div className="px-4 pt-6">
-      <ErrorState message={MESSAGE[reason]} />
+      <ErrorState message={message(reason)} />
     </div>
   )
 }

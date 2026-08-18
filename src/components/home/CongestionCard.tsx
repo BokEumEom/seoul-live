@@ -19,10 +19,16 @@ interface Props {
 
 // 화면이 쓰는 말. 도메인은 delta만 주고 문구는 여기서 고른다 — 같은 판정을
 // 다른 화면에서 다르게 부를 수 있어야 한다.
-const USUAL_TEXT: Readonly<Record<UsualDelta, string>> = {
-  busier: t('평소보다 붐벼요'),
-  similar: t('평소와 비슷해요'),
-  calmer: t('평소보다 여유로워요'),
+//
+// **상수 표가 아니라 함수인 이유**는 `SortSegmented`에 한 벌 있다 — 모듈
+// 최상위의 `t()`는 import 시점의 언어로 굳는다.
+function usualText(delta: UsualDelta): string {
+  const text: Readonly<Record<UsualDelta, string>> = {
+    busier: t('평소보다 붐벼요'),
+    similar: t('평소와 비슷해요'),
+    calmer: t('평소보다 여유로워요'),
+  }
+  return text[delta]
 }
 
 // 설계 §2.6의 3번 「현재 상태」. 배지는 히어로가 갖는다 — 여기 한 번 더 두면
@@ -99,7 +105,7 @@ export function CongestionCard({ snapshot, pattern }: Props) {
           ) : (
             <>
               <span className="font-bold text-on-surface">
-                {USUAL_TEXT[usual.delta]}
+                {usualText(usual.delta)}
               </span>{' '}
               {/* 「평소」가 무엇인지 적지 않으면 어제 대비인지 한 달 대비인지
                   알 수 없다. 표본 수까지 적어야 사용자가 얼마나 믿을지 정한다. */}

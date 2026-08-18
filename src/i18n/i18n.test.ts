@@ -1,3 +1,4 @@
+import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { AGE_LABELS } from '../domain/composition'
 import { congestionHeadline } from '../domain/congestion'
@@ -15,9 +16,11 @@ function chipLabels(): readonly string[] {
     areaName: '광화문·덕수궁',
     areaCode: 'POI009',
     weather: null,
-    // **도로소통은 일부러 뺐다.** 그 지수는 번역하지 않기로 했다(en.ts 주석).
-    // 넣으면 「사전에 없다」로 죽는데, 그건 결함이 아니라 결정이다.
-    roadTraffic: null,
+    // **도로소통도 이제 들어온다.** 예전에는 번역할 수 없어 `null`로 뺐는데
+    // (키가 혼잡도 헤드라인의 `원활`과 다퉜다), 도메인이 「도로」를 붙여 칸을
+    // 가르면서 셋 다 사전에 들어왔다. 값의 종류를 다 알지는 못하므로 여기서
+    // 고정하는 것은 실제로 본 셋이다.
+    roadTraffic: { index: '정체', speed: 13.9, message: '', updatedAt: '' },
     accidents: [],
     parking: [
       { name: '주차장', coords: null, capacity: 100, available: 45, liveAvailable: true, paid: null },
@@ -64,6 +67,15 @@ const DETENT_LABELS = ['살짝 열림', '절반', '전체'] as const
 const RESIDENCE_LABELS = ['외지인이 많아요', '동네 생활권이에요'] as const
 /** 통합대기환경등급. 서울 API가 주는 값이다. */
 const AIR_GRADE_LABELS = ['좋음', '보통', '나쁨', '매우나쁨'] as const
+/**
+ * 도로소통 칩. 도메인이 값 앞에 「도로」를 붙여 만든다.
+ *
+ * **명세에 값의 종류가 없어 이 셋이 전부라고 단언할 수 없다.** 그래서 위
+ * `chipLabels()`처럼 도메인에서 뽑아 오지 못하고 여기 손으로 적는다 — 새 값을
+ * 보거든 여기와 `en.ts`에 함께 더하라. 못 더한 값은 영어 화면에서 「도로 ○○」로
+ * 한국어가 남고, 그건 죽지 않는다(사전에 없으면 키를 그대로 돌려준다).
+ */
+const ROAD_CHIP_LABELS = ['도로 원활', '도로 서행', '도로 정체'] as const
 const LOCATION_ERROR_MESSAGES = [
   '위치 권한이 거부되었습니다',
   '이 환경에는 위치 기능이 없습니다',
@@ -77,12 +89,22 @@ const SOURCES = __SRC_SOURCES__
 declare const __UI_SOURCES__: string
 const UI_SOURCES = __UI_SOURCES__
 
+/** 같은 파일들을 경로와 함께. 모듈 최상위 `t()` 검사가 파일 단위로 파싱한다. */
+declare const __UI_FILES__: readonly { readonly path: string; readonly source: string }[]
+const UI_FILES = __UI_FILES__
+
 /**
  * `t('...')`에 넘긴 문자열 전부. 두 번째 인자(값)는 안 본다.
  *
  * **작은따옴표만 보면 안 된다.** 코드 포매터가 문자열 안의 작은따옴표 때문에
  * 큰따옴표로 바꿔 놓는 자리가 있어서(`t("주차장")`), 한쪽만 보면 멀쩡히 쓰는
  * 키가 「안 쓰임」으로 잡힌다 — 실제로 그렇게 헛짚었다.
+ *
+ * **주석은 안 걷어낸다.** 그래서 주석에 예시로 적은 호출까지 「사전에 없다」로
+ * 걸린다(2026-08-18에 실제로 겪었다 — 주석의 예시 한 줄이 검사를 죽였다).
+ * 일부러 두는 쪽이다: 걷어내면 주석에만 남은 옛 키가 「안 쓰는 항목」으로 잡혀
+ * 반대쪽 검사가 시끄러워진다. 주석에 호출 예시를 적을 때는 진짜 키를 쓰거나
+ * 따옴표를 빼라.
  */
 function translatedKeys(): readonly string[] {
   return [
@@ -115,6 +137,7 @@ function dynamicKeys(): readonly string[] {
     ...DETENT_LABELS,
     ...RESIDENCE_LABELS,
     ...AIR_GRADE_LABELS,
+    ...ROAD_CHIP_LABELS,
     ...LOCATION_ERROR_MESSAGES,
     ...chipLabels(),
   ]
@@ -220,5 +243,88 @@ describe('감싸지 않은 한국어가 없다', () => {
   it('실제로 읽어낸다', () => {
     // 정규식이 깨져 0개가 되면 위 단언이 언제나 참이 된다.
     expect(UI_SOURCES).toMatch(/[가-힣]/)
+  })
+})
+
+// ── 굳지 않는다 ───────────────────────────────────────────────────────────
+//
+// **위 검사들이 전부 통과하면서도 화면이 한국어로 남는 길이 하나 더 있다.**
+// 사전에 항목이 있고 `t()`로 감싸기까지 했는데, 그걸 **모듈 최상위에서** 부르면
+// import 시점의 언어(=기본값 한국어)로 값이 굳는다. 이후 언어를 바꿔도 그
+// 상수는 다시 계산되지 않는다 — 사전은 완전한데 그 자리만 안 바뀐다.
+//
+// 2026-08-18에 실제로 6개 파일 19개 문자열이 이 상태였다(정렬 줄·화면 테마·
+// 지도 앱 버튼·위치 안내·평소 대비 문구·지도 실패 안내). 기존 검사 다섯 개가
+// 전부 초록인 채였다. 화면 쪽 증거는 `languageSwitch.test.tsx`에 있고, 여기서는
+// **원인 자체**를 막는다.
+describe('모듈 최상위에서 t()를 부르지 않는다', () => {
+  /** `t(...)` 호출을 감싸는 함수가 하나도 없으면 그건 모듈 최상위다. */
+  function frozenCalls(): readonly string[] {
+    const frozen: string[] = []
+
+    for (const file of UI_FILES) {
+      const parsed = ts.createSourceFile(
+        file.path,
+        file.source,
+        ts.ScriptTarget.Latest,
+        // `setParentNodes`. 부모를 거슬러 올라가 함수 안인지 보려면 필요하다.
+        true,
+        ts.ScriptKind.TSX,
+      )
+
+      const visit = (node: ts.Node, insideFunction: boolean): void => {
+        if (
+          !insideFunction &&
+          ts.isCallExpression(node) &&
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === 't'
+        ) {
+          const first = node.arguments[0]
+          const key =
+            first !== undefined && ts.isStringLiteral(first) ? first.text : '?'
+          frozen.push(`${file.path}: t('${key}')`)
+        }
+        // 화살표 함수·함수 선언·메서드 안쪽은 부를 때마다 다시 도므로 안전하다.
+        const opens = ts.isFunctionLike(node)
+        ts.forEachChild(node, (child) => {
+          visit(child, insideFunction || opens)
+        })
+      }
+
+      visit(parsed, false)
+    }
+
+    return frozen
+  }
+
+  it('언어가 바뀌어도 안 바뀌는 상수 문구가 없다', () => {
+    expect(frozenCalls()).toEqual([])
+  })
+
+  it('실제로 파싱해서 t() 호출을 찾아낸다', () => {
+    // 파서가 조용히 0개를 돌려주면 위 단언이 언제나 참이 된다. 함수 **안**의
+    // 호출은 정상이므로, 그게 많이 잡히는지로 탐지기가 살아 있음을 확인한다.
+    let inside = 0
+    for (const file of UI_FILES) {
+      const parsed = ts.createSourceFile(
+        file.path,
+        file.source,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TSX,
+      )
+      const visit = (node: ts.Node): void => {
+        if (
+          ts.isCallExpression(node) &&
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === 't'
+        ) {
+          inside += 1
+        }
+        ts.forEachChild(node, visit)
+      }
+      visit(parsed)
+    }
+    expect(inside).toBeGreaterThan(100)
   })
 })

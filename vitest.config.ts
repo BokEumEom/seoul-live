@@ -26,6 +26,22 @@ function readSourceFiles(dir: string): string {
     .join('\n')
 }
 
+/** 같은 파일 집합을 경로와 함께 준다. 위 함수와 거르는 규칙이 같아야 한다. */
+function listSourceFiles(
+  dir: string,
+): readonly { readonly path: string; readonly source: string }[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      return listSourceFiles(path)
+    }
+    if (!/\.tsx?$/.test(entry.name) || entry.name.includes('.test.')) {
+      return []
+    }
+    return [{ path, source: readFileSync(path, 'utf8') }]
+  })
+}
+
 export default defineConfig({
   plugins: [react()],
   // `tokens.test.ts`가 색 토큰의 대비를 실제 파일에서 읽어 계산한다. 토큰 값을
@@ -54,6 +70,14 @@ export default defineConfig({
     __UI_SOURCES__: JSON.stringify(
       readSourceFiles('src/components') + readSourceFiles('src/screens'),
     ),
+    // 위와 같은 파일들을 **경로와 함께 따로** 준다. 「모듈 최상위에서 `t()`를
+    // 부르지 않는다」 검사가 원문을 파일 단위로 파싱해야 해서다 — 한 덩어리로
+    // 이으면 어느 파일이 걸렸는지 말할 수 없고, 파서에게도 서로 다른 모듈을
+    // 한 모듈로 보여주게 된다.
+    __UI_FILES__: JSON.stringify([
+      ...listSourceFiles('src/components'),
+      ...listSourceFiles('src/screens'),
+    ]),
   },
   test: {
     environment: 'jsdom',
