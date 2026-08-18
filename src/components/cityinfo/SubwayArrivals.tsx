@@ -1,3 +1,8 @@
+import {
+  subwayArrivalText,
+  subwayDirectionText,
+  subwayLineText,
+} from '../../i18n/subway'
 import { t } from '../../i18n/t'
 import { groupSubwayArrivals, type SubwayArrival } from '../../domain/cityInfo'
 
@@ -27,9 +32,10 @@ export function SubwayArrivals({ arrivals }: Props) {
       {groups.map((group) => {
         const visible = group.arrivals.slice(0, VISIBLE_LIMIT)
         const hidden = group.arrivals.length - visible.length
-        const title = group.line === ''
-          ? group.station
-          : `${group.station} ${group.line}`
+        // 역 이름은 옮기지 않는다(로마자 표기가 이 앱에 없다). 호선처럼
+        // 모양이 정해진 조각만 `i18n/subway.ts`가 옮긴다.
+        const line = subwayLineText(group.line)
+        const title = line === '' ? group.station : `${group.station} ${line}`
 
         return (
           <div key={title}>
@@ -38,9 +44,9 @@ export function SubwayArrivals({ arrivals }: Props) {
                 {group.station}
               </span>
               {/* 호선 셋이 다 비면 이 칸이 없다. 빈 자리를 남기느니 역명만 적는다. */}
-              {group.line !== '' && (
+              {line !== '' && (
                 <span className="text-label-sm text-on-surface-variant">
-                  {group.line}
+                  {line}
                 </span>
               )}
             </p>
@@ -60,12 +66,17 @@ export function SubwayArrivals({ arrivals }: Props) {
                   className="flex items-baseline justify-between gap-3"
                 >
                   <span className="min-w-0 truncate text-label-md text-on-surface-variant">
-                    {entry.direction === '' ? entry.terminal : entry.direction}
+                    {subwayDirectionText(
+                      entry.direction === '' ? entry.terminal : entry.direction,
+                    )}
                   </span>
-                  {/* 원문 그대로다. 실측값이 「9분 후 (동대입구)」처럼 괄호까지
-                      포함해 오므로 우리가 덧붙일 것이 없다. */}
+                  {/* 한국어에서는 원문 그대로다 — 실측값이 「9분 후 (동대입구)」처럼
+                      괄호까지 포함해 오므로 우리가 덧붙일 것이 없다. 영어에서는
+                      **아는 모양이 통째로 맞을 때만** 옮기고 아니면 원문이
+                      나간다(`i18n/subway.ts`). 절 머리만 영어이고 안쪽이 전부
+                      한국어면 번역하지 않은 화면으로 읽힌다. */}
                   <span className="shrink-0 text-label-md text-on-surface">
-                    {entry.message}
+                    {subwayArrivalText(entry.message)}
                   </span>
                 </li>
               ))}

@@ -72,6 +72,9 @@ export const EN: Readonly<Record<string, string>> = {
   '{명소} {동작}': '{명소} {동작}',
   '저장 해제': 'unsave',
   '{명소} 실시간 혼잡도 - 서울 라이브': '{명소} live crowd levels — Seoul Live',
+  // 앱의 접근성 이름(`App.tsx`의 sr-only h1). 위 공유 문구가 이미 「Seoul
+  // Live」로 나가므로 같은 이름이어야 한다.
+  '서울 라이브': 'Seoul Live',
   '{시설} 지도에서 보기': 'Show {시설} on map',
 
   // ── 상세: 혼잡도 ──
@@ -158,6 +161,19 @@ export const EN: Readonly<Record<string, string>> = {
   '도로 서행': 'Traffic slow',
   '도로 정체': 'Traffic jam',
   '지하철 도착': 'Subway arrivals',
+  // 지하철 절의 조각들. **역 이름은 여기 없다** — 로마자 표기가 이 앱에 없는
+  // 데이터라 지어내지 않는다(`i18n/subway.ts`). 그래서 영어에서도 「To 대화」·
+  // 「in 9 min (동대입구)」처럼 역 이름만 한국어로 남는다.
+  //
+  // 도착 문구는 2026-08-13·08-18 실응답에서 **본 것만** 있다. 명세에 값 목록이
+  // 없어 처음 보는 문구는 원문 그대로 나간다.
+  '{번호}호선': 'Line {번호}',
+  '{역}행': 'To {역}',
+  '전역 출발': 'Left prev. station',
+  '전역 도착': 'At prev. station',
+  '{분}분 후': 'in {분} min',
+  '{분}분 {초}초 후': 'in {분}m {초}s',
+  '[{순번}]번째 전역': '{순번} stations away',
   주차장: 'Parking',
   따릉이: 'Ttareungi bikes',
   문화행사: 'Events',

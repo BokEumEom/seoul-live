@@ -1,3 +1,4 @@
+import { t } from './i18n/t'
 import { LocationProvider } from './app/LocationProvider'
 import { QueryProvider } from './app/QueryProvider'
 import { useLanguage } from './hooks/languageStore'
@@ -38,8 +39,14 @@ function AppShell() {
           이득과 상충하지 않는다.
 
           이름은 index.html의 <title>과 같은 「서울 라이브」다. `TopAppBar`는
-          「Seoul Live」였고 둘이 어긋나 있었다 — 상단바가 사라지며 해소된다. */}
-      <h1 className="sr-only">서울 라이브</h1>
+          「Seoul Live」였고 둘이 어긋나 있었다 — 상단바가 사라지며 해소된다.
+
+          **감싸는 이유:** 앱의 접근성 이름이라 영어 사용자에게는 영어로
+          읽혀야 한다. 공유 문구가 이미 「Seoul Live」로 나가고 있어서
+          감싸지 않으면 같은 브랜드가 한 앱 안에서 두 이름으로 불린다.
+          `index.html`의 `<title>`은 한국어로 남는다 — 정적 파일이라 언어
+          스토어가 닿지 않는다. */}
+      <h1 className="sr-only">{t('서울 라이브')}</h1>
       <HomeScreen />
     </main>
   )
