@@ -55,6 +55,7 @@ import {
   filterLabel,
   type FilterKey,
 } from '../domain/presets'
+import { LIST_ROUTE, type Route, routeFromSearch, routeToSearch } from '../domain/route'
 import { searchAreas } from '../domain/search'
 import { SHEET_RATIO, type Detent } from '../domain/sheet'
 import { summarize } from '../domain/summary'
@@ -70,6 +71,12 @@ import {
   googleMapsMapId,
   isMapAvailable,
 } from '../platform/googleMaps'
+import {
+  currentSearch,
+  onPopstate,
+  pushSearch,
+  replaceSearch,
+} from '../platform/history'
 
 /** 재조정 버튼을 눌렀을 때의 줌. 주변 명소가 몇 곳 들어오는 정도다. */
 const RECENTER_ZOOM = 14
@@ -86,6 +93,29 @@ const AREA_ZOOM = 15
 // 「이 건물」이라, 같은 줌으로 두면 핀이 어느 골목인지 구별되지 않는다.
 const FACILITY_ZOOM = 17
 
+/**
+ * 시트(좁은 화면)나 패널(넓은 화면)이 가리는 만큼 비켜 잡은 지도 중심.
+ *
+ * **가리는 쪽이 다르면 비켜 잡는 축도 다르다.** 좁은 화면은 시트가 아래를
+ * 덮으므로 남쪽으로, 넓은 화면은 패널이 왼쪽을 덮으므로 서쪽으로 민다. 둘을
+ * 한 식으로 합치려 들면 「비율」과 「픽셀 폭」이라는 서로 다른 단위를 억지로
+ * 묶게 된다 — 나눠 두는 편이 각각 검산 가능하다.
+ *
+ * 컴포넌트 밖에 두는 이유는 **부르는 곳이 둘**이기 때문이다: 사용자가 명소를
+ * 여는 `focusMapOn`과, 주소가 명소를 가리키며 들어왔을 때의 `center` 초기값.
+ * 안에 두면 후자가 초기화 함수라 못 부르고, 그러면 산식이 두 벌이 된다.
+ */
+function offsetCenter(
+  target: Coords,
+  nextZoom: number,
+  sheetRatio: number,
+  wide: boolean,
+): Coords {
+  return wide
+    ? centerRightOfPanel(target, nextZoom, PANEL_WIDTH_PX)
+    : centerBelowSheet(target, nextZoom, window.innerHeight, sheetRatio)
+}
+
 export function HomeScreen() {
   const snapshots = useAreaSnapshots(AREA_NAMES)
   // **넓은 화면에서는 시트가 왼쪽 패널이 된다.** 지도가 아래가 아니라 왼쪽을
@@ -94,7 +124,18 @@ export function HomeScreen() {
   // 지도 타일 색을 우리 테마에 맞추는 데 쓴다 — 「기기 설정」까지 풀어낸 값이다.
   const resolvedTheme = useResolvedTheme()
   const location = useLocation()
-  const filters = useHomeFilters()
+  // **첫 렌더가 이미 주소가 가리키는 화면이어야 한다.** 마운트 후 effect로
+  // 옮기면 공유 링크로 들어온 사람이 목록을 한 프레임 보고 지나간다.
+  //
+  // 렌더 중에 `currentSearch()`를 매번 읽지 않는다. 게으른 초기화에 가둬야
+  // 이 값이 **마운트 시점의 주소**라는 뜻이 코드에 남는다 — 그 뒤의 주소
+  // 변화는 아래 `popstate` 구독이 맡는다.
+  const [initialRoute] = useState<Route>(() =>
+    routeFromSearch(currentSearch(), AREA_NAMES),
+  )
+  const filters = useHomeFilters(
+    initialRoute.kind === 'area' ? initialRoute.name : null,
+  )
   // 즐겨찾기가 탭에서 필터 칩으로 옮겨 오면서 홈의 것이 됐다.
   const { favorites } = useFavorites()
   // 「오늘의 서울」이 시트 안 뷰가 되면서 요약 줄의 재난문자 개수도 여기서 센다.
@@ -105,8 +146,26 @@ export function HomeScreen() {
 
   // 초기 뷰는 위치 권한과 무관하게 서울 전역이다. 내 위치로 자동 이동하면
   // 서울 밖 사용자에게 마커가 하나도 없는 지도가 뜬다.
-  const [center, setCenter] = useState<Coords>(SEOUL_CENTER)
-  const [zoom, setZoom] = useState<number>(DEFAULT_ZOOM)
+  //
+  // **주소가 명소를 가리키며 들어왔으면 그 명소다.** 공유 링크로 들어온 사람은
+  // 시트에서 강남역을 읽는데 지도는 서울 전역인 채로 남아 있으면 안 된다.
+  // 마운트 뒤 effect로 옮기지 않는 이유는 `appliedRatioRef`다 — 그 ref가
+  // `SHEET_RATIO.half`로 시작하므로, 초기값 단계에서 같은 비율로 비켜 잡아
+  // 두어야 시트 보정 effect가 이 자리를 한 번 더 밀지 않는다.
+  const [center, setCenter] = useState<Coords>(() => {
+    if (initialRoute.kind !== 'area') return SEOUL_CENTER
+    const entry = findAreaByName(initialRoute.name)
+    if (entry === undefined) return SEOUL_CENTER
+    return offsetCenter(
+      { lat: entry.lat, lng: entry.lng },
+      AREA_ZOOM,
+      SHEET_RATIO.half,
+      wide,
+    )
+  })
+  const [zoom, setZoom] = useState<number>(
+    initialRoute.kind === 'area' ? AREA_ZOOM : DEFAULT_ZOOM,
+  )
   const [loadFailed, setLoadFailed] = useState(false)
   // 진입 시 half다. 앱인토스 심사 항목("진입하자마자 바텀시트가 자동으로
   // 나타나지 않아요")은 덮어씌우는 모달 시트를 말하는 것이라, 지도와 함께
@@ -117,7 +176,9 @@ export function HomeScreen() {
   // 지도에서 짚어 둔 주차장·따릉이 한 곳. 명소를 갈아타면 지운다.
   const [focusedFacility, setFocusedFacility] = useState<FacilityLocation | null>(null)
   const [dragRatio, setDragRatio] = useState<number | null>(null)
-  const [view, setView] = useState<'list' | 'today'>('list')
+  const [view, setView] = useState<'list' | 'today'>(
+    initialRoute.kind === 'today' ? 'today' : 'list',
+  )
 
   const { setSelectedName, setSort } = filters
 
@@ -195,6 +256,100 @@ export function HomeScreen() {
     viewRef.current?.focus({ preventScroll: true })
   }, [focusRequest])
 
+  // 지도를 못 그리는 세 경우를 한 값으로 모은다. 「레이어를 비우는가」와
+  // 「시트를 half에 묶는가」와 「어떤 안내를 그리는가」가 전부 이 값 하나를
+  // 보므로 셋의 판정이 갈릴 자리가 없다.
+  //
+  // 키 미설정과 로드 실패를 나누는 이유는 그대로다 — 개발자는 "왜 안 뜨지"에서
+  // 키를 의심하고 사용자는 네트워크를 의심하는데, 문구가 하나면 양쪽 다 엉뚱한
+  // 곳을 본다. 로드 실패는 스크립트를 못 받은 경우다(차단·잘못된 키).
+  //
+  // **오프라인은 서비스워커가 생기면서 늘어났다.** 예전에는 끊기면 화면 자체가
+  // 안 떠서 표현할 일이 없었는데, 지금은 셸이 캐시에서 뜨고 목록도 마지막
+  // 기억으로 선다 — 지도만 회색 빈칸으로 남는다.
+  //
+  // **`loadFailed`로는 이 상태를 못 잡는다.** 실측으로 확인했다: 오프라인에서
+  // 구글 지도 SDK는 브라우저 HTTP 캐시에서 살아 돌아오고, 못 받는 것은 그다음의
+  // 지도 설정(`Unable to fetch configuration for mapId`)이다. 스크립트 로드는
+  // 성공했으므로 `APIProvider`의 `onError`가 안 불리고, 사용자에게는 회색 빈칸
+  // 위에 구글의 영문 오류만 남는다.
+  //
+  // 순서: 키 없음 → 오프라인 → 로드 실패. 오프라인은 잠깐이고 키가 없는 것은
+  // 고치기 전까지 영영 그대로라, 먼저 고칠 것을 먼저 말한다.
+  //
+  // **화면 아래쪽이 아니라 여기 있는 이유:** `sheetRatio`가 이 값에서 나오고,
+  // 그 비율을 `focusMapOn`이 읽는데 그 함수가 `popstate` effect에서 닿는다.
+  // hook이 읽는 값은 선언이 앞서야 한다(`react-hooks/immutability`) — 뒤에
+  // 두면 「나중에 바뀌어도 앞선 접근이 못 따라온다」를 lint가 막는다.
+  const mapUnavailableReason: MapUnavailableReason | null = !isMapAvailable()
+    ? 'no-key'
+    : !online
+      ? 'offline'
+      : loadFailed
+        ? 'load-failed'
+        : null
+  const mapReady = mapUnavailableReason === null
+
+  // 지도를 못 쓰면 시트를 half에 묶는다. 지도 안내가 화면의 92%를 차지할 이유가
+  // 없고, 접을 수 있게 두면 안내가 사라져 더 헷갈린다.
+  //
+  // **이 줄이 그 규칙이 사는 유일한 자리다.** 오버레이·FAB·시트가 모두 이 값을
+  // 보므로 규칙을 여러 곳에 흩어 놓으면 한쪽만 고쳐지는 날이 온다.
+  // `onDetentChange`에 noop을 물려 「지도가 죽었으면 단계를 바꾸지 마라」를
+  // 한 번 더 쓰는 길도 있었지만 두지 않았다 — 그건 같은 규칙의 두 번째 사본인
+  // 데다, `mapReady`가 false→true로 돌아오지 않아 숨은 `detent`가 갈려도
+  // 화면에 드러날 길이 없어서 **테스트로 지킬 수도 없다.**
+  const sheetDetent: Detent = mapReady ? detent : 'half'
+
+  // 시트가 지금 실제로 덮고 있는 비율. 끄는 동안에는 손끝이, 놓으면 단계가 준다.
+  // `BottomSheet` 안의 `dragRatio ?? SHEET_RATIO[detent]`와 같은 식이다 — 시트가
+  // 제 높이를 그렇게 정하므로 지도도 같은 값을 봐야 둘이 안 갈린다.
+  //
+  // 넓은 화면에서는 패널이 **세로를 하나도 안 가린다.** 0으로 두어야 시트용
+  // 세로 보정이 통째로 꺼진다 — 안 그러면 PC에서 지도가 이유 없이 남쪽으로
+  // 밀린 채 시작한다.
+  const sheetRatio = wide ? 0 : (dragRatio ?? SHEET_RATIO[sheetDetent])
+
+  /**
+   * 그 좌표를 **지금 보이는 띠의 한가운데**에 놓는다.
+   *
+   * **「지금」이 중요하다.** 이 함수를 부르는 두 곳(`openArea`·`handleRecenter`)은
+   * 단계도 함께 바꾸는데, 옮겨 갈 단계의 비율을 여기서 미리 반영하면 안 된다 —
+   * 아래 effect가 비율 변화를 한 번 더 밀어 **두 번 적용된다.** 실제로 그랬다:
+   * 「내 주변」이 내 위치를 지나쳐 0.0105° 북쪽에 지도를 잡았다.
+   *
+   * 지금 비율로 놓아 두면 effect가 이어받아 새 비율의 띠 한가운데로 옮겨 준다.
+   * 그 effect가 하는 일이 정확히 「보고 있던 곳을 띠 한가운데에 유지한다」라서
+   * 두 조작이 합쳐져 옳은 자리가 나온다 — 계산으로 확인했고 테스트가 잠근다.
+   */
+  function focusMapOn(target: Coords, nextZoom: number): void {
+    setCenter(offsetCenter(target, nextZoom, sheetRatio, wide))
+    setZoom(nextZoom)
+  }
+
+  // **서울 인파레이더가 그렇게 한다** — 목록에서 고르면 지도가 그리로 간다.
+  // 상세가 half에서 열리게 되면서 지도가 계속 보이는데, 따라가지 않으면 상세는
+  // 경복궁을 말하는 동안 지도는 서울 전역인 채로 남는다.
+  //
+  // 중심을 명소 좌표 그대로 두지 않는다. 지도는 뷰포트를 꽉 채우고 시트가 그 위를
+  // 덮으므로 지도의 중심은 언제나 화면 한가운데인데(390×844에서 y=422), half
+  // 시트의 상단이 y=371이라 **명소가 시트 뒤로 들어가 하나도 안 보인다.**
+  // 얼마나 비켜 잡을지는 `centerBelowSheet`가 화면 높이와 줌으로 계산한다.
+  //
+  // 카탈로그에 없는 이름이면 지도를 건드리지 않는다. 화면에서 오는 이름은 전부
+  // 카탈로그에서 나온 것이라(목록 행·마커·오늘의 서울·근처 여유로운 곳) 닿지
+  // 않는 가지지만, 없는 곳으로 지도를 던지느니 그대로 두는 편이 낫다 —
+  // `AreaDetail`도 같은 조회에 같은 태도를 취한다.
+  //
+  // **`showArea`보다 위에 둔다.** 아래에 두면 `applyRoute`를 부르는 effect가
+  // 선언 전의 이 함수에 닿아 lint가 막는다 — 그 규칙이 맞다. 함수 선언은
+  // 끌어올려지지만 이 함수가 읽는 `sheetRatio`는 `const`라 그렇지 않다.
+  function moveMapTo(name: string): void {
+    const entry = findAreaByName(name)
+    if (entry === undefined) return
+    focusMapOn({ lat: entry.lat, lng: entry.lng }, AREA_ZOOM)
+  }
+
   // 명소를 여는 유일한 경로다. 목록 행·지도 마커·「오늘의 서울」의 순위 목록이
   // 모두 여기로 들어온다 — 어디서 열든 시트가 상세로 가득 차야 같은 화면이 된다.
   //
@@ -219,7 +374,10 @@ export function HomeScreen() {
   //
   // 「목록으로」(`onBack`)와 같은 값이라 여닫는 길이 대칭이다. 상세를 열고 닫는
   // 동안 시트는 아예 움직이지 않는다.
-  function openArea(name: string): void {
+  // **화면만 옮긴다. 히스토리는 안 건드린다.** 사용자가 명소를 누르는 것
+  // (`openArea`)과 뒤로/앞으로 가기가 명소로 되돌아오는 것(`applyRoute`)이
+  // 같은 화면이어야 하는데, 후자는 주소가 **이미** 바뀐 뒤라 다시 밀면 안 된다.
+  function showArea(name: string): void {
     setSelectedName(name)
     setView('list')
     setDetent('half')
@@ -229,6 +387,95 @@ export function HomeScreen() {
     moveMapTo(name)
     requestSheetFocus()
   }
+
+  function openArea(name: string): void {
+    showArea(name)
+    // **앞으로 가는 이동이라 칸을 쌓는다.** 이래야 뒤로 가기가 목록으로
+    // 돌아온다 — 그게 없어서 상세를 열고 뒤로 누르면 앱이 통째로 닫혔다.
+    pushSearch(routeToSearch({ kind: 'area', name }))
+  }
+
+  // 「오늘의 서울」로 가는 유일한 경로다. 재난문자 배너와 요약 스트립이
+  // 함께 쓴다 — 두 곳이 같은 세 줄을 따로 들고 있다가 한쪽만 고쳐지는 것을
+  // 막는다(`openArea`가 존재하는 이유와 같다).
+  function showToday(): void {
+    setSelectedName(null)
+    setView('today')
+    setDetent('full')
+    requestSheetFocus()
+  }
+
+  function openToday(): void {
+    showToday()
+    pushSearch(routeToSearch({ kind: 'today' }))
+  }
+
+  // 목록으로 되돌아간다. **주소를 여기서 직접 안 고친다** — 뒤로 가는 이동은
+  // 아래 「주소 맞추기」 effect가 `replace`로 따라온다. 규칙이 하나여야
+  // 앞으로 가는 이동만 칸을 쌓는다는 것이 코드에서 읽힌다.
+  function showList(): void {
+    setSelectedName(null)
+    setView('list')
+    setDetent('half')
+    requestSheetFocus()
+  }
+
+  function applyRoute(next: Route): void {
+    switch (next.kind) {
+      case 'area':
+        showArea(next.name)
+        return
+      case 'today':
+        showToday()
+        return
+      case 'list':
+        showList()
+        return
+    }
+  }
+
+  /**
+   * 지금 화면을 주소의 말로 옮긴 것. **`sheetContent`가 이것으로 갈린다** —
+   * 두 곳이 따로 판단하면 주소는 상세인데 시트는 목록인 상태가 만들어진다.
+   *
+   * 선택된 명소가 「오늘의 서울」보다 앞선다. 오늘의 서울에서 명소를 누르면
+   * 그 상세로 가야 하기 때문이고, `routeFromSearch`도 같은 순서로 읽는다.
+   */
+  const route: Route =
+    filters.selectedName !== null
+      ? { kind: 'area', name: filters.selectedName }
+      : view === 'today'
+        ? { kind: 'today' }
+        : LIST_ROUTE
+
+  // **뒤로/앞으로 가기.** 주소가 유일한 진실이라 `history.state`를 안 본다.
+  //
+  // **의존성 배열을 주지 않는다.** 이 리스너가 부르는 `applyRoute`는
+  // `moveMapTo`를 거쳐 `sheetRatio`와 `wide`를 읽는데, `[]`로 한 번만 걸면
+  // 첫 렌더의 값에 굳어 창을 돌리거나 시트를 옮긴 뒤의 뒤로 가기가 지도를
+  // 엉뚱한 자리로 던진다. 매 렌더 다시 거는 비용은 리스너 하나의
+  // add/remove 한 쌍이라 무시할 만하다.
+  useEffect(() =>
+    onPopstate(() => {
+      applyRoute(routeFromSearch(currentSearch(), AREA_NAMES))
+    }),
+  )
+
+  // **주소 맞추기: 화면 상태 → 주소.** 앞으로 가는 이동(`openArea`·`openToday`)은
+  // 이미 `push`했으므로 여기서는 같은 값이라 아무 일도 안 일어난다. 실제로
+  // 일하는 것은 **뒤로 가는 이동과 부수 효과**다 — `useHomeFilters`가 검색어·
+  // 카테고리·칩을 바꿀 때 선택을 조용히 푸는데(그쪽 주석 참조), 그 경로는
+  // 여기 말고는 주소를 고칠 자리가 없어 주소만 `?area=강남역`으로 남는다.
+  //
+  // **`replace`인 것이 핵심이다.** 사용자가 「가겠다」고 말한 이동이 아니라
+  // 결과를 따라가는 것이라, 칸을 쌓으면 뒤로 가기가 화면이 안 바뀌는 칸을
+  // 거슬러 오르게 된다.
+  const search = routeToSearch(route)
+  useEffect(() => {
+    if (search !== currentSearch()) {
+      replaceSearch(search)
+    }
+  }, [search])
 
   // **서울 인파레이더가 그렇게 한다** — 주차장·따릉이 줄의 아이콘을 누르면
   // 지도가 그 자리로 간다. 이름만으로는 「광화문역 5번출구」가 어느 쪽인지,
@@ -241,50 +488,6 @@ export function HomeScreen() {
     setFocusedFacility(place)
     setDetent('half')
     focusMapOn(place.coords, FACILITY_ZOOM)
-  }
-
-  // **서울 인파레이더가 그렇게 한다** — 목록에서 고르면 지도가 그리로 간다.
-  // 상세가 half에서 열리게 되면서 지도가 계속 보이는데, 따라가지 않으면 상세는
-  // 경복궁을 말하는 동안 지도는 서울 전역인 채로 남는다.
-  //
-  // 중심을 명소 좌표 그대로 두지 않는다. 지도는 뷰포트를 꽉 채우고 시트가 그 위를
-  // 덮으므로 지도의 중심은 언제나 화면 한가운데인데(390×844에서 y=422), half
-  // 시트의 상단이 y=371이라 **명소가 시트 뒤로 들어가 하나도 안 보인다.**
-  // 얼마나 비켜 잡을지는 `centerBelowSheet`가 화면 높이와 줌으로 계산한다.
-  //
-  // 카탈로그에 없는 이름이면 지도를 건드리지 않는다. 화면에서 오는 이름은 전부
-  // 카탈로그에서 나온 것이라(목록 행·마커·오늘의 서울·근처 여유로운 곳) 닿지
-  // 않는 가지지만, 없는 곳으로 지도를 던지느니 그대로 두는 편이 낫다 —
-  // `AreaDetail`도 같은 조회에 같은 태도를 취한다.
-  function moveMapTo(name: string): void {
-    const entry = findAreaByName(name)
-    if (entry === undefined) return
-    focusMapOn({ lat: entry.lat, lng: entry.lng }, AREA_ZOOM)
-  }
-
-  /**
-   * 그 좌표를 **지금 보이는 띠의 한가운데**에 놓는다.
-   *
-   * **「지금」이 중요하다.** 이 함수를 부르는 두 곳(`openArea`·`handleRecenter`)은
-   * 단계도 함께 바꾸는데, 옮겨 갈 단계의 비율을 여기서 미리 반영하면 안 된다 —
-   * 아래 effect가 비율 변화를 한 번 더 밀어 **두 번 적용된다.** 실제로 그랬다:
-   * 「내 주변」이 내 위치를 지나쳐 0.0105° 북쪽에 지도를 잡았다.
-   *
-   * 지금 비율로 놓아 두면 effect가 이어받아 새 비율의 띠 한가운데로 옮겨 준다.
-   * 그 effect가 하는 일이 정확히 「보고 있던 곳을 띠 한가운데에 유지한다」라서
-   * 두 조작이 합쳐져 옳은 자리가 나온다 — 계산으로 확인했고 테스트가 잠근다.
-   */
-  function focusMapOn(target: Coords, nextZoom: number): void {
-    // **가리는 쪽이 다르면 비켜 잡는 축도 다르다.** 좁은 화면은 시트가 아래를
-    // 덮으므로 남쪽으로, 넓은 화면은 패널이 왼쪽을 덮으므로 서쪽으로 민다.
-    // 둘을 한 식으로 합치려 들면 「비율」과 「픽셀 폭」이라는 서로 다른 단위를
-    // 억지로 묶게 된다 — 나눠 두는 편이 각각 검산 가능하다.
-    setCenter(
-      wide
-        ? centerRightOfPanel(target, nextZoom, PANEL_WIDTH_PX)
-        : centerBelowSheet(target, nextZoom, window.innerHeight, sheetRatio),
-    )
-    setZoom(nextZoom)
   }
 
   const list = useMemo(
@@ -330,60 +533,12 @@ export function HomeScreen() {
   const showLabel = shouldShowMarkerLabel(zoom)
   const showName = shouldShowMarkerName(zoom)
 
-  // 지도를 못 그리는 세 경우를 한 값으로 모은다. 「레이어를 비우는가」와
-  // 「시트를 half에 묶는가」와 「어떤 안내를 그리는가」가 전부 이 값 하나를
-  // 보므로 셋의 판정이 갈릴 자리가 없다.
-  //
-  // 키 미설정과 로드 실패를 나누는 이유는 그대로다 — 개발자는 "왜 안 뜨지"에서
-  // 키를 의심하고 사용자는 네트워크를 의심하는데, 문구가 하나면 양쪽 다 엉뚱한
-  // 곳을 본다. 로드 실패는 스크립트를 못 받은 경우다(차단·잘못된 키).
-  //
-  // **오프라인은 서비스워커가 생기면서 늘어났다.** 예전에는 끊기면 화면 자체가
-  // 안 떠서 표현할 일이 없었는데, 지금은 셸이 캐시에서 뜨고 목록도 마지막
-  // 기억으로 선다 — 지도만 회색 빈칸으로 남는다.
-  //
-  // **`loadFailed`로는 이 상태를 못 잡는다.** 실측으로 확인했다: 오프라인에서
-  // 구글 지도 SDK는 브라우저 HTTP 캐시에서 살아 돌아오고, 못 받는 것은 그다음의
-  // 지도 설정(`Unable to fetch configuration for mapId`)이다. 스크립트 로드는
-  // 성공했으므로 `APIProvider`의 `onError`가 안 불리고, 사용자에게는 회색 빈칸
-  // 위에 구글의 영문 오류만 남는다.
-  //
-  // 순서: 키 없음 → 오프라인 → 로드 실패. 오프라인은 잠깐이고 키가 없는 것은
-  // 고치기 전까지 영영 그대로라, 먼저 고칠 것을 먼저 말한다.
-  const mapUnavailableReason: MapUnavailableReason | null = !isMapAvailable()
-    ? 'no-key'
-    : !online
-      ? 'offline'
-      : loadFailed
-        ? 'load-failed'
-        : null
-  const mapReady = mapUnavailableReason === null
-
-  // 지도를 못 쓰면 시트를 half에 묶는다. 지도 안내가 화면의 92%를 차지할 이유가
-  // 없고, 접을 수 있게 두면 안내가 사라져 더 헷갈린다.
-  //
-  // **이 줄이 그 규칙이 사는 유일한 자리다.** 오버레이·FAB·시트가 모두 이 값을
-  // 보므로 규칙을 여러 곳에 흩어 놓으면 한쪽만 고쳐지는 날이 온다.
-  // `onDetentChange`에 noop을 물려 「지도가 죽었으면 단계를 바꾸지 마라」를
-  // 한 번 더 쓰는 길도 있었지만 두지 않았다 — 그건 같은 규칙의 두 번째 사본인
-  // 데다, `mapReady`가 false→true로 돌아오지 않아 숨은 `detent`가 갈려도
-  // 화면에 드러날 길이 없어서 **테스트로 지킬 수도 없다.**
-  const sheetDetent: Detent = mapReady ? detent : 'half'
-
-  // 시트가 지금 실제로 덮고 있는 비율. 끄는 동안에는 손끝이, 놓으면 단계가 준다.
-  // `BottomSheet` 안의 `dragRatio ?? SHEET_RATIO[detent]`와 같은 식이다 — 시트가
-  // 제 높이를 그렇게 정하므로 지도도 같은 값을 봐야 둘이 안 갈린다.
   // FAB의 자리. 넓은 화면에서는 시트를 피할 이유가 없어 `null`(지도 우하단)이고,
   // 좁은 화면의 `full`에서는 48px가 들어갈 자리가 없어 아예 안 그린다
   // (근거는 `RecenterButton`의 산식).
   const recenterDetent: RecenterDetent | null =
     wide || sheetDetent === 'full' ? null : sheetDetent
   const showRecenter = wide || sheetDetent !== 'full'
-
-  // 넓은 화면에서는 패널이 **세로를 하나도 안 가린다.** 0으로 두어야 시트용
-  // 세로 보정이 통째로 꺼진다 — 안 그러면 PC에서 지도가 이유 없이 남쪽으로
-  // 밀린 채 시작한다.
-  const sheetRatio = wide ? 0 : (dragRatio ?? SHEET_RATIO[sheetDetent])
 
   // **시트가 움직이면 지도도 움직인다.** 시트가 커지면 보이는 띠가 위로 줄어드는데
   // 지도가 가만히 있으면 보고 있던 곳이 시트 뒤로 밀려 들어간다 — 「목록에서
@@ -610,14 +765,7 @@ export function HomeScreen() {
           여백 없이 그대로 둔다 — 배너가 `mx-4`를 스스로 갖는다. 여기서
           `<div className="px-4">`로 감싸면 경보가 없는 날에도 빈 div가 남아
           `gap-3`이 12px을 먹는다. */}
-      <AlertBanner
-        alerts={alerts}
-        onOpen={() => {
-          setView('today')
-          setDetent('full')
-          requestSheetFocus()
-        }}
-      />
+      <AlertBanner alerts={alerts} onOpen={openToday} />
 
       {/* 조회가 영구 실패하면 그리지 않는다. 스트립의 빈 상태 문구는
           「아직 받지 못했어요」라 로딩을 뜻하는데, 바로 아래 ErrorState는
@@ -625,14 +773,7 @@ export function HomeScreen() {
           CitySummary에 실패를 표현할 수단이 없어 스트립 혼자서는 못 고친다. */}
       {!snapshots.isError && (
         <div className="px-4">
-          <SummaryStrip
-            summary={summarize(list)}
-            onOpen={() => {
-              setView('today')
-              setDetent('full')
-              requestSheetFocus()
-            }}
-          />
+          <SummaryStrip summary={summarize(list)} onOpen={openToday} />
         </div>
       )}
 
@@ -720,29 +861,18 @@ export function HomeScreen() {
     </div>
   )
 
-  // 시트 내용은 셋 중 하나다. 선택된 명소가 「오늘의 서울」보다 앞선다 —
-  // 오늘의 서울에서 명소를 누르면 그 상세로 가야 하기 때문이다.
+  // 시트 내용은 셋 중 하나다. **어느 것인지는 `route`가 정한다** — 여기서
+  // 상태를 다시 읽어 판단하면 주소와 시트가 서로 다른 답을 낼 수 있다.
   const sheetContent =
-    filters.selectedName !== null ? (
+    route.kind === 'area' ? (
       <AreaDetail
-        areaName={filters.selectedName}
-        onBack={() => {
-          setSelectedName(null)
-          setDetent('half')
-          requestSheetFocus()
-        }}
+        areaName={route.name}
+        onBack={showList}
         onSelectArea={openArea}
         onShowOnMap={showFacilityOnMap}
       />
-    ) : view === 'today' ? (
-      <TodayScreen
-        onSelectArea={openArea}
-        onBack={() => {
-          setView('list')
-          setDetent('half')
-          requestSheetFocus()
-        }}
-      />
+    ) : route.kind === 'today' ? (
+      <TodayScreen onSelectArea={openArea} onBack={showList} />
     ) : (
       listPane
     )

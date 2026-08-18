@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
@@ -1289,5 +1289,165 @@ describe('HomeScreen', () => {
 
     expect(screen.getByText(/VITE_GOOGLE_MAPS_API_KEY/)).toBeInTheDocument()
     expect(screen.queryByText(/오프라인이에요/)).toBeNull()
+  })
+})
+
+// 주소와 화면을 잇는 부분. 이 파일에 붙이는 이유는 위쪽 `vi.mock` 한 벌이
+// 그대로 필요해서다 — 파일을 나누면 200줄짜리 목 설정이 두 벌이 된다.
+//
+// **주소를 되돌리는 일은 여기서 안 한다.** `src/test/setup.ts`의 `beforeEach`가
+// 모든 파일에 대고 한다. 새는 쪽이 주소를 안 만지는 파일이라, 규칙을 각 파일에
+// 맡기면 같은 함정을 새 테스트마다 다시 밟는다(실제로 18개가 그렇게 깨졌다).
+//
+// **그 되돌리기도 「지금 칸」만 덮는다 — 칸 자체는 안 지워진다.** jsdom에
+// 히스토리 스택을 비우는 수단이 없어서, 앞 테스트가 쌓은 칸이 그대로 남고
+// `history.back()`이 **그리로** 갈 수 있다. 그래서 「뒤로 가기가 목록으로
+// 온다」만 보면 부족하다 — 우연히 앞 테스트의 빈 주소를 밟고 통과한다.
+// 실제로 `openArea`의 `pushSearch`를 지워도 79개가 전부 통과했다.
+//
+// **`history.length`로도 못 센다.** 같은 이유의 반대쪽이다 — 앞 테스트가
+// `back()`을 남기면 스택 중간에 서 있게 되고, 그다음 `pushState`는 앞쪽 칸을
+// **잘라내고** 하나를 얹으므로 길이가 안 늘어난다. 길이로 세 봤다가 이 파일이
+// 통째로 돌 때만 실패하는 테스트를 만들었다.
+//
+// 남는 통로는 `pushState`를 직접 지켜보는 것이다. 구현을 들여다보는 단언이라
+// 평소에는 피하지만, 여기서는 **push와 replace의 차이가 관찰 가능한 유일한
+// 자리**다 — 둘은 같은 주소를 만들고, 차이는 오직 히스토리에만 남는다.
+describe('HomeScreen 주소', () => {
+  /**
+   * 뒤로 가기. **주소가 실제로 바뀔 때까지 기다린다.**
+   *
+   * jsdom도 브라우저도 `popstate`를 다음 태스크로 미루는데, 매크로태스크
+   * 한 번으로는 부족했다(그렇게 짰다가 두 테스트가 조용히 실패했다).
+   * 기다리는 대상이 화면이 아니라 **주소**인 것이 중요하다 — 화면을 기다리면
+   * 「주소는 안 바뀌었는데 화면만 어쩌다 맞았다」를 통과시킨다.
+   */
+  async function goBack(): Promise<void> {
+    const before = window.location.search
+    window.history.back()
+    await waitFor(() => {
+      expect(window.location.search).not.toBe(before)
+    })
+  }
+
+  /** `pushState` 감시자. 기본 동작은 그대로 통과시킨다. */
+  function watchPush() {
+    return vi.spyOn(window.history, 'pushState')
+  }
+
+  it('명소를 열면 주소에 이름이 실리고 히스토리에 칸이 쌓인다', async () => {
+    render(<HomeScreen />)
+    const push = watchPush()
+
+    await userEvent.click(sheetRow(/경복궁/))
+
+    // 인코딩된 형태를 손으로 적지 않는다 — 그건 `route.test.ts`가 잠근다.
+    // 여기서 볼 것은 「화면을 열면 주소가 따라온다」이다.
+    expect(new URLSearchParams(window.location.search).get('area')).toBe('경복궁')
+    // 주소만 보면 `push`와 `replace`를 구별하지 못한다 — 뒤로 가기가 목록으로
+    // 돌아오는 것은 오직 이 호출이 있어서다(위 절 참고).
+    expect(push).toHaveBeenCalledTimes(1)
+  })
+
+  // **이 저장소가 이번에 고친 결함이다.** 주소에 아무것도 안 실릴 때는 상세를
+  // 열고 뒤로 가기를 누르면 히스토리에 우리 칸이 없어 앱이 통째로 닫혔다.
+  it('상세에서 뒤로 가기를 하면 목록으로 돌아온다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetRow(/경복궁/))
+    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+
+    await goBack()
+
+    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+    expect(window.location.search).toBe('')
+  })
+
+  it('공유 링크로 들어오면 처음부터 그 상세다', () => {
+    window.history.replaceState(null, '', '/?area=%EA%B2%BD%EB%B3%B5%EA%B6%81')
+
+    render(<HomeScreen />)
+
+    // `findBy`가 아니라 `getBy`다 — 마운트 뒤 effect로 옮기면 목록이 한 프레임
+    // 지나가는데, 그걸 잡는 것이 이 단언의 목적이다.
+    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+  })
+
+  it('공유 링크로 들어오면 지도도 그 명소에 가 있다', async () => {
+    const { AREA_CATALOG } = await import('../data/areas')
+    const 경복궁 = AREA_CATALOG.find((area) => area.name === '경복궁')
+    window.history.replaceState(null, '', '/?area=%EA%B2%BD%EB%B3%B5%EA%B6%81')
+
+    render(<HomeScreen />)
+
+    // 시트가 아래를 덮으므로 중심은 명소 좌표보다 **남쪽**이다. 좌표를 그대로
+    // 쓰면 명소가 시트 뒤에 숨는다 — `offsetCenter`의 존재 이유다.
+    const map = screen.getByRole('region', { name: '지도' })
+    const [lat, lng] = (map.dataset.center ?? '').split(',').map(Number)
+    expect(lng).toBeCloseTo(경복궁!.lng, 5)
+    expect(lat).toBeLessThan(경복궁!.lat)
+    expect(map.dataset.zoom).toBe('15')
+  })
+
+  it('카탈로그에 없는 이름으로 들어오면 목록이다', () => {
+    // 주소는 남이 준다. 거르지 않으면 이 앱에 없는 명소의 상세가 열린다.
+    window.history.replaceState(null, '', '/?area=%ED%8F%89%EC%96%91%EC%97%AD')
+
+    render(<HomeScreen />)
+
+    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+  })
+
+  it('오늘의 서울도 주소에 실리고 뒤로 가기가 목록으로 온다', async () => {
+    render(<HomeScreen />)
+    const push = watchPush()
+
+    await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
+    expect(window.location.search).toBe('?view=today')
+    expect(push).toHaveBeenCalledTimes(1)
+
+    await goBack()
+
+    expect(window.location.search).toBe('')
+    expect(screen.getByRole('button', { name: /오늘의 서울 열기/ })).toBeInTheDocument()
+  })
+
+  // 「목록으로」는 **앞으로 가는 이동이 아니다.** 칸을 쌓으면 뒤로 가기가
+  // 화면이 안 바뀌는 칸을 거슬러 오르게 된다.
+  it('「목록으로」는 히스토리에 칸을 쌓지 않는다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetRow(/경복궁/))
+    const push = watchPush()
+
+    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+
+    expect(window.location.search).toBe('')
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  // `useHomeFilters`가 검색어를 받으면 선택을 조용히 푼다. 그 경로는 주소를
+  // 고칠 자리가 따로 없어, 「주소 맞추기」 effect가 없으면 화면은 목록인데
+  // 주소만 `?area=경복궁`으로 남는다 — 그 상태로 새로고침하면 상세가 뜬다.
+  it('검색해서 상세가 닫히면 주소도 따라 지워진다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetRow(/경복궁/))
+    expect(window.location.search).not.toBe('')
+
+    await userEvent.type(screen.getByRole('searchbox'), '강남')
+
+    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+    expect(window.location.search).toBe('')
+  })
+
+  it('같은 명소를 두 번 열어도 칸이 하나다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetRow(/경복궁/))
+    const push = watchPush()
+
+    // 상세가 half에서 열리므로 지도 마커가 그대로 살아 있다. 같은 마커를
+    // 다시 누르는 것은 실제로 일어나는 조작이다.
+    await userEvent.click(mapMarker(/경복궁/))
+
+    expect(push).not.toHaveBeenCalled()
+    expect(new URLSearchParams(window.location.search).get('area')).toBe('경복궁')
   })
 })

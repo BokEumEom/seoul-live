@@ -3,6 +3,7 @@ import { t } from '../../i18n/t'
 import { useState } from 'react'
 import { kakaoMapSearchUrl, naverMapSearchUrl, tmapRouteUrl } from '../../domain/mapLinks'
 import type { AreaCatalogEntry } from '../../domain/types'
+import { shareUrl } from '../../platform/appUrl'
 import { openExternalUrl, shareMessage } from '../../platform/links'
 import { Icon, type IconName } from '../common/Icon'
 
@@ -130,10 +131,18 @@ export function ActionButtons({ entry, saved, onSave }: Props) {
             // 지도 앱 링크(위 `href`)는 `entry.name`을 그대로 쓴다 — 그건
             // 검색어라 한국어여야 카카오맵이 찾는다. 사람이 읽는 이 문장만
             // 화면 언어를 따른다.
+            //
+            // **주소를 함께 보낸다.** 예전에는 문장만 나갔고, 받은 사람은
+            // 앱을 열 수도 그 명소로 갈 수도 없었다 — 기능이 있는 것처럼
+            // 보이는데 아무 데도 안 닿았다. 링크에는 언제나 `entry.name`이
+            // 실린다(`areaDisplayName`이 아니다): 주소는 사람이 읽는 문장이
+            // 아니라 **앱이 되읽는 키**라, 영어 화면에서 공유한 링크를 한국어
+            // 화면에서 열어도 같은 명소여야 한다.
+            const url = shareUrl({ kind: 'area', name: entry.name })
             void shareMessage(
-              t('{명소} 실시간 혼잡도 - 서울 라이브', {
+              `${t('{명소} 실시간 혼잡도 - 서울 라이브', {
                 명소: areaDisplayName(entry),
-              }),
+              })}\n${url}`,
             )
           }}
           className={`${ACTION_BASE} border border-outline-variant bg-surface-container-lowest text-on-surface`}

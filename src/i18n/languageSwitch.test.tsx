@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ActionButtons } from '../components/home/ActionButtons'
 import { AreaHero } from '../components/home/AreaHero'
 import { PopulationCard } from '../components/home/PopulationCard'
@@ -53,6 +53,29 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
     )
 
     expect(screen.getByRole('link', { name: /KakaoMap/ })).toBeInTheDocument()
+  })
+
+  // **공유 링크의 명소 이름만은 안 바뀐다.** 사람이 읽는 문장은 영어여야
+  // 하지만 주소는 **앱이 되읽는 키**다 — 영어 화면에서 보낸 링크를 한국어
+  // 화면에서 열어도 같은 명소여야 하고, `routeFromSearch`는 카탈로그의
+  // `name`(한국어)만 안다. `areaDisplayName`을 실으면 영어 사용자가 보낸
+  // 링크가 전부 목록으로 떨어진다.
+  it('공유 링크는 영어 화면에서도 한국어 이름을 싣는다', async () => {
+    setLanguage('en')
+    const links = await import('../platform/links')
+    const share = vi
+      .spyOn(links, 'shareMessage')
+      .mockResolvedValue(undefined)
+    render(
+      <ActionButtons entry={AREA_CATALOG[0]} saved={false} onSave={() => undefined} />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Share' }))
+
+    const message = share.mock.calls[0]?.[0] ?? ''
+    expect(message).toContain(encodeURIComponent(AREA_CATALOG[0].name))
+    // 사람이 읽는 줄은 영어다. 둘이 한 문자열에 함께 산다.
+    expect(message).toContain(AREA_CATALOG[0].nameEn)
   })
 
   it('위치 안내가 영어로 바뀐다', () => {

@@ -18,12 +18,19 @@ export interface HomeFilters {
 
 // 홈의 상태를 한곳에 모은다. App으로 끌어올리지 않는다 — 홈의 필터·카메라는
 // 셸이 알 필요가 없다.
-export function useHomeFilters(): HomeFilters {
+//
+// `initialSelectedName`은 주소(`?area=강남역`)에서 온다. **effect로 나중에
+// 넣지 않는 이유**는 공유 링크로 들어온 사람이 목록이 한 프레임 번쩍이고
+// 사라지는 것을 보기 때문이다. 필터·정렬은 주소에 안 실으므로 여기 없다 —
+// 근거는 `domain/route.ts`.
+export function useHomeFilters(
+  initialSelectedName: string | null = null,
+): HomeFilters {
   const [query, setQueryRaw] = useState('')
   const [category, setCategoryRaw] = useState<CategoryFilterValue>('전체')
   const [filter, setFilterRaw] = useState<FilterKey | null>(null)
   const [sort, setSort] = useState<SortMode>('distance')
-  const [selectedName, setSelectedName] = useState<string | null>(null)
+  const [selectedName, setSelectedName] = useState<string | null>(initialSelectedName)
 
   // 목록에서 빠질 수 있는 조작은 선택을 해제한다. 걸러져 사라진 명소의
   // 상세가 남으면 목록에 없는 곳의 요약이 떠 있는 상태가 된다.

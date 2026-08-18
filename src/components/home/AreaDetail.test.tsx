@@ -20,9 +20,18 @@ vi.mock('../../platform/weekPattern', () => ({
   loadPattern: vi.fn().mockResolvedValue({ pattern: {}, lastObservedAt: null }),
   savePattern: vi.fn().mockResolvedValue(undefined),
 }))
+// 공유 버튼이 **무엇을 보내는가**가 검증 대상이다. 실제 `shareMessage`는
+// 브리지가 없으면 클립보드로 떨어지는데, jsdom에 `navigator.clipboard`가 없어
+// 조용히 아무 일도 안 일어난다 — 그 상태로는 문구가 비어도 통과한다.
+vi.mock('../../platform/links', () => ({
+  shareMessage: vi.fn().mockResolvedValue(undefined),
+  openExternalUrl: vi.fn().mockResolvedValue(undefined),
+}))
 
 const queries = await import('../../data/queries')
 const locationContext = await import('../../app/locationContext')
+const links = await import('../../platform/links')
+const shareMessage = vi.mocked(links.shareMessage)
 const useAreaSnapshot = vi.mocked(queries.useAreaSnapshot)
 const useAreaSnapshots = vi.mocked(queries.useAreaSnapshots)
 const useCityInfo = vi.mocked(queries.useCityInfo)
@@ -508,6 +517,21 @@ describe('AreaDetail', () => {
       expect(save).toHaveClass(geometry)
       expect(share).toHaveClass(geometry)
     }
+  })
+
+  // **주소가 없으면 공유가 아니다.** 예전에는 문장 하나("강남역 실시간 혼잡도
+  // - 서울 라이브")만 보냈다 — 받은 사람은 앱을 열 수도, 그 명소로 갈 수도
+  // 없었다. 기능이 있는 것처럼 보이는데 실제로는 아무 데도 안 닿았다.
+  it('공유하기가 그 명소로 열리는 주소를 함께 보낸다', async () => {
+    renderDetail()
+
+    await userEvent.click(screen.getByRole('button', { name: '공유하기' }))
+
+    const message = shareMessage.mock.calls[0]?.[0] ?? ''
+    expect(message).toContain('강남역')
+    // 인코딩 형태는 `route.test.ts`가 잠근다. 여기서 볼 것은 **명소를 가리키는
+    // 쿼리가 실려 나간다**는 것이다 — 앱 주소만 보내면 받은 사람은 목록으로 간다.
+    expect(message).toContain('?area=%EA%B0%95%EB%82%A8%EC%97%AD')
   })
 
   // 제목으로 훑는 사용자를 위한 뼈대다. 현재 상태 카드에는 보이는 제목이

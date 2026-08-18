@@ -12,6 +12,16 @@ describe('useHomeFilters', () => {
     expect(result.current.selectedName).toBeNull()
   })
 
+  // 공유 링크(`?area=강남역`)로 들어온 첫 렌더가 이미 그 상세여야 한다.
+  // 마운트 후에 effect로 넣으면 목록이 한 프레임 번쩍이고 지나간다.
+  it('처음 열린 명소를 받아서 시작한다', () => {
+    const { result } = renderHook(() => useHomeFilters('강남역'))
+    expect(result.current.selectedName).toBe('강남역')
+    // 나머지는 그대로다 — 주소에 싣는 것은 열린 명소뿐이다.
+    expect(result.current.category).toBe('전체')
+    expect(result.current.filter).toBeNull()
+  })
+
   // 목록에서 빠질 수 있는 조작은 선택을 해제한다. 걸러져 사라진 명소의
   // 상세가 남으면 목록에 없는 곳의 요약이 떠 있는 상태가 된다.
   it('필터를 바꾸면 선택이 해제된다', () => {
