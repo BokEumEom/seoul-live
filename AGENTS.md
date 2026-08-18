@@ -78,6 +78,8 @@ npm run deploy       # ait deploy
 
 공식 121곳 목록과의 대조는 끝났다(`official-areas.ts`, `areas.test.ts`가 고정). 남은 건 괄호 주변 공백뿐이고, 그건 실제 호출로만 확정된다.
 
+**명소에는 좌표가 없지만 시설에는 있다.** `citydata`의 주차장·따릉이는 좌표를 준다 — 주차장 `LAT`/`LNG`(문자열), 따릉이 `SBIKE_X`(**경도**)/`SBIKE_Y`(**위도**, 숫자). 축 이름이 위경도와 반대라 뒤집기 쉽고, 뒤집으면 위도가 126이 되어 지도가 중국으로 간다. `cityInfoSchema.ts`의 `coordsOrNull`이 범위와 `0,0`을 거르고 테스트가 축을 잠근다. **명세 엑셀에는 `PRK_X`/`PRK_Y`가 없어서 그것만 보면 「주차장은 좌표가 없다」고 잘못 결론 낸다** — 실응답 픽스처를 봐라.
+
 ### sample 키로는 실데이터 검증이 불가능하다
 
 인증키 자리에 `sample`을 넣으면 **지역명과 무관하게 항상 광화문·덕수궁**이 돌아온다. 강남역·홍대입구역으로 호출해도 결과가 같다. 공식 명세도 "샘플key를 통해서는 주요 121장소 중 '광화문·덕수궁' 지역만 조회 가능"이라고 명시한다(`서울시+실시간+도시데이터.xls`). 그래서 목업을 쓴다.
@@ -123,7 +125,7 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 - 목업↔실데이터 분기는 `src/data/client.ts` **한 곳에서만** 일어난다.
 - `api/`는 정규화하지 않는다. 원본을 그대로 넘기고 클라이언트가 파싱한다. 정규화 로직이 두 곳에 생기는 것을 막으려는 것이다.
 - **Google Maps SDK는 `src/screens/HomeScreen.tsx`에서만 import 한다.** 키·Map ID는 `src/platform/googleMaps.ts`가 유일하게 안다. 토스 브리지와 같은 이유다 — jsdom에도 없고 키가 없는 환경에도 없어서, 흩어지면 "키가 없으면 무슨 일이 나는가"를 화면마다 따로 처리하게 된다. `CongestionMarker`가 SDK를 import하지 않는 것도 같은 이유다 — 그래야 색상·라벨 규칙을 지도 목업 없이 테스트할 수 있다.
-- **`cityInfoSchema.ts`가 관대한 건 실수가 아니다.** 혼잡도(`schema.ts`)는 필드 단위 zod 스키마로 엄격하게 파싱하고, 도시정보(`cityInfoSchema.ts`)는 봉투만 검증한 뒤 나머지를 `null`·빈 배열로 흘려보낸다. 방향이 정반대인 이유는 두 가지다 — (1) `citydata` 응답을 실제로 본 적이 없다(인증키가 없어 필드 이름을 명세의 출력명 표에서만 읽었다), (2) 도시정보는 부가 정보라 일부가 비는 게 정상인데 엄격한 스키마는 주차장 한 곳의 필드 하나 때문에 날씨까지 날린다. 혼잡도는 값이 곧 화면의 존재 이유라 틀린 값을 보여주느니 실패해야 한다. **"일관성"을 이유로 한쪽에 맞추지 마라.**
+- **`cityInfoSchema.ts`가 관대한 건 실수가 아니다.** 혼잡도(`schema.ts`)는 필드 단위 zod 스키마로 엄격하게 파싱하고, 도시정보(`cityInfoSchema.ts`)는 봉투만 검증한 뒤 나머지를 `null`·빈 배열로 흘려보낸다. 방향이 정반대인 이유는 두 가지다 — (1) 필드 이름을 명세의 출력명 표에서만 읽고 짰다. 지금은 실응답 한 벌이 `docs/fixtures/citydata-광화문덕수궁.json`에 있고 `citydataFixture.test.ts`가 파서에 통과시키지만, **그 관대함 덕에 살아난 자리가 실제로 있었다** — 문화행사 키가 명세의 `CULTURALEVENTINFO`가 아니라 `EVENT_STTS`였고 후보를 둘 다 받아 뒀기에 안 깨졌다. (2) 도시정보는 부가 정보라 일부가 비는 게 정상인데 엄격한 스키마는 주차장 한 곳의 필드 하나 때문에 날씨까지 날린다. 혼잡도는 값이 곧 화면의 존재 이유라 틀린 값을 보여주느니 실패해야 한다. **"일관성"을 이유로 한쪽에 맞추지 마라.**
 - **인구 구성도 관대하게 파싱한다 — `src/data/compositionSchema.ts`.** 같은 응답(`citydata_ppltn`)에서 읽지만 `schema.ts`의 엄격한 `areaSchema`에 얹지 마라. **비율 한 칸이 이상할 때 혼잡도까지 통째로 날아간다.** 부가 정보 때문에 본체를 잃지 않으려는 분리다. 이 파일의 함수는 예외를 던지지 않고, 관련 키가 하나도 없으면 `null`을 돌려 상세가 섹션을 통째로 숨긴다.
 - **관대한 파서에서 `Number()`를 맨몸으로 쓰지 마라.** `Number('0x1f')`는 31, `Number('1e1')`은 10, `Number('+50')`은 50이다. 「없는 값」이 아니라 **그럴듯한 틀린 값**이 화면에 뜬다. `compositionSchema.ts`·`cityInfoSchema.ts`가 정규식으로 먼저 거르고, `schema.ts`의 `numericSchema`도 같은 이유다.
 - **못 읽은 0을 사실로 말하지 마라.** `rate()`가 칸마다 따로 0을 떨어뜨리므로 0은 「실제로 0%」일 수도 「못 읽음」일 수도 있다. `domain/composition.ts`의 `residentLabel`·`hasGenderSplit`이 그 규칙을 지키는 예다 — 한쪽만 읽힌 성별을 「남 100% · 여 0%」로 적으면 안 된다.
@@ -163,6 +165,11 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 - **반경도 마찬가지다.** 쓰는 이름은 `rounded-sm`·`rounded-card`·`rounded-action`·`rounded-full` 넷뿐이고 전부 `--radius-*` 토큰에서 나온다. **`rounded-lg`·`rounded-2xl` 같은 Tailwind 기본 이름을 쓰지 마라** — 값이 우연히 맞을 뿐이고 시안의 `rounded` 스케일과 **이름이 어긋난다**(시안의 `lg`는 1rem인데 Tailwind의 `rounded-lg`는 0.5rem이다).
 - **접근성 role은 실제 동작에 맞춰라.** 필터·정렬·카테고리 줄은 탭이 아니라 `role="group"` + `aria-pressed` 토글 버튼이다. `role="tab"`은 `tabpanel`·`aria-controls`·화살표 이동·roving tabindex가 함께 와야 하는 패턴이라, 그것들 없이 쓰면 보조기술에 못 지킬 약속을 한다. `role` 없는 `<div>`에 `aria-label`을 얹지 마라 — `generic`은 이름을 받을 수 없어 조용히 버려진다.
 - 아이콘은 `src/components/common/Icon.tsx`에 필요한 것만 둔다. 쓰이지 않게 된 아이콘은 지운다.
+- **다크 모드는 지원이지 기본이 아니다.** 기본은 밝게(`domain/theme.ts`의 `DEFAULT_THEME`)이고 사용자가 밝게/어둡게/기기 설정 중에 고른다. **CSS에 `@media (prefers-color-scheme: dark)`를 쓰지 마라** — 그러면 폰이 어두운 사용자에게 다크가 기본이 되고, 「시스템을 골랐을 때만 기기를 본다」를 표현할 수 없어 다크 블록이 두 벌이 된다. 기기를 읽는 일은 `hooks/themeStore.ts`가 하고 CSS는 `:root[data-theme='dark']`만 본다.
+- **새 색을 쓰기 시작하면 다크 값도 함께 넣어라.** `tokens.test.ts`가 `src`를 훑어 「화면에서 쓰는데 다크 블록에 없는 토큰」을 찾아 죽는다. 예외는 브랜드 색과 그 위의 글자(`brand-*`)뿐이다 — 남의 자산이라 밤이라고 바꿀 수 없다.
+- **`overflow-hidden`은 스크롤 상자를 없애지 않는다.** 눈에만 감출 뿐이라 JS가 `scrollTop`을 넣거나 `scrollIntoView`가 조상을 거슬러 오면 그대로 밀린다. 홈 화면 루트에서 실제로 겪었다 — 시트 안의 절로 가려던 `scrollIntoView` 한 번이 루트를 524px 밀어 **지도를 화면 밖으로 보냈다**(`overflow-hidden`이 걸려 있었는데도). 잘라내되 못 밀게 하려면 `clip-strict` 유틸리티를 쓴다.
+- **`scrollIntoView`를 쓰지 마라.** 스크롤 가능한 조상을 전부 거슬러 올라가며 스크롤한다. 시트 안에서 옮길 때는 `data-sheet-content` 상자를 직접 찾아 `scrollTo`한다(`CityInfoChips`의 `scrollToSection`).
+- **jsdom에 없는 브라우저 API는 `src/test/setup.ts`에서 채운다.** 컴포넌트에 `?.`를 달면 실제 브라우저에는 늘 있는 것이라 **어떤 테스트로도 못 죽이는 분기**가 남는다. 지금 채워 둔 것: `matchMedia`, `Element.prototype.scrollIntoView`.
 
 ## 작업 규칙
 
