@@ -26,6 +26,7 @@ function station(name: string, bikes: number | null): BikeStation {
 const EMPTY: CityInfo = {
   areaName: '광화문·덕수궁',
   areaCode: 'POI009',
+  freshness: null,
   weather: null,
   roadTraffic: null,
   accidents: [],

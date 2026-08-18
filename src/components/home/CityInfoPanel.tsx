@@ -3,6 +3,7 @@ import { useCityInfo } from '../../data/queries'
 
 import { hasAnyCityInfo, type FacilityLocation } from '../../domain/cityInfo'
 import { cityInfoSectionDomId } from '../../domain/cityInfoSummary'
+import { elapsed, type Freshness } from '../../domain/freshness'
 import type { Coords } from '../../domain/types'
 import { AccidentList } from '../cityinfo/AccidentList'
 import { AlertBanner } from '../cityinfo/AlertBanner'
@@ -15,6 +16,38 @@ import { SubwayArrivals } from '../cityinfo/SubwayArrivals'
 import { WeatherCard } from '../cityinfo/WeatherCard'
 import { ErrorState } from '../common/ErrorState'
 import { SkeletonList } from '../common/SkeletonCard'
+
+/**
+ * 「이 값이 언제 기준인가」 한 줄.
+ *
+ * **모를 때만 예전 문구로 돌아간다.** 「최대 3시간 전」은 프록시 캐시 TTL에서
+ * 온 상한이라, 방금 받은 값에 붙으면 절반이 거짓말이다 — 그걸 고치려고 이
+ * 함수가 있다. 하지만 `Age`를 못 읽는 상황이 실재하고(프록시가 CORS로 아직
+ * 안 열어 줬거나 CDN을 안 거친 응답), 그때 「방금」이라 적으면 **거짓말의
+ * 방향이 정반대로 커진다.** 모르면 모른다고 하는 쪽이 언제나 안전하다.
+ *
+ * **세 절이 같은 문구를 쓴다.** 예전에는 「잔여 면수는」·「거치 대수는」처럼
+ * 주어를 붙였는데, 시각이 뭉뚱그려져 있어 **무엇에 걸리는 말인지** 밝힐 필요가
+ * 있었기 때문이다. 시각이 정확해진 지금은 바로 위 제목(「주차장」·「따릉이」·
+ * 「지하철 도착」)이 그 일을 한다 — 주어까지 살리면 단위 셋 × 주어 셋으로
+ * 사전 항목이 아홉 개가 된다.
+ *
+ * `Date.now()`를 렌더 중에 읽으므로 이 줄은 **다시 그릴 때만** 갱신된다.
+ * 1초마다 살아 움직일 값이 아니라(분 단위로 내림한다) 타이머를 두지 않았다.
+ */
+function freshnessNote(freshness: Freshness | null, fallback: string): string {
+  const since = elapsed(freshness, Date.now())
+  switch (since.unit) {
+    case 'unknown':
+      return fallback
+    case 'now':
+      return t('방금 받은 값이에요')
+    case 'minutes':
+      return t('{분}분 전 값이에요', { 분: since.value })
+    case 'hours':
+      return t('{시간}시간 전 값이에요', { 시간: since.value })
+  }
+}
 
 interface Props {
   readonly areaName: string
@@ -101,9 +134,9 @@ export function CityInfoPanel({ areaName, origin, onShowOnMap }: Props) {
           icon="subway"
           count={info.subway.length}
           // **「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다.** 기준을 안
-          // 적으면 3시간 전 열차를 지금 오는 것처럼 보여준다. 근본 해법은
-          // 응답의 `Age` 헤더를 화면까지 가져와 실제 경과를 적는 것이다.
-          note={t("최대 3시간 전 기준이에요")}
+          // 적으면 3시간 전 열차를 지금 오는 것처럼 보여준다. 이제 실제 경과를
+          // 적는다 — 못 읽었을 때만 예전의 상한 문구로 돌아간다.
+          note={freshnessNote(info.freshness, t('최대 3시간 전 기준이에요'))}
         >
           <SubwayArrivals arrivals={info.subway} />
         </InfoSection>
@@ -114,7 +147,7 @@ export function CityInfoPanel({ areaName, origin, onShowOnMap }: Props) {
         id={cityInfoSectionDomId('parking')}
         icon="parking"
         count={info.parking.length}
-        note={t("잔여 면수는 최대 3시간 전 기준이에요")}
+        note={freshnessNote(info.freshness, t('잔여 면수는 최대 3시간 전 기준이에요'))}
       >
         {info.parking.length === 0 ? (
           <EmptyNote>{t('주변에 주차장 정보가 없어요.')}</EmptyNote>
@@ -128,7 +161,7 @@ export function CityInfoPanel({ areaName, origin, onShowOnMap }: Props) {
         id={cityInfoSectionDomId('bikes')}
         icon="bike"
         count={info.bikes.length}
-        note={t("거치 대수는 최대 3시간 전 기준이에요")}
+        note={freshnessNote(info.freshness, t('거치 대수는 최대 3시간 전 기준이에요'))}
       >
         {info.bikes.length === 0 ? (
           <EmptyNote>{t('주변에 따릉이 대여소가 없어요.')}</EmptyNote>

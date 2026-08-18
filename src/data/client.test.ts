@@ -38,7 +38,7 @@ describe('fetchAreaSnapshot', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => PAYLOAD }),
+      vi.fn().mockResolvedValue({ ok: true, headers: new Headers(), json: async () => PAYLOAD }),
     )
 
     const snapshot = await fetchAreaSnapshot('강남역')
@@ -63,7 +63,7 @@ describe('fetchAreaSnapshot', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => PAYLOAD }),
+      vi.fn().mockResolvedValue({ ok: true, headers: new Headers(), json: async () => PAYLOAD }),
     )
 
     await expect(fetchAreaSnapshot('경복궁')).rejects.toThrow()
@@ -114,7 +114,7 @@ describe('fetchCityInfo', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => CITY_PAYLOAD }),
+      vi.fn().mockResolvedValue({ ok: true, headers: new Headers(), json: async () => CITY_PAYLOAD }),
     )
 
     const info = await fetchCityInfo('강남역')
@@ -139,7 +139,7 @@ describe('fetchCityInfo', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => CITY_PAYLOAD }),
+      vi.fn().mockResolvedValue({ ok: true, headers: new Headers(), json: async () => CITY_PAYLOAD }),
     )
 
     await expect(fetchCityInfo('경복궁')).rejects.toThrow()
@@ -150,6 +150,56 @@ describe('fetchCityInfo', () => {
     vi.stubEnv('VITE_MOCK_FAIL_AREAS', '강남역')
 
     await expect(fetchCityInfo('강남역')).rejects.toThrow()
+  })
+
+  // 프록시가 CDN 캐시에서 준 응답이면 얼마나 묵었는지 `Age`에 실려 온다. 그 값이
+  // 화면의 「12분 전 값이에요」가 되는 유일한 근거다 — 없으면 세 절이 「최대
+  // 3시간 전」이라는 뭉뚱그린 문구에 머문다.
+  describe('응답의 나이', () => {
+    function stubCityFetch(headers: Headers) {
+      vi.stubEnv('VITE_USE_MOCK', 'false')
+      vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({ ok: true, headers, json: async () => CITY_PAYLOAD }),
+      )
+    }
+
+    it('Age 헤더를 받은 시각과 함께 싣는다', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-08-18T09:00:00Z'))
+      stubCityFetch(new Headers({ Age: '742' }))
+
+      const info = await fetchCityInfo('강남역')
+
+      expect(info.freshness).toEqual({ ageSeconds: 742, receivedAt: Date.now() })
+      vi.useRealTimers()
+    })
+
+    // **0으로 떨어뜨리면 안 된다.** 프록시에 `Access-Control-Expose-Headers`가
+    // 아직 안 배포됐거나 CDN을 안 거친 응답이면 이 헤더가 없는데, 그때 0으로
+    // 두면 최대 3시간 묵은 값이 「방금」으로 둔갑해 고치기 전보다 나빠진다.
+    it('Age 헤더가 없으면 모른다고 한다', async () => {
+      stubCityFetch(new Headers())
+
+      expect((await fetchCityInfo('강남역')).freshness).toBeNull()
+    })
+
+    it('Age가 숫자가 아니면 모른다고 한다', async () => {
+      // `Number('')`는 0이고 `Number('1e1')`은 10이다 — 맨몸 `Number()`를 쓰면
+      // 「없는 값」이 아니라 **그럴듯한 틀린 값**이 화면에 뜬다(AGENTS.md의 규칙).
+      stubCityFetch(new Headers({ Age: '1e1' }))
+
+      expect((await fetchCityInfo('강남역')).freshness).toBeNull()
+    })
+
+    it('목업은 방금 만든 값이다', async () => {
+      vi.stubEnv('VITE_USE_MOCK', 'true')
+
+      const info = await fetchCityInfo('강남역')
+
+      expect(info.freshness?.ageSeconds).toBe(0)
+    })
   })
 })
 
@@ -184,6 +234,7 @@ describe('fetchAreaSnapshots', () => {
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
+        headers: new Headers(),
         json: async () => ({
           results: {
             없는명소: { RESULT: { 'RESULT.CODE': 'INFO-200', 'RESULT.MESSAGE': '해당하는 데이터가 없습니다.' } },
@@ -208,7 +259,7 @@ describe('fetchAreaSnapshots', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
     const fetchSpy = vi
       .fn()
-      .mockResolvedValue({ ok: true, json: async () => ({ results: { 강남역: PAYLOAD } }) })
+      .mockResolvedValue({ ok: true, headers: new Headers(), json: async () => ({ results: { 강남역: PAYLOAD } }) })
     vi.stubGlobal('fetch', fetchSpy)
 
     await fetchAreaSnapshots(['경복궁', '강남역', '경복궁'])
@@ -226,6 +277,7 @@ describe('fetchAreaSnapshots', () => {
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
+        headers: new Headers(),
         json: async () => ({
           results: {
             강남역: PAYLOAD,
@@ -248,7 +300,7 @@ describe('fetchAreaSnapshots', () => {
   it('봉투 모양이 아예 다르면(null 등) 원본 TypeError가 아니라 안전하게 실패한다', async () => {
     vi.stubEnv('VITE_USE_MOCK', 'false')
     vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => null }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, headers: new Headers(), json: async () => null }))
 
     // "Cannot read properties of null" 같은 미번역 원본 에러가 아니라, parseBulkEnvelope가
     // 던지는 ZodError로 실패해야 한다. reject 자체가 나는지만 확인한다 — 정확한 에러

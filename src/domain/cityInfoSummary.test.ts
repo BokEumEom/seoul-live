@@ -6,6 +6,7 @@ function info(overrides: Partial<CityInfo> = {}): CityInfo {
   return {
     areaName: '광화문·덕수궁',
     areaCode: 'POI009',
+    freshness: null,
     weather: null,
     roadTraffic: null,
     accidents: [],

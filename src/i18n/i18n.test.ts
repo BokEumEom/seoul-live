@@ -15,6 +15,7 @@ function chipLabels(): readonly string[] {
   return summarizeCityInfo({
     areaName: '광화문·덕수궁',
     areaCode: 'POI009',
+    freshness: null,
     weather: null,
     // **도로소통도 이제 들어온다.** 예전에는 번역할 수 없어 `null`로 뺐는데
     // (키가 혼잡도 헤드라인의 `원활`과 다퉜다), 도메인이 「도로」를 붙여 칸을

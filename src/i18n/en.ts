@@ -181,6 +181,14 @@ export const EN: Readonly<Record<string, string>> = {
   따릉이: 'Ttareungi bikes',
   문화행사: 'Events',
   '{역} 도착 열차': 'Trains at {역}',
+  // 세 절(지하철·주차장·따릉이)의 「이 값이 언제 기준인가」. 아래 「최대 3시간」
+  // 세 줄은 **나이를 못 읽었을 때만** 쓰인다 — `CityInfoPanel`의 `freshnessNote`.
+  //
+  // 「받은」이 「측정된」이 아닌 것은 사실 관계다. `Age`는 우리가 서울 API에서
+  // 받아온 뒤로 흐른 시간이라, 서울 쪽이 이미 묵혀서 준 몫은 안 들어간다.
+  '방금 받은 값이에요': 'Just fetched',
+  '{분}분 전 값이에요': 'Fetched {분} min ago',
+  '{시간}시간 전 값이에요': 'Fetched {시간}h ago',
   '최대 3시간 전 기준이에요': 'As of up to 3 hours ago',
   '잔여 면수는 최대 3시간 전 기준이에요': 'Spaces free as of up to 3 hours ago',
   '거치 대수는 최대 3시간 전 기준이에요': 'Bike counts as of up to 3 hours ago',

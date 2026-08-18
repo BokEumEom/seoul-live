@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { UseQueryResult } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CityInfo } from '../../domain/cityInfo'
 import type { AreaSnapshot } from '../../domain/types'
 import { reset } from '../../hooks/favoritesStore'
@@ -59,6 +59,7 @@ const SNAPSHOT: AreaSnapshot = {
 const EMPTY_CITY_INFO: CityInfo = {
   areaName: '강남역',
   areaCode: 'POI014',
+  freshness: null,
   weather: null,
   roadTraffic: null,
   accidents: [],
@@ -532,6 +533,69 @@ describe('AreaDetail', () => {
     // 인코딩 형태는 `route.test.ts`가 잠근다. 여기서 볼 것은 **명소를 가리키는
     // 쿼리가 실려 나간다**는 것이다 — 앱 주소만 보내면 받은 사람은 목록으로 간다.
     expect(message).toContain('?area=%EA%B0%95%EB%82%A8%EC%97%AD')
+  })
+
+  // 도시정보는 하루 1,000회 한도 때문에 프록시가 최대 3시간 캐시한다. 그래서
+  // 「잔여 568면」이 한참 전 값일 수 있는데, 예전에는 세 절이 **방금 받은
+  // 값에도** 「최대 3시간 전 기준이에요」라고 적었다 — 절반은 거짓말이었다.
+  describe('값이 언제 기준인지', () => {
+    const RECEIVED_AT = Date.parse('2026-08-18T09:00:00Z')
+
+    function renderWithAge(freshness: CityInfo['freshness'], nowOffsetMs = 0) {
+      vi.useFakeTimers()
+      vi.setSystemTime(RECEIVED_AT + nowOffsetMs)
+      useCityInfo.mockReturnValue(
+        ok({
+          ...EMPTY_CITY_INFO,
+          // 값이 하나도 없으면 `hasAnyCityInfo`가 거짓이라 절 자체가 안 그려진다
+          // — 안내 문구를 볼 자리가 사라진다.
+          parking: [
+            { name: '주차장', coords: null, capacity: 100, available: 45, liveAvailable: true, paid: null },
+          ],
+          freshness,
+        }),
+      )
+      renderDetail()
+    }
+
+    /** 주차장 절의 안내 문구. 세 절이 같은 문구를 쓰므로 하나로 대표한다. */
+    function parkingNote(): string {
+      const section = screen.getByRole('region', { name: '주차장' })
+      return within(section).getByText(/값이에요|기준이에요/).textContent ?? ''
+    }
+
+    it('방금 받았으면 방금이라고 적는다', () => {
+      renderWithAge({ ageSeconds: 0, receivedAt: RECEIVED_AT })
+      expect(parkingNote()).toBe('방금 받은 값이에요')
+    })
+
+    it('묵었으면 몇 분 전인지 적는다', () => {
+      renderWithAge({ ageSeconds: 12 * 60, receivedAt: RECEIVED_AT })
+      expect(parkingNote()).toBe('12분 전 값이에요')
+    })
+
+    it('받아 둔 채로 흐른 시간도 함께 센다', () => {
+      // `staleTime`이 30분이라 응답이 캐시에 그만큼 더 앉아 있을 수 있다.
+      renderWithAge({ ageSeconds: 12 * 60, receivedAt: RECEIVED_AT }, 30 * 60 * 1_000)
+      expect(parkingNote()).toBe('42분 전 값이에요')
+    })
+
+    it('한 시간이 넘으면 시간으로 적는다', () => {
+      renderWithAge({ ageSeconds: 2 * 3_600 + 300, receivedAt: RECEIVED_AT })
+      expect(parkingNote()).toBe('2시간 전 값이에요')
+    })
+
+    // **모를 때가 문제의 핵심이다.** 프록시가 `Age`를 CORS로 열어 주기 전이거나
+    // CDN을 안 거친 응답이면 나이를 알 수 없는데, 그때 「방금」이라 적으면 최대
+    // 3시간 묵은 값이 갓 받은 값으로 둔갑해 **고치기 전보다 나빠진다.**
+    it('나이를 모르면 예전처럼 뭉뚱그려 말한다', () => {
+      renderWithAge(null)
+      expect(parkingNote()).toBe('잔여 면수는 최대 3시간 전 기준이에요')
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
   })
 
   // 제목으로 훑는 사용자를 위한 뼈대다. 현재 상태 카드에는 보이는 제목이

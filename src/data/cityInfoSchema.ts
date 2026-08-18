@@ -371,6 +371,10 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
   })
 
   return {
+    // **파서는 나이를 모른다.** `Age`는 응답 본문이 아니라 HTTP 헤더에 있어
+    // 여기까지 오지 않는다. `client.ts`가 받아서 이 값을 덮어쓴다 — 여기서
+    // 0으로 두면 목업 픽스처를 파싱한 것까지 「방금 받았다」가 된다.
+    freshness: null,
     // 표시용 이름은 카탈로그 값이 권위다(schema.ts와 같은 이유). 위에서 이미
     // 일치를 확인했으므로 문자열은 같다.
     areaName: expectedName,

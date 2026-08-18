@@ -65,11 +65,35 @@ export class ProxyResponseError extends Error {
 // `subject`는 사용자에게 보이는 문구에 들어간다. 「더보기」가 붙으면서 같은 함수가
 // 혼잡도와 도시정보 두 가지를 나르게 됐는데, 문구를 하나로 고정해두면 날씨를
 // 못 받아온 화면이 "혼잡도 정보를 가져오지 못했어요"라고 말한다.
+/**
+ * 프록시 응답이 CDN에 머물러 있던 시간(초). 모르면 `null`이다.
+ *
+ * **`Number()`를 맨몸으로 쓰지 않는다.** `Number('')`는 0이고 `Number('1e1')`은
+ * 10이다 — 「없는 값」이 아니라 **그럴듯한 틀린 값**이 화면에 뜬다(AGENTS.md의
+ * 관대한 파서 규칙과 같은 이유).
+ *
+ * **없을 때 0으로 떨어뜨리면 안 된다.** `Age`는 CORS 안전목록 헤더가 아니라
+ * 프록시가 `Access-Control-Expose-Headers`로 열어 줘야 보이는데, 그게 아직 안
+ * 배포됐거나 CDN을 안 거친 응답이면 없다. 그때 0으로 두면 최대 3시간 묵은 값이
+ * 「방금」으로 둔갑해 **고치기 전보다 나빠진다.**
+ */
+function readAgeSeconds(headers: Headers): number | null {
+  const raw = headers.get('Age')
+  if (raw === null || !/^\d+$/.test(raw.trim())) return null
+  return Number(raw.trim())
+}
+
+interface JsonResponse {
+  readonly body: unknown
+  /** 이 응답이 얼마나 묵었나. 모르면 `null` — `domain/freshness.ts` 참고. */
+  readonly ageSeconds: number | null
+}
+
 async function requestJson(
   url: string,
   timeoutMs: number,
   subject = '혼잡도 정보',
-): Promise<unknown> {
+): Promise<JsonResponse> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -88,7 +112,7 @@ async function requestJson(
       console.error(`${subject} 요청 실패 (status=${response.status}):`, url)
       throw proxyError
     }
-    return await response.json()
+    return { body: await response.json(), ageSeconds: readAgeSeconds(response.headers) }
   } catch (error) {
     if (error instanceof ProxyResponseError) {
       throw error
@@ -120,7 +144,11 @@ export async function fetchAreaSnapshot(areaName: string): Promise<AreaSnapshot>
   }
 
   const url = `${baseUrl()}/api/citydata?area=${encodeURIComponent(areaName)}`
-  return parseCitydataResponse(await requestJson(url, SINGLE_AREA_TIMEOUT_MS), areaName)
+  const { body } = await requestJson(url, SINGLE_AREA_TIMEOUT_MS)
+  // 혼잡도는 나이를 안 싣는다. 이 응답에는 관측 시각(`PPLTN_TIME`)이 함께 와서
+  // 화면이 이미 「11:00 기준」이라고 정확히 말할 수 있다 — 도시정보 쪽에
+  // `Age`가 필요한 것은 거기에 그런 시각이 없기 때문이다.
+  return parseCitydataResponse(body, areaName)
 }
 
 // 「더보기」(도시정보). `citydata_ppltn`이 아니라 `citydata`를 부르므로 주차장·따릉이·
@@ -132,14 +160,23 @@ export async function fetchCityInfo(areaName: string): Promise<CityInfo> {
         `[목업] ${areaName} 도시정보 조회 실패를 시뮬레이션합니다. (VITE_MOCK_FAIL_AREAS)`,
       )
     }
-    return parseCityInfoResponse(buildMockCityInfo(areaName), areaName)
+    // 방금 만든 값이다. 목업에는 CDN도 서울 API도 없으므로 나이가 0이고,
+    // 그건 「모른다」가 아니라 실제로 아는 사실이다.
+    return {
+      ...parseCityInfoResponse(buildMockCityInfo(areaName), areaName),
+      freshness: { ageSeconds: 0, receivedAt: Date.now() },
+    }
   }
 
   const url = `${baseUrl()}/api/cityinfo?area=${encodeURIComponent(areaName)}`
-  return parseCityInfoResponse(
-    await requestJson(url, SINGLE_AREA_TIMEOUT_MS, '도시 정보'),
-    areaName,
-  )
+  const { body, ageSeconds } = await requestJson(url, SINGLE_AREA_TIMEOUT_MS, '도시 정보')
+  // **`receivedAt`을 함께 든다.** `Age`만으로는 부족하다 — 이 응답이
+  // TanStack Query 캐시에 `staleTime`(30분)만큼 더 앉아 있을 수 있어서,
+  // 그 몫을 안 더하면 42분 묵은 값에 「12분 전」이라 적는다.
+  return {
+    ...parseCityInfoResponse(body, areaName),
+    freshness: ageSeconds === null ? null : { ageSeconds, receivedAt: Date.now() },
+  }
 }
 
 export async function fetchAreaSnapshots(
@@ -161,7 +198,9 @@ export async function fetchAreaSnapshots(
   // "사용자 수에 비례한 호출량 증가" 문제가 서버 쪽에서 재현된다.
   const canonicalAreas = Array.from(new Set(areaNames)).toSorted()
   const url = `${baseUrl()}/api/citydata-bulk?areas=${encodeURIComponent(canonicalAreas.join(','))}`
-  const envelope = parseBulkEnvelope(await requestJson(url, BULK_TIMEOUT_MS))
+  // 일괄 조회도 나이를 안 싣는다 — 단건 혼잡도와 같은 이유로 관측 시각이
+  // 응답 안에 함께 온다.
+  const envelope = parseBulkEnvelope((await requestJson(url, BULK_TIMEOUT_MS)).body)
 
   // 봉투가 이름을 키로 쓰므로(api/citydata-bulk.ts 참고) 서버가 보낸 순서와
   // 무관하게 호출부가 원래 넘긴 areaNames 순서로 결과를 만들 수 있다.

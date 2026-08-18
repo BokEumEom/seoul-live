@@ -1,4 +1,5 @@
 import type { CongestionTone } from './congestion'
+import type { Freshness } from './freshness'
 import type { Coords } from './types'
 
 // 「더보기」(도시정보) 화면이 쓰는 타입과 순수 함수. 혼잡도(citydata_ppltn)와 달리
@@ -219,6 +220,14 @@ export interface CityInfo {
   readonly events: readonly CulturalEvent[]
   readonly alerts: readonly CityAlert[]
   readonly subway: readonly SubwayArrival[]
+  /**
+   * 이 응답이 얼마나 묵었나. **모르면 `null`이고, 그때 화면은 모른다고 말한다.**
+   *
+   * 선택 항목으로 두지 않는다(`nameEn`과 같은 이유) — 빠뜨린 자리가 조용히
+   * `undefined`가 되면 화면이 「방금」과 「모름」 중 무엇을 골랐는지 알 수 없다.
+   * 필수로 두어 컴파일러가 만드는 쪽마다 답하게 한다.
+   */
+  readonly freshness: Freshness | null
 }
 
 // 통합대기환경등급을 혼잡도와 같은 네 톤에 겹친다. 색 토큰을 하나만 유지하려는

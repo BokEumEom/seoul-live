@@ -340,6 +340,10 @@ describe('HomeScreen', () => {
         events: [],
         alerts: [],
         subway: [],
+        // **`as unknown as`가 이 자리를 안 지켜준다.** 캐스트가 타입 검사를
+        // 통째로 건너뛰어서, 빠뜨리면 컴파일은 통과하고 화면이 `undefined`를
+        // 받아 터진다(실제로 그랬다). 캐스트를 쓰는 픽스처는 손으로 맞춰야 한다.
+        freshness: null,
       },
       isPending: false,
       isError: false,

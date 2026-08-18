@@ -5,6 +5,14 @@ import type { VercelResponse } from '@vercel/node'
 export function setCorsHeaders(res: VercelResponse): void {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  // **`Age`는 CORS 안전목록 헤더가 아니다.** 노출을 명시하지 않으면 브라우저가
+  // 응답에서 통째로 감춰 클라이언트는 언제나 `null`을 읽는다. 오리진이 다른
+  // 위 사정 때문에 이 경로를 반드시 탄다.
+  //
+  // 화면이 「12분 전 값이에요」라고 적을 수 있는 근거가 이 한 줄이다. 없으면
+  // 클라이언트가 경과를 모르게 되고, 도시정보 세 절이 「최대 3시간 전」이라는
+  // 뭉뚱그린 문구에 머문다(`domain/freshness.ts` 참고 — 모를 때 지어내지 않는다).
+  res.setHeader('Access-Control-Expose-Headers', 'Age')
 }
 
 // 정상 응답에만 쓴다. citydata.ts와 citydata-bulk.ts가 각자 캐시 헤더를 따로
