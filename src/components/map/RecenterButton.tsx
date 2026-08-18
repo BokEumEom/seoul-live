@@ -65,7 +65,11 @@ const BOTTOM_CLASS: Readonly<Record<RecenterDetent, string>> = {
 // 이름의 버튼을 흡수했기 때문이다 — 하는 일도 그때 함께 넘어왔다.
 export function RecenterButton({ disabled, detent, onClick }: Props) {
   // 넓은 화면에서는 패널이 왼쪽을 가릴 뿐이라 아래가 통째로 비어 있다.
-  const bottom = detent === null ? 'bottom-6' : BOTTOM_CLASS[detent]
+  //
+  // **`bottom-6`이 아니라 `bottom-safe-6`이다.** 이 갈래만 화면 끝을 직접
+  // 재는데, 가로로 든 폰은 768px을 넘어 여기로 오고 그 끝이 곧 홈 인디케이터다.
+  // 위 두 단계는 시트 비율을 따라가므로 같은 문제가 없다.
+  const bottom = detent === null ? 'bottom-safe-6' : BOTTOM_CLASS[detent]
   return (
     <button
       type="button"

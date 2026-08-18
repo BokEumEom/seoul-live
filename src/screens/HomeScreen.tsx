@@ -938,7 +938,12 @@ export function HomeScreen() {
             data-overlay
             // 컨테이너는 이벤트를 통과시킨다. 칩 줄과 검색 바 사이의 빈 곳에서
             // 지도를 끌 수 있어야 한다 — 되살리는 것은 자식 쪽이다.
-            className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1"
+            // **`pt-safe`가 노치를 피하는 자리다.** 지도는 화면 끝까지 가고
+            // (`data-map-layer`는 `inset-0` 그대로) 비켜서는 것은 읽고 눌러야
+            // 하는 이 열뿐이다. 안 붙이면 검색창이 상태 표시줄 시계 밑으로
+            // 들어간다. `viewport-fit=cover`가 없으면 값이 0이라 아무 일도
+            // 안 일어난다 — `index.html`의 그 줄이 짝이다.
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1 pt-safe"
           >
             {/* 검색과 테마 토글이 한 줄이다 — 위 패널 쪽과 같은 배치다.
                 토글을 새 줄에 두면 지도가 44px 더 가려진다. */}

@@ -223,6 +223,26 @@ describe('HomeScreen', () => {
     expect(screen.getByRole('group', { name: '필터' })).toBeInTheDocument()
   })
 
+  // **지도는 화면 끝까지 가고 조작부만 비켜선다.** 지도 레이어에 안전영역을
+  // 주면 노치 밑이 배경색 띠로 남아 「끝까지 가는」 그림이 깨진다 — 비켜설
+  // 것은 읽고 눌러야 하는 쪽이다. 그래서 `pt-safe`가 이 열에만 붙는다.
+  //
+  // jsdom에는 레이아웃도 안전영역도 없어 **실제로 몇 px 내려갔는지는 못 잰다.**
+  // 그건 헤드리스 크롬(`Emulation.setSafeAreaInsetsOverride`)의 몫이고,
+  // 여기서 잠그는 것은 그 값을 만드는 클래스다(시트 손잡이 20px과 같은 처지).
+  it('지도 위 조작부가 위 안전영역을 피한다', () => {
+    render(<HomeScreen />)
+    const overlay = screen.getByRole('searchbox').closest('[data-overlay]')
+    expect(overlay).toHaveClass('pt-safe')
+  })
+
+  it('지도 레이어는 안전영역을 피하지 않는다', () => {
+    render(<HomeScreen />)
+    const layer = document.querySelector('[data-map-layer]')
+    expect(layer).not.toHaveClass('pt-safe')
+    expect(layer).toHaveClass('inset-0')
+  })
+
   // 지도가 살아 있는 상태에서 **목록 행**을 누르는 경로다. 다른 테스트들이
   // 쓰는 `areaButtons(...)[0]`은 DOM 순서상 전부 지도 마커라, 이 테스트가
   // 없으면 `AreaListItem` → 상세가 한 번도 검증되지 않는다.

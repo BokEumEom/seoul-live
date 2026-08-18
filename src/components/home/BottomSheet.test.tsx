@@ -380,6 +380,18 @@ describe('BottomSheet', () => {
     const { scroller } = setup()
     expect(paddingClasses(scroller)).toEqual([])
   })
+
+  // **아래 안전영역은 예외이고, 그래서 자리도 다르다.** 홈 인디케이터가 먹는
+  // 띠는 디자인 여백이 아니라 기기 사정이라 뷰가 알 수 없다 — 뷰 셋이 저마다
+  // `env()`를 들면 세 곳이 따로 어긋난다.
+  //
+  // **내용 상자가 아니라 시트 뿌리에 건다.** 뿌리에 걸어야 배경이 화면 맨
+  // 아래까지 내려가 인디케이터 밑이 시트 색으로 차고, 내용만 그 위에서
+  // 멈춘다. 내용 상자에 걸면 위 규칙(「여백의 주인은 뷰다」)과도 부딪친다.
+  it('시트 뿌리가 아래 안전영역만큼 내용을 띄운다', () => {
+    const { sheet } = setup()
+    expect(sheet).toHaveClass('pb-safe')
+  })
 })
 
 describe('BottomSheet — 손끝을 따라온다', () => {

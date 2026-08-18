@@ -60,6 +60,11 @@ export default defineConfig({
   // 다시 띄워라.
   define: {
     __INDEX_CSS__: JSON.stringify(readFileSync('src/index.css', 'utf8')),
+    // 앱 셸의 정적 HTML. 번들러가 안 만지는 파일이라 어떤 컴포넌트 테스트도
+    // 닿지 않는데, `viewport-fit=cover` 한 줄이 빠지면 안전영역 처리가 통째로
+    // 죽는다. `src`는 브라우저용 tsconfig라 테스트에서 `node:fs`를 못 쓰므로
+    // (`types: ["vite/client"]`) 여기서 주입한다 — `__INDEX_CSS__`와 같은 방식이다.
+    __INDEX_HTML__: JSON.stringify(readFileSync('index.html', 'utf8')),
     __DESIGN_MD__: JSON.stringify(
       readFileSync('stitch_ui/seoul_flow/DESIGN.md', 'utf8'),
     ),

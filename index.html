@@ -3,7 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      **`viewport-fit=cover`가 지도를 화면 끝까지 보내는 스위치다.**
+
+      없으면 브라우저가 노치·홈 인디케이터를 피해 뷰포트를 좁혀 잡아, 지도
+      위아래에 배경색 띠가 남는다. 그리고 `env(safe-area-inset-*)`가 **전부
+      0으로 떨어져** 조작부에 붙인 `pt-safe`·`pb-safe`도 함께 죽는다 — 클래스는
+      다 있는데 화면은 그대로인, 고친 줄 알고 넘어가기 딱 좋은 상태가 된다.
+      그래서 `src/app/viewport.test.ts`가 이 한 줄을 잠근다.
+
+      짝이 되는 규칙: **지도 레이어는 안전영역을 피하지 않는다.** 비켜서는 것은
+      읽고 눌러야 하는 쪽(오버레이 열·바텀시트)뿐이다.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>서울 라이브</title>
     <meta name="description" content="서울 주요 명소의 실시간 인파를 지도에서 봅니다." />
     <!--

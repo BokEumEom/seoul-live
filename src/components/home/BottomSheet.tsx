@@ -269,7 +269,14 @@ export function BottomSheet({
       // 위로 20px 나가 있어서 조용히 잘린다 — 아래 손잡이 주석을 볼 것.
       // 끄는 동안에는 전환을 끈다. 켜 두면 손끝보다 200ms 늦게 따라와
       // 고무줄처럼 늘어진다.
-      className={`absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-action bg-surface-container-lowest shadow-floating${
+      // **`pb-safe`가 뿌리에 붙는 것이 핵심이다.** 뿌리에 걸어야 시트 배경이
+      // 화면 맨 아래까지 내려가 홈 인디케이터 밑이 시트 색으로 차고, 내용만
+      // 그 위에서 멈춘다. 아래 내용 상자에 걸면 「여백의 주인은 뷰다」 규칙과
+      // 부딪치고, 배경도 인디케이터까지 안 내려간다.
+      //
+      // 높이는 `%`이고 `box-sizing: border-box`라 이 여백이 높이를 **먹는다**.
+      // 즉 시트는 그대로고 내용 영역만 인디케이터만큼 줄어든다 — 원하는 동작이다.
+      className={`absolute inset-x-0 bottom-0 z-10 flex flex-col rounded-t-action bg-surface-container-lowest pb-safe shadow-floating${
         dragRatio === null ? ' transition-[height] duration-200 ease-out' : ''
       }`}
     >
