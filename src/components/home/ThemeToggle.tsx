@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { setTheme, useResolvedTheme } from '../../hooks/themeStore'
 import { Icon } from '../common/Icon'
 
@@ -22,7 +23,7 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
-      aria-label={nextIsDark ? '어두운 화면으로 바꾸기' : '밝은 화면으로 바꾸기'}
+      aria-label={nextIsDark ? t('어두운 화면으로 바꾸기') : t('밝은 화면으로 바꾸기')}
       onClick={() => {
         setTheme(nextIsDark ? 'dark' : 'light')
       }}

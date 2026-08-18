@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import {
   parkingTone,
   sortParkingByAvailable,
@@ -17,9 +18,11 @@ const VISIBLE_LIMIT = 5
 // 전부 만차로 보인다 — 그 앞을 지나가는 사용자에게는 정반대의 안내다.
 function availabilityLabel(lot: ParkingLot): string {
   if (lot.available === null) {
-    return lot.liveAvailable ? '정보 없음' : '실시간 미제공'
+    return lot.liveAvailable ? t('정보 없음') : t('실시간 미제공')
   }
-  return lot.available === 0 ? '만차' : `${lot.available.toLocaleString()}면`
+  return lot.available === 0
+    ? t('만차')
+    : t('{면수}면', { 면수: lot.available.toLocaleString() })
 }
 
 // 거리를 맨 앞에 둔다 — 어느 주차장으로 갈지 고를 때 먼저 보는 값이다.
@@ -30,10 +33,10 @@ function describe(lot: ParkingLot & { readonly meters: number | null }): string 
     parts.push(formatDistance(lot.meters))
   }
   if (lot.capacity !== null) {
-    parts.push(`총 ${lot.capacity.toLocaleString()}면`)
+    parts.push(t('총 {면수}면', { 면수: lot.capacity.toLocaleString() }))
   }
   if (lot.paid !== null) {
-    parts.push(lot.paid ? '유료' : '무료')
+    parts.push(lot.paid ? t('유료') : t('무료'))
   }
   return parts.join(' · ')
 }
@@ -73,7 +76,7 @@ export function ParkingList({ lots, origin, onShowOnMap }: Props) {
       </ul>
       {lots.length > visible.length && (
         <p className="mt-3 text-label-sm text-outline">
-          외 {lots.length - visible.length}곳
+          {t('외 {개수}곳', { 개수: lots.length - visible.length })}
         </p>
       )}
     </>

@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { AreaHero } from './AreaHero'
 import { CityInfoChips } from './CityInfoChips'
 import { CityInfoPanel } from './CityInfoPanel'
@@ -54,7 +55,7 @@ export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Prop
       className="flex min-h-12 w-fit items-center gap-1 px-4 text-label-md font-semibold text-primary"
     >
       <Icon name="back" className="size-4" />
-      목록으로
+      {t('목록으로')}
     </button>
   )
 
@@ -63,7 +64,7 @@ export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Prop
       <div className="pb-6">
         {header}
         <p className="px-4 py-10 text-center text-body-md text-on-surface-variant">
-          명소를 찾을 수 없어요.
+          {t('명소를 찾을 수 없어요.')}
         </p>
       </div>
     )
@@ -115,7 +116,7 @@ export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Prop
       {query.isError && (
         <div className="px-4">
           <ErrorState
-            message="혼잡도 정보를 가져오지 못했어요."
+            message={t("혼잡도 정보를 가져오지 못했어요.")}
             onRetry={() => void query.refetch()}
           />
         </div>
@@ -133,8 +134,8 @@ export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Prop
                 제목이지만 그쪽은 과거까지 그린다. 서울 API의 요청 인자에 날짜가
                 없어 우리는 과거를 못 받고, 실데이터에서 예보는 12개다. */}
             <div className="flex items-baseline justify-between gap-2">
-              <h3 className="text-headline-sm text-on-surface">시간대별 인파</h3>
-              <span className="text-label-sm text-outline">막대 = 예상 인원</span>
+              <h3 className="text-headline-sm text-on-surface">{t('시간대별 인파')}</h3>
+              <span className="text-label-sm text-outline">{t('막대 = 예상 인원')}</span>
             </div>
             <div className="mt-3">
               <ForecastChart snapshot={snapshot} />

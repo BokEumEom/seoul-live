@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { filterLabel, PRESETS, type FilterKey } from '../../domain/presets'
 
 // 이름은 domain/presets의 `filterLabel`에서만 온다. 여기에 복사해두면 라벨을
@@ -29,7 +30,7 @@ export function FilterChips({ counts, value, onChange }: Props) {
     // 수 있는 이 줄은 라디오의 「반드시 하나」와도 어긋난다.
     <div
       role="group"
-      aria-label="필터"
+      aria-label={t("필터")}
       className="pointer-events-auto flex gap-2 overflow-x-auto scrollbar-none px-4 pb-1"
     >
       {CHIPS.map((chip) => {
@@ -88,7 +89,7 @@ export function FilterChips({ counts, value, onChange }: Props) {
                 ★
               </span>
             )}
-            {filterLabel(chip)} {count}
+            {t(filterLabel(chip))} {count}
           </button>
         )
       })}

@@ -1,5 +1,6 @@
 import { LocationProvider } from './app/LocationProvider'
 import { QueryProvider } from './app/QueryProvider'
+import { useLanguage } from './hooks/languageStore'
 import { useAppTheme } from './hooks/themeStore'
 import { HomeScreen } from './screens/HomeScreen'
 
@@ -22,6 +23,11 @@ function AppShell() {
   // 기기 변화를 듣는다. 여기서 부르는 이유는 `useAppTheme` 주석에 있다 —
   // 설정 UI는 「오늘의 서울」 안이라 열지 않으면 영영 안 그려진다.
   useAppTheme()
+  // **언어를 여기서 구독한다.** `t()`가 훅이 아니라 모듈 함수라(근거는
+  // `i18n/t.ts`) 언어가 바뀌어도 컴포넌트들이 스스로는 다시 그려지지 않는다.
+  // 루트가 구독해 두면 언어가 바뀔 때 루트가 다시 그려지고, 그 아래 트리
+  // 전체가 새 문자열로 렌더된다 — 51개 파일에 배선을 넣지 않아도 되는 값이다.
+  useLanguage()
 
   return (
     <main className="h-dvh bg-surface">

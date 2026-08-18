@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import {
   toFacilityLocation,
   type BikeStation,
@@ -25,9 +26,9 @@ function stockTone(bikes: number | null): 'calm' | 'normal' | 'crowded' | null {
 
 function stockLabel(bikes: number | null): string {
   if (bikes === null) {
-    return '정보 없음'
+    return t('정보 없음')
   }
-  return bikes === 0 ? '대여 불가' : `${bikes}대`
+  return bikes === 0 ? t('대여 불가') : t('{대수}대', { 대수: bikes })
 }
 
 interface Props {
@@ -55,7 +56,7 @@ export function BikeList({ stations, origin, onShowOnMap }: Props) {
               <p className="mt-0.5 text-label-sm text-on-surface-variant">
                 {[
                   station.meters === null ? null : formatDistance(station.meters),
-                  station.racks === null ? null : `거치대 ${String(station.racks)}대`,
+                  station.racks === null ? null : t('거치대 {대수}대', { 대수: station.racks }),
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -70,7 +71,7 @@ export function BikeList({ stations, origin, onShowOnMap }: Props) {
       </ul>
       {stations.length > visible.length && (
         <p className="mt-3 text-label-sm text-outline">
-          외 {stations.length - visible.length}곳
+          {t('외 {개수}곳', { 개수: stations.length - visible.length })}
         </p>
       )}
     </>

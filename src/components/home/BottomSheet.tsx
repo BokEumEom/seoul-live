@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { useState, useRef, type PointerEvent, type ReactNode } from 'react'
 import {
   clampSheetRatio,
@@ -40,6 +41,8 @@ const NEXT_DETENT: Readonly<Record<Detent, Detent>> = {
 
 // 스크린리더 사용자는 시트가 지금 얼마나 열려 있는지 볼 수 없다. 누르면
 // 무엇이 될지는 현재 단계를 알아야 예측되므로 이름에 담는다.
+// **모듈 최상위에서 `t()`를 부르면 import 시점의 언어로 굳는다.** 값만 두고
+// 번역은 쓰는 자리에서 한다.
 const DETENT_LABEL: Readonly<Record<Detent, string>> = {
   peek: '살짝 열림',
   half: '절반',
@@ -272,7 +275,7 @@ export function BottomSheet({
     >
       <button
         type="button"
-        aria-label={`시트 높이 조절, 현재 ${DETENT_LABEL[detent]}`}
+        aria-label={t('시트 높이 조절, 현재 {단계}', { 단계: t(DETENT_LABEL[detent]) })}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { ErrorState } from '../common/ErrorState'
 
 export type MapUnavailableReason = 'no-key' | 'load-failed' | 'offline'
@@ -23,11 +24,11 @@ export type MapUnavailableReason = 'no-key' | 'load-failed' | 'offline'
 // 「마지막 업데이트」가 이미 들고 있다.
 const MESSAGE: Readonly<Record<MapUnavailableReason, string>> = {
   'no-key':
-    'VITE_GOOGLE_MAPS_API_KEY가 설정되지 않아 지도를 표시할 수 없어요. 아래 목록과 검색은 그대로 쓸 수 있어요.',
+    t('VITE_GOOGLE_MAPS_API_KEY가 설정되지 않아 지도를 표시할 수 없어요. 아래 목록과 검색은 그대로 쓸 수 있어요.'),
   'load-failed':
-    '지도를 불러오지 못했어요. 네트워크 상태를 확인해 주세요. 아래 목록과 검색은 그대로 쓸 수 있어요.',
+    t('지도를 불러오지 못했어요. 네트워크 상태를 확인해 주세요. 아래 목록과 검색은 그대로 쓸 수 있어요.'),
   offline:
-    '오프라인이에요. 연결되면 지도가 다시 나와요. 아래 목록과 검색은 그대로 쓸 수 있어요.',
+    t('오프라인이에요. 연결되면 지도가 다시 나와요. 아래 목록과 검색은 그대로 쓸 수 있어요.'),
 }
 
 interface Props {

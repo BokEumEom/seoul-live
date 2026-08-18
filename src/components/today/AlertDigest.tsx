@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import type { CityAlert } from '../../domain/cityInfo'
 
 interface Props {
@@ -18,7 +19,7 @@ export function AlertDigest({ alerts }: Props) {
     // 이유가 없다. 아래 h3가 구조를 주고, 형제 절들도 같은 모양이다.
     <section className="mx-4 mt-3 rounded-card bg-error-container p-4">
       <h3 className="text-label-md font-semibold text-on-error-container">
-        재난문자 {unique.length}건
+        {t('재난문자 {건수}건', { 건수: unique.length })}
       </h3>
       <ul className="mt-1">
         {unique.map((alert) => (

@@ -48,6 +48,12 @@ export default defineConfig({
       readFileSync('stitch_ui/seoul_flow/DESIGN.md', 'utf8'),
     ),
     __SRC_SOURCES__: JSON.stringify(readSourceFiles('src')),
+    // 화면 파일만. 「감싸지 않은 한국어」 검사가 쓴다 — `src/data`의 명소
+    // 카탈로그와 목업, `src/domain`의 API 값은 화면 글자가 아니라 데이터라
+    // 함께 보면 전부 걸린다.
+    __UI_SOURCES__: JSON.stringify(
+      readSourceFiles('src/components') + readSourceFiles('src/screens'),
+    ),
   },
   test: {
     environment: 'jsdom',

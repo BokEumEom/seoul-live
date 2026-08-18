@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import type { AccidentControl } from '../../domain/cityInfo'
 
 interface Props {
@@ -33,7 +34,7 @@ export function AccidentList({ accidents }: Props) {
                 앞이라 종료 예정만 적는다 — 시트는 좁다. */}
             {accident.expectedClearAt !== '' && (
               <p className="mt-1 text-label-sm text-outline">
-                {accident.expectedClearAt}까지 통제
+                {t('{시각}까지 통제', { 시각: accident.expectedClearAt })}
               </p>
             )}
           </li>

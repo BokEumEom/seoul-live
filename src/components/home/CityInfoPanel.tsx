@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { useCityInfo } from '../../data/queries'
 
 import { hasAnyCityInfo, type FacilityLocation } from '../../domain/cityInfo'
@@ -52,7 +53,7 @@ export function CityInfoPanel({ areaName, origin, onShowOnMap }: Props) {
     return (
       <div className="px-4">
         <ErrorState
-          message="도시 정보를 가져오지 못했어요."
+          message={t("도시 정보를 가져오지 못했어요.")}
           onRetry={() => void cityInfo.refetch()}
         />
       </div>
@@ -66,7 +67,7 @@ export function CityInfoPanel({ areaName, origin, onShowOnMap }: Props) {
   if (!hasAnyCityInfo(info)) {
     return (
       <p className="px-4 py-6 text-center text-body-md text-on-surface-variant">
-        이 명소에는 지금 제공되는 도시 정보가 없어요.
+        {t('이 명소에는 지금 제공되는 도시 정보가 없어요.')}
       </p>
     )
   }
@@ -81,7 +82,7 @@ export function CityInfoPanel({ areaName, origin, onShowOnMap }: Props) {
           어떤가)이고, 시트가 좁아 관련 정보를 두 섹션으로 나누면 제목만 두 줄
           더 먹는다. 사고가 없으면 목록만 빠진다. */}
       {(info.roadTraffic !== null || info.accidents.length > 0) && (
-        <InfoSection title="도로소통" id={cityInfoSectionDomId('road')} icon="road">
+        <InfoSection title={t("도로소통")} id={cityInfoSectionDomId('road')} icon="road">
           {info.roadTraffic !== null && <RoadTrafficCard traffic={info.roadTraffic} />}
           {info.accidents.length > 0 && (
             <div className={info.roadTraffic === null ? '' : 'mt-3'}>
@@ -95,55 +96,55 @@ export function CityInfoPanel({ areaName, origin, onShowOnMap }: Props) {
           「어떻게 갈까」를 묻는 교통 수단들이 이어서 온다. */}
       {info.subway.length > 0 && (
         <InfoSection
-          title="지하철 도착"
+          title={t("지하철 도착")}
           id={cityInfoSectionDomId('subway')}
           icon="subway"
           count={info.subway.length}
           // **「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다.** 기준을 안
           // 적으면 3시간 전 열차를 지금 오는 것처럼 보여준다. 근본 해법은
           // 응답의 `Age` 헤더를 화면까지 가져와 실제 경과를 적는 것이다.
-          note="최대 3시간 전 기준이에요"
+          note={t("최대 3시간 전 기준이에요")}
         >
           <SubwayArrivals arrivals={info.subway} />
         </InfoSection>
       )}
 
       <InfoSection
-        title="주차장"
+        title={t("주차장")}
         id={cityInfoSectionDomId('parking')}
         icon="parking"
         count={info.parking.length}
-        note="잔여 면수는 최대 3시간 전 기준이에요"
+        note={t("잔여 면수는 최대 3시간 전 기준이에요")}
       >
         {info.parking.length === 0 ? (
-          <EmptyNote>주변에 주차장 정보가 없어요.</EmptyNote>
+          <EmptyNote>{t('주변에 주차장 정보가 없어요.')}</EmptyNote>
         ) : (
           <ParkingList lots={info.parking} origin={origin} onShowOnMap={onShowOnMap} />
         )}
       </InfoSection>
 
       <InfoSection
-        title="따릉이"
+        title={t("따릉이")}
         id={cityInfoSectionDomId('bikes')}
         icon="bike"
         count={info.bikes.length}
-        note="거치 대수는 최대 3시간 전 기준이에요"
+        note={t("거치 대수는 최대 3시간 전 기준이에요")}
       >
         {info.bikes.length === 0 ? (
-          <EmptyNote>주변에 따릉이 대여소가 없어요.</EmptyNote>
+          <EmptyNote>{t('주변에 따릉이 대여소가 없어요.')}</EmptyNote>
         ) : (
           <BikeList stations={info.bikes} origin={origin} onShowOnMap={onShowOnMap} />
         )}
       </InfoSection>
 
       <InfoSection
-        title="문화행사"
+        title={t("문화행사")}
         id={cityInfoSectionDomId('events')}
         icon="event"
         count={info.events.length}
       >
         {info.events.length === 0 ? (
-          <EmptyNote>진행 중인 문화행사가 없어요.</EmptyNote>
+          <EmptyNote>{t('진행 중인 문화행사가 없어요.')}</EmptyNote>
         ) : (
           <EventList events={info.events} />
         )}

@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { useState } from 'react'
 import { kakaoMapSearchUrl, naverMapSearchUrl, tmapRouteUrl } from '../../domain/mapLinks'
 import type { AreaCatalogEntry } from '../../domain/types'
@@ -34,13 +35,13 @@ interface MapLink {
 // **라벨을 늘릴 때는 다시 재라** — 320px의 여유가 12px뿐이다.
 const MAP_LINKS: readonly MapLink[] = [
   {
-    label: '카카오맵',
+    label: t('카카오맵'),
     icon: 'pin',
     href: (entry) => kakaoMapSearchUrl(entry.name),
     className: 'bg-brand-kakao text-brand-ink',
   },
   {
-    label: '네이버',
+    label: t('네이버'),
     icon: 'map',
     href: (entry) => naverMapSearchUrl(entry.name),
     className: 'bg-brand-naver text-brand-ink',
@@ -49,7 +50,7 @@ const MAP_LINKS: readonly MapLink[] = [
     // 티맵 로고 색을 토큰으로 들이지 않았다. 카카오·네이버는 시안이 브랜드
     // 배경을 쓰지만 셋째까지 색을 채우면 한 줄이 신호등이 된다 — 이것만
     // 테두리형으로 두어 「길찾기 둘 + 내비 하나」로 읽히게 했다.
-    label: '티맵',
+    label: t('티맵'),
     icon: 'navigation',
     href: (entry) => tmapRouteUrl(entry.name, entry),
     className:
@@ -99,7 +100,12 @@ export function ActionButtons({ entry, saved, onSave }: Props) {
         <button
           type="button"
           onClick={() => {
-            setSaveNotice(`${entry.name} ${saved ? '저장 해제' : '저장됨'}`)
+            setSaveNotice(
+              t('{명소} {동작}', {
+                명소: entry.name,
+                동작: saved ? t('저장 해제') : t('저장됨'),
+              }),
+            )
             onSave()
           }}
           className={`${ACTION_BASE} border text-primary ${
@@ -109,17 +115,17 @@ export function ActionButtons({ entry, saved, onSave }: Props) {
           }`}
         >
           <Icon name={saved ? 'starFilled' : 'star'} className="size-5" />
-          {saved ? '저장됨' : '저장'}
+          {saved ? t('저장됨') : t('저장')}
         </button>
         <button
           type="button"
           onClick={() => {
-            void shareMessage(`${entry.name} 실시간 혼잡도 - 서울 라이브`)
+            void shareMessage(t('{명소} 실시간 혼잡도 - 서울 라이브', { 명소: entry.name }))
           }}
           className={`${ACTION_BASE} border border-outline-variant bg-surface-container-lowest text-on-surface`}
         >
           <Icon name="share" className="size-5" />
-          공유하기
+          {t('공유하기')}
         </button>
       </div>
       {/* 320px에서 「친구에게 공유하기」는 배정 폭 138px에 필요 폭 145px이라

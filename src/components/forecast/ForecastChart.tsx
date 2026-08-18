@@ -1,8 +1,9 @@
+import { formatPopulationTick } from '../../i18n/format'
+import { t } from '../../i18n/t'
 import { congestionTone } from '../../domain/congestion'
 import {
   AXIS_TICKS,
   forecastPopulation,
-  formatPopulationTick,
   niceAxisMax,
   peakForecast,
 } from '../../domain/forecast'
@@ -47,7 +48,7 @@ export function ForecastChart({ snapshot }: Props) {
   if (snapshot.forecasts.length === 0) {
     return (
       <p className="py-8 text-center text-label-md text-on-surface-variant">
-        예측 정보가 아직 없어요.
+        {t('예측 정보가 아직 없어요.')}
       </p>
     )
   }
@@ -56,20 +57,20 @@ export function ForecastChart({ snapshot }: Props) {
   const bars: readonly Bar[] = [
     {
       key: 'now',
-      label: '지금',
+      label: t('지금'),
       congestion: snapshot.congestion,
       populationMin: snapshot.populationMin,
       populationMax: snapshot.populationMax,
-      spokenTime: '지금',
+      spokenTime: t('지금'),
       current: true,
     },
     ...snapshot.forecasts.map((item) => ({
       key: item.time,
-      label: `${String(item.hour)}시`,
+      label: t('{시}시', { 시: item.hour }),
       congestion: item.congestion,
       populationMin: item.populationMin,
       populationMax: item.populationMax,
-      spokenTime: `${String(item.hour)}시`,
+      spokenTime: t('{시}시', { 시: item.hour }),
       current: false,
     })),
   ]
@@ -86,12 +87,15 @@ export function ForecastChart({ snapshot }: Props) {
       {peak !== null && (
         // 그래프를 볼 수 없는 사용자에게는 이 한 줄이 그래프를 **대신하고**,
         // 볼 수 있는 사용자에게는 결론을 먼저 준다. 샘플에도 같은 자리에 있다.
+        // **한 문장으로 둔다.** 예전에는 시각만 굵게 하려고 셋으로 쪼개져
+        // 있었는데(「앞으로는」 + 시각 + 「에 가장 붐빌 전망이에요」), 영어는
+        // 어순이 달라 그 조각들을 다시 이을 수가 없다. 굵기를 잃는 대신
+        // 어느 언어에서도 문장이 성립한다.
         <p className="text-body-sm text-on-surface-variant">
-          앞으로는{' '}
-          <strong className="font-semibold text-on-surface">
-            {String(peak.hour)}시
-          </strong>
-          에 가장 붐빌 전망이에요 ({peak.congestion})
+          {t('앞으로는 {시}시에 가장 붐빌 전망이에요 ({단계})', {
+            시: peak.hour,
+            단계: t(peak.congestion),
+          })}
         </p>
       )}
 
@@ -138,7 +142,7 @@ export function ForecastChart({ snapshot }: Props) {
                   }`}
                 />
                 <span className="sr-only">
-                  {bar.spokenTime} {bar.congestion}{' '}
+                  {bar.spokenTime} {t(bar.congestion)}{' '}
                   {bar.populationMin.toLocaleString('ko-KR')}~
                   {bar.populationMax.toLocaleString('ko-KR')}명
                 </span>

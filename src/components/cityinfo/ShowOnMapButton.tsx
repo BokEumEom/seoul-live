@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import type { FacilityLocation } from '../../domain/cityInfo'
 import { Icon } from '../common/Icon'
 
@@ -25,7 +26,7 @@ export function ShowOnMapButton({ place, onShow }: Props) {
   return (
     <button
       type="button"
-      aria-label={`${place.name} 지도에서 보기`}
+      aria-label={t('{시설} 지도에서 보기', { 시설: place.name })}
       onClick={() => {
         onShow(place)
       }}

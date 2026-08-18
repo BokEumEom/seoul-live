@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 export function SkeletonCard() {
   return (
     <div className="animate-pulse rounded-card border border-outline-variant bg-surface-container-lowest p-4">
@@ -43,7 +44,7 @@ export function SkeletonList({ count = 5 }: { count?: number }) {
           일부 보조기술이 그 경우를 놓치는 것은 STATE.md에 미해결로 적혀 있는
           것과 같은 사정이고, 여기서도 해소되지 않는다. 그래도 훑어 내려가는
           사용자에게 이름이 생기는 것은 지금 얻는다. */}
-      <span className="sr-only">불러오는 중</span>
+      <span className="sr-only">{t('불러오는 중')}</span>
       {Array.from({ length: count }, (_, index) => (
         <SkeletonCard key={index} />
       ))}
@@ -55,7 +56,7 @@ export function SkeletonList({ count = 5 }: { count?: number }) {
 export function SkeletonRows({ count = 5 }: { count?: number }) {
   return (
     <div role="status" className="flex flex-col">
-      <span className="sr-only">불러오는 중</span>
+      <span className="sr-only">{t('불러오는 중')}</span>
       {Array.from({ length: count }, (_, index) => (
         <SkeletonRow key={index} />
       ))}

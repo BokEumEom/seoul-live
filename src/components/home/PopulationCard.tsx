@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import {
   AGE_LABELS,
   hasGenderSplit,
@@ -83,7 +84,7 @@ export function PopulationCard({ composition }: Props) {
           두 번 쓰는 font-medium과 달리 실제로 무게를 올린다.
           h4인 이유: 이 카드는 「지금 얼마나 붐비나」 카드 안의 하위 블록이다
           (AreaDetail). h3로 올리면 제목 층이 한 칸 건너뛴다. */}
-      <h4 className="text-label-md font-bold text-on-surface">지금 누가 있나</h4>
+      <h4 className="text-label-md font-bold text-on-surface">{t('지금 누가 있나')}</h4>
 
       {/* 알약이 없는 칸을 남기지 않으려고 li로 센다. residentLabel이 null일 때
           알약 안에 넣으면 글자 없는 빈 칸이 남는다.
@@ -93,13 +94,15 @@ export function PopulationCard({ composition }: Props) {
         <ul role="list" className="mt-2 flex flex-wrap gap-1.5">
           {showGender && (
             <li className={CHIP_NEUTRAL}>
-              남 {Math.round(composition.maleRate)}% · 여{' '}
-              {Math.round(composition.femaleRate)}%
+              {t('남 {남}% · 여 {여}%', {
+                남: Math.round(composition.maleRate),
+                여: Math.round(composition.femaleRate),
+              })}
             </li>
           )}
           {composition.nonResidentRate > 0 && (
             <li className={CHIP_NEUTRAL}>
-              비상주 {Math.round(composition.nonResidentRate)}%
+              {t('비상주 {비율}%', { 비율: Math.round(composition.nonResidentRate) })}
             </li>
           )}
           {label !== null && <li className={CHIP_ACCENT}>{label}</li>}
@@ -112,7 +115,7 @@ export function PopulationCard({ composition }: Props) {
         <>
           <div
             role="img"
-            aria-label={`연령대 비율: ${chartLabel}`}
+            aria-label={t('연령대 비율: {내용}', { 내용: chartLabel })}
             className="mt-3 flex h-2.5 overflow-hidden rounded-full"
           >
             {composition.ageRates.map((value, index) => (

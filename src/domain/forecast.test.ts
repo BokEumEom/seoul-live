@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   findQuietTime,
   forecastPopulation,
-  formatPopulationTick,
   niceAxisMax,
   peakForecast,
 } from './forecast'
@@ -136,20 +135,3 @@ describe('niceAxisMax', () => {
   })
 })
 
-describe('formatPopulationTick', () => {
-  it('만 단위부터는 만으로 줄인다', () => {
-    // 60,000을 그대로 적으면 좁은 축에서 자리를 다 먹는다.
-    expect(formatPopulationTick(60000)).toBe('6만')
-    expect(formatPopulationTick(45000)).toBe('4.5만')
-  })
-
-  it('만 미만은 그대로 적는다', () => {
-    // 0.32만은 아무도 안 읽는다.
-    expect(formatPopulationTick(3200)).toBe('3,200')
-    expect(formatPopulationTick(800)).toBe('800')
-  })
-
-  it('0은 0이다', () => {
-    expect(formatPopulationTick(0)).toBe('0')
-  })
-})

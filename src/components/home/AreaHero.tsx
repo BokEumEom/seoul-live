@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import {
   formatDistance,
   haversineMeters,
@@ -31,9 +32,10 @@ export function AreaHero({ entry, coords, level }: Props) {
         {/* `!== null`이지 truthy 검사가 아니다. 명소 위에 서 있으면 거리가
             0이라 `distanceMeters &&`로 쓰면 이 줄이 카테고리만 남는다. */}
         <p className="mt-0.5 text-label-sm text-on-surface-variant">
-          {CATEGORY_LABEL[entry.category]}
+          {t(CATEGORY_LABEL[entry.category])}
           {distanceMeters !== null && ` · ${formatDistance(distanceMeters)}`}
-          {walkMinutes !== null && ` · 도보 ${walkMinutes}분`}
+          {walkMinutes !== null && ` `}
+          {walkMinutes !== null && t('· 도보 {분}분', { 분: walkMinutes })}
         </p>
       </div>
       {level !== undefined && <CongestionBadge level={level} />}

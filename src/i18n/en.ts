@@ -1,0 +1,248 @@
+/**
+ * 한국어 원문 → 영어. 키가 곧 화면에 적힌 한국어다(근거는 `t.ts`).
+ *
+ * **여기 없는 것과 못 넣는 것을 구분하라.** 아래 셋은 사전으로 풀 수 없다:
+ *
+ * 1. **서울 API가 주는 자유 문장** — `message`(「사람이 몰려있을 가능성이…」),
+ *    도로소통 안내, 재난문자 본문. 한국어로만 오고 값의 종류도 모른다.
+ * 2. **고유명사** — 주차장 이름, 따릉이 대여소 이름, 문화행사 이름, 지하철
+ *    도착 문구(「9분 후 (동대입구)」). 응답에 실려 오는 그대로다.
+ * 3. **명소 이름** — `areas.ts`의 카탈로그가 갖는다. 그건 API 호출 키이기도
+ *    해서 사전이 아니라 카탈로그의 `nameEn` 필드가 답이다.
+ *
+ * 그래서 영어 화면에도 한국어가 남는다. 숨기지 않는다 — 우리가 가진 것을
+ * 번역하는 것이 목표이지, 없는 것을 지어내는 것이 아니다.
+ */
+export const EN: Readonly<Record<string, string>> = {
+  // ── 혼잡도 4단계. 서울 API가 주는 값이고 화면 전체가 이 넷으로 말한다 ──
+  여유: 'Not crowded',
+  보통: 'Moderate',
+  '약간 붐빔': 'Busy',
+  붐빔: 'Crowded',
+
+  // 혼잡도 헤드라인. 4단계를 사람 말로 옮긴 것이라 단계와 따로 논다.
+  '매우 원활': 'Very quiet',
+  원활: 'Quiet',
+  '다소 혼잡': 'Getting busy',
+  '극심한 혼잡': 'Very crowded',
+
+  // ── 명소 카테고리. 서울시 공식 5종이다 ──
+  '고궁·문화유산': 'Palaces & heritage',
+  '고궁·유적': 'Palaces & heritage',
+  관광특구: 'Tourist zones',
+  공원: 'Parks',
+  발달상권: 'Shopping districts',
+  '상권·거리': 'Shopping streets',
+  '역·번화가': 'Stations & nightlife',
+  인구밀집지역: 'Busy areas',
+
+  // ── 필터 프리셋 ──
+  전체: 'All',
+  '내 장소': 'Saved',
+  '아이와 나들이': 'With kids',
+  데이트: 'Date spots',
+  '지금 핫플': 'Trending now',
+  카테고리: 'Category',
+  필터: 'Filter',
+  '필터 해제': 'Clear filter',
+  정렬: 'Sort',
+  거리순: 'Nearest',
+  '여유한 순': 'Least crowded',
+  '붐비는 순': 'Most crowded',
+
+  // ── 지도·시트 조작 ──
+  '명소 검색': 'Search places',
+  '검색어 지우기': 'Clear search',
+  '명소 목록': 'Place list',
+  '내 주변': 'My location',
+  '현재 위치': 'Current location',
+  '즐겨찾기한 곳': 'Saved place',
+  목록으로: 'Back to list',
+  '살짝 열림': 'peek',
+  절반: 'half',
+  '시트 높이 조절, 현재 {단계}': 'Resize sheet, currently {단계}',
+
+  // ── 상세: 액션 ──
+  저장: 'Save',
+  저장됨: 'Saved',
+  공유하기: 'Share',
+  카카오맵: 'KakaoMap',
+  네이버: 'Naver',
+  티맵: 'TMAP',
+  '{명소} {동작}': '{명소} {동작}',
+  '저장 해제': 'unsave',
+  '{명소} 실시간 혼잡도 - 서울 라이브': '{명소} live crowd levels — Seoul Live',
+  '{시설} 지도에서 보기': 'Show {시설} on map',
+
+  // ── 상세: 혼잡도 ──
+  '지금 얼마나 붐비나': 'How crowded is it now',
+  '마지막 업데이트: {시각}': 'Last updated {시각}',
+  '추정 인구 {최소}~{최대}명': 'Estimated {최소}–{최대} people',
+  '{시}시엔 여유 예상 — 한산한 시간을 원하시면 조금만 기다려주세요.':
+    'Expected to be quiet at {시}:00 — wait a little if you prefer fewer people.',
+  '같은 요일·같은 시간대 관측 {횟수}번과 견줬어요.':
+    'Compared with {횟수} observations at the same day and hour.',
+  '이 수치는 실측이 아니라 대체값이에요.':
+    'This is an estimate, not a live measurement.',
+  '평소보다 붐벼요': 'Busier than usual',
+  '평소보다 여유로워요': 'Quieter than usual',
+  '평소와 비슷해요': 'About as usual',
+  '아직 비교할 기록이 부족해요.': 'Not enough history to compare yet.',
+
+  // ── 상세: 인구 구성 ──
+  '지금 누가 있나': "Who's here now",
+  '남 {남}% · 여 {여}%': '{남}% male · {여}% female',
+  '비상주 {비율}%': '{비율}% visitors',
+  '외지인이 많아요': 'Mostly visitors',
+  '동네 생활권이에요': 'Mostly locals',
+  '연령대 비율: {내용}': 'Age breakdown: {내용}',
+  '0~9세': 'Under 10',
+  '10대': '10s',
+  '20대': '20s',
+  '30대': '30s',
+  '40대': '40s',
+  '50대': '50s',
+  '60대': '60s',
+  '70대+': '70+',
+
+  // ── 상세: 시간대별 인파 ──
+  '시간대별 인파': 'Crowds by hour',
+  '막대 = 예상 인원': 'bars = estimated people',
+  지금: 'Now',
+  '{시}시': '{시}:00',
+  '예측 정보가 아직 없어요.': 'No forecast available yet.',
+  '앞으로는 {시}시에 가장 붐빌 전망이에요 ({단계})': 'Busiest around {시}:00 ({단계})',
+
+  // ── 상세: 요일×시간 패턴 ──
+  '요일×시간 패턴': 'Weekly pattern',
+  '요일과 시간대별 혼잡도. 관측하지 않은 칸은 「관측 없음」으로 읽힙니다.':
+    'Crowd levels by day and hour. Cells with no data read as "No data".',
+  '아직 모으는 중이에요. 이 명소를 열어볼 때마다 한 칸씩 채워져요.':
+    'Still collecting. Each visit to this place fills one cell.',
+  '이 기기에서 {횟수}번 본 것을 모았어요.':
+    'Based on {횟수} visits from this device.',
+  '관측 없음': 'No data',
+  // 「월」 + 「요일」로 「월요일」이 된다. 영어는 붙일 것이 없어 자리만 남긴다.
+  '{요일}요일 {시각} {단계}': '{요일} {시각} {단계}',
+  월: 'Mon',
+  화: 'Tue',
+  수: 'Wed',
+  목: 'Thu',
+  금: 'Fri',
+  토: 'Sat',
+  일: 'Sun',
+
+  // ── 상세: 도시 정보 ──
+  도로소통: 'Traffic',
+  '평균 {속도}km/h': '{속도} km/h avg',
+  '기준 {시각}': 'as of {시각}',
+  '{시각}까지 통제': 'closed until {시각}',
+  '외 {개수}곳': '{개수} more',
+  '외 {개수}대': '{개수} more',
+  '최고 {높} · 최저 {낮}': 'High {높} · Low {낮}',
+  // **도로소통 지수(`원활`·`서행`·`정체`)는 여기 없다.** 두 가지가 겹친다.
+  // (1) 명세에 값의 종류가 없어 무엇이 더 올지 모른다(STATE.md 참고).
+  // (2) `원활`은 혼잡도 헤드라인에도 있는 낱말인데 **뜻이 다르다** — 장소가
+  //     한산하다는 말과 차가 잘 흐른다는 말이라 영어가 갈린다(Quiet / Clear).
+  //     키가 한국어 원문이라 이런 동음이의는 한 칸을 두고 다툰다.
+  // 번역하려면 「도로:원활」처럼 맥락을 붙인 키가 필요한데, 값의 종류도 모르는
+  // 채로 그 장치를 들이지 않는다. 영어 화면에서는 한국어로 남는다.
+  '지하철 도착': 'Subway arrivals',
+  주차장: 'Parking',
+  따릉이: 'Ttareungi bikes',
+  문화행사: 'Events',
+  '{역} 도착 열차': 'Trains at {역}',
+  '최대 3시간 전 기준이에요': 'As of up to 3 hours ago',
+  '잔여 면수는 최대 3시간 전 기준이에요': 'Spaces free as of up to 3 hours ago',
+  '거치 대수는 최대 3시간 전 기준이에요': 'Bike counts as of up to 3 hours ago',
+  '주변에 주차장 정보가 없어요.': 'No parking information nearby.',
+  '주변에 따릉이 대여소가 없어요.': 'No bike stations nearby.',
+  '진행 중인 문화행사가 없어요.': 'No events running now.',
+  '이 명소에는 지금 제공되는 도시 정보가 없어요.':
+    'No city information available for this place right now.',
+  '총 {면수}면': '{면수} spaces',
+  '{면수}면': '{면수} free',
+  만차: 'Full',
+  '실시간 미제공': 'No live data',
+  '정보 없음': 'No data',
+  유료: 'Paid',
+  무료: 'Free',
+  '{대수}대': '{대수}',
+  '거치대 {대수}대': '{대수} docks',
+  '대여 불가': 'None available',
+  미세먼지: 'PM10',
+  초미세먼지: 'PM2.5',
+  강수확률: 'Rain',
+  // 통합대기환경등급. 서울 API가 주는 값이라 도메인에 한국어로 남는다.
+  좋음: 'Good',
+  나쁨: 'Bad',
+  매우나쁨: 'Very bad',
+  '통합대기 {등급}': 'Air quality {등급}',
+
+  // ── 상세: 요약 칩 ──
+  '주차 {비율}%': '{비율}% parking free',
+  '지하철 {개수}': 'Subway {개수}',
+  '따릉이 {대수}대': '{대수} bikes',
+  '행사 {개수}': 'Events {개수}',
+
+  // ── 상세: 근처 ──
+  '근처 쾌적한 장소': 'Quieter places nearby',
+  '여기가 너무 붐비나요? 2km 안에서 한산한 곳이에요.':
+    'Too crowded here? These are quieter, within 2km.',
+  '· 도보 {분}분': '· {분} min walk',
+
+  // ── 오늘의 서울 ──
+  '오늘의 서울': "Seoul today",
+  '지금 서울': 'Seoul now',
+  '{시각} 업데이트됨': 'updated {시각}',
+  '{전체}곳 중 {받음}곳만 정보가 왔어요.': 'Data for {받음} of {전체} places.',
+  '재난문자 {건수}건': '{건수} emergency alerts',
+  '지도에 안 보이는 전체 그림': 'The bigger picture',
+  '지금 가장 붐비는 곳': 'Busiest right now',
+  '지금 여유로운 곳': 'Quietest right now',
+  '카테고리별 평균': 'Average by category',
+  '가까우면서 여유로운 곳 추천': 'Close and quiet — recommended',
+  '{개수}곳 중 붐빔 {붐빔}곳': '{붐빔} of {개수} places crowded',
+  '재난문자 {건수}건 · {요약}': '{건수} alerts · {요약}',
+  ', 오늘의 서울 열기': ', open Seoul today',
+  '출처: 서울 열린데이터광장 실시간 도시데이터 · 5분마다 갱신':
+    'Source: Seoul Open Data Plaza live city data · updated every 5 minutes',
+
+  // ── 빈 상태·오류 ──
+  '아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.':
+    'Nothing saved yet. Open a place and tap Save to collect it here.',
+  '조건에 맞는 명소가 없어요.': 'No places match.',
+  '「{조건}」에 해당하는 명소가 없어요.': 'No places match "{조건}".',
+  '명소를 찾을 수 없어요.': 'Place not found.',
+  '혼잡도 정보를 가져오지 못했어요.': "Couldn't load crowd levels.",
+  '혼잡도 정보를 아직 받지 못했어요.': 'Crowd levels not received yet.',
+  '도시 정보를 가져오지 못했어요.': "Couldn't load city information.",
+  '다시 시도': 'Try again',
+  '불러오는 중': 'Loading',
+
+  // ── 위치 ──
+  '위치를 허용하면 가까운 곳부터 볼 수 있어요.':
+    'Allow location to see the closest places first.',
+  허용하기: 'Allow',
+  '위치를 확인할 수 없어 혼잡도 낮은 순으로 보여드려요.':
+    "Can't get your location, so places are sorted by crowd level.",
+  '위치 권한이 거부되었습니다': 'Location permission denied',
+  '이 환경에는 위치 기능이 없습니다': 'Location is not available here',
+  '위치를 확인하지 못했습니다: {원인}': "Couldn't get location: {원인}",
+
+  // ── 지도를 못 쓸 때 ──
+  'VITE_GOOGLE_MAPS_API_KEY가 설정되지 않아 지도를 표시할 수 없어요. 아래 목록과 검색은 그대로 쓸 수 있어요.':
+    'The map needs VITE_GOOGLE_MAPS_API_KEY. The list and search below still work.',
+  '지도를 불러오지 못했어요. 네트워크 상태를 확인해 주세요. 아래 목록과 검색은 그대로 쓸 수 있어요.':
+    "Couldn't load the map. Check your connection. The list and search below still work.",
+  '오프라인이에요. 연결되면 지도가 다시 나와요. 아래 목록과 검색은 그대로 쓸 수 있어요.':
+    "You're offline. The map returns when you reconnect. The list and search below still work.",
+
+  // ── 설정 ──
+  '화면 테마': 'Appearance',
+  밝게: 'Light',
+  어둡게: 'Dark',
+  '기기 설정': 'System',
+  '어두운 화면으로 바꾸기': 'Switch to dark',
+  '밝은 화면으로 바꾸기': 'Switch to light',
+}

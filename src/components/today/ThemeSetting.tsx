@@ -1,11 +1,12 @@
+import { t } from '../../i18n/t'
 import type { ThemeSetting as Setting } from '../../domain/theme'
 import { setTheme, useThemeSetting } from '../../hooks/themeStore'
 
 // 리터럴 배열로 둔다. Tailwind v4는 정적 추출이라 클래스를 조합하지 않는다.
 const OPTIONS: readonly { readonly value: Setting; readonly label: string }[] = [
-  { value: 'light', label: '밝게' },
-  { value: 'dark', label: '어둡게' },
-  { value: 'system', label: '기기 설정' },
+  { value: 'light', label: t('밝게') },
+  { value: 'dark', label: t('어둡게') },
+  { value: 'system', label: t('기기 설정') },
 ]
 
 // **다크 모드는 지원이지 기본이 아니다.** 예전에는 CSS가
@@ -22,12 +23,12 @@ export function ThemeSetting() {
 
   return (
     <section className="mt-6 px-4">
-      <h3 className="text-label-md font-semibold text-on-surface-variant">화면 테마</h3>
+      <h3 className="text-label-md font-semibold text-on-surface-variant">{t('화면 테마')}</h3>
       {/* 탭이 아니라 버튼 묶음인 근거는 `SortSegmented`·`FilterChips`에 한 벌
           있다. 이름을 함께 붙여야 보조기술이 무엇을 고르는 줄인지 말한다. */}
       <div
         role="group"
-        aria-label="화면 테마"
+        aria-label={t("화면 테마")}
         className="mt-2 flex gap-1 rounded-full bg-surface-container p-1"
       >
         {OPTIONS.map((option) => (

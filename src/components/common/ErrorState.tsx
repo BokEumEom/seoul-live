@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 interface Props {
   readonly message: string
   readonly onRetry?: () => void
@@ -13,7 +14,7 @@ export function ErrorState({ message, onRetry }: Props) {
           onClick={onRetry}
           className="min-h-12 rounded-action bg-primary px-5 text-label-md font-semibold text-on-primary"
         >
-          다시 시도
+          {t('다시 시도')}
         </button>
       )}
     </div>

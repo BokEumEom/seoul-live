@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import {
   formatForecastTemperature,
   forecastHourLabel,
@@ -43,7 +44,7 @@ export function HourlyWeather({ hourly }: Props) {
                 0은 실제로 확인된 값이라 남긴다 — 「비 안 온다」는 정보다. */}
             {entry.rainChance !== null && (
               <span className="text-label-sm text-primary">
-                <span className="sr-only">강수확률 </span>
+                <span className="sr-only">{t('강수확률')} </span>
                 {entry.rainChance}%
               </span>
             )}

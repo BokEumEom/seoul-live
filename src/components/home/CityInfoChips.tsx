@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { useCityInfo } from '../../data/queries'
 import { cityInfoSectionDomId, summarizeCityInfo } from '../../domain/cityInfoSummary'
 
@@ -50,7 +51,7 @@ export function CityInfoChips({ areaName }: Props) {
               }}
               className="min-h-9 rounded-full border border-outline-variant bg-surface-container-lowest px-3 text-label-md whitespace-nowrap text-on-surface-variant"
             >
-              {chip.label}
+              {t(chip.label, chip.labelParams)}
             </button>
           </li>
         ))}

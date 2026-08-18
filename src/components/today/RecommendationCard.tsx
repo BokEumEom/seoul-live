@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { formatDistance, walkableMinutes } from '../../domain/distance'
 import type { NearbyArea } from '../../domain/types'
 import { CongestionBadge } from '../common/CongestionBadge'
@@ -37,12 +38,12 @@ export function RecommendationCard({ area, onSelect }: Props) {
           <span className="font-bold text-primary">
             {formatDistance(distanceMeters)}
           </span>
-          {walkMinutes !== null && <span>· 도보 {walkMinutes}분</span>}
+          {walkMinutes !== null && <span>{t('· 도보 {분}분', { 분: walkMinutes })}</span>}
         </p>
       )}
       {snapshot !== null && (
         <p className="text-label-sm text-outline">
-          {snapshot.observedAtLabel} 업데이트됨
+          {t('{시각} 업데이트됨', { 시각: snapshot.observedAtLabel })}
         </p>
       )}
     </button>

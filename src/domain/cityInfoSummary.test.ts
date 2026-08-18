@@ -94,11 +94,19 @@ describe('summarizeCityInfo', () => {
       }),
     )
 
+    // **완성된 글자가 아니라 번역 키와 값이다.** 도메인은 순수해야 해서 언어를
+    // 볼 수 없다 — 「무엇을 말할지」만 정하고 「어느 말로 적을지」는 화면이 정한다.
     expect(chips.map((chip) => chip.label)).toEqual([
       '정체',
-      '주차 45%',
-      '따릉이 131대',
-      '행사 2',
+      '주차 {비율}%',
+      '따릉이 {대수}대',
+      '행사 {개수}',
+    ])
+    expect(chips.map((chip) => chip.labelParams)).toEqual([
+      undefined,
+      { 비율: 45 },
+      { 대수: 131 },
+      { 개수: 2 },
     ])
   })
 
@@ -127,7 +135,8 @@ describe('summarizeCityInfo', () => {
       }),
     )
 
-    expect(chips.map((chip) => chip.label)).toEqual(['지하철 2'])
+    expect(chips[0].label).toBe('지하철 {개수}')
+    expect(chips[0].labelParams).toEqual({ 개수: 2 })
   })
 
   it('아래 절과 같은 순서로 세운다', () => {

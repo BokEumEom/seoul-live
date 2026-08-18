@@ -78,17 +78,3 @@ export function niceAxisMax(peak: number): number {
   return step * AXIS_TICKS
 }
 
-/**
- * 축 눈금 글자.
- *
- * 만 단위부터 줄인다 — 60,000을 그대로 적으면 좁은 축에서 자리를 다 먹는다.
- * **만 미만은 안 줄인다**: 반포한강공원은 2,500~3,000명이라 「0.32만」이 되는데
- * 그건 아무도 안 읽는다.
- */
-export function formatPopulationTick(value: number): string {
-  if (value >= 10000) {
-    // 4.5만은 남기고 6.0만은 6만으로. `Number`가 뒤 0을 알아서 턴다.
-    return `${String(Number((value / 10000).toFixed(1)))}만`
-  }
-  return value.toLocaleString('ko-KR')
-}

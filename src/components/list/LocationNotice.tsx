@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import type { LocationStatus } from '../../hooks/useCurrentLocation'
 
 interface Props {
@@ -11,12 +12,12 @@ const NOTICE: Partial<
   Record<LocationStatus, { readonly message: string; readonly action: string }>
 > = {
   denied: {
-    message: '위치를 허용하면 가까운 곳부터 볼 수 있어요.',
-    action: '허용하기',
+    message: t('위치를 허용하면 가까운 곳부터 볼 수 있어요.'),
+    action: t('허용하기'),
   },
   unavailable: {
-    message: '위치를 확인할 수 없어 혼잡도 낮은 순으로 보여드려요.',
-    action: '다시 시도',
+    message: t('위치를 확인할 수 없어 혼잡도 낮은 순으로 보여드려요.'),
+    action: t('다시 시도'),
   },
 }
 

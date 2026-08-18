@@ -1,3 +1,4 @@
+import { t } from '../i18n/t'
 import { useMemo } from 'react'
 import { useLocation } from '../app/locationContext'
 import { ErrorState } from '../components/common/ErrorState'
@@ -69,13 +70,13 @@ export function TodayScreen({ onSelectArea, onBack }: Props) {
         className="flex min-h-12 w-fit items-center gap-1 px-4 text-label-md font-semibold text-primary"
       >
         <Icon name="back" className="size-4" />
-        목록으로
+        {t('목록으로')}
       </button>
 
       <section className="px-4">
-        <h2 className="text-headline-md text-on-surface">오늘의 서울</h2>
+        <h2 className="text-headline-md text-on-surface">{t('오늘의 서울')}</h2>
         <p className="mt-1 text-label-md text-on-surface-variant">
-          지도에 안 보이는 전체 그림
+          {t('지도에 안 보이는 전체 그림')}
         </p>
       </section>
 
@@ -88,7 +89,7 @@ export function TodayScreen({ onSelectArea, onBack }: Props) {
       {snapshots.isError && (
         <div className="px-4 pt-3">
           <ErrorState
-            message="혼잡도 정보를 가져오지 못했어요."
+            message={t("혼잡도 정보를 가져오지 못했어요.")}
             onRetry={() => void snapshots.refetch()}
           />
         </div>
@@ -103,13 +104,13 @@ export function TodayScreen({ onSelectArea, onBack }: Props) {
           <AlertDigest alerts={alerts} />
 
           <RankList
-            title="지금 가장 붐비는 곳"
+            title={t("지금 가장 붐비는 곳")}
             areas={busiest}
             onSelect={onSelectArea}
           />
 
           <RankList
-            title="지금 여유로운 곳"
+            title={t("지금 여유로운 곳")}
             areas={calmest}
             onSelect={onSelectArea}
           />
@@ -119,7 +120,7 @@ export function TodayScreen({ onSelectArea, onBack }: Props) {
           {recommended.length > 0 && (
             <section className="mt-3">
               <h3 className="px-4 text-headline-sm text-on-surface">
-                가까우면서 여유로운 곳 추천
+                {t('가까우면서 여유로운 곳 추천')}
               </h3>
               {/* 가로 스크롤. 「내 주변」이 없어지면서 갈 곳을 잃은 캐러셀이다. */}
               <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto scrollbar-none px-4 pb-1">
@@ -137,7 +138,7 @@ export function TodayScreen({ onSelectArea, onBack }: Props) {
           <ThemeSetting />
 
           <p className="mt-6 px-4 text-label-sm text-outline">
-            출처: 서울 열린데이터광장 실시간 도시데이터 · 5분마다 갱신
+            {t('출처: 서울 열린데이터광장 실시간 도시데이터 · 5분마다 갱신')}
           </p>
         </>
       )}

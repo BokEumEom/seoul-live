@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import type { CulturalEvent } from '../../domain/cityInfo'
 
 interface Props {
@@ -30,7 +31,7 @@ export function EventList({ events }: Props) {
           </p>
           {event.free !== null && (
             <p className="mt-0.5 text-label-sm text-outline">
-              {event.free ? '무료' : '유료'}
+              {event.free ? t('무료') : t('유료')}
             </p>
           )}
         </li>

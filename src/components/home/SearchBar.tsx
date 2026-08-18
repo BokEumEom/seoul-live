@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { Icon } from '../common/Icon'
 
 interface Props {
@@ -26,14 +27,14 @@ export function SearchBar({ value, onChange }: Props) {
           type="search"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="명소 검색"
-          aria-label="명소 검색"
+          placeholder={t("명소 검색")}
+          aria-label={t("명소 검색")}
           className="min-w-0 flex-1 bg-transparent text-body-md text-on-surface outline-none"
         />
         {value !== '' && (
           <button
             type="button"
-            aria-label="검색어 지우기"
+            aria-label={t("검색어 지우기")}
             onClick={() => onChange('')}
             // 손에 닿는 상자는 40px, 눈에 보이는 아이콘은 16px 그대로다.
             // 예전에는 패딩도 최소 높이도 없어서 버튼이 곧 아이콘 크기(16px)였다 —

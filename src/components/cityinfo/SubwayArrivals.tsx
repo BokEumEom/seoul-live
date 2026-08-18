@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { groupSubwayArrivals, type SubwayArrival } from '../../domain/cityInfo'
 
 /** 한 묶음에 보여줄 열차 수. detail_page.png도 역·호선마다 셋이다. */
@@ -49,7 +50,7 @@ export function SubwayArrivals({ arrivals }: Props) {
                 aria-label이 있어야 묶음이 여럿일 때 어느 역의 목록인지 알 수 있다. */}
             <ul
               role="list"
-              aria-label={`${title} 도착 열차`}
+              aria-label={t('{역} 도착 열차', { 역: title })}
               className="mt-1.5 flex flex-col gap-1.5"
             >
               {visible.map((entry, index) => (
@@ -72,7 +73,7 @@ export function SubwayArrivals({ arrivals }: Props) {
 
             {/* 조용히 자르지 않는다 — 잘렸다는 사실이 화면에 남아야 한다. */}
             {hidden > 0 && (
-              <p className="mt-1.5 text-label-sm text-outline">외 {hidden}대</p>
+              <p className="mt-1.5 text-label-sm text-outline">{t('외 {개수}대', { 개수: hidden })}</p>
             )}
           </div>
         )

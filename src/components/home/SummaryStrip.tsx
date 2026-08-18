@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import type { CitySummary } from '../../domain/summary'
 
 interface Props {
@@ -22,8 +23,11 @@ export function SummaryStrip({ summary, alertCount, onOpen }: Props) {
   // 소식이라 "30곳 중 붐빔 0곳"으로 그대로 센다.
   const label =
     summary.counted === 0
-      ? '혼잡도 정보를 아직 받지 못했어요.'
-      : `${summary.counted}곳 중 붐빔 ${summary.byLevel.붐빔}곳`
+      ? t('혼잡도 정보를 아직 받지 못했어요.')
+      : t('{개수}곳 중 붐빔 {붐빔}곳', {
+          개수: summary.counted,
+          붐빔: summary.byLevel.붐빔,
+        })
 
   return (
     <button
@@ -44,12 +48,12 @@ export function SummaryStrip({ summary, alertCount, onOpen }: Props) {
       }`}
     >
       <span className="truncate">
-        {hasAlert ? `재난문자 ${alertCount}건 · ${label}` : label}
+        {hasAlert ? t('재난문자 {건수}건 · {요약}', { 건수: alertCount, 요약: label }) : label}
       </span>
       {/* 보이는 문구는 상태 읽어주기라 눌러서 무엇이 열리는지 말해주지 않는다.
           aria-label로 덮으면 보이는 글자와 이름이 어긋나므로(음성 제어가 보이는
           문구로 못 부른다) 목적지만 이름 뒤에 덧댄다. */}
-      <span className="sr-only">, 오늘의 서울 열기</span>
+      <span className="sr-only">{t(', 오늘의 서울 열기')}</span>
       <span aria-hidden className="shrink-0">
         ›
       </span>

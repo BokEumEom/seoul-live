@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { CATEGORY_LABEL, type NearbyArea } from '../../domain/types'
 import { CongestionBadge } from '../common/CongestionBadge'
 
@@ -27,7 +28,7 @@ export function RankList({ title, areas, onSelect }: Props) {
                   {area.entry.name}
                 </span>
                 <span className="shrink-0 text-label-sm text-on-surface-variant">
-                  {CATEGORY_LABEL[area.entry.category]}
+                  {t(CATEGORY_LABEL[area.entry.category])}
                 </span>
               </span>
               <CongestionBadge level={area.snapshot?.congestion ?? null} />

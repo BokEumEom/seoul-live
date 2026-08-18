@@ -10,8 +10,15 @@ import type { BikeStation, CityInfo, ParkingLot } from './cityInfo'
  * 둔다. 우리는 시트 안이라 더 좁다.
  */
 export interface CityInfoChip {
-  /** 화면에 그대로 적히는 글자. 「주차 45%」·「따릉이 131대」 */
+  /**
+   * 번역 키와 값. **완성된 글자가 아니다.**
+   *
+   * 도메인은 순수해야 해서 언어를 볼 수 없다(`t()`는 모듈 상태를 읽는다).
+   * 그래서 「무엇을 말할지」만 정하고 「어느 말로 적을지」는 화면이 정한다 —
+   * 「주차 {비율}%」가 영어에서 「45% parking free」로 어순까지 바뀐다.
+   */
   readonly label: string
+  readonly labelParams?: Readonly<Record<string, string | number>>
   /** 눌렀을 때 갈 절. `InfoSection`이 이 값을 id로 단다. */
   readonly sectionId: CityInfoSectionId
 }
@@ -88,12 +95,22 @@ export function summarizeCityInfo(info: CityInfo): readonly CityInfoChip[] {
     info.roadTraffic === null || info.roadTraffic.index === ''
       ? null
       : { label: info.roadTraffic.index, sectionId: 'road' },
-    lines === 0 ? null : { label: `지하철 ${String(lines)}`, sectionId: 'subway' },
-    vacancy === null ? null : { label: `주차 ${String(vacancy)}%`, sectionId: 'parking' },
-    bikes === null ? null : { label: `따릉이 ${String(bikes)}대`, sectionId: 'bikes' },
+    lines === 0
+      ? null
+      : { label: '지하철 {개수}', labelParams: { 개수: lines }, sectionId: 'subway' },
+    vacancy === null
+      ? null
+      : { label: '주차 {비율}%', labelParams: { 비율: vacancy }, sectionId: 'parking' },
+    bikes === null
+      ? null
+      : { label: '따릉이 {대수}대', labelParams: { 대수: bikes }, sectionId: 'bikes' },
     info.events.length === 0
       ? null
-      : { label: `행사 ${String(info.events.length)}`, sectionId: 'events' },
+      : {
+          label: '행사 {개수}',
+          labelParams: { 개수: info.events.length },
+          sectionId: 'events',
+        },
   ]
 
   return candidates.filter((chip): chip is CityInfoChip => chip !== null)

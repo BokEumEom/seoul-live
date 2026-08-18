@@ -1,6 +1,6 @@
+import { t } from '../../i18n/t'
 import { congestionTone } from '../../domain/congestion'
 import {
-  bucketLabel,
   cellLevel,
   observationTotal,
   PATTERN_BUCKET_HOURS,
@@ -19,7 +19,18 @@ interface Props {
 // getDay() 축 그대로 두고 **표시 순서만** 여기서 정한다 — 축을 바꾸면 저장된
 // 값과 어긋난다.
 const DAY_ORDER: readonly number[] = [1, 2, 3, 4, 5, 6, 0]
-const DAY_LABEL: readonly string[] = ['일', '월', '화', '수', '목', '금', '토']
+// **모듈 최상위에서 `t()`를 부르면 안 된다.** import 시점에 한 번 계산되어
+// 그때의 언어로 굳는다 — 언어를 바꿔도 이 표만 예전 말로 남는다. 함수로 두면
+// 렌더마다 다시 불려 따라온다.
+const DAY_KEYS: readonly string[] = ['일', '월', '화', '수', '목', '금', '토']
+function dayLabel(day: number): string {
+  return t(DAY_KEYS[day])
+}
+
+/** 시간대 머리글. 도메인의 `bucketLabel`은 한국어를 만들므로 여기서 만든다. */
+function hourLabel(bucket: number): string {
+  return t('{시}시', { 시: bucket * PATTERN_BUCKET_HOURS })
+}
 
 const BUCKETS: readonly number[] = Array.from({ length: PATTERN_BUCKETS }, (_, index) => index)
 
@@ -46,20 +57,20 @@ export function WeeklyPatternCard({ pattern, now }: Props) {
 
   return (
     <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
-      <h3 className="text-headline-sm text-on-surface">요일×시간 패턴</h3>
+      <h3 className="text-headline-sm text-on-surface">{t('요일×시간 패턴')}</h3>
 
       {/* 서울 API는 과거를 주지 않는다(요청 인자에 날짜가 없다). 이 표는 조회한
           것이 아니라 이 기기에서 본 것을 쌓은 것이라, 그 사실을 숨기지 않는다.
           숨기면 빈 칸이 「한산함」으로 오해된다. */}
       <p className="mt-1 text-label-sm text-on-surface-variant">
         {total === 0
-          ? '아직 모으는 중이에요. 이 명소를 열어볼 때마다 한 칸씩 채워져요.'
-          : `이 기기에서 ${String(total)}번 본 것을 모았어요.`}
+          ? t('아직 모으는 중이에요. 이 명소를 열어볼 때마다 한 칸씩 채워져요.')
+          : t('이 기기에서 {횟수}번 본 것을 모았어요.', { 횟수: total })}
       </p>
 
       <table className="mt-3 w-full table-fixed border-separate border-spacing-0.5">
         <caption className="sr-only">
-          요일과 시간대별 혼잡도. 관측하지 않은 칸은 「관측 없음」으로 읽힙니다.
+          {t('요일과 시간대별 혼잡도. 관측하지 않은 칸은 「관측 없음」으로 읽힙니다.')}
         </caption>
         <thead>
           <tr>
@@ -77,9 +88,9 @@ export function WeeklyPatternCard({ pattern, now }: Props) {
                 {/* 8칸에 「0시」를 다 적으면 좁은 시트에서 겹친다. 눈에는 하나
                     걸러 보여주고 소리로는 전부 읽히게 둔다. */}
                 <span aria-hidden={bucket % 2 === 1 ? true : undefined}>
-                  {bucket % 2 === 0 ? bucketLabel(bucket) : ''}
+                  {bucket % 2 === 0 ? hourLabel(bucket) : ''}
                 </span>
-                <span className="sr-only">{bucketLabel(bucket)}</span>
+                <span className="sr-only">{hourLabel(bucket)}</span>
               </th>
             ))}
           </tr>
@@ -96,7 +107,7 @@ export function WeeklyPatternCard({ pattern, now }: Props) {
                     : 'font-normal text-on-surface-variant'
                 }`}
               >
-                {DAY_LABEL[day]}
+                {dayLabel(day)}
               </th>
               {BUCKETS.map((bucket) => {
                 const level = cellLevel(pattern, day, bucket)
@@ -122,7 +133,11 @@ export function WeeklyPatternCard({ pattern, now }: Props) {
                       {/* 색만으로 값을 전하지 않는다. 행·열 머리글은 표가
                           붙여주지만 **값 자체는 칸 안에 있어야** 읽힌다. */}
                       <span className="sr-only">
-                        {DAY_LABEL[day]}요일 {bucketLabel(bucket)} {level ?? '관측 없음'}
+                        {t('{요일}요일 {시각} {단계}', {
+                          요일: dayLabel(day),
+                          시각: hourLabel(bucket),
+                          단계: level === null ? t('관측 없음') : t(level),
+                        })}
                       </span>
                     </div>
                   </td>
@@ -134,14 +149,14 @@ export function WeeklyPatternCard({ pattern, now }: Props) {
       </table>
 
       <div className="mt-3 flex items-center gap-2">
-        <span className="text-label-sm text-on-surface-variant">여유</span>
+        <span className="text-label-sm text-on-surface-variant">{t('여유')}</span>
         <div className="flex flex-1 gap-0.5">
           <div className={`h-1.5 flex-1 rounded-l-sm ${TONE_FILL_CLASS.calm}`} />
           <div className={`h-1.5 flex-1 ${TONE_FILL_CLASS.normal}`} />
           <div className={`h-1.5 flex-1 ${TONE_FILL_CLASS.busy}`} />
           <div className={`h-1.5 flex-1 rounded-r-sm ${TONE_FILL_CLASS.crowded}`} />
         </div>
-        <span className="text-label-sm text-on-surface-variant">붐빔</span>
+        <span className="text-label-sm text-on-surface-variant">{t('붐빔')}</span>
       </div>
     </section>
   )

@@ -1,10 +1,11 @@
+import { t } from '../../i18n/t'
 import type { SortMode } from '../../hooks/useNearbyAreas'
 
 // 리터럴 배열로 둔다. Tailwind v4는 정적 추출이라 클래스를 조합하지 않는다.
 const OPTIONS: readonly { readonly mode: SortMode; readonly label: string }[] = [
-  { mode: 'distance', label: '거리순' },
-  { mode: 'calm', label: '여유한 순' },
-  { mode: 'busy', label: '붐비는 순' },
+  { mode: 'distance', label: t('거리순') },
+  { mode: 'calm', label: t('여유한 순') },
+  { mode: 'busy', label: t('붐비는 순') },
 ]
 
 interface Props {
@@ -24,7 +25,7 @@ export function SortSegmented({ value, canSortByDistance, onChange }: Props) {
     // 알리고 무엇을 고르는 줄인지 말하지 못했다.
     <div
       role="group"
-      aria-label="정렬"
+      aria-label={t("정렬")}
       className="flex gap-1 rounded-full bg-surface-container p-1"
     >
       {OPTIONS.map((option) => {

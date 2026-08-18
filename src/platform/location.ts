@@ -1,3 +1,4 @@
+import { t } from '../i18n/t'
 import {
   Accuracy,
   Device,
@@ -94,7 +95,7 @@ async function fromWeb(): Promise<Coords> {
         reject(
           error.code === WEB_PERMISSION_DENIED
             ? new LocationDeniedError()
-            : new Error(`위치를 확인하지 못했습니다: ${error.message}`),
+            : new Error(t('위치를 확인하지 못했습니다: {원인}', { 원인: error.message })),
         )
       },
       WEB_OPTIONS,

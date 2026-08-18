@@ -1,3 +1,4 @@
+import { t } from '../i18n/t'
 import {
   AdvancedMarker,
   APIProvider,
@@ -13,6 +14,7 @@ import type { FacilityLocation } from '../domain/cityInfo'
 import { BottomSheet } from '../components/home/BottomSheet'
 import { FilterChips } from '../components/home/FilterChips'
 import { SearchBar } from '../components/home/SearchBar'
+import { LanguageToggle } from '../components/home/LanguageToggle'
 import { ThemeToggle } from '../components/home/ThemeToggle'
 import { SummaryStrip } from '../components/home/SummaryStrip'
 import { AreaList } from '../components/list/AreaList'
@@ -489,7 +491,7 @@ export function HomeScreen() {
             {/* disableDefaultUI라 JS API의 기본 파란 점이 없다. */}
             <span
               role="img"
-              aria-label="현재 위치"
+              aria-label={t("현재 위치")}
               className="block size-4 rounded-full border-2 border-white bg-primary shadow-floating"
             />
           </AdvancedMarker>
@@ -553,12 +555,14 @@ export function HomeScreen() {
   const clearableFilter = filters.query === '' ? filters.filter : null
   const emptyMessage =
     filters.query !== ''
-      ? `「${filters.query}」에 해당하는 명소가 없어요.`
+      ? t('「{조건}」에 해당하는 명소가 없어요.', { 조건: filters.query })
       : clearableFilter === 'fav' && favorites.length === 0
-        ? '아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.'
+        ? t('아직 담은 곳이 없어요. 명소를 열고 「저장」을 누르면 여기에 모여요.')
         : clearableFilter !== null
-          ? `「${filterLabel(clearableFilter)}」에 해당하는 명소가 없어요.`
-          : '조건에 맞는 명소가 없어요.'
+          ? t('「{조건}」에 해당하는 명소가 없어요.', {
+              조건: t(filterLabel(clearableFilter)),
+            })
+          : t('조건에 맞는 명소가 없어요.')
 
   const listPane = (
     <div className="flex flex-col gap-3 pb-6">
@@ -574,6 +578,7 @@ export function HomeScreen() {
             <div className="min-w-0 flex-1">
               <SearchBar value={filters.query} onChange={filters.setQuery} />
             </div>
+            <LanguageToggle />
             <ThemeToggle />
           </div>
           <FilterChips
@@ -628,7 +633,7 @@ export function HomeScreen() {
       {snapshots.isError && (
         <div className="px-4">
           <ErrorState
-            message="혼잡도 정보를 가져오지 못했어요."
+            message={t("혼잡도 정보를 가져오지 못했어요.")}
             onRetry={() => void snapshots.refetch()}
           />
         </div>
@@ -661,7 +666,7 @@ export function HomeScreen() {
               onClick={() => filters.setFilter(null)}
               className="mt-3 min-h-12 rounded-full bg-secondary-container px-4 text-label-md font-semibold text-primary"
             >
-              필터 해제
+              {t('필터 해제')}
             </button>
           )}
         </div>
@@ -673,7 +678,7 @@ export function HomeScreen() {
             훑는 스크린리더 사용자에게 기본 화면이 통째로 빈 칸이었다.
             제목이 가리키는 것은 목록 자체다 — 위의 요약 줄·필터·정렬까지
             덮는 이름을 붙이면 실제 구조와 어긋난다. */}
-        <h2 className="sr-only">명소 목록</h2>
+        <h2 className="sr-only">{t('명소 목록')}</h2>
         <AreaList>
           {visible.map((area) => (
             <AreaListItem
@@ -784,7 +789,8 @@ export function HomeScreen() {
               <div className="min-w-0 flex-1">
                 <SearchBar value={filters.query} onChange={filters.setQuery} />
               </div>
-              <ThemeToggle />
+              <LanguageToggle />
+            <ThemeToggle />
             </div>
             <FilterChips
               counts={counts}

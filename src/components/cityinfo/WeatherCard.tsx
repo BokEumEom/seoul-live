@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { airGradeTone, formatTemperature, type Weather } from '../../domain/cityInfo'
 import { ToneBadge } from '../common/ToneBadge'
 import { HourlyWeather } from './HourlyWeather'
@@ -18,7 +19,7 @@ function DustTile({ label, value, grade }: DustProps) {
       </p>
       {grade !== '' && (
         <div className="mt-2">
-          <ToneBadge tone={airGradeTone(grade)} label={grade} />
+          <ToneBadge tone={airGradeTone(grade)} label={t(grade)} />
         </div>
       )}
     </div>
@@ -41,15 +42,17 @@ export function WeatherCard({ weather }: Props) {
           </p>
           {hasRange && (
             <p className="mt-1 text-label-md text-on-surface-variant">
-              최고 {formatTemperature(weather.maxTemperature)} · 최저{' '}
-              {formatTemperature(weather.minTemperature)}
+              {t('최고 {높} · 최저 {낮}', {
+                높: formatTemperature(weather.maxTemperature),
+                낮: formatTemperature(weather.minTemperature),
+              })}
             </p>
           )}
         </div>
         {weather.airGrade !== '' && (
           <ToneBadge
             tone={airGradeTone(weather.airGrade)}
-            label={`통합대기 ${weather.airGrade}`}
+            label={t('통합대기 {등급}', { 등급: t(weather.airGrade) })}
           />
         )}
       </div>
@@ -61,8 +64,8 @@ export function WeatherCard({ weather }: Props) {
       )}
 
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <DustTile label="미세먼지" value={weather.pm10} grade={weather.pm10Grade} />
-        <DustTile label="초미세먼지" value={weather.pm25} grade={weather.pm25Grade} />
+        <DustTile label={t("미세먼지")} value={weather.pm10} grade={weather.pm10Grade} />
+        <DustTile label={t("초미세먼지")} value={weather.pm25} grade={weather.pm25Grade} />
       </div>
 
       {weather.airMessage !== '' && (
@@ -76,7 +79,7 @@ export function WeatherCard({ weather }: Props) {
       <HourlyWeather hourly={weather.hourly} />
 
       {weather.updatedAt !== '' && (
-        <p className="mt-3 text-label-sm text-outline">기준 {weather.updatedAt}</p>
+        <p className="mt-3 text-label-sm text-outline">{t('기준 {시각}', { 시각: weather.updatedAt })}</p>
       )}
     </section>
   )

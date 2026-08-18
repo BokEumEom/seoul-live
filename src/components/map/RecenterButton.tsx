@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import type { Detent } from '../../domain/sheet'
 import { Icon } from '../common/Icon'
 
@@ -70,7 +71,7 @@ export function RecenterButton({ disabled, detent, onClick }: Props) {
       type="button"
       disabled={disabled}
       onClick={onClick}
-      aria-label="내 주변"
+      aria-label={t("내 주변")}
       // `pointer-events-auto`를 두지 않는다. 이 버튼은 홈 루트의 직계 자식이고
       // 루트에는 `pointer-events-none`이 없어서 되살릴 것이 없다 — 그 클래스가
       // 필요한 건 `pointer-events-none` 컨테이너 안에 있는 필터 칩 쪽이다.

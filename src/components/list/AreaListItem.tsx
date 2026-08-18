@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { formatDistance } from '../../domain/distance'
 import { CATEGORY_LABEL, type NearbyArea } from '../../domain/types'
 import { CongestionBadge } from '../common/CongestionBadge'
@@ -41,7 +42,7 @@ export function AreaListItem({ area, favorite = false, onSelect }: Props) {
           {favorite && (
             <span
               role="img"
-              aria-label="즐겨찾기한 곳"
+              aria-label={t("즐겨찾기한 곳")}
               className="shrink-0 text-primary"
             >
               <Icon name="starFilled" className="size-4" />
@@ -52,7 +53,7 @@ export function AreaListItem({ area, favorite = false, onSelect }: Props) {
             `distanceMeters &&`로 쓰면 거리 대신 숫자 0이 그려진다. */}
         <span className="mt-0.5 block truncate text-label-sm text-on-surface-variant">
           {distanceMeters !== null && `${formatDistance(distanceMeters)} · `}
-          {CATEGORY_LABEL[entry.category]}
+          {t(CATEGORY_LABEL[entry.category])}
         </span>
       </span>
       <CongestionBadge level={snapshot?.congestion ?? null} />

@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { congestionHeadline } from '../../domain/congestion'
 import { findQuietTime } from '../../domain/forecast'
 import {
@@ -19,9 +20,9 @@ interface Props {
 // 화면이 쓰는 말. 도메인은 delta만 주고 문구는 여기서 고른다 — 같은 판정을
 // 다른 화면에서 다르게 부를 수 있어야 한다.
 const USUAL_TEXT: Readonly<Record<UsualDelta, string>> = {
-  busier: '평소보다 붐벼요',
-  similar: '평소와 비슷해요',
-  calmer: '평소보다 여유로워요',
+  busier: t('평소보다 붐벼요'),
+  similar: t('평소와 비슷해요'),
+  calmer: t('평소보다 여유로워요'),
 }
 
 // 설계 §2.6의 3번 「현재 상태」. 배지는 히어로가 갖는다 — 여기 한 번 더 두면
@@ -38,12 +39,12 @@ export function CongestionCard({ snapshot, pattern }: Props) {
     <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
       {/* 보이는 제목은 아래 display-lg 문단이 대신한다. 그건 <p>라 제목으로
           훑는 사용자에게는 이 카드가 통째로 이름 없는 덩어리였다. */}
-      <h3 className="sr-only">지금 얼마나 붐비나</h3>
+      <h3 className="sr-only">{t('지금 얼마나 붐비나')}</h3>
       <p className="text-display-lg text-on-surface">
-        {congestionHeadline(snapshot.congestion)}
+        {t(congestionHeadline(snapshot.congestion))}
       </p>
       <p className="mt-1 text-label-sm text-outline">
-        마지막 업데이트: {snapshot.observedAtLabel}
+        {t('마지막 업데이트: {시각}', { 시각: snapshot.observedAtLabel })}
       </p>
 
       {/* 갱신 시각 바로 아래다. 이 안내는 **그 시각의 수치가 어디서 왔는가**에
@@ -57,7 +58,7 @@ export function CongestionCard({ snapshot, pattern }: Props) {
           화면에 남는 게 없다. 우리가 하는 일은 출처를 밝히는 것뿐이다. */}
       {snapshot.replaced === true && (
         <p className="mt-1 text-label-sm text-on-surface-variant">
-          이 수치는 실측이 아니라 대체값이에요.
+          {t('이 수치는 실측이 아니라 대체값이에요.')}
         </p>
       )}
 
@@ -65,16 +66,19 @@ export function CongestionCard({ snapshot, pattern }: Props) {
         <div className="mt-4 flex gap-2 rounded-card bg-secondary-container px-3 py-3">
           <Icon name="info" className="size-5 text-primary" />
           <p className="text-label-md leading-6 text-on-surface">
-            <span className="font-bold text-primary">{quietHour}시엔 여유 예상</span>{' '}
-            한산한 시간을 원하시면 조금만 기다려주세요.
+            {t('{시}시엔 여유 예상 — 한산한 시간을 원하시면 조금만 기다려주세요.', {
+              시: quietHour,
+            })}
           </p>
         </div>
       )}
 
       <p className="mt-4 text-body-md leading-6 text-on-surface">{snapshot.message}</p>
       <p className="mt-2 text-label-md text-on-surface-variant">
-        추정 인구 {snapshot.populationMin.toLocaleString()}~
-        {snapshot.populationMax.toLocaleString()}명
+        {t('추정 인구 {최소}~{최대}명', {
+          최소: snapshot.populationMin.toLocaleString(),
+          최대: snapshot.populationMax.toLocaleString(),
+        })}
       </p>
 
       {/* detail_page.png의 「평소보다 붐빔 · 같은 요일·비슷한 시각 누적 평균
@@ -90,7 +94,7 @@ export function CongestionCard({ snapshot, pattern }: Props) {
             // 「평소와 비슷」으로 떨어뜨리지 않는다. 안 본 것과 비슷한 것은
             // 정반대의 정보다(pattern.ts의 cellLevel과 같은 규칙).
             <span className="text-on-surface-variant">
-              아직 비교할 기록이 부족해요.
+              {t('아직 비교할 기록이 부족해요.')}
             </span>
           ) : (
             <>
@@ -100,7 +104,9 @@ export function CongestionCard({ snapshot, pattern }: Props) {
               {/* 「평소」가 무엇인지 적지 않으면 어제 대비인지 한 달 대비인지
                   알 수 없다. 표본 수까지 적어야 사용자가 얼마나 믿을지 정한다. */}
               <span className="text-on-surface-variant">
-                같은 요일·같은 시간대 관측 {usual.samples}번과 견줬어요.
+                {t('같은 요일·같은 시간대 관측 {횟수}번과 견줬어요.', {
+                  횟수: usual.samples,
+                })}
               </span>
             </>
           )}

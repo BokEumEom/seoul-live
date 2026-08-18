@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { congestionTone, type CongestionTone } from '../../domain/congestion'
 import type { CongestionLevel } from '../../domain/types'
 import { Icon } from '../common/Icon'
@@ -32,7 +33,10 @@ const TONE_PIN_CLASS: Readonly<Record<CongestionTone, string>> = {
   crowded: 'text-crowded',
 }
 
-const UNKNOWN_LABEL = '정보 없음'
+// 모듈 최상위에서 `t()`를 부르면 import 시점의 언어로 굳는다 — 함수로 둔다.
+function unknownLabel(): string {
+  return t('정보 없음')
+}
 // 같은 이유로 어둡게 둔다. 예전 `bg-surface-container-high`(#e1e2ed)는 밝은
 // 지도 타일과 1.1이라 알약 자체가 안 보였다 — 「정보 없음」이 소리 없이
 // 사라지면 그 명소가 없는 것처럼 읽힌다.
@@ -53,7 +57,7 @@ export function CongestionMarker({ name, level, showLabel, selected }: Props) {
   const tone = level === null ? null : congestionTone(level)
   const pillClass = tone === null ? UNKNOWN_PILL_CLASS : TONE_PILL_CLASS[tone]
   const pinClass = tone === null ? UNKNOWN_PIN_CLASS : TONE_PIN_CLASS[tone]
-  const label = level ?? UNKNOWN_LABEL
+  const label = level === null ? unknownLabel() : t(level)
 
   return (
     <span

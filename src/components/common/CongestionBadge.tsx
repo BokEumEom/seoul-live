@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import { congestionTone } from '../../domain/congestion'
 import type { CongestionLevel } from '../../domain/types'
 import { TONE_CLASS } from './toneClass'
@@ -18,7 +19,7 @@ export function CongestionBadge({ level }: Props) {
       <span
         className={`inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface-container text-on-surface-variant ${SIZE}`}
       >
-        정보 없음
+        {t('정보 없음')}
       </span>
     )
   }
@@ -28,7 +29,7 @@ export function CongestionBadge({ level }: Props) {
       className={`inline-flex shrink-0 items-center gap-1.5 rounded-full ${SIZE} ${TONE_CLASS[congestionTone(level)]}`}
     >
       <span className="size-1.5 rounded-full bg-current" aria-hidden />
-      {level}
+      {t(level)}
     </span>
   )
 }

@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t'
 import type { RoadTraffic } from '../../domain/cityInfo'
 
 interface Props {
@@ -23,7 +24,7 @@ export function RoadTrafficCard({ traffic }: Props) {
               읽힌다. 주차장의 「실시간 미제공」과 같은 규칙이다. */}
           {traffic.speed !== null && (
             <p className="text-label-md text-on-surface-variant">
-              평균 {traffic.speed}km/h
+              {t('평균 {속도}km/h', { 속도: traffic.speed })}
             </p>
           )}
         </div>
@@ -34,7 +35,7 @@ export function RoadTrafficCard({ traffic }: Props) {
       )}
 
       {traffic.updatedAt !== '' && (
-        <p className="mt-2 text-label-sm text-outline">기준 {traffic.updatedAt}</p>
+        <p className="mt-2 text-label-sm text-outline">{t('기준 {시각}', { 시각: traffic.updatedAt })}</p>
       )}
     </div>
   )
