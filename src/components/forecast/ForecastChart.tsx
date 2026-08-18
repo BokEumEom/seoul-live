@@ -141,10 +141,15 @@ export function ForecastChart({ snapshot }: Props) {
                     bar.current ? 'ring-2 ring-on-surface ring-inset' : ''
                   }`}
                 />
+                {/* **소리로만 나가는 줄도 화면 언어를 따른다.** 「명」과
+                    `ko-KR`이 박혀 있어 영어 화면에서 이 줄만 한국어로
+                    남았는데, 눈으로는 보이지 않아 알 길이 없었다. */}
                 <span className="sr-only">
                   {bar.spokenTime} {t(bar.congestion)}{' '}
-                  {bar.populationMin.toLocaleString('ko-KR')}~
-                  {bar.populationMax.toLocaleString('ko-KR')}명
+                  {t('{최소}~{최대}명', {
+                    최소: bar.populationMin.toLocaleString(),
+                    최대: bar.populationMax.toLocaleString(),
+                  })}
                 </span>
               </li>
             )

@@ -90,11 +90,23 @@ export function summarizeCityInfo(info: CityInfo): readonly CityInfoChip[] {
   const lines = subwayLineCount(info)
 
   const candidates: readonly (CityInfoChip | null)[] = [
-    // 도로소통은 「정체」·「서행」처럼 그 자체가 한 낱말이라 접두어를 붙이지
-    // 않는다. 「도로 정체」로 늘리면 좁은 줄에서 칩 하나가 두 배가 된다.
+    // **「도로」를 붙인다.** 예전에는 「정체」·「서행」이 그 자체로 한 낱말이라
+    // 접두어 없이 값을 그대로 썼는데, 그러면 **영어로 옮길 수가 없다** —
+    // 이 앱은 한국어 원문이 곧 사전 키인데 `원활`은 혼잡도 헤드라인이 이미
+    // 갖고 있고 뜻이 다르다(장소가 한산하다 / 차가 잘 흐른다). 한 낱말에 두
+    // 뜻을 담을 수 없어 도로소통만 통째로 번역에서 빠져 있었고, 영어 화면의
+    // 칩 줄 맨 앞에 「정체」가 한국어로 남았다.
+    //
+    // 접두어가 붙으면 키가 갈라져 둘 다 번역된다. 대가는 칩 폭이고(2자 → 5자)
+    // 칩 줄은 가로로 스크롤되므로 감당할 수 있다. 덤으로 「지하철 2」·
+    // 「주차 50%」 옆에서 무엇에 대한 값인지가 분명해진다.
+    //
+    // 모르는 값이 오면 `t()`가 키를 그대로 돌려주므로 「도로 ○○」로 뜬다 —
+    // 한국어로는 읽히고 영어 화면에는 한국어가 남는다. 서울 API의 자유 값을
+    // 다루는 다른 자리와 같은 규칙이다.
     info.roadTraffic === null || info.roadTraffic.index === ''
       ? null
-      : { label: info.roadTraffic.index, sectionId: 'road' },
+      : { label: `도로 ${info.roadTraffic.index}`, sectionId: 'road' },
     lines === 0
       ? null
       : { label: '지하철 {개수}', labelParams: { 개수: lines }, sectionId: 'subway' },

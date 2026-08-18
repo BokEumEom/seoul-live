@@ -72,9 +72,13 @@ export function PopulationCard({ composition }: Props) {
   //
   // 0인 칸은 뺀다. 화면은 그 칸을 말없이 비우는데 이름만 "0%"라고 단정하면
   // 카드가 지키는 규칙이 소리 채널에서만 깨진다.
+  //
+  // **`t()`로 감싼다.** 도메인이 주는 값(`20대`)을 그대로 쓰면 영어 화면에서
+  // 이 줄만 한국어로 남는다 — 사전에는 항목이 있는데 아무도 요청하지 않는
+  // 상태라 완결성 검사도 통과한다(변수로 넘기는 키는 정적으로 못 센다).
   const chartLabel = composition.ageRates
     .flatMap((value, index) =>
-      value > 0 ? [`${AGE_LABELS[index]} ${Math.round(value)}%`] : [],
+      value > 0 ? [`${t(AGE_LABELS[index])} ${Math.round(value)}%`] : [],
     )
     .join(', ')
 
@@ -105,7 +109,8 @@ export function PopulationCard({ composition }: Props) {
               {t('비상주 {비율}%', { 비율: Math.round(composition.nonResidentRate) })}
             </li>
           )}
-          {label !== null && <li className={CHIP_ACCENT}>{label}</li>}
+          {/* 도메인은 한국어 값을 주고 화면이 감싼다 — AGENTS.md 「언어」. */}
+          {label !== null && <li className={CHIP_ACCENT}>{t(label)}</li>}
         </ul>
       )}
 
@@ -120,6 +125,8 @@ export function PopulationCard({ composition }: Props) {
           >
             {composition.ageRates.map((value, index) => (
               <span
+                // `key`는 감싸지 않은 값이다 — 언어가 바뀔 때 키까지 바뀌면
+                // React가 같은 칸을 지웠다 새로 만든다.
                 key={AGE_LABELS[index]}
                 style={{
                   width: `${(value / Math.max(total, MIN_DENOMINATOR)) * 100}%`,
@@ -136,11 +143,15 @@ export function PopulationCard({ composition }: Props) {
             className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-label-sm text-on-surface-variant"
           >
             {composition.ageRates.map((value, index) =>
+              // `key`는 감싸지 않은 값이다 — 언어가 바뀔 때 키까지 바뀌면
+              // React가 같은 칸을 지웠다 새로 만든다.
               value >= LABEL_THRESHOLD ? (
                 <span key={AGE_LABELS[index]}>
                   {/* font-semibold를 쓰지 않는다 — --text-label-sm--font-weight가
                       이미 600이라 옆 숫자와 무게가 같아져 굵게 보이지 않는다. */}
-                  <b className="font-bold text-on-surface">{AGE_LABELS[index]}</b>{' '}
+                  <b className="font-bold text-on-surface">
+                    {t(AGE_LABELS[index])}
+                  </b>{' '}
                   {Math.round(value)}%
                 </span>
               ) : null,

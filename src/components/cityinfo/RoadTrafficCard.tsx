@@ -17,8 +17,15 @@ export function RoadTrafficCard({ traffic }: Props) {
         <div className="flex items-baseline gap-2">
           {/* 파서가 지표와 메시지 중 하나만 있어도 항목을 만들므로 지표가 빌 수
               있다. 빈 제목을 그리면 카드 위쪽에 빈 줄이 남는다. */}
+          {/* **`도로`를 앞에 붙인 키로 옮긴다.** 값(`원활`)을 그대로 키로
+              쓰면 혼잡도 헤드라인의 같은 낱말과 다투는데 뜻이 다르다(장소가
+              한산하다 / 차가 잘 흐른다). 요약 칩이 쓰는 키와 같은 것이라
+              칩과 절이 같은 말을 한다 — 근거는 `domain/cityInfoSummary.ts`.
+              모르는 값이면 `t()`가 키를 그대로 돌려줘 「도로 ○○」로 뜬다. */}
           {traffic.index !== '' && (
-            <h4 className="text-headline-sm text-on-surface">{traffic.index}</h4>
+            <h4 className="text-headline-sm text-on-surface">
+              {t(`도로 ${traffic.index}`)}
+            </h4>
           )}
           {/* 속도를 못 읽었을 때 0으로 떨어뜨리지 않는다 — 「0km/h」는 완전 정체로
               읽힌다. 주차장의 「실시간 미제공」과 같은 규칙이다. */}

@@ -1,12 +1,24 @@
 import { t } from '../../i18n/t'
 import {
   formatForecastTemperature,
-  forecastHourLabel,
+  forecastHour,
   type HourlyForecast,
 } from '../../domain/cityInfo'
 
 interface Props {
   readonly hourly: readonly HourlyForecast[]
+}
+
+/**
+ * 「14시」·「14:00」. **도메인은 숫자만 주고 글자는 여기서 짓는다** — 예전에는
+ * 도메인이 완성된 「14시」를 돌려줘서 영어 화면의 이 줄이 통째로 한국어였다.
+ *
+ * 시각을 못 뽑았으면 원문을 그대로 적는다. FCST_DT의 형식이 공식 명세에 없어
+ * 처음 보는 모양이 올 수 있는데, 짐작한 시각보다 원문이 낫다.
+ */
+function hourLabel(rawTime: string): string {
+  const hour = forecastHour(rawTime)
+  return hour === null ? rawTime : t('{시}시', { 시: hour })
 }
 
 /**
@@ -35,7 +47,7 @@ export function HourlyWeather({ hourly }: Props) {
             className="flex w-14 shrink-0 flex-col items-center gap-1 rounded-card bg-surface-container-low py-2"
           >
             <span className="text-label-sm text-on-surface-variant">
-              {forecastHourLabel(entry.time)}
+              {hourLabel(entry.time)}
             </span>
             <span className="text-label-md font-bold text-on-surface">
               {formatForecastTemperature(entry.temperature)}

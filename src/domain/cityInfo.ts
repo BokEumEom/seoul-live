@@ -318,21 +318,26 @@ const DELIMITED_HOUR = /(\d{1,2}):\d{2}/
 const HOURS_IN_DAY = 24
 
 /**
- * 예보 시각을 「14시」로 만든다. 모르는 형식이면 **원문을 그대로 돌려준다.**
+ * 예보 시각에서 **0~23의 시(hour)를 뽑는다.** 모르는 형식이면 `null`이다.
  *
  * 짐작으로 두 자리를 자르면 처음 보는 형식에서 엉뚱한 숫자가 시각으로 둔갑한다.
  * `ROAD_TRAFFIC_IDX`를 톤에 겹치지 않은 것과 같은 판단이다 — 모르면 원문이 낫다.
+ *
+ * **예전에는 「14시」라는 완성된 글자를 돌려줬다.** 그래서 영어 화면의 시간대
+ * 날씨 줄이 통째로 한국어로 남았다 — 도메인은 언어를 모르는데 글자를 지었기
+ * 때문이다. 지금은 숫자만 주고 「어느 말로 적을지」는 화면이 정한다
+ * (`t('{시}시')` → `14:00`). 원문 폴백도 화면 몫이다: 뽑지 못했다는 사실만
+ * `null`로 전하고, 그때 무엇을 적을지는 부르는 쪽이 안다.
  */
-export function forecastHourLabel(raw: string): string {
-  const value = raw.trim()
-  const matched = value.match(COMPACT_HOUR) ?? value.match(DELIMITED_HOUR)
+export function forecastHour(raw: string): number | null {
+  const matched = raw.trim().match(COMPACT_HOUR) ?? raw.trim().match(DELIMITED_HOUR)
   if (matched === null) {
-    return raw
+    return null
   }
 
   const hour = Number(matched[1])
   // 25시는 시각이 아니다. 뽑아서 적으면 없는 시각을 단정하게 된다.
-  return hour >= 0 && hour < HOURS_IN_DAY ? `${hour}시` : raw
+  return hour >= 0 && hour < HOURS_IN_DAY ? hour : null
 }
 
 /** 어느 섹션에도 내용이 없으면 화면이 빈 상태 문구 하나만 보여준다. */

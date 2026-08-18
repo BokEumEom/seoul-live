@@ -16,16 +16,21 @@ function traffic(overrides: Partial<RoadTraffic> = {}): RoadTraffic {
 describe('RoadTrafficCard', () => {
   it('지표와 평균 속도를 보여준다', () => {
     render(<RoadTrafficCard traffic={traffic()} />)
-    expect(screen.getByText('서행')).toBeInTheDocument()
+    // 「서행」이 아니라 「도로 서행」이다 — 값을 그대로 키로 쓰면 `원활`이
+    // 혼잡도 헤드라인과 다퉈 영어로 못 옮긴다(`i18n/en.ts` 주석).
+    expect(screen.getByText('도로 서행')).toBeInTheDocument()
     expect(screen.getByText(/18\.4/)).toBeInTheDocument()
     expect(screen.getByText(/km\/h/)).toBeInTheDocument()
   })
 
   // 지표 문자열의 종류를 모르므로 화면도 아는 척하지 않는다. 명세에 없는 값이
   // 와도 그대로 나와야 한다 — 아는 값만 그리면 처음 보는 값에서 지표가 사라진다.
+  //
+  // **사전에 없는 키는 `t()`가 그대로 돌려준다.** 그래서 번역을 붙인 뒤에도
+  // 이 성질이 살아 있다 — 영어 화면에서는 한국어로 남지만 자리와 뜻은 지킨다.
   it('처음 보는 지표 문자열도 그대로 보여준다', () => {
     render(<RoadTrafficCard traffic={traffic({ index: '매우혼잡' })} />)
-    expect(screen.getByText('매우혼잡')).toBeInTheDocument()
+    expect(screen.getByText('도로 매우혼잡')).toBeInTheDocument()
   })
 
   // 속도를 못 읽었을 때 0으로 떨어뜨리면 "0km/h"가 되어 완전 정체로 읽힌다.
@@ -34,7 +39,7 @@ describe('RoadTrafficCard', () => {
     render(<RoadTrafficCard traffic={traffic({ speed: null })} />)
     expect(screen.queryByText(/km\/h/)).not.toBeInTheDocument()
     expect(screen.queryByText(/평균/)).not.toBeInTheDocument()
-    expect(screen.getByText('서행')).toBeInTheDocument()
+    expect(screen.getByText('도로 서행')).toBeInTheDocument()
   })
 
   // 파서는 지표와 메시지 중 **하나만** 있어도 항목을 만든다. 지표가 빈 채로 오면

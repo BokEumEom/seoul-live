@@ -3,7 +3,7 @@ import {
   airGradeTone,
   formatForecastTemperature,
   formatTemperature,
-  forecastHourLabel,
+  forecastHour,
   groupSubwayArrivals,
   hasAnyCityInfo,
   parkingTone,
@@ -224,41 +224,44 @@ describe('hasAnyCityInfo', () => {
   })
 })
 
-describe('forecastHourLabel', () => {
+describe('forecastHour', () => {
   // FCST_DT의 형식은 공식 명세에 없다 — 출력명(「예보시간」)만 있고 예시가
-  // 없다. 그래서 아는 모양이면 시각을 뽑고, 모르는 모양이면 원문을 그대로
-  // 돌려준다. 짐작으로 자르면 처음 보는 형식에서 엉뚱한 두 자리가 「14시」로
-  // 둔갑한다.
+  // 없다. 그래서 아는 모양이면 시각을 뽑고, 모르는 모양이면 `null`이다.
+  // 짐작으로 자르면 처음 보는 형식에서 엉뚱한 두 자리가 「14시」로 둔갑한다.
+  //
+  // **숫자를 돌려주지 글자를 짓지 않는다.** 예전에는 「14시」를 만들었고
+  // 그래서 영어 화면에서 그 줄만 한국어로 남았다 — 도메인은 언어를 모른다.
   it('붙여 쓴 12자리에서 시각을 뽑는다', () => {
-    expect(forecastHourLabel('202608131400')).toBe('14시')
+    expect(forecastHour('202608131400')).toBe(14)
   })
 
   it('구분자가 있는 형식에서 시각을 뽑는다', () => {
-    expect(forecastHourLabel('2026-08-13 14:00')).toBe('14시')
-    expect(forecastHourLabel('2026-08-13T14:00:00')).toBe('14시')
+    expect(forecastHour('2026-08-13 14:00')).toBe(14)
+    expect(forecastHour('2026-08-13T14:00:00')).toBe(14)
   })
 
   it('앞자리 0을 떼고 읽는다', () => {
-    // 「09시」가 아니라 「9시」다. 화면에서 숫자 폭이 들쭉날쭉해지는 대신
-    // 사람이 말하는 대로 적는다.
-    expect(forecastHourLabel('202608130900')).toBe('9시')
-    expect(forecastHourLabel('2026-08-13 09:00')).toBe('9시')
+    // 숫자라 앞자리 0이 있을 수 없다. 「09」를 문자열로 남기던 시절의 규칙이
+    // 타입으로 옮겨온 자리다.
+    expect(forecastHour('202608130900')).toBe(9)
+    expect(forecastHour('2026-08-13 09:00')).toBe(9)
   })
 
   it('자정은 0시다', () => {
     // Number('00')이 0이라 falsy 검사로 짜면 이 칸이 조용히 원문으로 떨어진다.
-    expect(forecastHourLabel('202608130000')).toBe('0시')
+    expect(forecastHour('202608130000')).toBe(0)
   })
 
-  it('모르는 형식은 원문을 그대로 돌려준다', () => {
-    expect(forecastHourLabel('예보 없음')).toBe('예보 없음')
-    expect(forecastHourLabel('')).toBe('')
+  it('모르는 형식은 뽑지 않는다', () => {
+    // 화면이 이 `null`을 보고 원문을 그대로 적는다(`HourlyWeather`).
+    expect(forecastHour('예보 없음')).toBeNull()
+    expect(forecastHour('')).toBeNull()
   })
 
-  it('시각 범위를 벗어나면 뽑지 않고 원문으로 둔다', () => {
+  it('시각 범위를 벗어나면 뽑지 않는다', () => {
     // 25는 시각이 아니다. 뽑아서 「25시」로 적으면 없는 시각을 단정한다.
-    expect(forecastHourLabel('202608132500')).toBe('202608132500')
-    expect(forecastHourLabel('2026-08-13 99:00')).toBe('2026-08-13 99:00')
+    expect(forecastHour('202608132500')).toBeNull()
+    expect(forecastHour('2026-08-13 99:00')).toBeNull()
   })
 })
 
