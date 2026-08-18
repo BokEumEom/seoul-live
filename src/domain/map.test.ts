@@ -7,6 +7,8 @@ import {
   SEOUL_CENTER,
   shiftCenterForSheet,
   shouldShowMarkerLabel,
+  shouldShowMarkerName,
+  NAME_MIN_ZOOM,
   toMapMarkers,
   centerRightOfPanel,
 } from './map'
@@ -14,7 +16,7 @@ import type { Coords } from './types'
 import type { AreaCatalogEntry, AreaSnapshot, NearbyArea } from './types'
 
 function entry(name: string, code: string): AreaCatalogEntry {
-  return { code, name, lat: 37.5, lng: 127, category: '인구밀집지역' }
+  return { code, name, nameEn: name, lat: 37.5, lng: 127, category: '인구밀집지역' }
 }
 
 function snapshot(name: string): AreaSnapshot {
@@ -75,6 +77,28 @@ describe('shouldShowMarkerLabel', () => {
 
   it('충분히 확대하면 보여준다', () => {
     expect(shouldShowMarkerLabel(16)).toBe(true)
+  })
+})
+
+describe('shouldShowMarkerName', () => {
+  it('혼잡도 알약이 뜨는 줌에서도 이름표는 아직 없다', () => {
+    // 이름표는 알약보다 넓다. 같은 문턱을 쓰면 종로·강남 무리에서 서로를 덮는다.
+    expect(shouldShowMarkerLabel(LABEL_MIN_ZOOM)).toBe(true)
+    expect(shouldShowMarkerName(LABEL_MIN_ZOOM)).toBe(false)
+  })
+
+  it('경계값 바로 아래에서는 감춘다', () => {
+    expect(shouldShowMarkerName(NAME_MIN_ZOOM - 1)).toBe(false)
+  })
+
+  it('경계값에서는 보여준다', () => {
+    expect(shouldShowMarkerName(NAME_MIN_ZOOM)).toBe(true)
+  })
+
+  // 두 문턱의 **순서**를 잠근다. 뒤집히면 이름만 뜨고 혼잡도가 없는 줌 구간이
+  // 생겨, 지도가 「어디인지」는 말하면서 「얼마나 붐비는지」를 안 말한다.
+  it('이름표 문턱이 알약 문턱보다 깊다', () => {
+    expect(NAME_MIN_ZOOM).toBeGreaterThan(LABEL_MIN_ZOOM)
   })
 })
 

@@ -18,6 +18,30 @@ describe('AREA_CATALOG', () => {
     expect(new Set(codes).size).toBe(codes.length)
   })
 
+  // 영어 화면에서 「인사동」이 그대로 남아 있었다. 목록·지도·상세가 전부 이
+  // 이름을 쓰므로, 하나라도 비면 영어 사용자는 그 명소를 읽을 수 없다.
+  //
+  // **한국어 `name`은 API 호출 키이자 지도 앱 검색어라 그대로 둔다.** 여기
+  // 더하는 것은 표시용 이름뿐이고, 값과 표시를 가르는 규칙은 AGENTS.md 「언어」에.
+  it('30곳 전부 영어 이름이 있다', () => {
+    const missing = AREA_CATALOG.filter((area) => area.nameEn.trim() === '')
+    expect(missing.map((area) => area.name)).toEqual([])
+  })
+
+  it('영어 이름에 한글이 섞이지 않는다', () => {
+    // 「Insa-dong(인사동)」처럼 절반만 옮긴 값을 막는다. 영어 화면에서 한글이
+    // 보이면 사용자는 「덜 됐다」가 아니라 「지원하지 않는다」로 읽는다.
+    const mixed = AREA_CATALOG.filter((area) => /[가-힣]/.test(area.nameEn))
+    expect(mixed.map((area) => area.nameEn)).toEqual([])
+  })
+
+  it('영어 이름이 중복되지 않는다', () => {
+    // 겹치면 목록에 같은 줄이 둘 뜬다 — 「잠실한강공원」과 「잠원한강공원」처럼
+    // 로마자가 비슷한 짝이 실제로 있다.
+    const names = AREA_CATALOG.map((area) => area.nameEn)
+    expect(new Set(names).size).toBe(names.length)
+  })
+
   it('모든 좌표가 서울 범위 안에 있다', () => {
     for (const area of AREA_CATALOG) {
       expect(area.lat).toBeGreaterThan(37.4)

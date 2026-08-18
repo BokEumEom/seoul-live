@@ -1,3 +1,4 @@
+import { areaDisplayName } from '../../i18n/areaName'
 import { t } from '../../i18n/t'
 import { formatDistance, walkableMinutes } from '../../domain/distance'
 import type { NearbyArea } from '../../domain/types'
@@ -31,7 +32,9 @@ export function RecommendationCard({ area, onSelect }: Props) {
       className="flex w-56 shrink-0 snap-start flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-lowest p-4 text-left"
     >
       <CongestionBadge level={snapshot?.congestion ?? null} />
-      <p className="truncate text-headline-sm text-on-surface">{entry.name}</p>
+      <p className="truncate text-headline-sm text-on-surface">
+        {areaDisplayName(entry)}
+      </p>
       {distanceMeters !== null && (
         <p className="flex items-center gap-1.5 text-label-md text-on-surface-variant">
           <Icon name="near" className="size-4 text-primary" />

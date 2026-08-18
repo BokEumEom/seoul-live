@@ -24,7 +24,7 @@ function area(
   category: AreaCategory = '공원',
 ): NearbyArea {
   return {
-    entry: { code: name, name, lat: 0, lng: 0, category },
+    entry: { code: name, name, nameEn: name, lat: 0, lng: 0, category },
     snapshot: congestion === null ? null : snap(name, congestion),
     distanceMeters: null,
   }

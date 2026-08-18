@@ -38,7 +38,7 @@ function area(
         }
 
   return {
-    entry: { code: 'POI000', name, lat: 37.5, lng: 127, category, purposes },
+    entry: { code: 'POI000', name, nameEn: name, lat: 37.5, lng: 127, category, purposes },
     snapshot,
     distanceMeters: null,
   }

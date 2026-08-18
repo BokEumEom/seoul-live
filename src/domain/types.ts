@@ -48,6 +48,18 @@ export type Purpose = 'kids' | 'date'
 export interface AreaCatalogEntry extends Coords {
   readonly code: string
   readonly name: string
+  /**
+   * 영어 화면에 적는 이름. **`name`을 대신하지 않는다.**
+   *
+   * `name`은 서울 API 호출 키이자 카카오맵·네이버 검색어라 한국어여야 하고,
+   * 이 값은 오직 표시용이다. 둘을 헷갈리면 「Insa-dong」으로 API를 부르게 된다.
+   *
+   * **선택 항목이 아니다.** `purposes`처럼 없어도 되는 값으로 두면 121곳으로
+   * 늘릴 때 빠뜨린 곳이 영어 화면에서만 조용히 한국어로 남는다 — 필수로 두어
+   * 컴파일러가 세게 한다. 사전(`i18n/en.ts`)이 아니라 카탈로그에 두는 이유는
+   * 이름·좌표·코드와 같은 자리에 있어야 한 곳만 보면 되기 때문이다.
+   */
+  readonly nameEn: string
   readonly category: AreaCategory
   /** 없으면 나들이·데이트 프리셋에 걸리지 않는다. 121곳 확장 시 태그가
    *  없는 명소가 조용히 오분류되지 않고 그냥 빠지게 하려는 것이다. */

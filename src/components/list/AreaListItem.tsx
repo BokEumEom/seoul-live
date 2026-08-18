@@ -1,3 +1,4 @@
+import { areaDisplayName } from '../../i18n/areaName'
 import { t } from '../../i18n/t'
 import { formatDistance } from '../../domain/distance'
 import { CATEGORY_LABEL, type NearbyArea } from '../../domain/types'
@@ -29,8 +30,10 @@ export function AreaListItem({ area, favorite = false, onSelect }: Props) {
     >
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
+          {/* `onSelect`에는 `entry.name`(한국어)이 그대로 간다 — 그건 호출
+              키다. 눈에 보이는 글자만 바뀐다. */}
           <span className="truncate text-body-md font-semibold text-on-surface">
-            {entry.name}
+            {areaDisplayName(entry)}
           </span>
           {/* `role="img"`은 장식이 아니다. role 없는 `<span>`은 `generic`이고
               ARIA 1.2에서 generic은 이름을 받을 수 없어("Name from author:

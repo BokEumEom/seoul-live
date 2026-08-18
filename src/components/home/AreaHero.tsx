@@ -1,3 +1,4 @@
+import { areaDisplayName } from '../../i18n/areaName'
 import { t } from '../../i18n/t'
 import {
   formatDistance,
@@ -28,7 +29,15 @@ export function AreaHero({ entry, coords, level }: Props) {
   return (
     <div className="flex items-start justify-between gap-3 px-4">
       <div className="min-w-0">
-        <h2 className="truncate text-headline-md text-on-surface">{entry.name}</h2>
+        {/* `truncate`가 아니라 `line-clamp-2`다. 한 줄로 자르면 **영어 이름이
+            잘린다** — 한국어는 「홍대입구역(2호선)」까지 한 줄에 들어가지만
+            영어는 「Hongik Univ. Station (…」로 끊겨 어느 역인지 못 읽었다.
+            한국어 30곳은 전부 한 줄이라 이 바꿈으로 달라지는 것이 없고, 긴
+            영어 이름만 두 줄을 쓴다. 두 줄까지인 것은 이름이 카드 하나를
+            통째로 먹지 않게 하려는 것이다. */}
+        <h2 className="line-clamp-2 text-headline-md text-on-surface">
+          {areaDisplayName(entry)}
+        </h2>
         {/* `!== null`이지 truthy 검사가 아니다. 명소 위에 서 있으면 거리가
             0이라 `distanceMeters &&`로 쓰면 이 줄이 카테고리만 남는다. */}
         <p className="mt-0.5 text-label-sm text-on-surface-variant">

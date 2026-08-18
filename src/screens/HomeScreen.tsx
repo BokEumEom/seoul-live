@@ -1,3 +1,4 @@
+import { areaDisplayName } from '../i18n/areaName'
 import { t } from '../i18n/t'
 import {
   AdvancedMarker,
@@ -44,6 +45,7 @@ import {
   shiftCenterForSheet,
   SEOUL_CENTER,
   shouldShowMarkerLabel,
+  shouldShowMarkerName,
   toMapMarkers,
 } from '../domain/map'
 import {
@@ -325,6 +327,7 @@ export function HomeScreen() {
     [snapshots.isPending, visible],
   )
   const showLabel = shouldShowMarkerLabel(zoom)
+  const showName = shouldShowMarkerName(zoom)
 
   // 지도를 못 그리는 세 경우를 한 값으로 모은다. 「레이어를 비우는가」와
   // 「시트를 half에 묶는가」와 「어떤 안내를 그리는가」가 전부 이 값 하나를
@@ -517,10 +520,13 @@ export function HomeScreen() {
             zIndex={markerZIndex(marker.level)}
             onClick={() => openArea(marker.entry.name)}
           >
+            {/* 이름표는 화면 언어를 따르고(`areaDisplayName`), 위 `openArea`에
+                넘기는 것은 한국어 `entry.name`이다 — 그건 호출 키다. */}
             <CongestionMarker
-              name={marker.entry.name}
+              name={areaDisplayName(marker.entry)}
               level={marker.level}
               showLabel={showLabel}
+              showName={showName}
               selected={marker.entry.name === filters.selectedName}
             />
           </AdvancedMarker>

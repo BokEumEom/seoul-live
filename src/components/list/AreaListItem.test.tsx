@@ -9,6 +9,7 @@ function area(overrides: Partial<NearbyArea> = {}): NearbyArea {
     entry: {
       code: 'POI014',
       name: '강남역',
+      nameEn: 'Gangnam Station',
       lat: 37.498,
       lng: 127.0276,
       category: '인구밀집지역',

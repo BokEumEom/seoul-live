@@ -1,3 +1,4 @@
+import { areaDisplayName } from '../../i18n/areaName'
 import { t } from '../../i18n/t'
 import { CATEGORY_LABEL, type NearbyArea } from '../../domain/types'
 import { CongestionBadge } from '../common/CongestionBadge'
@@ -25,7 +26,7 @@ export function RankList({ title, areas, onSelect }: Props) {
               <span className="flex min-w-0 items-center gap-2">
                 <span className="text-label-sm text-outline">{index + 1}</span>
                 <span className="truncate text-body-md text-on-surface">
-                  {area.entry.name}
+                  {areaDisplayName(area.entry)}
                 </span>
                 <span className="shrink-0 text-label-sm text-on-surface-variant">
                   {t(CATEGORY_LABEL[area.entry.category])}

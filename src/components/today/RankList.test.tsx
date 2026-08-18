@@ -6,7 +6,7 @@ import { RankList } from './RankList'
 
 function area(name: string): NearbyArea {
   return {
-    entry: { code: name, name, lat: 0, lng: 0, category: '공원' },
+    entry: { code: name, name, nameEn: name, lat: 0, lng: 0, category: '공원' },
     snapshot: {
       code: name,
       name,

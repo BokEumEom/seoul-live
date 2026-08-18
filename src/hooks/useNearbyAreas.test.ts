@@ -11,6 +11,7 @@ const ENTRIES: readonly AreaCatalogEntry[] = [
   {
     code: 'A',
     name: '가까운여유',
+    nameEn: '가까운여유',
     lat: 37.5665,
     lng: 126.978,
     category: '공원',
@@ -18,11 +19,12 @@ const ENTRIES: readonly AreaCatalogEntry[] = [
   {
     code: 'B',
     name: '가까운붐빔',
+    nameEn: '가까운붐빔',
     lat: 37.5675,
     lng: 126.979,
     category: '발달상권',
   },
-  { code: 'C', name: '먼여유', lat: 37.65, lng: 127.05, category: '공원' },
+  { code: 'C', name: '먼여유', nameEn: '먼여유', lat: 37.65, lng: 127.05, category: '공원' },
 ]
 
 function snapshot(
@@ -56,11 +58,11 @@ describe('buildNearbyList — 붐비는 순', () => {
   // 전용 픽스처다. 동점(여유 둘)과 스냅샷 없는 항목을 일부러 넣는다.
   // 동점이 없으면 "역순"이 우연히 성립해 정렬 방향을 뒤집어도 통과한다.
   const BUSY_ENTRIES: readonly AreaCatalogEntry[] = [
-    { code: 'A', name: '여유1', lat: 37.5, lng: 127, category: '공원' },
-    { code: 'B', name: '붐빔1', lat: 37.5, lng: 127, category: '공원' },
-    { code: 'C', name: '보통1', lat: 37.5, lng: 127, category: '공원' },
-    { code: 'D', name: '여유2', lat: 37.5, lng: 127, category: '공원' },
-    { code: 'E', name: '정보없음', lat: 37.5, lng: 127, category: '공원' },
+    { code: 'A', name: '여유1', nameEn: '여유1', lat: 37.5, lng: 127, category: '공원' },
+    { code: 'B', name: '붐빔1', nameEn: '붐빔1', lat: 37.5, lng: 127, category: '공원' },
+    { code: 'C', name: '보통1', nameEn: '보통1', lat: 37.5, lng: 127, category: '공원' },
+    { code: 'D', name: '여유2', nameEn: '여유2', lat: 37.5, lng: 127, category: '공원' },
+    { code: 'E', name: '정보없음', nameEn: '정보없음', lat: 37.5, lng: 127, category: '공원' },
   ]
 
   const BUSY_SNAPSHOTS: readonly (AreaSnapshot | null)[] = [
@@ -253,6 +255,7 @@ describe('pickRecommendations', () => {
       (_, index) => ({
         code: `X${index}`,
         name: `여유${index}`,
+        nameEn: `여유${index}`,
         lat: 37.5665 + index * 0.0001,
         lng: 126.978,
         category: '공원' as const,

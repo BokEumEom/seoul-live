@@ -2,15 +2,19 @@ import { describe, expect, it } from 'vitest'
 import { searchAreas } from './search'
 import type { NearbyArea } from './types'
 
-function area(name: string): NearbyArea {
+function area(name: string, nameEn = name): NearbyArea {
   return {
-    entry: { code: name, name, lat: 0, lng: 0, category: '발달상권' },
+    entry: { code: name, name, nameEn, lat: 0, lng: 0, category: '발달상권' },
     snapshot: null,
     distanceMeters: null,
   }
 }
 
-const AREAS = [area('성수카페거리'), area('연남동'), area('DDP(동대문디자인플라자)')]
+const AREAS = [
+  area('성수카페거리', 'Seongsu Cafe Street'),
+  area('연남동', 'Yeonnam-dong'),
+  area('DDP(동대문디자인플라자)', 'DDP (Dongdaemun Design Plaza)'),
+]
 
 describe('searchAreas', () => {
   // toEqual이 아니라 toBe다. ''.includes('')가 언제나 참이라 조기 반환이
@@ -39,6 +43,25 @@ describe('searchAreas', () => {
 
   it('맞는 게 없으면 빈 배열이다', () => {
     expect(searchAreas(AREAS, '없는곳')).toEqual([])
+  })
+
+  // 영어 화면에서 「Yeonnam-dong」이라 읽은 사람이 그대로 칠 수 있어야 한다.
+  // 이게 없으면 **화면에 보이는 줄을 검색으로는 못 찾는다.**
+  it('영어 이름으로도 찾는다', () => {
+    expect(searchAreas(AREAS, 'yeonnam').map((a) => a.entry.name)).toEqual([
+      '연남동',
+    ])
+  })
+
+  // 언어로 가르지 않는다는 결정을 잠근다. 화면이 한국어여도 영어로 칠 수 있고
+  // 그 반대도 된다 — 한쪽만 보는 구현이면 둘 중 하나가 죽는다.
+  it('한국어 이름과 영어 이름을 함께 본다', () => {
+    expect(searchAreas(AREAS, 'cafe').map((a) => a.entry.name)).toEqual([
+      '성수카페거리',
+    ])
+    expect(searchAreas(AREAS, '카페').map((a) => a.entry.name)).toEqual([
+      '성수카페거리',
+    ])
   })
 
   // "입력 배열 불변"은 쓰지 않는다 — filter로는 어떤 구현도 입력을 건드릴 수
