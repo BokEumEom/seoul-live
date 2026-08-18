@@ -13,6 +13,7 @@ import type { FacilityLocation } from '../domain/cityInfo'
 import { BottomSheet } from '../components/home/BottomSheet'
 import { FilterChips } from '../components/home/FilterChips'
 import { SearchBar } from '../components/home/SearchBar'
+import { ThemeToggle } from '../components/home/ThemeToggle'
 import { SummaryStrip } from '../components/home/SummaryStrip'
 import { AreaList } from '../components/list/AreaList'
 import { AreaListItem } from '../components/list/AreaListItem'
@@ -31,6 +32,7 @@ import {
 } from '../components/map/RecenterButton'
 import { AREA_CATALOG, AREA_NAMES, findAreaByName } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
+import { useResolvedTheme } from '../hooks/themeStore'
 import { PANEL_WIDTH_PX, useWideScreen } from '../hooks/useWideScreen'
 import {
   centerBelowSheet,
@@ -84,6 +86,8 @@ export function HomeScreen() {
   // **넓은 화면에서는 시트가 왼쪽 패널이 된다.** 지도가 아래가 아니라 왼쪽을
   // 가리게 되므로 중심 보정의 축도 함께 바뀐다 — `focusMapOn` 참고.
   const wide = useWideScreen()
+  // 지도 타일 색을 우리 테마에 맞추는 데 쓴다 — 「기기 설정」까지 풀어낸 값이다.
+  const resolvedTheme = useResolvedTheme()
   const location = useLocation()
   const filters = useHomeFilters()
   // 즐겨찾기가 탭에서 필터 칩으로 옮겨 오면서 홈의 것이 됐다.
@@ -466,11 +470,15 @@ export function HomeScreen() {
         zoom={zoom}
         onCameraChanged={handleCameraChanged}
         reuseMaps
-        // **지도도 밤에는 어두워야 한다.** 화면의 절반이 지도라, 시트만 어두워지면
-        // 밤에 앱을 열 때 나머지 절반이 그대로 밝은 채로 남아 눈이 부신다.
-        // 우리 CSS 변수는 남의 캔버스 안까지 못 미치므로 지도에게 따로 말한다.
-        // `FOLLOW_SYSTEM`이라 우리 `prefers-color-scheme` 블록과 같은 신호를 본다.
-        colorScheme="FOLLOW_SYSTEM"
+        // **지도도 함께 어두워져야 한다.** 화면의 절반이 지도라, 시트만
+        // 어두워지면 나머지 절반이 밝은 채로 남아 눈이 부신다. 우리 CSS 변수는
+        // 남의 캔버스 안까지 못 미치므로 지도에게 따로 말한다.
+        //
+        // **`FOLLOW_SYSTEM`이 아니라 우리가 정한 값이다.** 예전에는 테마가
+        // 기기 설정을 그대로 따랐으니 그걸로 맞았지만, 지금은 사용자가 고른다 —
+        // 기기가 밝은데 앱을 어둡게 쓰면 지도만 밝게 남는다(390px 실측에서
+        // 실제로 그랬다).
+        colorScheme={resolvedTheme === 'dark' ? 'DARK' : 'LIGHT'}
         // 지도는 심사 체크리스트가 제스처 확대·축소를 명시적으로 허용하는 용례다.
         gestureHandling="greedy"
         disableDefaultUI
@@ -560,7 +568,14 @@ export function HomeScreen() {
           이유는 조작 순서 그대로다: 찾고 → 거르고 → 고른다. */}
       {wide && (
         <div className="flex flex-col gap-1 pt-3">
-          <SearchBar value={filters.query} onChange={filters.setQuery} />
+          {/* 검색과 테마 토글이 한 줄이다. 인파레이더는 상단바에 두지만 우리는
+              상단바를 걷어냈으므로(세로가 가장 귀한 자원) 이 줄이 그 자리다. */}
+          <div className="flex items-center gap-2 pr-4">
+            <div className="min-w-0 flex-1">
+              <SearchBar value={filters.query} onChange={filters.setQuery} />
+            </div>
+            <ThemeToggle />
+          </div>
           <FilterChips
             counts={counts}
             value={filters.filter}
@@ -763,8 +778,13 @@ export function HomeScreen() {
             // 지도를 끌 수 있어야 한다 — 되살리는 것은 자식 쪽이다.
             className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1"
           >
-            <div className="pointer-events-auto">
-              <SearchBar value={filters.query} onChange={filters.setQuery} />
+            {/* 검색과 테마 토글이 한 줄이다 — 위 패널 쪽과 같은 배치다.
+                토글을 새 줄에 두면 지도가 44px 더 가려진다. */}
+            <div className="pointer-events-auto flex items-center gap-2 pr-4">
+              <div className="min-w-0 flex-1">
+                <SearchBar value={filters.query} onChange={filters.setQuery} />
+              </div>
+              <ThemeToggle />
             </div>
             <FilterChips
               counts={counts}

@@ -22,6 +22,17 @@ const DARK_QUERY = '(prefers-color-scheme: dark)'
 
 let setting: ThemeSetting = DEFAULT_THEME
 let loading = false
+/**
+ * 사용자가 이번 세션에서 테마를 **직접 골랐는가.**
+ *
+ * 저장소 읽기가 비동기(토스 브리지)라 앱이 뜬 직후 토글을 누르면 그 뒤에
+ * 도착한 저장값이 방금 누른 것을 덮는다 — 사용자에게는 **화면이 바뀌었다가
+ * 저절로 되돌아가는** 것으로 보인다. `favoritesStore`가 같은 종류의 경쟁을
+ * 겪고 같은 방법으로 막았다(그쪽 `ensureLoaded` 주석 참고).
+ *
+ * 이 플래그가 없으면 실제로 재현된다 — 테스트로 확인했다.
+ */
+let chosen = false
 const listeners = new Set<Listener>()
 
 function emit(): void {
@@ -69,21 +80,37 @@ export function getSnapshot(): ThemeSetting {
   return setting
 }
 
+/**
+ * 지금 **실제로 칠해지고 있는** 색. 토글 버튼이 「무엇으로 바꿀지」를 정하는 데
+ * 쓴다 — 고른 값이 `'system'`이면 그것만으로는 지금이 밝은지 어두운지 알 수 없다.
+ *
+ * 문자열(원시값)을 돌려주므로 `useSyncExternalStore`가 매 렌더 새 참조로
+ * 오해하지 않는다. 객체로 묶어 돌려주면 무한 루프가 난다.
+ */
+export function getResolvedSnapshot(): ResolvedTheme {
+  return resolveTheme(setting, systemPrefersDark())
+}
+
 /** 저장소를 한 번만 읽는다. 인스턴스마다 불러도 요청은 하나다. */
 export function ensureLoaded(): void {
   if (loading) {
     return
   }
   loading = true
-  void loadTheme().then((stored) => {
-    setting = stored
-    apply()
-    emit()
-  })
+  void loadTheme()
+    .then((stored) => {
+      // 읽는 사이에 사용자가 골랐으면 그쪽이 이긴다.
+      if (chosen) return
+      setting = stored
+      apply()
+      emit()
+    })
+    .catch(() => undefined)
 }
 
 export function setTheme(next: ThemeSetting): void {
   setting = next
+  chosen = true
   // 저장을 기다리지 않고 먼저 칠한다. 브리지가 느리거나 실패해도 누른 즉시
   // 화면이 바뀌어야 한다 — 저장 실패의 대가는 다음에 열 때 기본으로 돌아가는
   // 것이지, 지금 안 바뀌는 것이 아니다.
@@ -118,6 +145,7 @@ export function watchSystemTheme(): () => void {
 export function reset(): void {
   setting = DEFAULT_THEME
   loading = false
+  chosen = false
   listeners.clear()
   delete document.documentElement.dataset.theme
 }
@@ -143,4 +171,10 @@ export function useAppTheme(): void {
 export function useThemeSetting(): ThemeSetting {
   ensureLoaded()
   return useSyncExternalStore(subscribe, getSnapshot, () => DEFAULT_THEME)
+}
+
+/** 지금 칠해지고 있는 색. 「기기 설정」까지 풀어낸 값이다. */
+export function useResolvedTheme(): ResolvedTheme {
+  ensureLoaded()
+  return useSyncExternalStore(subscribe, getResolvedSnapshot, () => 'light')
 }

@@ -109,6 +109,28 @@ describe('themeStore', () => {
     })
   })
 
+  it('읽는 중에 고르면 늦게 온 저장값이 그것을 덮지 않는다', async () => {
+    // **실제로 겪은 경쟁이다.** 저장소 읽기가 비동기(토스 브리지)라, 앱이 뜬
+    // 직후 토글을 누르면 그 뒤 도착한 값이 방금 누른 것을 덮었다 — 사용자에게는
+    // 화면이 바뀌었다가 **저절로 되돌아가는** 것으로 보인다.
+    // `favoritesStore`가 별에서 같은 종류의 경쟁을 겪었다.
+    let deliver: (value: 'light' | 'dark' | 'system') => void = () => undefined
+    loadTheme.mockReturnValue(
+      new Promise((resolve) => {
+        deliver = resolve
+      }),
+    )
+
+    ensureLoaded() // 읽기 시작 — 아직 안 끝났다
+    setTheme('dark') // 그 사이에 사용자가 골랐다
+    deliver('light') // 이제야 저장값이 도착한다
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(getSnapshot()).toBe('dark')
+    expect(themeAttribute()).toBe('dark')
+  })
+
   it('여러 번 불러도 저장소는 한 번만 읽는다', () => {
     ensureLoaded()
     ensureLoaded()
