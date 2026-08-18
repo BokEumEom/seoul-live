@@ -43,27 +43,62 @@ function unknownLabel(): string {
 const UNKNOWN_PILL_CLASS = 'bg-on-surface-variant text-white'
 const UNKNOWN_PIN_CLASS = 'text-outline'
 
+// 이름표. **알약과 색을 나눠 갖지 않는다** — 혼잡도 4색은 값을 말하는 색이라
+// 이름표까지 물들이면 「이 이름이 붐빈다」로 두 번 말하게 되고, 그러면 이름표는
+// 알약을 더 크게 그린 것에 지나지 않는다. 여기서는 지도 위에서 **읽히는 것**만
+// 하면 되므로 카드와 같은 표면색을 쓴다.
+//
+// 반투명이 아니라 불투명이다. 지도 타일에는 도로·글자·공원 초록이 섞여 있어
+// 반투명 배경 위의 글자는 배경에 따라 대비가 오르내린다.
+//
+// **`absolute`가 핵심이다. 흐름에 두면 핀이 실제 위치를 안 가리킨다.**
+// `AdvancedMarker`는 내용물의 **아래 끝 가운데**를 좌표에 맞춘다. 이름표를
+// 핀 아래에 흐름으로 놓으면 그 아래 끝이 이름표 밑으로 내려가고, 핀은 그만큼
+// 위로 밀린다 — 390×844 실측에서 핀 하단이 186px에서 **168px로 18px 올라갔다**
+// (컨테이너 하단은 186 그대로). 줌 14를 넘나들 때마다 마커 30개가 18px씩
+// 튀고, 선택된 핀은 늘 북쪽으로 어긋난 자리를 가리킨다.
+// 띄워 두면 컨테이너의 아래 끝은 핀 끝 그대로이고 이름표만 지도 위로 드리운다.
+const NAME_CLASS =
+  'absolute top-full left-1/2 -translate-x-1/2 max-w-32 truncate rounded-full border border-outline-variant bg-surface-container-lowest px-2 py-0.5 text-label-sm font-semibold text-on-surface shadow-floating'
+
 interface Props {
   readonly name: string
   readonly level: CongestionLevel | null
   /** 줌이 낮으면 알약 라벨을 감춘다. `domain/map.shouldShowMarkerLabel` 참고. */
   readonly showLabel: boolean
+  /** 줌이 얕으면 이름표를 감춘다. `domain/map.shouldShowMarkerName` 참고. */
+  readonly showName: boolean
   readonly selected: boolean
 }
 
 // AdvancedMarker가 씌우는 내용물이다. 이 컴포넌트는 SDK를 import하지 않는다 —
 // 그래야 색상·라벨 규칙을 지도 목업 없이 테스트할 수 있다.
-export function CongestionMarker({ name, level, showLabel, selected }: Props) {
+export function CongestionMarker({
+  name,
+  level,
+  showLabel,
+  showName,
+  selected,
+}: Props) {
   const tone = level === null ? null : congestionTone(level)
   const pillClass = tone === null ? UNKNOWN_PILL_CLASS : TONE_PILL_CLASS[tone]
   const pinClass = tone === null ? UNKNOWN_PIN_CLASS : TONE_PIN_CLASS[tone]
   const label = level === null ? unknownLabel() : t(level)
+  // **고른 곳은 줌과 무관하게 이름을 단다.** 목록에서 고르면 지도가 그리로
+  // 움직이는데, 그때 여러 핀 중 어느 것이 방금 고른 것인지 말해 주는 표시가
+  // 핀 크기(`size-9`)뿐이었다 — 옆 핀과 2px 차이라 사실상 안 보인다.
+  // 한 개짜리라 겹칠 걱정도 없다.
+  const nameVisible = showName || selected
 
   return (
     <span
+      // 이름표·알약이 각자 이름을 갖지 않는다. 이 컨테이너 하나가 「인사동
+      // 여유」로 읽히고 안쪽은 전부 그 이름에 흡수된다 — 안쪽에 role을 주면
+      // 보조기술이 같은 말을 두세 번 읽는다.
       role="img"
       aria-label={`${name} ${label}`}
-      className="flex flex-col items-center"
+      // `relative`는 이름표를 띄우기 위한 기준이다(NAME_CLASS 주석 참고).
+      className="relative flex flex-col items-center"
     >
       {showLabel && (
         <span
@@ -76,6 +111,11 @@ export function CongestionMarker({ name, level, showLabel, selected }: Props) {
         name="pin"
         className={`${selected ? 'size-9' : 'size-7'} ${pinClass}`}
       />
+      {/* 핀 **아래**다. 위에 얹으면 알약과 이름표가 한 덩어리로 뭉쳐 어느
+          쪽이 값이고 어느 쪽이 이름인지 구분이 안 되고, 마커 전체가 위로
+          길어져 시트 위쪽에서 잘린다. 아래로 내려 두면 이웃 마커의 알약과도
+          다른 줄에 놓여 덜 겹친다. */}
+      {nameVisible && <span className={NAME_CLASS}>{name}</span>}
     </span>
   )
 }

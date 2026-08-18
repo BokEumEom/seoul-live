@@ -22,6 +22,26 @@ export const DEFAULT_ZOOM = 11
  */
 export const LABEL_MIN_ZOOM = 12
 
+/**
+ * **명소 이름표**를 붙이기 시작하는 줌. 서울 인파레이더처럼 지도에서 곧바로
+ * 「거기가 어디인지」를 읽게 하는 것이다.
+ *
+ * **알약보다 두 칸 깊다.** 같은 문턱을 쓰지 않는 이유는 폭이다 — 「약간 붐빔」은
+ * 네 글자인데 「홍대입구역(2호선)」은 열한 글자이고 영어는 더 길다
+ * (「Hongik Univ. Station (Line 2)」). zoom 12에서 강남역·가로수길·
+ * 압구정로데오거리·청담동 명품거리 넷은 약 66px 안에 들어오는데, 이름표 하나가
+ * 이미 그만큼 넓다. zoom 14면 그 무리가 화면 폭의 3분의 2로 벌어진다.
+ *
+ * 14는 이 앱의 조작과도 맞는다. 「내 주변」이 14로 가고(`RECENTER_ZOOM`) 명소를
+ * 열면 15로 간다(`AREA_ZOOM`) — 즉 **사용자가 한 곳을 보려고 한 순간부터**
+ * 이름이 붙고, 서울 전역을 훑는 기본 줌(11)에서는 지도가 조용하다.
+ *
+ * 겹침을 완전히 없애지는 못한다. 그건 클러스터링이나 충돌 회피가 할 일이고,
+ * 30곳 규모에서는 줌으로 표현을 바꾸는 것으로 충분하다고 봤다 —
+ * `LABEL_MIN_ZOOM`이 이미 같은 교환을 하고 있다.
+ */
+export const NAME_MIN_ZOOM = 14
+
 /** 웹 메르카토르 타일 한 변(px). 줌 z에서 세계는 `TILE_SIZE * 2^z` 픽셀이다. */
 const TILE_SIZE = 256
 
@@ -154,6 +174,10 @@ export interface MapMarker {
 
 export function shouldShowMarkerLabel(zoom: number): boolean {
   return zoom >= LABEL_MIN_ZOOM
+}
+
+export function shouldShowMarkerName(zoom: number): boolean {
+  return zoom >= NAME_MIN_ZOOM
 }
 
 /**
