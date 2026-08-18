@@ -8,7 +8,9 @@ import {
   shiftCenterForSheet,
   shouldShowMarkerLabel,
   toMapMarkers,
+  centerRightOfPanel,
 } from './map'
+import type { Coords } from './types'
 import type { AreaCatalogEntry, AreaSnapshot, NearbyArea } from './types'
 
 function entry(name: string, code: string): AreaCatalogEntry {
@@ -303,5 +305,70 @@ describe('shiftCenterForSheet', () => {
     expect(shiftCenterForSheet(HERE, ZOOM, HEIGHT, 0, 0.56)).toEqual(
       centerBelowSheet(HERE, ZOOM, HEIGHT, 0.56),
     )
+  })
+})
+
+// ── 넓은 화면: 시트가 왼쪽 패널이 된다 ────────────────────────────────────
+//
+// 세로가 긴 화면에서는 시트가 아래를 덮으므로 지도 중심을 **남쪽**으로 비켜
+// 잡았다. PC에서는 패널이 **왼쪽**을 덮으므로 같은 논리가 축만 바뀐다 —
+// 중심을 서쪽으로 밀어야 명소가 패널 오른쪽 띠 한가운데 온다.
+describe('centerRightOfPanel', () => {
+  const TARGET: Coords = { lat: 37.5665, lng: 126.978 }
+
+  it('패널이 가린 만큼 중심을 서쪽으로 옮긴다', () => {
+    const moved = centerRightOfPanel(TARGET, 15, 400)
+
+    expect(moved.lng).toBeLessThan(TARGET.lng)
+    // 위도는 건드리지 않는다. 패널은 세로를 가리지 않는다.
+    expect(moved.lat).toBe(TARGET.lat)
+  })
+
+  it('패널이 넓을수록 더 옮긴다', () => {
+    const narrow = centerRightOfPanel(TARGET, 15, 300)
+    const wide = centerRightOfPanel(TARGET, 15, 600)
+
+    expect(TARGET.lng - wide.lng).toBeGreaterThan(TARGET.lng - narrow.lng)
+  })
+
+  it('줌이 깊을수록 같은 픽셀이 더 작은 각도다', () => {
+    // 픽셀은 화면의 것이고 경도는 지도의 것이다. 줌 한 단계마다 세계 픽셀 폭이
+    // 두 배가 되므로 같은 400px이 절반의 경도가 된다 — 안 그러면 확대할수록
+    // 명소가 화면 밖으로 밀린다.
+    const near = TARGET.lng - centerRightOfPanel(TARGET, 15, 400).lng
+    const far = TARGET.lng - centerRightOfPanel(TARGET, 16, 400).lng
+
+    expect(near / far).toBeCloseTo(2, 1)
+  })
+
+  it('400px 패널에서 옮기는 양이 화면 200px과 같다', () => {
+    // 독립 계산으로 견준다. 줌 z에서 세계 픽셀 폭은 256·2^z이고 경도는
+    // 그 폭에 -180~180이 고르게 퍼진다. 구현을 구현으로 검산하지 않으려고
+    // 여기서 식을 다시 세운다.
+    const zoom = 15
+    const degreesPerPixel = 360 / (256 * 2 ** zoom)
+    const moved = centerRightOfPanel(TARGET, zoom, 400)
+
+    expect(TARGET.lng - moved.lng).toBeCloseTo(200 * degreesPerPixel, 8)
+  })
+
+  it('패널이 없으면 그대로 둔다', () => {
+    // 좁은 화면에서는 패널 폭이 0이다. 부동소수점 끝자리가 흔들리면
+    // 「안 움직였다」가 거짓이 된다.
+    expect(centerRightOfPanel(TARGET, 15, 0)).toEqual(TARGET)
+  })
+
+  it('폭이 음수면 반대로 옮긴다', () => {
+    // 패널이 **사라질 때** 쓰인다(400 → 0의 차이는 −400). 좁은 화면으로
+    // 돌아가면 아까 서쪽으로 민 만큼 동쪽으로 되돌려야 제자리다.
+    const west = centerRightOfPanel(TARGET, 15, 400)
+    const back = centerRightOfPanel(west, 15, -400)
+
+    expect(back.lng).toBeCloseTo(TARGET.lng, 10)
+  })
+
+  it('폭이 이상하면 손대지 않는다', () => {
+    // 측정 전 프레임에서 0·NaN이 올 수 있다. NaN 좌표를 넘기면 지도가 죽는다.
+    expect(centerRightOfPanel(TARGET, 15, Number.NaN)).toEqual(TARGET)
   })
 })

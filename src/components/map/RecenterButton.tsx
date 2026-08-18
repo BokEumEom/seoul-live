@@ -7,8 +7,14 @@ export type RecenterDetent = Exclude<Detent, 'full'>
 interface Props {
   /** 좌표가 없으면 이동할 곳이 없다. */
   readonly disabled: boolean
-  /** 시트가 지금 어디까지 올라와 있는지. 이 버튼의 세로 위치를 정한다. */
-  readonly detent: RecenterDetent
+  /**
+   * 시트가 지금 어디까지 올라와 있는지. 이 버튼의 세로 위치를 정한다.
+   *
+   * **넓은 화면에서는 `null`이다.** 시트가 왼쪽 패널이 되어 세로를 하나도
+   * 안 가리므로 「시트를 피해 올라간다」는 규칙 자체가 없어진다 — 그때는
+   * 지도 우하단에 그냥 붙는다.
+   */
+  readonly detent: RecenterDetent | null
   readonly onClick: () => void
 }
 
@@ -57,6 +63,8 @@ const BOTTOM_CLASS: Readonly<Record<RecenterDetent, string>> = {
 // 이름이 「내 위치로 이동」이 아니라 「내 주변」인 것은 검색 줄에 있던 같은
 // 이름의 버튼을 흡수했기 때문이다 — 하는 일도 그때 함께 넘어왔다.
 export function RecenterButton({ disabled, detent, onClick }: Props) {
+  // 넓은 화면에서는 패널이 왼쪽을 가릴 뿐이라 아래가 통째로 비어 있다.
+  const bottom = detent === null ? 'bottom-6' : BOTTOM_CLASS[detent]
   return (
     <button
       type="button"
@@ -66,7 +74,7 @@ export function RecenterButton({ disabled, detent, onClick }: Props) {
       // `pointer-events-auto`를 두지 않는다. 이 버튼은 홈 루트의 직계 자식이고
       // 루트에는 `pointer-events-none`이 없어서 되살릴 것이 없다 — 그 클래스가
       // 필요한 건 `pointer-events-none` 컨테이너 안에 있는 필터 칩 쪽이다.
-      className={`absolute right-4 z-20 grid size-12 place-items-center rounded-full bg-surface text-primary shadow-floating disabled:text-outline-variant ${BOTTOM_CLASS[detent]}`}
+      className={`absolute right-4 z-20 grid size-12 place-items-center rounded-full bg-surface text-primary shadow-floating disabled:text-outline-variant ${bottom}`}
     >
       <Icon name="myLocation" className="size-6" />
     </button>

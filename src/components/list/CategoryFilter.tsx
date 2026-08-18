@@ -21,7 +21,7 @@ export function CategoryFilter({ value, onChange }: Props) {
     <div
       role="group"
       aria-label="카테고리"
-      className="flex gap-2 overflow-x-auto px-4 py-1"
+      className="flex gap-2 overflow-x-auto scrollbar-none px-4 py-1"
     >
       {OPTIONS.map((option) => (
         <button

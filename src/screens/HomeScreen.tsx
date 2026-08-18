@@ -25,11 +25,16 @@ import {
   MapUnavailableNotice,
   type MapUnavailableReason,
 } from '../components/map/MapUnavailableNotice'
-import { RecenterButton } from '../components/map/RecenterButton'
+import {
+  RecenterButton,
+  type RecenterDetent,
+} from '../components/map/RecenterButton'
 import { AREA_CATALOG, AREA_NAMES, findAreaByName } from '../data/areas'
 import { useAreaSnapshots } from '../data/queries'
+import { PANEL_WIDTH_PX, useWideScreen } from '../hooks/useWideScreen'
 import {
   centerBelowSheet,
+  centerRightOfPanel,
   DEFAULT_ZOOM,
   markerZIndex,
   shiftCenterForSheet,
@@ -76,6 +81,9 @@ const FACILITY_ZOOM = 17
 
 export function HomeScreen() {
   const snapshots = useAreaSnapshots(AREA_NAMES)
+  // **넓은 화면에서는 시트가 왼쪽 패널이 된다.** 지도가 아래가 아니라 왼쪽을
+  // 가리게 되므로 중심 보정의 축도 함께 바뀐다 — `focusMapOn` 참고.
+  const wide = useWideScreen()
   const location = useLocation()
   const filters = useHomeFilters()
   // 즐겨찾기가 탭에서 필터 칩으로 옮겨 오면서 홈의 것이 됐다.
@@ -258,7 +266,15 @@ export function HomeScreen() {
    * 두 조작이 합쳐져 옳은 자리가 나온다 — 계산으로 확인했고 테스트가 잠근다.
    */
   function focusMapOn(target: Coords, nextZoom: number): void {
-    setCenter(centerBelowSheet(target, nextZoom, window.innerHeight, sheetRatio))
+    // **가리는 쪽이 다르면 비켜 잡는 축도 다르다.** 좁은 화면은 시트가 아래를
+    // 덮으므로 남쪽으로, 넓은 화면은 패널이 왼쪽을 덮으므로 서쪽으로 민다.
+    // 둘을 한 식으로 합치려 들면 「비율」과 「픽셀 폭」이라는 서로 다른 단위를
+    // 억지로 묶게 된다 — 나눠 두는 편이 각각 검산 가능하다.
+    setCenter(
+      wide
+        ? centerRightOfPanel(target, nextZoom, PANEL_WIDTH_PX)
+        : centerBelowSheet(target, nextZoom, window.innerHeight, sheetRatio),
+    )
     setZoom(nextZoom)
   }
 
@@ -347,7 +363,17 @@ export function HomeScreen() {
   // 시트가 지금 실제로 덮고 있는 비율. 끄는 동안에는 손끝이, 놓으면 단계가 준다.
   // `BottomSheet` 안의 `dragRatio ?? SHEET_RATIO[detent]`와 같은 식이다 — 시트가
   // 제 높이를 그렇게 정하므로 지도도 같은 값을 봐야 둘이 안 갈린다.
-  const sheetRatio = dragRatio ?? SHEET_RATIO[sheetDetent]
+  // FAB의 자리. 넓은 화면에서는 시트를 피할 이유가 없어 `null`(지도 우하단)이고,
+  // 좁은 화면의 `full`에서는 48px가 들어갈 자리가 없어 아예 안 그린다
+  // (근거는 `RecenterButton`의 산식).
+  const recenterDetent: RecenterDetent | null =
+    wide || sheetDetent === 'full' ? null : sheetDetent
+  const showRecenter = wide || sheetDetent !== 'full'
+
+  // 넓은 화면에서는 패널이 **세로를 하나도 안 가린다.** 0으로 두어야 시트용
+  // 세로 보정이 통째로 꺼진다 — 안 그러면 PC에서 지도가 이유 없이 남쪽으로
+  // 밀린 채 시작한다.
+  const sheetRatio = wide ? 0 : (dragRatio ?? SHEET_RATIO[sheetDetent])
 
   // **시트가 움직이면 지도도 움직인다.** 시트가 커지면 보이는 띠가 위로 줄어드는데
   // 지도가 가만히 있으면 보고 있던 곳이 시트 뒤로 밀려 들어간다 — 「목록에서
@@ -369,6 +395,24 @@ export function HomeScreen() {
       shiftCenterForSheet(current, zoom, window.innerHeight, previous, sheetRatio),
     )
   }, [sheetRatio, zoom])
+
+  // **패널이 생기거나 사라지면 지도도 그만큼 옮긴다.** 시트 비율 effect와 같은
+  // 논리이고 축만 다르다 — 패널이 왼쪽 400px을 덮으면 보고 있던 곳이 그만큼
+  // 왼쪽으로 밀려 들어간다.
+  //
+  // **첫 렌더도 이 effect가 처리한다.** ref가 0에서 시작하므로 넓은 화면으로
+  // 들어오면 0 → 400의 차이가 한 번 적용된다. 이게 없으면 PC로 열었을 때
+  // 서울이 보이는 띠의 가운데가 아니라 왼쪽에 치우쳐 앉는다(1440px 실측).
+  const appliedPanelRef = useRef(0)
+  useEffect(() => {
+    const target = wide ? PANEL_WIDTH_PX : 0
+    const previous = appliedPanelRef.current
+    if (previous === target) return
+    appliedPanelRef.current = target
+    // 서쪽으로 미는 양의 **차이**다. 절대 위치로 쓰면 카메라가 돌려준 중심과
+    // 두 벌이 되어 갈린다 — 시트 쪽 effect와 같은 이유다.
+    setCenter((current) => centerRightOfPanel(current, zoom, target - previous))
+  }, [wide, zoom])
 
   function handleCameraChanged(event: MapCameraChangedEvent): void {
     setCenter(event.detail.center)
@@ -510,6 +554,23 @@ export function HomeScreen() {
 
   const listPane = (
     <div className="flex flex-col gap-3 pb-6">
+      {/* **넓은 화면에서는 검색·필터가 여기 산다.** 좁은 화면에서는 지도 위에
+          떠 있지만(오버레이), PC에서는 그 열이 화면 폭을 가로질러 검색창이
+          1,358px이 됐다 — 패널 안으로 들이면 400px로 묶인다. 목록의 맨 위인
+          이유는 조작 순서 그대로다: 찾고 → 거르고 → 고른다. */}
+      {wide && (
+        <div className="flex flex-col gap-1 pt-3">
+          <SearchBar value={filters.query} onChange={filters.setQuery} />
+          <FilterChips
+            counts={counts}
+            value={filters.filter}
+            onChange={handleFilterChange}
+          />
+          {mapUnavailableReason !== null && (
+            <MapUnavailableNotice reason={mapUnavailableReason} />
+          )}
+        </div>
+      )}
       {/* 조회가 영구 실패하면 그리지 않는다. 스트립의 빈 상태 문구는
           「아직 받지 못했어요」라 로딩을 뜻하는데, 바로 아래 ErrorState는
           「가져오지 못했어요」라고 말한다 — 같은 자리에서 두 문장이 어긋난다.
@@ -687,7 +748,11 @@ export function HomeScreen() {
           되돌아올 길은 막히지 않는다: 「목록으로」가 half로 내리고, 손잡이를
           누르면 full→peek으로 굴러간다. 키가 없어 half에 묶인 경우에는 계속
           보인다 — 지도가 죽었을 때 검색은 유일하게 남은 길이라 닫으면 안 된다. */}
-      {sheetDetent !== 'full' && (
+      {/* **넓은 화면에서는 이 열이 지도 위가 아니라 패널 안에 있다.**
+          1440px에서 검색창이 1,358px로 늘어나 한 줄 입력이 화면을 가로질렀고,
+          칩은 왼쪽에 몰리고 오른쪽이 텅 비었다(실측). 패널 안으로 들이면
+          폭이 400px로 묶이고, 지도 위가 깨끗해져 「지도가 주인공」이 산다. */}
+      {!wide && sheetDetent !== 'full' && (
         <>
           <div
             // `data-overlay`도 테스트 손잡이다. 검색 바가 **지도 위에 떠 있다**는
@@ -728,16 +793,23 @@ export function HomeScreen() {
               </div>
             )}
           </div>
-
-          <RecenterButton
-            disabled={location.coords === null}
-            detent={sheetDetent}
-            onClick={handleRecenter}
-          />
         </>
       )}
 
+      {/* **FAB은 오버레이와 조건이 다르다.** 검색·칩 열은 넓은 화면에서 패널
+          안으로 들어가 지도 위에서 사라지지만, 「내 주변」은 지도를 움직이는
+          버튼이라 지도 위에 남아야 한다. 넓은 화면에서는 패널이 세로를 하나도
+          안 가리므로 단계와 무관하게 늘 그린다. */}
+      {showRecenter && (
+        <RecenterButton
+          disabled={location.coords === null}
+          detent={recenterDetent}
+          onClick={handleRecenter}
+        />
+      )}
+
       <BottomSheet
+        wide={wide}
         detent={sheetDetent}
         onDetentChange={setDetent}
         onDragRatioChange={setDragRatio}

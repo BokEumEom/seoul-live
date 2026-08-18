@@ -39,7 +39,7 @@ export function CityInfoChips({ areaName }: Props) {
     // 줄바꿈으로 두 줄이 되면 그 아래 카드가 명소마다 다른 높이에서 시작한다.
     // `-mx-4 px-4`는 스크롤 끝이 화면 가장자리에 닿게 하려는 것이다 — 안 하면
     // 마지막 칩이 여백 앞에서 잘려 「더 있다」는 신호가 약해진다.
-    <div className="-mx-4 overflow-x-auto px-4">
+    <div className="-mx-4 overflow-x-auto scrollbar-none px-4">
       <ul className="flex w-max gap-2">
         {chips.map((chip) => (
           <li key={chip.sectionId}>

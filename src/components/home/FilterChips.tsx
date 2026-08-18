@@ -30,7 +30,7 @@ export function FilterChips({ counts, value, onChange }: Props) {
     <div
       role="group"
       aria-label="필터"
-      className="pointer-events-auto flex gap-2 overflow-x-auto px-4 pb-1"
+      className="pointer-events-auto flex gap-2 overflow-x-auto scrollbar-none px-4 pb-1"
     >
       {CHIPS.map((chip) => {
         const count = counts[chip]

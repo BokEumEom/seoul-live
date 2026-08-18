@@ -7,6 +7,13 @@ import {
 } from '../../domain/sheet'
 
 interface Props {
+  /**
+   * 넓은 화면(PC)인가. 참이면 아래를 덮는 시트가 아니라 **왼쪽 패널**이 된다.
+   *
+   * 단계(detent)는 그때 의미가 없다 — 패널이 늘 전체 높이라 접었다 폈다 할
+   * 세로가 없다. 손잡이도 안 그린다.
+   */
+  readonly wide: boolean
   readonly detent: Detent
   readonly onDetentChange: (next: Detent) => void
   /**
@@ -70,6 +77,7 @@ const DETENT_LABEL: Readonly<Record<Detent, string>> = {
 // 토스 웹뷰에서 이 드래그와 지도 팬 제스처가 충돌하는지는 실기기로만 확인된다
 // — 설계 문서 §6.
 export function BottomSheet({
+  wide,
   detent,
   onDetentChange,
   onDragRatioChange,
@@ -223,6 +231,26 @@ export function BottomSheet({
 
   // 끄는 동안에는 손끝이, 그 밖에는 부모의 단계가 높이의 주인이다.
   const ratio = dragRatio ?? SHEET_RATIO[detent]
+
+  // **넓은 화면에서는 왼쪽 패널이다.** 손잡이도 높이 비율도 없다 — 패널이 늘
+  // 전체 높이라 접었다 펼 세로가 없고, 끌어서 높이를 바꿀 이유도 없다.
+  // 조기 반환이지만 위의 훅들은 이미 전부 불렸으므로 훅 순서는 안 깨진다.
+  //
+  // 폭을 `w-100`(400px)으로 박아 둔다. 지도 중심 보정이 같은 값을 픽셀로
+  // 쓰므로 **`PANEL_WIDTH_PX`와 갈리면 안 된다** — `useWideScreen.ts`가 정본이고
+  // 여기 클래스는 그 값을 Tailwind 눈금으로 옮긴 것이다(400 ÷ 4 = 100).
+  if (wide) {
+    return (
+      <div className="absolute inset-y-0 left-0 z-10 flex w-100 flex-col border-r border-outline-variant bg-surface-container-lowest shadow-floating">
+        <div
+          data-sheet-content
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        >
+          {children}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

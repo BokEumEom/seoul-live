@@ -24,6 +24,7 @@ function setup(
 ) {
   const { container } = render(
     <BottomSheet
+      wide={false}
       detent={detent}
       onDetentChange={onDetentChange}
       onDragRatioChange={onDragRatioChange}

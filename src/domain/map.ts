@@ -106,6 +106,36 @@ export function centerBelowSheet(
   return shiftCenterForSheet(target, zoom, viewportHeight, 0, sheetRatio)
 }
 
+/**
+ * 넓은 화면(PC)에서 왼쪽 패널이 가린 만큼 지도 중심을 **서쪽**으로 비켜 잡는다.
+ *
+ * `centerBelowSheet`와 같은 논리이고 축만 다르다. 세로가 긴 화면에서는 시트가
+ * 아래를 덮어 중심을 남쪽으로 밀었지만, PC에서는 패널이 왼쪽을 덮으므로
+ * 서쪽으로 민다 — 그래야 명소가 **패널 오른쪽 띠의 한가운데**에 온다.
+ *
+ * **경도는 위도와 달리 선형이라 훨씬 간단하다.** 메르카토르는 세로만 늘이므로
+ * 가로는 세계 픽셀 폭(256·2^zoom)에 -180~180이 고르게 퍼진다. 위도 쪽이
+ * `latitudeToPixel`로 왕복해야 했던 것과 대비된다.
+ *
+ * **폭은 음수일 수 있다.** 패널이 사라질 때 「−400」이 들어와 아까 민 만큼
+ * 동쪽으로 되돌린다 — 호출부가 차이를 넘기기 때문이다. 0과 NaN이면 손대지
+ * 않는다(NaN 좌표를 넘기면 지도가 통째로 죽는다).
+ */
+export function centerRightOfPanel(
+  target: Coords,
+  zoom: number,
+  panelWidth: number,
+): Coords {
+  if (!Number.isFinite(panelWidth) || panelWidth === 0) {
+    return target
+  }
+  const degreesPerPixel = 360 / (TILE_SIZE * 2 ** zoom)
+  return {
+    lat: target.lat,
+    lng: target.lng - (panelWidth / 2) * degreesPerPixel,
+  }
+}
+
 export interface MapMarker {
   readonly entry: AreaCatalogEntry
   readonly level: CongestionLevel | null

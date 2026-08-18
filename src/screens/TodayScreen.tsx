@@ -122,7 +122,7 @@ export function TodayScreen({ onSelectArea, onBack }: Props) {
                 가까우면서 여유로운 곳 추천
               </h3>
               {/* 가로 스크롤. 「내 주변」이 없어지면서 갈 곳을 잃은 캐러셀이다. */}
-              <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1">
+              <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto scrollbar-none px-4 pb-1">
                 {recommended.map((area) => (
                   <RecommendationCard
                     key={area.entry.code}
