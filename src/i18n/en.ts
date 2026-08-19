@@ -85,9 +85,13 @@ export const EN: Readonly<Record<string, string>> = {
   // ── 상세: 혼잡도 ──
   '지금 얼마나 붐비나': 'How crowded is it now',
   '마지막 업데이트: {시각}': 'Last updated {시각}',
-  '추정 인구 {최소}~{최대}명': 'Estimated {최소}–{최대} people',
-  // 혼잡예보 막대의 **소리 전용** 줄. 위와 달리 「추정 인구」가 없는 것은
-  // 앞에 시각과 혼잡도를 이미 읽어 주기 때문이다.
+  // **상세에서 가장 큰 글씨다.** 「지금 약」을 숫자와 따로 둔 이유는 굵기다 —
+  // 샘플처럼 앞은 흐리고 숫자만 굵게 두려면 span이 갈려야 한다. 영어에서도
+  // 앞뒤가 그대로 붙는다: 「Now about 40,000–42,000 people」.
+  '지금 약': 'Now about',
+  // **두 곳이 나눠 쓴다.** 위 큰 글씨(`PopulationLead`)와 혼잡예보 막대의
+  // 소리 전용 줄(`ForecastChart`)이다. 같은 낱말로 같은 것을 세므로 키를
+  // 가르지 않았다 — 막대 쪽은 앞에 시각과 혼잡도를 이미 읽어 준다.
   '{최소}~{최대}명': '{최소}–{최대} people',
   '{시}시엔 여유 예상 — 한산한 시간을 원하시면 조금만 기다려주세요.':
     'Expected to be quiet at {시}:00 — wait a little if you prefer fewer people.',

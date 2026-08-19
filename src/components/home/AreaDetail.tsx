@@ -3,6 +3,7 @@ import { AreaHero } from './AreaHero'
 import { CityInfoChips } from './CityInfoChips'
 import { CityInfoPanel } from './CityInfoPanel'
 import { CongestionCard } from './CongestionCard'
+import { PopulationLead } from './PopulationLead'
 import { NearbyCalmSection } from './NearbyCalmSection'
 import { WeeklyPatternCard } from './WeeklyPatternCard'
 import { useLocation } from '../../app/locationContext'
@@ -110,6 +111,18 @@ export function AreaDetail({
         }
       />
 
+      {/* **상세에서 가장 먼저, 가장 크게 나오는 값이다** — 샘플(서울
+          인파레이더)의 「지금 약 40,000~42,000명」 자리. 칩보다 위인 것은
+          샘플의 순서이고, 근거는 `PopulationLead`의 주석에 있다(예전에는 이
+          자리에 배지와 같은 말인 「다소 혼잡」이 32px로 있었다).
+
+          혼잡도 응답이 와야 생기므로 `snapshot`을 기다린다. 스켈레톤을 두지
+          않는 이유는 아래 `query.isPending` 블록이 이미 그 일을 하기 때문이다 —
+          같은 응답 하나를 기다리며 자리를 두 번 잡으면 도착할 때 두 번 덜컹인다. */}
+      {snapshot !== undefined && (
+        <PopulationLead snapshot={snapshot} pattern={pattern} />
+      )}
+
       {/* 요약 칩 한 줄. 샘플(서울 인파레이더)의 「서행 · 행사 3 · 지하철 1 ·
           CCTV 5」 자리이고, 아래 절들의 목차 노릇도 한다 — 도시 정보가 통째로
           펼쳐지면서 상세가 매우 길어졌기 때문이다.
@@ -139,9 +152,9 @@ export function AreaDetail({
 
       {snapshot !== undefined && (
         <>
-          {/* 패턴을 넘긴다 — 「평소 대비」 한 줄의 근거이고, 이 훅이 방금 넣은
-              지금 관측이 그 안에 들어 있다(compareWithUsual이 빼고 견준다). */}
-          <CongestionCard snapshot={snapshot} pattern={pattern} />
+          {/* 패턴을 안 넘긴다. 「평소 대비」가 위 `PopulationLead`로 올라갔고
+              이 카드에는 그 값을 쓰는 자리가 없다. */}
+          <CongestionCard snapshot={snapshot} />
 
           <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
             {/* "예측"은 시스템 용어에 가깝다. Google Maps의 「인기 시간대」 자리다.

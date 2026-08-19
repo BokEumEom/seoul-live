@@ -123,11 +123,13 @@ describe('AreaDetail', () => {
   it('명소 이름과 혼잡도를 보여준다', () => {
     renderDetail()
     expect(screen.getByRole('heading', { name: '강남역' })).toBeInTheDocument()
-    // 히어로 배지는 API 원문 4단계, 카드 제목은 교통정보 어조의 요약이다.
+    // 등급은 제목 줄의 배지가, 규모는 그 아래 사람 수가 말한다.
     expect(screen.getByText('약간 붐빔')).toBeInTheDocument()
-    expect(screen.getByText('다소 혼잡')).toBeInTheDocument()
-    // 같은 사실을 두 번까지만 말한다. 크기로 한 번 더 말하던 배지를 뺀 근거는
-    // CongestionBadge.tsx의 SIZE 주석에 한 벌 있다.
+    expect(screen.getByText(/74,000~76,000명/)).toBeInTheDocument()
+    // **등급을 글자로 되풀이하지 않는다.** 예전에는 배지 바로 아래에
+    // 「다소 혼잡」이 32px로 한 번 더 있었다 — 같은 말을 크기만 바꿔 두 번
+    // 한 셈이다. 근거는 `PopulationLead`의 주석.
+    expect(screen.queryByText('다소 혼잡')).toBeNull()
     expect(screen.getAllByText(/약간 붐빔/)).toHaveLength(1)
   })
 
@@ -380,7 +382,7 @@ describe('AreaDetail', () => {
   it('도시 정보가 실패해도 혼잡도는 그대로 남는다', () => {
     useCityInfo.mockReturnValue(failed<CityInfo>())
     renderDetail()
-    expect(screen.getByText('다소 혼잡')).toBeInTheDocument()
+    expect(screen.getByText(/74,000~76,000명/)).toBeInTheDocument()
     expect(screen.getByText('도시 정보를 가져오지 못했어요.')).toBeInTheDocument()
   })
 
@@ -647,9 +649,9 @@ describe('AreaDetail', () => {
   })
 
   // 제목으로 훑는 사용자를 위한 뼈대다. 현재 상태 카드에는 보이는 제목이
-  // 없어서(「다소 혼잡」은 display-lg 문단이다) 제목만 따라가면 혼잡도·추정
-  // 인구·여유 예상이 어느 제목에도 안 속한 채 남았다. sr-only 제목으로 메우고
-  // 그 안의 인구 구성은 한 단 낮춘다.
+  // 없어서(안내 문구와 인구 구성뿐이다) 제목만 따라가면 여유 예상·안내가
+  // 어느 제목에도 안 속한 채 남는다. sr-only 제목으로 메우고 그 안의 인구
+  // 구성은 한 단 낮춘다.
   it('제목이 h2 아래로 층을 이룬다', () => {
     renderDetail()
     expect(
@@ -687,7 +689,7 @@ describe('AreaDetail', () => {
     useAreaSnapshot.mockReturnValue(ok({ ...SNAPSHOT, composition: null }))
     renderDetail()
     expect(screen.queryByRole('heading', { name: '지금 누가 있나' })).toBeNull()
-    expect(screen.getByText('다소 혼잡')).toBeInTheDocument()
+    expect(screen.getByText(/74,000~76,000명/)).toBeInTheDocument()
   })
 
   // 아래 셋은 폴드 예산 결정을 잠근다. 근거와 실측표는 계획서 Task 8
@@ -696,8 +698,9 @@ describe('AreaDetail', () => {
   it('액션 행이 현재 상태 카드보다 위에 있다', () => {
     renderDetail()
     const save = screen.getByRole('button', { name: '저장' })
-    const population = screen.getByText(/추정 인구/)
-    expect(before(save, population)).toBe(true)
+    // 카드에는 보이는 제목이 없다 — sr-only 제목이 그 자리의 유일한 표지다.
+    const card = screen.getByRole('heading', { name: '지금 얼마나 붐비나' })
+    expect(before(save, card)).toBe(true)
     // 히어로 다음이지 헤더 앞이 아니다.
     expect(before(screen.getByRole('heading', { name: '강남역' }), save)).toBe(true)
   })
@@ -719,7 +722,9 @@ describe('AreaDetail', () => {
   it('인구 구성이 현재 상태 카드 안에 있다', () => {
     renderDetail()
     const who = screen.getByRole('heading', { name: '지금 누가 있나' })
-    const card = screen.getByText(/추정 인구/).closest('section')
+    const card = screen
+      .getByRole('heading', { name: '지금 얼마나 붐비나' })
+      .closest('section')
     expect(card?.contains(who)).toBe(true)
   })
 })
