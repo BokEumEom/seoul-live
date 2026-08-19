@@ -5,6 +5,18 @@ import type { Coords } from '../../domain/types'
 import { Icon } from '../common/Icon'
 import { CctvPlayer } from './CctvPlayer'
 
+// **hls.js를 누르기 직전에 받아 둔다.** 500KB짜리 청크라(동적 import로 갈라
+// 뒀다) 누른 **뒤에** 받기 시작하면 그 다운로드가 통째로 첫 프레임 앞에 붙는다.
+//
+// 예전에는 절이 뜨자마자 유휴 시간에 받았는데, 그러면 **CCTV를 한 번도 안
+// 누르는 대부분의 사용자에게도** 상세를 열 때마다 500KB가 나간다. 손을
+// 올리거나(포인터) 탭 키로 닿은 줄에서만 받으면 그 낭비가 없어진다.
+//
+// 여러 번 불러도 안전하다 — 같은 모듈이라 번들러가 한 번만 받는다.
+function preloadPlayer(): void {
+  void import('hls.js')
+}
+
 // 「주변 CCTV」 목록. **샘플(서울 인파레이더)의 접이식 목록 그대로다.**
 //
 // 처음에는 첫 카메라를 자동으로 틀었는데 **느렸다.** 상세를 열자마자
@@ -51,6 +63,10 @@ export function CctvList({ cameras, origin, openStreamUrl, onToggle }: Props) {
               disabled={!playable}
               aria-expanded={playable ? open : undefined}
               onClick={() => onToggle(camera.streamUrl)}
+              // 누르기 전에 손이 닿는 순간을 쓴다. 터치에서도 `pointerenter`가
+              // 먼저 오고, 키보드는 `focus`가 그 자리를 한다.
+              onPointerEnter={playable ? preloadPlayer : undefined}
+              onFocus={playable ? preloadPlayer : undefined}
               className="flex min-h-12 w-full items-center gap-2 py-2.5 text-left disabled:cursor-default"
             >
               <Icon

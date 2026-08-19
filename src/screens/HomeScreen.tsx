@@ -24,7 +24,7 @@ import { AreaListItem } from '../components/list/AreaListItem'
 import { CategoryFilter } from '../components/list/CategoryFilter'
 import { LocationNotice } from '../components/list/LocationNotice'
 import { SortSegmented } from '../components/list/SortSegmented'
-import { CctvMarker } from '../components/map/CctvMarker'
+import { CctvMarkerLayer } from '../components/map/CctvMarkerLayer'
 import { CongestionMarker } from '../components/map/CongestionMarker'
 import { FacilityMarker } from '../components/map/FacilityMarker'
 import {
@@ -36,7 +36,7 @@ import {
   type RecenterDetent,
 } from '../components/map/RecenterButton'
 import { AREA_CATALOG, AREA_NAMES, findAreaByName } from '../data/areas'
-import { useAreaSnapshots, useCctv } from '../data/queries'
+import { useAreaSnapshots } from '../data/queries'
 import { useResolvedTheme } from '../hooks/themeStore'
 import { PANEL_WIDTH_PX, useWideScreen } from '../hooks/useWideScreen'
 import {
@@ -492,23 +492,6 @@ export function HomeScreen() {
   // 단계를 half로 되돌리는 것이 핵심이다. 이 아이콘은 도시 정보 절에 있어
   // 사용자는 거의 언제나 시트를 full로 올린 채 누르는데, 그대로 두면 지도가
   // 옮겨간 것을 **볼 수가 없다** — 누른 보람이 화면에 하나도 안 나타난다.
-  // **상세가 열려 있을 때만 CCTV를 부른다.** `route`가 정본이다 —
-  // `selectedName`은 목록에서 강조만 된 상태에서도 차 있을 수 있다.
-  //
-  // **추가 호출이 0이다.** `CctvSection`이 부르는 것과 queryKey가 같아
-  // TanStack Query가 한 번만 나간다. 지도와 시트가 같은 캐시 항목을 본다.
-  const cctvQuery = useCctv(route.kind === 'area' ? route.name : undefined)
-
-  // 좌표가 있는 것만 지도에 찍을 수 있다. `coords`가 null인 카메라는
-  // 목록에는 남지만(거리도 못 잰다) 지도에서는 찍을 자리가 없다.
-  const cctvMarkers = useMemo(
-    () =>
-      (cctvQuery.data ?? []).flatMap((camera) =>
-        camera.coords === null ? [] : [{ ...camera, coords: camera.coords }],
-      ),
-    [cctvQuery.data],
-  )
-
   // 같은 줄을 다시 누르면 접는다. 목록과 지도 마커가 이 함수를 함께 쓴다 —
   // 어느 쪽으로 눌러도 같은 하나가 열리고 닫혀야 한다.
   function toggleCctv(streamUrl: string): void {
@@ -696,33 +679,19 @@ export function HomeScreen() {
           </AdvancedMarker>
         )}
 
-        {/* 고른 명소 주변의 CCTV. **명소 핀보다 아래, 방금 짚은 시설보다 아래다** —
-            이건 사용자가 부른 것이 아니라 상세를 열면 딸려 오는 층이라
-            명소 핀을 가리면 안 된다. 상세를 닫으면 통째로 사라진다. */}
-        {cctvMarkers.map((camera) => (
-          <AdvancedMarker
-            key={camera.streamUrl === '' ? `${camera.name}-${camera.coords.lat}` : camera.streamUrl}
-            position={camera.coords}
-            zIndex={5}
-            onClick={() => {
-              // 못 트는 카메라는 열 것이 없다. 지도를 그 자리로 옮기지도
-              // 않는다 — 누른 자리가 이미 화면 안이다.
-              if (camera.streamUrl === '') {
-                return
-              }
-              toggleCctv(camera.streamUrl)
-              // 시트가 살짝 열림이면 펼쳐진 영상이 안 보인다. 절반까지
-              // 올려서 방금 연 것이 화면에 들어오게 한다.
-              setDetent('half')
-            }}
-          >
-            <CctvMarker
-              name={camera.name}
-              active={camera.streamUrl !== '' && camera.streamUrl === openCctv}
-              playable={camera.streamUrl !== ''}
-            />
-          </AdvancedMarker>
-        ))}
+        {/* 고른 명소 주변의 CCTV. **조회는 이 층이 스스로 한다** — 화면
+            꼭대기에서 구독하면 응답이 올 때마다 지도·시트·목록이 통째로
+            다시 그려진다(근거는 `CctvMarkerLayer`의 주석). */}
+        <CctvMarkerLayer
+          areaName={route.kind === 'area' ? route.name : undefined}
+          openStreamUrl={openCctv}
+          onSelect={(streamUrl) => {
+            toggleCctv(streamUrl)
+            // 시트가 살짝 열림이면 펼쳐진 영상이 안 보인다. 절반까지 올려서
+            // 방금 연 것이 화면에 들어오게 한다.
+            setDetent('half')
+          }}
+        />
 
         {markers.map((marker) => (
           <AdvancedMarker
