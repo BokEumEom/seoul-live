@@ -23,7 +23,7 @@ export interface CityInfoChip {
   readonly sectionId: CityInfoSectionId
 }
 
-export type CityInfoSectionId = 'parking' | 'road' | 'subway' | 'bikes' | 'events'
+export type CityInfoSectionId = 'parking' | 'road' | 'subway' | 'bikes' | 'events' | 'cctv'
 
 /**
  * 칩이 뛰어갈 절의 DOM id. **칩과 절이 이 함수를 나눠 써야 한다** — 양쪽에서

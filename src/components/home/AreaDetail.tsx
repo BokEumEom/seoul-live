@@ -15,6 +15,7 @@ import { Icon } from '../common/Icon'
 import { SkeletonList } from '../common/SkeletonCard'
 import { useWeekPattern } from '../../hooks/useWeekPattern'
 import { ActionButtons } from './ActionButtons'
+import { CctvSection } from '../cityinfo/CctvSection'
 import { ForecastChart } from '../forecast/ForecastChart'
 
 interface Props {
@@ -147,6 +148,16 @@ export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Prop
           <WeeklyPatternCard pattern={pattern} now={new Date()} />
         </>
       )}
+
+      {/* **도시 정보보다 앞이다.** 혼잡도 숫자를 보고 나서 가장 먼저 묻는 것이
+          「그래서 지금 어떤데」이고, 영상이 그 질문에 유일하게 직접 답한다 —
+          우리가 인파레이더와 갈리는 자리가 아니라 **맞추는** 자리다.
+
+          `CityInfoPanel` 안이 아니라 밖인 이유는 조회가 다르기 때문이다. 저쪽은
+          `citydata` 한 번이고 이쪽은 별개 엔드포인트다(쿼터도 안 쓴다). 안에
+          두면 도시 정보가 통째로 없는 명소에서 조기 반환에 걸려 CCTV까지 함께
+          사라진다. */}
+      <CctvSection areaName={areaName} onShowOnMap={onShowOnMap} />
 
       {/* 기준점은 **명소 중심**이지 사용자 위치가 아니다. 상세는 지금 있는
           곳이 아니라 가려는 곳을 보는 화면이라, 부산에서 광화문을 열어도

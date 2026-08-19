@@ -40,6 +40,9 @@ const PATHS = {
   // 재난문자 배너. **느낌표 삼각형은 색 없이도 읽히는 유일한 경고 기호다** —
   // 배너가 빨강이지만 색만으로 뜻을 전하지 않는다(WCAG 1.4.1).
   warning: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
+  // 실시간 영상 절. 시안(stitch_ui/_3)의 CCTV 버튼이 쓰던 `videocam`과 같은
+  // 글리프다 — 카메라 몸통 + 오른쪽 렌즈 삼각형.
+  cctv: 'M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z',
 } as const
 
 export type IconName = keyof typeof PATHS

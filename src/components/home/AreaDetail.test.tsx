@@ -11,6 +11,10 @@ vi.mock('../../data/queries', () => ({
   useAreaSnapshot: vi.fn(),
   useAreaSnapshots: vi.fn(),
   useCityInfo: vi.fn(),
+  // CCTV는 이 파일이 볼 것이 아니다(CctvSection.test.tsx의 몫). 다만 목록을
+  // 안 주면 조회 중으로 남아 절이 안 그려지므로, 여기서는 「없는 명소」로 둔다 —
+  // 30곳 중 10곳이 실제로 그 상태다.
+  useCctv: vi.fn(() => ({ data: [], isPending: false, isError: false })),
 }))
 vi.mock('../../app/locationContext', () => ({ useLocation: vi.fn() }))
 // 요일×시간 패턴의 저장소는 여기서 볼 것이 아니다. 목업하지 않으면 비동기
@@ -612,6 +616,9 @@ describe('AreaDetail', () => {
       'H4 지금 누가 있나',
       'H3 시간대별 인파',
       'H3 요일×시간 패턴',
+      // 도시 정보보다 앞이다 — 혼잡도 숫자를 보고 나서 가장 먼저 묻는
+      // 「그래서 지금 어떤데」에 영상이 유일하게 직접 답한다.
+      'H3 실시간 영상',
     ])
   })
 

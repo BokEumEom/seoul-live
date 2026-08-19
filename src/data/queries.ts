@@ -5,11 +5,13 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query'
 import { z } from 'zod'
+import type { CctvCamera } from '../domain/cctv'
 import type { CityInfo } from '../domain/cityInfo'
 import type { AreaSnapshot } from '../domain/types'
 import {
   fetchAreaSnapshot,
   fetchAreaSnapshots,
+  fetchCctv,
   fetchCityInfo,
   ProxyResponseError,
 } from './client'
@@ -142,6 +144,28 @@ export function useCityInfo(areaName: string | undefined): UseQueryResult<CityIn
     enabled: Boolean(areaName),
     staleTime: THIRTY_MINUTES,
     retry: shouldRetry,
+  })
+}
+
+// CCTV 목록은 도시정보보다도 느리게 변한다 — 카메라의 자리와 스트림 주소는
+// 거의 안 바뀐다. **움직이는 값은 영상 자체이지 목록이 아니다.**
+const ONE_HOUR = 60 * 60 * 1_000
+
+export function useCctv(areaName: string | undefined): UseQueryResult<readonly CctvCamera[]> {
+  return useQuery({
+    queryKey: ['cctv', areaName],
+    queryFn: () => {
+      if (!areaName) {
+        return Promise.reject(new Error('areaName이 없어 조회할 수 없습니다.'))
+      }
+      return fetchCctv(areaName)
+    },
+    enabled: Boolean(areaName),
+    staleTime: ONE_HOUR,
+    // **재시도하지 않는다.** `fetchCctv`가 실패를 이미 빈 배열로 흡수하므로
+    // 여기까지 오는 에러는 사실상 없고, 재시도는 문서화되지 않은 남의 서버에
+    // 요청을 더 보내는 일일 뿐이다.
+    retry: false,
   })
 }
 

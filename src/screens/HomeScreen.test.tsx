@@ -104,6 +104,9 @@ vi.mock('../data/queries', () => ({
   useAreaSnapshots: vi.fn(),
   useAreaSnapshot: vi.fn(),
   useCityInfo: vi.fn(),
+  // 상세가 CCTV 절을 품게 되면서 이 화면도 훅을 지난다. 여기서 볼 것은
+  // 아니므로 「CCTV가 없는 명소」로 고정한다 — 30곳 중 10곳의 실제 상태다.
+  useCctv: vi.fn(() => ({ data: [], isPending: false, isError: false })),
 }))
 // 「오늘의 서울」이 시트 안 뷰가 되면서 이 화면이 재난문자를 함께 읽는다.
 // 실제 훅은 QueryClient를 요구해 이 파일의 render를 전부 깨뜨린다.

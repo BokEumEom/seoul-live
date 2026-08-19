@@ -1,7 +1,10 @@
+import type { CctvCamera } from '../domain/cctv'
 import type { CityInfo } from '../domain/cityInfo'
 import type { AreaSnapshot } from '../domain/types'
+import { parseCctvResponse } from './cctvSchema'
 import { parseCityInfoResponse } from './cityInfoSchema'
 import { buildMockSnapshot } from './mock'
+import { buildMockCctv } from './mockCctv'
 import { buildMockCityInfo } from './mockCityInfo'
 import { parseBulkEnvelope, parseCitydataResponse } from './schema'
 
@@ -176,6 +179,32 @@ export async function fetchCityInfo(areaName: string): Promise<CityInfo> {
   return {
     ...parseCityInfoResponse(body, areaName),
     freshness: ageSeconds === null ? null : { ageSeconds, receivedAt: Date.now() },
+  }
+}
+
+/**
+ * 명소 주변 교통 CCTV. **하루 1,000회 한도와 무관하다** — 서울 OpenAPI가 아니라
+ * 서울시 실시간 도시데이터 웹의 엔드포인트를 프록시가 중계한다(`api/cctv.ts`).
+ *
+ * **실패해도 던지지 않고 빈 배열이다.** 상류가 문서화된 API가 아니라 언제든
+ * 막힐 수 있는데, 그때 오류를 올리면 상세 화면에 빨간 줄이 떠서 멀쩡한 나머지
+ * 정보까지 고장 난 것처럼 보인다. 30곳 중 10곳은 애초에 빈 배열이 정상이라
+ * (2026-08-19 실측) 사용자에게는 이미 익숙한 상태다 — 프록시도 같은 판단으로
+ * 200 + `[]`를 주지만, 네트워크 자체가 끊긴 경우는 여기서만 걸린다.
+ */
+export async function fetchCctv(areaName: string): Promise<readonly CctvCamera[]> {
+  if (isMockMode()) {
+    return buildMockCctv(areaName)
+  }
+
+  const url = `${baseUrl()}/api/cctv?area=${encodeURIComponent(areaName)}`
+  try {
+    const { body } = await requestJson(url, SINGLE_AREA_TIMEOUT_MS, 'CCTV 정보')
+    return parseCctvResponse(body)
+  } catch (error) {
+    // requestJson이 이미 콘솔에 남겼다. 여기서는 화면을 지키는 것만 한다.
+    console.error(`[${areaName}] CCTV 조회 실패:`, error)
+    return []
   }
 }
 

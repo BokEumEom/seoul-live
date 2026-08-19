@@ -5,6 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { fetchArea } from './api/_lib/seoul.js'
 import { isAllowedAreaName } from './api/_lib/allowed-areas.js'
 import { mapWithConcurrency } from './api/_lib/concurrency.js'
+import { fetchCctvRows } from './api/_lib/seoulRtd.js'
 
 /** 배포의 api/citydata-bulk.ts와 같은 값. 근거는 그 파일과 concurrency.ts 주석. */
 const UPSTREAM_CONCURRENCY = 8
@@ -46,6 +47,25 @@ function seoulApiDevServer(env: Record<string, string>): Plugin {
           res.statusCode = status
           res.setHeader('Content-Type', 'application/json; charset=utf-8')
           res.end(JSON.stringify(body))
+        }
+
+        // **CCTV는 인증키 검사보다 먼저다.** 상류가 서울 OpenAPI가 아니라
+        // 인증키를 안 쓰기 때문이다(`api/_lib/seoulRtd.ts`) — 아래 가드 뒤에
+        // 두면 키 없이 화면만 만지는 개발에서 CCTV만 500으로 죽는다.
+        if (url.pathname === '/api/cctv') {
+          const area = url.searchParams.get('area') ?? ''
+          if (!isAllowedAreaName(area)) {
+            send(400, { error: '알 수 없는 명소입니다.' })
+            return
+          }
+          try {
+            send(200, await fetchCctvRows(area))
+          } catch (error) {
+            // 배포(api/cctv.ts)와 같은 판단 — 부가 정보라 화면을 깨지 않는다.
+            console.error('[dev api] /api/cctv', error)
+            send(200, [])
+          }
+          return
         }
 
         if (!process.env.SEOUL_API_KEY) {
@@ -206,6 +226,15 @@ function pwa(): Plugin[] {
       // 용량을 못 재고, 구글 지도 약관이 타일 저장을 제한한다. 오프라인에서
       // 지도는 비고, 그건 `MapUnavailableNotice`가 이미 설명하는 상태다.
       globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+      // **hls.js는 미리 받지 않는다(500KB).** CCTV를 여는 사람만 받으라고
+      // 동적 import로 갈라 뒀는데(`CctvPlayer.tsx`), 프리캐시가 그걸 도로
+      // 무효로 만든다 — 첫 방문에 모두가 받게 되어 갈라 둔 의미가 없어진다.
+      // 실제로 빌드 결과에서 확인하고 넣은 줄이다: 청크는 갈렸는데
+      // `sw.js`의 프리캐시 목록에 그 파일이 들어 있었다.
+      //
+      // 오프라인 대비를 잃지 않는다 — **라이브 영상은 어차피 네트워크가
+      // 있어야 한다.** 받아 둬 봐야 틀 것이 없다.
+      globIgnores: ['**/hls-*.js'],
     },
   }) as Plugin[]
 }

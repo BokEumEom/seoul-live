@@ -44,3 +44,12 @@ if (typeof window !== 'undefined' && window.matchMedia === undefined) {
 if (typeof Element !== 'undefined' && Element.prototype.scrollIntoView === undefined) {
   Element.prototype.scrollIntoView = () => undefined
 }
+
+// jsdom에는 미디어 스택이 없어 `load()`가 「not implemented」를 콘솔에 쏟는다.
+// CCTV 플레이어가 정리할 때 부르는데(`removeAttribute('src')`만으로는 내려받기가
+// 안 멈춘다), 개별 테스트에서 스텁하면 **RTL의 자동 cleanup이 `restoreAllMocks`
+// 뒤에 도는 파일에서 다시 시끄러워진다** — 정리는 언마운트 시점이라 통제하기
+// 어렵다. 환경이 없는 것이므로 환경에서 채운다.
+if (typeof HTMLMediaElement !== 'undefined') {
+  HTMLMediaElement.prototype.load = () => undefined
+}

@@ -11,8 +11,8 @@ import type {
   SubwayArrival,
   Weather,
 } from '../domain/cityInfo'
-import type { Coords } from '../domain/types'
 import { AreaNameMismatchError, seoulApiErrorFrom } from './schema'
+import { asRow, coordsOrNull, numberOrNull, text, type Row } from './rowReaders'
 
 // `citydata` 응답을 CityInfo로 옮긴다. `citydata_ppltn`을 다루는 schema.ts와 달리
 // 필드 단위 zod 스키마를 세우지 않는다. 이유는 취향이 아니라 검증 가능성이다:
@@ -40,16 +40,8 @@ const envelopeSchema = z.object({
     .catchall(z.unknown()),
 })
 
-type Row = Readonly<Record<string, unknown>>
-
-// 배열도 null도 아닌 순수 객체만 통과시킨다. 여기서 한 번 좁혀두면 아래 리더들은
-// 캐스트 없이 인덱싱만 한다.
-function asRow(value: unknown): Row | null {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return null
-  }
-  return value as Row
-}
+// 행 리더는 `rowReaders.ts`가 갖는다 — CCTV(`cctvSchema.ts`)와 나눠 쓰기
+// 때문이다. 특히 `coordsOrNull`의 축·범위 가드는 두 벌로 두면 안 된다.
 
 // 서울 API의 하위 섹션은 배열로 오는 것이 원칙이지만 항목이 하나면 객체로 오는
 // 사례가 있다. 키 이름도 명세와 실제 응답이 어긋난다는 보고가 있어(문화행사),
@@ -70,29 +62,6 @@ function sectionRows(container: Row, keys: readonly string[]): readonly Row[] {
     }
   }
   return []
-}
-
-function text(row: Row, key: string): string {
-  const value = row[key]
-  if (typeof value === 'string') {
-    return value.trim()
-  }
-  // 숫자로 오는 필드를 문자열 자리에서 읽는 경우가 있다(예: 코드값).
-  return typeof value === 'number' && Number.isFinite(value) ? String(value) : ''
-}
-
-// 소수와 음수를 허용한다(기온). schema.ts의 인구 정규식과 달리 `-`와 `.`을 받는
-// 대신, `Number('')`이 0인 문제는 똑같이 막는다 — 빈 값이 "기온 0도"로 보이면
-// 안 된다. `'-'`, `'점검중'`, `'1e5'`는 전부 null이다.
-const NUMERIC_PATTERN = /^-?\d+(?:\.\d+)?$/
-
-function numberOrNull(row: Row, key: string): number | null {
-  const value = row[key]
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : null
-  }
-  const raw = text(row, key)
-  return NUMERIC_PATTERN.test(raw) ? Number(raw) : null
 }
 
 // PAY_YN이 'Y'/'N'으로 오는지 '유료'/'무료'로 오는지 확정하지 못했다. 명세는
@@ -196,35 +165,6 @@ function toAccidents(rows: readonly Row[]): readonly AccidentControl[] {
       expectedClearAt: text(row, 'EXP_CLR_DT'),
     }),
   )
-}
-
-/**
- * 지도에 찍을 수 있는 좌표만 돌려준다.
- *
- * **위경도 축을 헷갈리기 쉬운 자리다.** 따릉이는 `SBIKE_X`가 경도,
- * `SBIKE_Y`가 위도로 온다(실응답 확인: X 126.977 / Y 37.569). 주차장은
- * `LAT`/`LNG`로 이름 그대로다. 그래서 호출부가 어느 키가 무엇인지 정하고
- * 이 함수는 받은 순서대로만 쓴다.
- *
- * 범위를 보는 이유는 축이 뒤집힌 값을 조용히 통과시키지 않기 위해서다 —
- * 뒤집히면 위도 126이 되는데 그건 지구에 없는 값이라 여기서 걸린다.
- * 빈 문자열·누락은 실응답에도 있는 정상 상태라 `null`이 답이다.
- */
-function coordsOrNull(row: Row, latKey: string, lngKey: string): Coords | null {
-  const lat = numberOrNull(row, latKey)
-  const lng = numberOrNull(row, lngKey)
-  if (lat === null || lng === null) {
-    return null
-  }
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-    return null
-  }
-  // 0,0은 서아프리카 앞바다다. 좌표를 못 채운 행이 이 값으로 오는 경우가 있어
-  // 「모른다」로 접는다 — 지도가 대서양으로 날아가는 편보다 낫다.
-  if (lat === 0 && lng === 0) {
-    return null
-  }
-  return { lat, lng }
 }
 
 function toParking(rows: readonly Row[]): readonly ParkingLot[] {

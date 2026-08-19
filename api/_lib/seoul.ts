@@ -45,6 +45,20 @@ export function cityInfoCacheTtlSeconds(): number {
   return Math.max(DEFAULT_CITYINFO_TTL_SECONDS, cacheTtlSeconds())
 }
 
+// CCTV 목록(SeoulRtd)용 TTL. **위 둘과 달리 하루 1,000회 한도와 무관하다** —
+// 인증키를 쓰지 않는 상류다(`seoulRtd.ts`). 그래도 길게 잡는 이유는 둘이다:
+// 카메라의 자리와 스트림 주소는 거의 안 바뀌고(움직이는 값은 영상 자체이지
+// 목록이 아니다), **캐시가 빗나갈 때마다 남의 서버에 요청이 두 번 나간다**
+// (세션 부트스트랩 + 목록). 1시간이면 30곳 전체가 하루 720회인데, 그건 우리
+// 쿼터가 아니라 상대 서버에 대한 예의 문제다.
+const DEFAULT_CCTV_TTL_SECONDS = 60 * 60
+
+export function cctvCacheTtlSeconds(): number {
+  const raw = Number(process.env.CCTV_CACHE_TTL_SECONDS)
+  // 정수만 받는 이유는 cacheTtlSeconds와 같다(RFC 9111 §1.2.2).
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_CCTV_TTL_SECONDS
+}
+
 export function apiKey(): string {
   const key = process.env.SEOUL_API_KEY
   if (!key) {

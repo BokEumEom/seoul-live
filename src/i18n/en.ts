@@ -194,6 +194,19 @@ export const EN: Readonly<Record<string, string>> = {
   '거치 대수는 최대 3시간 전 기준이에요': 'Bike counts as of up to 3 hours ago',
   '주변에 주차장 정보가 없어요.': 'No parking information nearby.',
   '주변에 따릉이 대여소가 없어요.': 'No bike stations nearby.',
+
+  // ── 실시간 영상(교통 CCTV) ──
+  //
+  // **「실시간」이 여기서만 글자 그대로다.** 다른 절은 최대 3시간 묵은 값을
+  // 보여주지만 영상은 지금 화면이다 — 캐시되는 것은 카메라 목록이지 영상이
+  // 아니다. 영어에서도 그 차이가 드러나게 「Live」를 쓴다.
+  '실시간 영상': 'Live camera',
+  '영상은 지금 화면이에요': 'Live now',
+  '{시설} 실시간 영상': 'Live camera at {시설}',
+  '영상을 불러오는 중이에요': 'Loading video…',
+  // 원인을 단정하지 않는다(상류 점검·기기 네트워크·우리 프록시를 구분할 수 없다).
+  '지금은 영상을 불러올 수 없어요': 'Video unavailable right now',
+  '이 명소 주변에는 공개된 CCTV가 없어요.': 'No public cameras near this place.',
   '진행 중인 문화행사가 없어요.': 'No events running now.',
   '이 명소에는 지금 제공되는 도시 정보가 없어요.':
     'No city information available for this place right now.',
