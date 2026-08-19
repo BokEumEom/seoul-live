@@ -3,16 +3,13 @@ import { t } from '../../i18n/t'
 import { useState } from 'react'
 import type { AreaCatalogEntry } from '../../domain/types'
 import { instagramTagUrl } from '../../domain/socialLinks'
+import { useFavorites } from '../../hooks/useFavorites'
 import { shareUrl } from '../../platform/appUrl'
 import { openExternalUrl, shareMessage } from '../../platform/links'
 import { Icon } from '../common/Icon'
 
 interface Props {
   readonly entry: AreaCatalogEntry
-  /** 저장 버튼이 눌린 상태인가. 즐겨찾기라는 사실은 부르는 쪽에만 있다 —
-   *  여기서는 토글 버튼의 눌림 여부일 뿐이다. */
-  readonly saved: boolean
-  readonly onSave: () => void
 }
 
 // 즐겨찾기·인스타그램·공유. **제목 줄 오른쪽에 아이콘으로 선다**(`AreaHero`가
@@ -30,6 +27,22 @@ interface Props {
 //
 // 「길찾기」 셋은 여기 없다. 맨 아래로 내려갔다(`MapLinkButtons`) — 저장은 다
 // 읽기 전에도 하고 싶을 수 있지만 길찾기는 다 읽은 뒤에 하는 일이라서다.
+//
+// **즐겨찾기 구독이 여기 있다. `AreaDetail`이 아니다.** 예전에는 상세 화면
+// 꼭대기에서 `useFavorites()`를 부르고 `saved`·`onSave`를 내려보냈다. 구독은
+// 쓰는 자리에 두는 것이 맞다 — 이 값을 읽는 곳이 여기뿐이다.
+//
+// **이 이동만으로는 다시 그려지는 범위가 줄지 않는다. 재 봤다.** `HomeScreen`도
+// 즐겨찾기를 구독하는데(칩 개수·걸러진 목록·목록 줄의 별 — 거기서는 화면에
+// 실제로 쓰는 값이라 옳다) 그쪽이 상세의 조상이라, 별을 누르면 어느 쪽
+// 구독이든 상세가 통째로 다시 그려진다. 실측(2026-08-19, 390×844, dev):
+// 별 4번에 `ForecastChart`·`CityInfoPanel`·`ParkingList`가 각각 8번, 이동
+// 전후가 **똑같이 8번**이었다. 클릭 한 번이 약 40ms(dev)다.
+//
+// 그래도 옮긴 이유는 다음 사람 때문이다. 그 연쇄를 끊는 유일한 방법은 상세
+// 부분트리를 `memo`로 막는 것인데(그러려면 `HomeScreen`의 콜백 넷을 먼저
+// 안정화해야 한다 — 지금은 렌더마다 새 함수다), **여기 구독이 남아 있으면 그
+// `memo`가 조용히 무력해진다.** 지금 옮겨 두면 그때 바로 값을 한다.
 
 // 셋의 기하가 함께 움직인다. 48px은 이 저장소가 아이콘뿐인 버튼에 쓰는
 // 크기다(`ThemeToggle`과 같다) — 글자가 없으면 타깃을 줄일 이유가 더 없다.
@@ -37,7 +50,10 @@ interface Props {
 const ICON_ACTION =
   'grid size-12 shrink-0 place-items-center rounded-full text-on-surface-variant'
 
-export function ActionButtons({ entry, saved, onSave }: Props) {
+export function ActionButtons({ entry }: Props) {
+  const { isFavorite, toggle } = useFavorites()
+  const saved = isFavorite(entry.name)
+
   // 라벨이 「저장」→「저장됨」으로 바뀌어도 포커스가 머문 요소의 이름 변경은
   // iOS VoiceOver도 안드로이드 TalkBack도 다시 읽지 않는다. aria-pressed를
   // 쓰지 않기로 했으므로(같은 상태를 두 번 읽는다) 이 리전이 유일한 확인 수단이다.
@@ -66,7 +82,7 @@ export function ActionButtons({ entry, saved, onSave }: Props) {
               동작: saved ? t('저장 해제') : t('저장됨'),
             }),
           )
-          onSave()
+          toggle(entry.name)
         }}
         className={`${ICON_ACTION} ${saved ? 'text-primary' : ''}`}
       >

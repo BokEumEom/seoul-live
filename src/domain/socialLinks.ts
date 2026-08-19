@@ -12,6 +12,16 @@ const NOT_TAGGABLE = /[^0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ_]/g
 /** 「(2호선)」처럼 이름 뒤에 붙는 괄호 설명. */
 const PARENTHESISED = /\([^)]*\)/g
 
+/** 「명동 관광특구」의 꼬리. 서울시의 행정 지정 명칭이다. */
+const TOURIST_ZONE_SUFFIX = /\s*관광특구\s*$/
+
+// 셋 다 모듈 최상위다. 이름 하나를 바꿀 때마다 정규식을 새로 만들 이유가
+// 없고(`instagramTag`는 상세를 그릴 때마다 불린다), 셋이 한자리에 있으면
+// 규칙 전체를 한눈에 읽을 수 있다.
+//
+// **`/g`를 쓰는 둘은 `replace`에만 쓴다.** `test`·`exec`로 쓰면 `lastIndex`가
+// 호출 사이에 남아 **같은 입력이 한 번은 참, 한 번은 거짓**이 된다.
+
 /**
  * 명소 이름을 사람들이 실제로 쓰는 해시태그로 줄인다.
  *
@@ -38,7 +48,7 @@ export function instagramTag(name: string): string {
   const stripped = name
     .replace(PARENTHESISED, '')
     .split('·')[0]
-    .replace(/\s*관광특구\s*$/, '')
+    .replace(TOURIST_ZONE_SUFFIX, '')
   return stripped.replace(NOT_TAGGABLE, '')
 }
 

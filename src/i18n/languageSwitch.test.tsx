@@ -12,6 +12,18 @@ import { ThemeSetting } from '../components/today/ThemeSetting'
 import { AREA_CATALOG } from '../data/areas'
 import { reset, setLanguage } from '../hooks/languageStore'
 
+// **즐겨찾기 스토어를 고정한다.** `ActionButtons`가 직접 구독하는데(별을 누를
+// 때 상세를 통째로 다시 그리지 않으려고 구독을 그 자리로 내렸다), 이 파일이
+// 보는 것은 **언어**다. 실제 스토어를 쓰면 앞 테스트가 담은 곳이 뒤 테스트의
+// 라벨을 「Saved」로 바꿔 놓는다.
+vi.mock('../hooks/useFavorites', () => ({
+  useFavorites: () => ({
+    favorites: [],
+    isFavorite: () => false,
+    toggle: () => undefined,
+  }),
+}))
+
 /**
  * **언어를 바꾸면 화면이 실제로 따라오는가.**
  *
@@ -65,7 +77,7 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
       .spyOn(links, 'shareMessage')
       .mockResolvedValue(undefined)
     render(
-      <ActionButtons entry={AREA_CATALOG[0]} saved={false} onSave={() => undefined} />,
+      <ActionButtons entry={AREA_CATALOG[0]} />,
     )
 
     await userEvent.click(screen.getByRole('button', { name: 'Share' }))
@@ -145,7 +157,7 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
     setLanguage('en')
     const entry = AREA_CATALOG.find((area) => area.name === '인사동')!
     render(
-      <ActionButtons entry={entry} saved={false} onSave={() => undefined} />,
+      <ActionButtons entry={entry} />,
     )
 
     await userEvent.click(screen.getByRole('button', { name: /Save/ }))

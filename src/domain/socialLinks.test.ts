@@ -3,6 +3,10 @@ import { AREA_NAMES } from '../data/areas'
 import { instagramTag, instagramTagUrl } from './socialLinks'
 
 // 해시태그로 못 쓰는 글자. 하나라도 남으면 인스타그램이 태그를 못 찾는다.
+//
+// **`/g`를 붙이지 마라.** 아래에서 `.test()`로 쓰는데, 전역 정규식은 `lastIndex`를
+// 호출 사이에 들고 있어 **한 번은 참, 한 번은 거짓**을 번갈아 돌려준다 —
+// 30곳을 도는 `filter` 안에서는 절반이 조용히 검사를 건너뛴다.
 const NOT_TAGGABLE = /[^0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ_]/
 
 describe('instagramTag', () => {

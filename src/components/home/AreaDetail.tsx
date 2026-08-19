@@ -9,7 +9,6 @@ import { useLocation } from '../../app/locationContext'
 import { findAreaByName } from '../../data/areas'
 import { useAreaSnapshot } from '../../data/queries'
 import type { FacilityLocation } from '../../domain/cityInfo'
-import { useFavorites } from '../../hooks/useFavorites'
 import { ErrorState } from '../common/ErrorState'
 import { Icon } from '../common/Icon'
 import { SkeletonList } from '../common/SkeletonCard'
@@ -48,18 +47,19 @@ export function AreaDetail({
   // 카탈로그에 없는 이름은 조회하지 않는다. 프록시의 허용 목록에 걸려 400이 오고
   // 그 실패가 캐시될 뿐이다.
   const query = useAreaSnapshot(entry === undefined ? undefined : areaName)
-  const { isFavorite, toggle } = useFavorites()
   const location = useLocation()
 
-  const starred = isFavorite(areaName)
   const snapshot = query.data
   // 상세를 열 때마다 이 명소의 지금 혼잡도를 한 칸 쌓는다. 서울 API가 과거를
   // 주지 않아 패턴을 조회할 수 없고, 쌓는 것 말고 방법이 없다 — PLAN.md 4차.
   const pattern = useWeekPattern(entry?.name, snapshot)
 
-  // 별은 여기 없다. 아이콘뿐인 별은 무엇인지 알 수 없어서 액션 행의 「저장」이
-  // 됐다(설계 §2.6). w-fit이 없으면 flex 열의 자식이라 폭 전체가 뒤로가기
-  // 타깃이 된다.
+  // 뒤로가기. `w-fit`이 없으면 flex 열의 자식이라 폭 전체가 뒤로가기 타깃이
+  // 된다.
+  //
+  // (예전에 여기 「아이콘뿐인 별은 무엇인지 알 수 없어서 액션 행의 「저장」이
+  // 됐다」고 적혀 있었다. 2026-08-19에 별이 다시 아이콘이 됐으므로 낡았다 —
+  // 지금 그 걱정을 받는 것은 `aria-label`과 윤곽/채움 두 글리프다.)
   const header = (
     <button
       type="button"
@@ -93,7 +93,9 @@ export function AreaDetail({
           저장은 다 읽기 전에도 하고 싶을 수 있지만 길찾기는 다 읽은 뒤에
           하는 일이라서다. 혼잡도 응답 밖인 이유는 카탈로그만 있으면 이 셋이
           성립하기 때문이다 — API가 흔들린 날까지 사라지면 안 된다.
-          즐겨찾기라는 사실은 여기 남는다. 넘기는 건 눌림 상태와 콜백뿐이다.
+          **즐겨찾기 구독은 여기 없다.** `ActionButtons` 안에 있다 — 그 값을
+          읽는 곳이 거기뿐이다. 다만 그 이동만으로 다시 그려지는 범위가 줄지는
+          않는다(`HomeScreen`도 구독한다). 실측과 근거는 그 파일의 주석.
 
           key를 명소 이름으로 두는 이유: 「근처 쾌적한 장소」로 갈아타면 이
           컴포넌트가 언마운트되지 않아 저장 알림 리전에 앞 명소 문구가 남는다.
@@ -104,12 +106,7 @@ export function AreaDetail({
         coords={location.coords}
         level={snapshot?.congestion}
         actions={
-          <ActionButtons
-            key={entry.name}
-            entry={entry}
-            saved={starred}
-            onSave={() => toggle(areaName)}
-          />
+          <ActionButtons key={entry.name} entry={entry} />
         }
       />
 
