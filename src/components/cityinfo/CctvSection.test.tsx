@@ -20,7 +20,13 @@ vi.mock('./CctvPlayer', () => ({
 const queries = await import('../../data/queries')
 const useCctv = vi.mocked(queries.useCctv)
 
-function camera(name: string, streamUrl: string, coords: CctvCamera['coords'] = null): CctvCamera {
+const ORIGIN = { lat: 37.5, lng: 127 }
+
+function camera(
+  name: string,
+  streamUrl: string,
+  coords: CctvCamera['coords'] = null,
+): CctvCamera {
   return { name, coords, streamUrl }
 }
 
@@ -30,9 +36,21 @@ function ok(cameras: readonly CctvCamera[]): UseQueryResult<readonly CctvCamera[
   >
 }
 
-function renderSection(cameras: readonly CctvCamera[]) {
+function renderSection(
+  cameras: readonly CctvCamera[],
+  openStreamUrl: string | null = null,
+  onToggle = vi.fn(),
+) {
   useCctv.mockReturnValue(ok(cameras))
-  return render(<CctvSection areaName="광화문·덕수궁" onShowOnMap={() => undefined} />)
+  const result = render(
+    <CctvSection
+      areaName="광화문·덕수궁"
+      origin={ORIGIN}
+      openStreamUrl={openStreamUrl}
+      onToggle={onToggle}
+    />,
+  )
+  return { ...result, onToggle }
 }
 
 beforeEach(() => {
@@ -40,63 +58,98 @@ beforeEach(() => {
 })
 
 describe('CctvSection', () => {
-  it('첫 카메라를 자동으로 튼다', () => {
-    renderSection([camera('광화문', 'https://a/1.m3u8'), camera('세종대로', 'https://a/2.m3u8')])
-
-    expect(screen.getByTestId('player')).toHaveAttribute('data-stream', 'https://a/1.m3u8')
-  })
-
-  // **한 번에 한 대만 튼다.** 명동은 카메라가 7대인데 전부 동시에 흐르면
-  // 모바일 데이터·배터리를 일곱 배로 먹고 서울시 프록시에도 일곱 배로 매달린다.
-  it('카메라가 여럿이어도 플레이어는 하나뿐이다', () => {
+  // **이 파일에서 가장 중요한 단언이다.** 자동 재생이 느렸던 원인이 바로
+  // 이것이었다 — 절이 뜨자마자 hls.js 500KB + 2.5MB 세그먼트를 받았다.
+  // 샘플(서울 인파레이더)이 빠른 이유는 기술이 아니라 아무것도 안 틀기
+  // 때문이고, 그걸 여기서 잠근다.
+  it('펼치기 전에는 영상을 하나도 틀지 않는다', () => {
     renderSection([
       camera('광화문', 'https://a/1.m3u8'),
-      camera('세종대로', 'https://a/2.m3u8'),
-      camera('시청', 'https://a/3.m3u8'),
+      camera('청계광장', 'https://a/2.m3u8'),
     ])
 
-    expect(screen.getAllByTestId('player')).toHaveLength(1)
+    expect(screen.queryByTestId('player')).not.toBeInTheDocument()
   })
 
-  it('다른 카메라를 누르면 그 영상으로 갈아탄다', async () => {
-    renderSection([camera('광화문', 'https://a/1.m3u8'), camera('세종대로', 'https://a/2.m3u8')])
+  it('카메라 이름을 거리와 함께 줄로 세운다', () => {
+    renderSection([camera('광화문', 'https://a/1.m3u8', { lat: 37.505, lng: 127 })])
 
-    await userEvent.click(screen.getByRole('button', { name: '세종대로' }))
-
-    expect(screen.getByTestId('player')).toHaveAttribute('data-stream', 'https://a/2.m3u8')
+    expect(screen.getByRole('button', { name: /광화문/ })).toBeInTheDocument()
+    // 555m 남짓. 단위까지 확인해 거리 자체가 붙었음을 잠근다.
+    expect(screen.getByText(/m$|km$/)).toBeInTheDocument()
   })
 
-  // 색으로만 「지금 이걸 보고 있다」를 말하면 스크린리더에 안 전해진다.
-  it('고른 카메라를 aria-pressed로 알린다', async () => {
-    renderSection([camera('광화문', 'https://a/1.m3u8'), camera('세종대로', 'https://a/2.m3u8')])
+  it('줄을 누르면 그 카메라를 열어 달라고 알린다', async () => {
+    const { onToggle } = renderSection([camera('광화문', 'https://a/1.m3u8')])
 
-    expect(screen.getByRole('button', { name: '광화문' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
+    await userEvent.click(screen.getByRole('button', { name: /광화문/ }))
+
+    expect(onToggle).toHaveBeenCalledWith('https://a/1.m3u8')
+  })
+
+  it('열어 둔 줄에만 플레이어가 붙는다', () => {
+    renderSection(
+      [camera('광화문', 'https://a/1.m3u8'), camera('청계광장', 'https://a/2.m3u8')],
+      'https://a/2.m3u8',
     )
 
-    await userEvent.click(screen.getByRole('button', { name: '세종대로' }))
+    const players = screen.getAllByTestId('player')
+    expect(players).toHaveLength(1)
+    expect(players[0]).toHaveAttribute('data-stream', 'https://a/2.m3u8')
+  })
 
-    expect(screen.getByRole('button', { name: '세종대로' })).toHaveAttribute(
-      'aria-pressed',
+  // 색으로만 「열려 있다」를 말하면 스크린리더에 안 전해진다.
+  it('열림 여부를 aria-expanded로 알린다', () => {
+    renderSection(
+      [camera('광화문', 'https://a/1.m3u8'), camera('청계광장', 'https://a/2.m3u8')],
+      'https://a/1.m3u8',
+    )
+
+    expect(screen.getByRole('button', { name: /광화문/ })).toHaveAttribute(
+      'aria-expanded',
       'true',
     )
-    expect(screen.getByRole('button', { name: '광화문' })).toHaveAttribute(
-      'aria-pressed',
+    expect(screen.getByRole('button', { name: /청계광장/ })).toHaveAttribute(
+      'aria-expanded',
       'false',
     )
   })
 
-  // 버튼 하나짜리 목록은 무엇을 하라는 것인지 알려주지 못한다.
-  it('카메라가 하나면 고르는 줄을 만들지 않는다', () => {
-    renderSection([camera('광화문', 'https://a/1.m3u8')])
+  // **샘플이 그렇게 한다.** 「서울광장 608m 영상 없음」처럼 목록에 남기고
+  // 못 튼다고 적는다 — 조용히 빼면 「왜 이 자리 CCTV는 안 보이지」에 화면이
+  // 답하지 못한다. 실응답에도 그런 행이 실제로 온다.
+  it('영상이 없는 카메라도 목록에 남기고 없다고 적는다', () => {
+    renderSection([camera('서울광장', '')])
 
-    expect(screen.queryByRole('button', { name: '광화문' })).not.toBeInTheDocument()
-    expect(screen.getByTestId('player')).toBeInTheDocument()
+    expect(screen.getByText('서울광장')).toBeInTheDocument()
+    expect(screen.getByText('영상 없음')).toBeInTheDocument()
   })
 
-  // 30곳 중 10곳이 이 상태다(2026-08-19 실측). 정상 상태이므로 오류처럼
-  // 보이면 안 된다.
+  // 눌러도 아무 일이 없는 버튼은 고장으로 보인다.
+  it('영상이 없는 줄은 누를 수 없다', async () => {
+    const { onToggle } = renderSection([camera('서울광장', '')])
+
+    const row = screen.getByRole('button', { name: /서울광장/ })
+    expect(row).toBeDisabled()
+
+    await userEvent.click(row)
+    expect(onToggle).not.toHaveBeenCalled()
+  })
+
+  // 순수 거리순이다 — 볼 수 있는 것을 앞으로 당기지 않는다(샘플이 그렇다).
+  it('거리순으로 세우고 영상 없는 것도 제자리에 둔다', () => {
+    renderSection([
+      camera('먼곳', 'https://a/3.m3u8', { lat: 37.53, lng: 127 }),
+      camera('중간(영상없음)', '', { lat: 37.51, lng: 127 }),
+      camera('가까운곳', 'https://a/1.m3u8', { lat: 37.501, lng: 127 }),
+    ])
+
+    const names = screen.getAllByRole('button').map((b) => b.textContent ?? '')
+    expect(names[0]).toContain('가까운곳')
+    expect(names[1]).toContain('중간(영상없음)')
+    expect(names[2]).toContain('먼곳')
+  })
+
   it('카메라가 없으면 없다고 적는다', () => {
     renderSection([])
 
@@ -114,39 +167,22 @@ describe('CctvSection', () => {
     } as UseQueryResult<readonly CctvCamera[]>)
 
     const { container } = render(
-      <CctvSection areaName="광화문·덕수궁" onShowOnMap={() => undefined} />,
+      <CctvSection
+        areaName="광화문·덕수궁"
+        origin={ORIGIN}
+        openStreamUrl={null}
+        onToggle={() => undefined}
+      />,
     )
 
     expect(container).toBeEmptyDOMElement()
   })
 
-  // 좌표가 있는 카메라만 지도로 보낼 수 있다 — 눌러도 아무 일이 없는 버튼은
-  // 고장으로 보인다(`ShowOnMapButton`과 같은 규칙).
-  it('좌표가 있으면 지도 버튼을 주고 누르면 그 자리를 넘긴다', async () => {
-    const onShowOnMap = vi.fn()
-    useCctv.mockReturnValue(ok([camera('광화문', 'https://a/1.m3u8', { lat: 37.5, lng: 127 })]))
-    render(<CctvSection areaName="광화문·덕수궁" onShowOnMap={onShowOnMap} />)
-
-    await userEvent.click(screen.getByRole('button', { name: '광화문 지도에서 보기' }))
-
-    expect(onShowOnMap).toHaveBeenCalledWith({
-      name: '광화문',
-      coords: { lat: 37.5, lng: 127 },
-    })
-  })
-
-  it('좌표가 없으면 지도 버튼을 만들지 않는다', () => {
+  // 다른 절은 최대 3시간 묵은 값이라 기준 시각을 적지만, 여기서 같은 문구를
+  // 쓰면 영상이 묵은 것처럼 읽힌다.
+  it('묵은 값이라고 적지 않는다', () => {
     renderSection([camera('광화문', 'https://a/1.m3u8')])
 
-    expect(screen.queryByRole('button', { name: /지도에서 보기/ })).not.toBeInTheDocument()
-  })
-
-  // **이 절만 진짜 실시간이다.** 다른 절은 최대 3시간 묵은 값을 보여주므로
-  // 기준 시각을 적지만, 여기서 같은 문구를 쓰면 영상이 묵은 것처럼 읽힌다.
-  it('영상이 있으면 지금 화면이라고 적는다', () => {
-    renderSection([camera('광화문', 'https://a/1.m3u8')])
-
-    expect(screen.getByText('영상은 지금 화면이에요')).toBeInTheDocument()
     expect(screen.queryByText(/최대 3시간/)).not.toBeInTheDocument()
   })
 })

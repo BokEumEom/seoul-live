@@ -15,6 +15,7 @@ import { Icon } from '../common/Icon'
 import { SkeletonList } from '../common/SkeletonCard'
 import { useWeekPattern } from '../../hooks/useWeekPattern'
 import { ActionButtons } from './ActionButtons'
+import { MapLinkButtons } from './MapLinkButtons'
 import { CctvSection } from '../cityinfo/CctvSection'
 import { ForecastChart } from '../forecast/ForecastChart'
 
@@ -25,13 +26,23 @@ interface Props {
   readonly onSelectArea: (name: string) => void
   /** 주차장·따릉이 줄의 아이콘이 누르는 것. 지도는 `HomeScreen`이 갖는다. */
   readonly onShowOnMap: (place: FacilityLocation) => void
+  /** 지금 펼쳐 둔 CCTV. 지도 마커와 시트가 나눠 갖는 상태라 위에서 내려온다. */
+  readonly openCctvStreamUrl: string | null
+  readonly onToggleCctv: (streamUrl: string) => void
 }
 
 // 상세의 절 순서를 소유하는 파일이다. 각 절의 내용은 옆 파일들이 갖는다 —
 // 여기서 결정되는 것은 「무엇이 어떤 차례로 오는가」뿐이고, 그 차례가 곧
 // 설계 §2.6의 Google Maps 장소 카드 순서다.
 // 상단바와 뒤로가기 화살표는 없다 — 목록 자리에만 들어가고 지도는 위에 남는다.
-export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Props) {
+export function AreaDetail({
+  areaName,
+  onBack,
+  onSelectArea,
+  onShowOnMap,
+  openCctvStreamUrl,
+  onToggleCctv,
+}: Props) {
   const entry = findAreaByName(areaName)
 
   // 카탈로그에 없는 이름은 조회하지 않는다. 프록시의 허용 목록에 걸려 400이 오고
@@ -77,10 +88,12 @@ export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Prop
 
       <AreaHero entry={entry} coords={location.coords} level={snapshot?.congestion} />
 
-      {/* 설계 §2.6의 2번 자리다 — 히어로 바로 다음. 예측 뒤에 두면 저장 버튼이
-          어느 대상 기기에서도 폴드 밖이라, 헤더의 별이 늘 보이던 것보다 못해진다.
-          혼잡도 응답 밖인 이유는 카탈로그만 있으면 길찾기·공유·저장이 성립하기
-          때문이다 — API가 흔들린 날 이 셋까지 사라지면 안 된다.
+      {/* 저장·공유. 히어로 바로 다음이다 — 예측 뒤에 두면 저장 버튼이 어느
+          대상 기기에서도 폴드 밖이라, 헤더의 별이 늘 보이던 것보다 못해진다.
+          **길찾기 셋은 여기 없다. 맨 아래로 내려갔다**(`MapLinkButtons`) —
+          저장은 다 읽기 전에도 하고 싶을 수 있지만 길찾기는 다 읽은 뒤에
+          하는 일이라서다. 혼잡도 응답 밖인 이유는 카탈로그만 있으면 이 둘이
+          성립하기 때문이다 — API가 흔들린 날까지 사라지면 안 된다.
           즐겨찾기라는 사실은 여기 남는다. 넘기는 건 눌림 상태와 콜백뿐이다.
 
           key를 명소 이름으로 두는 이유: 「근처 쾌적한 장소」로 갈아타면 이
@@ -99,9 +112,9 @@ export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Prop
           펼쳐지면서 상세가 매우 길어졌기 때문이다.
 
           **액션 행 다음, 혼잡도 앞이다.** 샘플은 이름 바로 아래에 두지만 우리는
-          그 자리에 길찾기·저장이 있다(설계 §2.6). 그 셋은 혼잡도 응답 없이도
-          성립해서 앞에 있어야 하고, 칩은 도시정보가 도착해야 생기므로
-          그 뒤가 맞다 — 반대로 두면 칩이 늦게 도착하면서 액션 행을 밀어낸다.
+          그 자리에 저장·공유가 있다. 그 둘은 혼잡도 응답 없이도 성립해서 앞에
+          있어야 하고, 칩은 도시정보가 도착해야 생기므로 그 뒤가 맞다 —
+          반대로 두면 칩이 늦게 도착하면서 액션 행을 밀어낸다.
 
           추가 호출은 0이다. 이미 받아 둔 응답을 다시 셀 뿐이다. */}
       <div className="px-4">
@@ -157,7 +170,12 @@ export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Prop
           `citydata` 한 번이고 이쪽은 별개 엔드포인트다(쿼터도 안 쓴다). 안에
           두면 도시 정보가 통째로 없는 명소에서 조기 반환에 걸려 CCTV까지 함께
           사라진다. */}
-      <CctvSection areaName={areaName} onShowOnMap={onShowOnMap} />
+      <CctvSection
+        areaName={areaName}
+        origin={{ lat: entry.lat, lng: entry.lng }}
+        openStreamUrl={openCctvStreamUrl}
+        onToggle={onToggleCctv}
+      />
 
       {/* 기준점은 **명소 중심**이지 사용자 위치가 아니다. 상세는 지금 있는
           곳이 아니라 가려는 곳을 보는 화면이라, 부산에서 광화문을 열어도
@@ -169,6 +187,12 @@ export function AreaDetail({ areaName, onBack, onSelectArea, onShowOnMap }: Prop
       />
 
       <NearbyCalmSection exclude={entry.name} onSelectArea={onSelectArea} />
+
+      {/* **길찾기가 맨 아래다.** 샘플(서울 인파레이더)이 혼잡도·차트·CCTV·
+          주차·행사를 다 보여준 뒤 맨 끝에 「카카오맵 / 네이버 / 티맵」을
+          놓는다 — 화면의 순서가 곧 사용자의 순서라는 뜻이다. **읽고 나서
+          갈지 정한다.** 근거는 `MapLinkButtons`의 주석. */}
+      <MapLinkButtons entry={entry} />
     </div>
   )
 }

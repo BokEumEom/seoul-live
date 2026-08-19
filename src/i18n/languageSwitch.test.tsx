@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ActionButtons } from '../components/home/ActionButtons'
+import { MapLinkButtons } from '../components/home/MapLinkButtons'
 import { AreaHero } from '../components/home/AreaHero'
 import { PopulationCard } from '../components/home/PopulationCard'
 import { AreaListItem } from '../components/list/AreaListItem'
@@ -42,15 +43,12 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
     expect(screen.getByRole('button', { name: 'Light' })).toBeInTheDocument()
   })
 
+  // 길찾기 셋은 상세 맨 아래의 `MapLinkButtons`로 옮겨갔다(샘플의 배치).
+  // 이 검사가 잡는 것은 자리가 아니라 **모듈 최상위 `t()`가 언어를 굳히는
+  // 함정**이라, 컴포넌트만 갈아 끼우고 단언은 그대로 둔다.
   it('지도 앱 버튼이 영어로 바뀐다', () => {
     setLanguage('en')
-    render(
-      <ActionButtons
-        entry={AREA_CATALOG[0]}
-        saved={false}
-        onSave={() => undefined}
-      />,
-    )
+    render(<MapLinkButtons entry={AREA_CATALOG[0]} />)
 
     expect(screen.getByRole('link', { name: /KakaoMap/ })).toBeInTheDocument()
   })

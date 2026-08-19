@@ -113,7 +113,9 @@ function before(first: Element, second: Element): boolean {
 
 function renderDetail(areaName = '강남역') {
   return render(
-    <AreaDetail onShowOnMap={() => undefined} areaName={areaName} onBack={() => {}} onSelectArea={() => {}} />,
+    <AreaDetail onShowOnMap={() => undefined}
+        openCctvStreamUrl={null}
+        onToggleCctv={() => undefined} areaName={areaName} onBack={() => {}} onSelectArea={() => {}} />,
   )
 }
 
@@ -249,6 +251,8 @@ describe('AreaDetail', () => {
         onBack={() => undefined}
         onSelectArea={() => undefined}
         onShowOnMap={onShowOnMap}
+        openCctvStreamUrl={null}
+        onToggleCctv={() => undefined}
       />,
     )
 
@@ -404,7 +408,9 @@ describe('AreaDetail', () => {
   it('뒤로 버튼이 콜백을 부른다', async () => {
     const onBack = vi.fn()
     render(
-      <AreaDetail onShowOnMap={() => undefined} areaName="강남역" onBack={onBack} onSelectArea={() => {}} />,
+      <AreaDetail onShowOnMap={() => undefined}
+        openCctvStreamUrl={null}
+        onToggleCctv={() => undefined} areaName="강남역" onBack={onBack} onSelectArea={() => {}} />,
     )
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
     expect(onBack).toHaveBeenCalledTimes(1)
@@ -418,7 +424,9 @@ describe('AreaDetail', () => {
   // (2) 부모를 block으로 바꿔 w-fit이 필요 없어져도 거짓 통과한다. 이 테스트가
   // 지키는 건 "폭이 글자만큼이다"가 아니라 "그 결정을 지웠는가"다.
   it('목록으로 버튼이 글자 폭만 차지한다', () => {
-    render(<AreaDetail onShowOnMap={() => undefined} areaName="강남역" onBack={() => {}} onSelectArea={() => {}} />)
+    render(<AreaDetail onShowOnMap={() => undefined}
+        openCctvStreamUrl={null}
+        onToggleCctv={() => undefined} areaName="강남역" onBack={() => {}} onSelectArea={() => {}} />)
     expect(screen.getByRole('button', { name: '목록으로' })).toHaveClass('w-fit')
   })
 
@@ -493,7 +501,9 @@ describe('AreaDetail', () => {
     expect(screen.getByRole('status')).toHaveTextContent('강남역 저장됨')
 
     rerender(
-      <AreaDetail onShowOnMap={() => undefined} areaName="경복궁" onBack={() => {}} onSelectArea={() => {}} />,
+      <AreaDetail onShowOnMap={() => undefined}
+        openCctvStreamUrl={null}
+        onToggleCctv={() => undefined} areaName="경복궁" onBack={() => {}} onSelectArea={() => {}} />,
     )
     expect(screen.getByRole('status')).toBeEmptyDOMElement()
   })
@@ -617,8 +627,9 @@ describe('AreaDetail', () => {
       'H3 시간대별 인파',
       'H3 요일×시간 패턴',
       // 도시 정보보다 앞이다 — 혼잡도 숫자를 보고 나서 가장 먼저 묻는
-      // 「그래서 지금 어떤데」에 영상이 유일하게 직접 답한다.
-      'H3 실시간 영상',
+      // 「그래서 지금 어떤데」에 영상이 유일하게 직접 답한다. 제목은
+      // 샘플(서울 인파레이더)의 「주변 CCTV」를 그대로 쓴다.
+      'H3 주변 CCTV',
     ])
   })
 

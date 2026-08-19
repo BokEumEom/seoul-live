@@ -35,17 +35,26 @@ export function parseCctvResponse(body: unknown): readonly CctvCamera[] {
     // 이름이 이 항목의 본체다(재난문자의 `message`와 같은 규칙). 이름 없는
     // 카메라는 목록에서도 지도에서도 무엇인지 알 수 없다.
     const name = text(row, 'CCTVNAME')
-    const streamUrl = playableStreamUrl(text(row, 'src'))
-    if (name === '' || streamUrl === '') {
+    if (name === '') {
       return []
     }
 
+    // **스트림이 없어도 버리지 않는다.** 샘플(서울 인파레이더)이 「서울광장
+    // 608m 영상 없음」처럼 목록에 남기고 못 튼다고 적는다 — 실응답에도 그런
+    // 행이 실제로 온다(광화문·덕수궁의 서울광장). 조용히 빼면 「왜 이 자리
+    // CCTV는 안 보이지」에 화면이 답하지 못한다.
+    const streamUrl = playableStreamUrl(text(row, 'src'))
+
     // 같은 스트림이 두 번 실려 오면 같은 영상이 두 줄이 된다. 이름이 아니라
     // 스트림으로 세는 이유는 그것이 「무엇을 보는가」의 정체이기 때문이다.
-    if (seen.has(streamUrl)) {
-      return []
+    // **빈 스트림은 중복으로 세지 않는다** — 「영상 없음」이 여럿일 수 있고
+    // (서로 다른 카메라다) 빈 문자열끼리 겹친다고 지우면 목록이 사라진다.
+    if (streamUrl !== '') {
+      if (seen.has(streamUrl)) {
+        return []
+      }
+      seen.add(streamUrl)
     }
-    seen.add(streamUrl)
 
     return [
       {

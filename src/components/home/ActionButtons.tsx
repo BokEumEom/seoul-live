@@ -1,11 +1,10 @@
 import { areaDisplayName } from '../../i18n/areaName'
 import { t } from '../../i18n/t'
 import { useState } from 'react'
-import { kakaoMapSearchUrl, naverMapSearchUrl, tmapRouteUrl } from '../../domain/mapLinks'
 import type { AreaCatalogEntry } from '../../domain/types'
 import { shareUrl } from '../../platform/appUrl'
-import { openExternalUrl, shareMessage } from '../../platform/links'
-import { Icon, type IconName } from '../common/Icon'
+import { shareMessage } from '../../platform/links'
+import { Icon } from '../common/Icon'
 
 interface Props {
   readonly entry: AreaCatalogEntry
@@ -15,59 +14,9 @@ interface Props {
   readonly onSave: () => void
 }
 
-interface MapLink {
-  readonly label: string
-  readonly icon: IconName
-  /** 카탈로그 항목을 통째로 받는다 — 티맵은 이름이 아니라 좌표로 목적지를 넘긴다. */
-  readonly href: (entry: AreaCatalogEntry) => string
-  readonly className: string
-}
-
-// 배경은 남의 브랜드 색이라 우리가 못 고친다 — 맞출 수 있는 것은 글자 쪽이다.
-// 네이버에 흰 글자를 얹으면 2.25:1로 무너졌다(카카오는 원래 어두운 글자라
-// 문제가 없었다). 둘 다 `text-brand-ink`로 맞춘다: 네이버 7.32, 카카오 12.90.
-// **`text-on-surface`가 아닌 이유가 다크 모드다.** 그 토큰은 밤에 크림색으로
-// 뒤집히는데, 배경인 카카오 노랑은 남의 자산이라 그대로다 — 노랑 위의 크림
-// 글자는 1.2:1로 통째로 사라진다. `--color-brand-ink`는 어느 모드에서도 안 바뀐다.
-// 값과 근거는 index.css의 `--color-brand-*` 주석에, 대비는 `tokens.test.ts`에.
-// 라벨에서 「길찾기」를 뺐다. 셋이 한 줄에 서면서 320px에서 버튼 하나에 배정되는
-// 폭이 138px → **87px**로 줄었는데 「카카오맵 길찾기」는 그 폭에 못 들어간다.
-// 헤드리스 크롬 실측(320/360/390px): 배정 87/101/111px, 필요 75(카카오맵)·
-// 63(네이버)·53(티맵)px. 셋 다 같은 top이고 높이가 48px 그대로라 줄바꿈이 없다.
-// **라벨을 늘릴 때는 다시 재라** — 320px의 여유가 12px뿐이다.
-//
-// **상수 배열이 아니라 함수인 이유**는 `SortSegmented`에 한 벌 있다 — 모듈
-// 최상위의 `t()`는 import 시점의 언어로 굳는다. 이 셋은 사전에 항목이 있는데도
-// (KakaoMap·Naver·TMAP) 영어 화면에서 한국어로 남아 있었다.
-function mapLinks(): readonly MapLink[] {
-  return [
-    {
-      label: t('카카오맵'),
-      icon: 'pin',
-      href: (entry) => kakaoMapSearchUrl(entry.name),
-      className: 'bg-brand-kakao text-brand-ink',
-    },
-    {
-      label: t('네이버'),
-      icon: 'map',
-      href: (entry) => naverMapSearchUrl(entry.name),
-      className: 'bg-brand-naver text-brand-ink',
-    },
-    {
-      // 티맵 로고 색을 토큰으로 들이지 않았다. 카카오·네이버는 시안이 브랜드
-      // 배경을 쓰지만 셋째까지 색을 채우면 한 줄이 신호등이 된다 — 이것만
-      // 테두리형으로 두어 「길찾기 둘 + 내비 하나」로 읽히게 했다.
-      label: t('티맵'),
-      icon: 'navigation',
-      href: (entry) => tmapRouteUrl(entry.name, entry),
-      className:
-        'border border-outline-variant bg-surface-container-lowest text-on-surface',
-    },
-  ]
-}
-
-// 한 줄에 나란히 서는 네 버튼의 기하는 함께 움직인다. 색만 갈라 두어 높이나
-// 반경을 고칠 때 한쪽만 고치는 일이 없게 한다(PopulationCard의 CHIP_BASE와 같은 이유).
+// 저장·공유 두 버튼의 기하는 함께 움직인다. 색만 갈라 두어 높이나 반경을
+// 고칠 때 한쪽만 고치는 일이 없게 한다(PopulationCard의 CHIP_BASE와 같은 이유).
+// 길찾기 셋도 같은 값을 쓰지만 그쪽은 화면 맨 아래로 내려갔다(`MapLinkButtons`).
 const ACTION_BASE =
   'flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-action text-label-md font-semibold'
 
@@ -85,24 +34,6 @@ export function ActionButtons({ entry, saved, onSave }: Props) {
   // 맡으므로 기본 동작은 막는다 — 웹뷰에서 두 번 열리는 걸 방지한다.
   return (
     <div className="flex flex-col gap-3 px-4">
-      <div className="flex gap-3">
-        {mapLinks().map((link) => (
-          <a
-            key={link.label}
-            href={link.href(entry)}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(event) => {
-              event.preventDefault()
-              void openExternalUrl(link.href(entry))
-            }}
-            className={`${ACTION_BASE} ${link.className}`}
-          >
-            <Icon name={link.icon} className="size-5" />
-            {link.label}
-          </a>
-        ))}
-      </div>
       <div className="flex gap-3">
         {/* Google Maps의 Save 자리. 공유와 한 줄이라 행이 늘지 않는다. */}
         <button

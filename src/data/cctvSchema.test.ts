@@ -32,19 +32,34 @@ describe('parseCctvResponse', () => {
     expect(camera.coords?.lat).toBeLessThan(90)
   })
 
-  // 실응답에 위치만 있고 스트림이 없는 카메라가 섞여 온다(반포한강공원).
-  // 「실시간 영상」이라 적어 놓고 못 트는 줄을 세우면 약속을 어기는 것이다.
-  it('스트림이 없는 행은 버린다', () => {
-    expect(parseCctvResponse([row({ src: '' })])).toEqual([])
-    expect(parseCctvResponse([row({ src: '   ' })])).toEqual([])
-    expect(parseCctvResponse([row({ src: undefined })])).toEqual([])
+  // **버리지 않고 남긴다.** 샘플(서울 인파레이더)이 「서울광장 608m 영상
+  // 없음」처럼 목록에 남기고 못 튼다고 적는다 — 실응답에도 그런 행이 온다
+  // (광화문·덕수궁의 서울광장). 조용히 빼면 「왜 이 자리 CCTV는 안 보이지」에
+  // 화면이 답하지 못한다. 화면은 `streamUrl === ''`를 「못 펼치는 줄」로 그린다.
+  it('스트림이 없어도 카메라는 남기고 streamUrl만 비운다', () => {
+    for (const src of ['', '   ', undefined]) {
+      const [camera] = parseCctvResponse([row({ src })])
+      expect(camera.name).toBe('경복궁역')
+      expect(camera.streamUrl).toBe('')
+    }
   })
 
   // 프록시가 걸러 주지만 클라이언트도 스스로 지킨다 — 이 값은 <video src>에
-  // 그대로 들어간다.
-  it('HTTPS가 아닌 스트림은 버린다', () => {
-    expect(parseCctvResponse([row({ src: 'http://210.179.218.51:1935/x.m3u8' })])).toEqual([])
-    expect(parseCctvResponse([row({ src: 'javascript:alert(1)' })])).toEqual([])
+  // 그대로 들어간다. 버리는 것은 **주소지 카메라가 아니다.**
+  it('HTTPS가 아닌 스트림은 주소만 버린다', () => {
+    for (const src of ['http://210.179.218.51:1935/x.m3u8', 'javascript:alert(1)']) {
+      const [camera] = parseCctvResponse([row({ src })])
+      expect(camera.name).toBe('경복궁역')
+      expect(camera.streamUrl).toBe('')
+    }
+  })
+
+  // 「영상 없음」이 여럿일 수 있다(서로 다른 카메라다). 빈 문자열끼리
+  // 겹친다고 지우면 목록이 통째로 사라진다.
+  it('영상 없는 카메라가 여럿이어도 지우지 않는다', () => {
+    const rows = [row({ src: '', CCTVNAME: '가' }), row({ src: '', CCTVNAME: '나' })]
+
+    expect(parseCctvResponse(rows).map((c) => c.name)).toEqual(['가', '나'])
   })
 
   // 이름이 이 항목의 본체다. 이름 없는 카메라는 목록에서 무엇인지 알 수 없고

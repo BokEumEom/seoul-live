@@ -24,6 +24,7 @@ import { AreaListItem } from '../components/list/AreaListItem'
 import { CategoryFilter } from '../components/list/CategoryFilter'
 import { LocationNotice } from '../components/list/LocationNotice'
 import { SortSegmented } from '../components/list/SortSegmented'
+import { CctvMarker } from '../components/map/CctvMarker'
 import { CongestionMarker } from '../components/map/CongestionMarker'
 import { FacilityMarker } from '../components/map/FacilityMarker'
 import {
@@ -35,7 +36,7 @@ import {
   type RecenterDetent,
 } from '../components/map/RecenterButton'
 import { AREA_CATALOG, AREA_NAMES, findAreaByName } from '../data/areas'
-import { useAreaSnapshots } from '../data/queries'
+import { useAreaSnapshots, useCctv } from '../data/queries'
 import { useResolvedTheme } from '../hooks/themeStore'
 import { PANEL_WIDTH_PX, useWideScreen } from '../hooks/useWideScreen'
 import {
@@ -175,6 +176,10 @@ export function HomeScreen() {
   // 그 높이를 따라가야 해서 여기까지 올라왔다 — `BottomSheet`의 주석 참조.
   // 지도에서 짚어 둔 주차장·따릉이 한 곳. 명소를 갈아타면 지운다.
   const [focusedFacility, setFocusedFacility] = useState<FacilityLocation | null>(null)
+  // 지금 펼쳐 둔 CCTV의 스트림 주소. **지도와 시트가 나눠 갖는 하나의 선택이라
+  // 여기서 산다** — 시트 안에 두면 지도 마커가 그걸 못 읽고, 지도에 두면
+  // 시트가 못 읽는다. 둘은 같은 선택을 보는 두 창이다.
+  const [openCctv, setOpenCctv] = useState<string | null>(null)
   const [dragRatio, setDragRatio] = useState<number | null>(null)
   const [view, setView] = useState<'list' | 'today'>(
     initialRoute.kind === 'today' ? 'today' : 'list',
@@ -384,6 +389,9 @@ export function HomeScreen() {
     // 앞 명소에서 짚어 둔 주차장·따릉이 핀을 지운다. 안 지우면 경복궁 상세를
     // 보는데 지도에는 강남역 주차장 핀이 떠 있게 된다.
     setFocusedFacility(null)
+    // 펼쳐 둔 CCTV도 접는다. 안 접으면 **앞 명소의 영상이 계속 흐른 채로**
+    // 다른 명소 상세가 열린다 — 스트림도 남고 화면과도 어긋난다.
+    setOpenCctv(null)
     moveMapTo(name)
     requestSheetFocus()
   }
@@ -484,6 +492,29 @@ export function HomeScreen() {
   // 단계를 half로 되돌리는 것이 핵심이다. 이 아이콘은 도시 정보 절에 있어
   // 사용자는 거의 언제나 시트를 full로 올린 채 누르는데, 그대로 두면 지도가
   // 옮겨간 것을 **볼 수가 없다** — 누른 보람이 화면에 하나도 안 나타난다.
+  // **상세가 열려 있을 때만 CCTV를 부른다.** `route`가 정본이다 —
+  // `selectedName`은 목록에서 강조만 된 상태에서도 차 있을 수 있다.
+  //
+  // **추가 호출이 0이다.** `CctvSection`이 부르는 것과 queryKey가 같아
+  // TanStack Query가 한 번만 나간다. 지도와 시트가 같은 캐시 항목을 본다.
+  const cctvQuery = useCctv(route.kind === 'area' ? route.name : undefined)
+
+  // 좌표가 있는 것만 지도에 찍을 수 있다. `coords`가 null인 카메라는
+  // 목록에는 남지만(거리도 못 잰다) 지도에서는 찍을 자리가 없다.
+  const cctvMarkers = useMemo(
+    () =>
+      (cctvQuery.data ?? []).flatMap((camera) =>
+        camera.coords === null ? [] : [{ ...camera, coords: camera.coords }],
+      ),
+    [cctvQuery.data],
+  )
+
+  // 같은 줄을 다시 누르면 접는다. 목록과 지도 마커가 이 함수를 함께 쓴다 —
+  // 어느 쪽으로 눌러도 같은 하나가 열리고 닫혀야 한다.
+  function toggleCctv(streamUrl: string): void {
+    setOpenCctv((current) => (current === streamUrl ? null : streamUrl))
+  }
+
   function showFacilityOnMap(place: FacilityLocation): void {
     setFocusedFacility(place)
     setDetent('half')
@@ -664,6 +695,34 @@ export function HomeScreen() {
             <FacilityMarker name={focusedFacility.name} />
           </AdvancedMarker>
         )}
+
+        {/* 고른 명소 주변의 CCTV. **명소 핀보다 아래, 방금 짚은 시설보다 아래다** —
+            이건 사용자가 부른 것이 아니라 상세를 열면 딸려 오는 층이라
+            명소 핀을 가리면 안 된다. 상세를 닫으면 통째로 사라진다. */}
+        {cctvMarkers.map((camera) => (
+          <AdvancedMarker
+            key={camera.streamUrl === '' ? `${camera.name}-${camera.coords.lat}` : camera.streamUrl}
+            position={camera.coords}
+            zIndex={5}
+            onClick={() => {
+              // 못 트는 카메라는 열 것이 없다. 지도를 그 자리로 옮기지도
+              // 않는다 — 누른 자리가 이미 화면 안이다.
+              if (camera.streamUrl === '') {
+                return
+              }
+              toggleCctv(camera.streamUrl)
+              // 시트가 살짝 열림이면 펼쳐진 영상이 안 보인다. 절반까지
+              // 올려서 방금 연 것이 화면에 들어오게 한다.
+              setDetent('half')
+            }}
+          >
+            <CctvMarker
+              name={camera.name}
+              active={camera.streamUrl !== '' && camera.streamUrl === openCctv}
+              playable={camera.streamUrl !== ''}
+            />
+          </AdvancedMarker>
+        ))}
 
         {markers.map((marker) => (
           <AdvancedMarker
@@ -870,6 +929,8 @@ export function HomeScreen() {
         onBack={showList}
         onSelectArea={openArea}
         onShowOnMap={showFacilityOnMap}
+        openCctvStreamUrl={openCctv}
+        onToggleCctv={toggleCctv}
       />
     ) : route.kind === 'today' ? (
       <TodayScreen onSelectArea={openArea} onBack={showList} />

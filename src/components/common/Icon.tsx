@@ -43,6 +43,10 @@ const PATHS = {
   // 실시간 영상 절. 시안(stitch_ui/_3)의 CCTV 버튼이 쓰던 `videocam`과 같은
   // 글리프다 — 카메라 몸통 + 오른쪽 렌즈 삼각형.
   cctv: 'M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z',
+  // 접이식 줄의 「닫힘」 표시. 샘플(서울 인파레이더)의 CCTV 목록이 쓰는
+  // 삼각형 자리다 — 「이 줄은 열린다」를 색 없이도 알린다. 열린 쪽은 위에
+  // 이미 있는 `chevronDown`을 쓴다.
+  chevronRight: 'M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
 } as const
 
 export type IconName = keyof typeof PATHS

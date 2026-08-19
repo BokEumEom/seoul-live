@@ -125,6 +125,7 @@ const googleMaps = await import('../platform/googleMaps')
 const useAreaSnapshots = vi.mocked(queries.useAreaSnapshots)
 const useAreaSnapshot = vi.mocked(queries.useAreaSnapshot)
 const useCityInfo = vi.mocked(queries.useCityInfo)
+const useCctv = vi.mocked(queries.useCctv)
 const useCachedCityAlerts = vi.mocked(cached.useCachedCityAlerts)
 const useLocation = vi.mocked(locationContext.useLocation)
 const isMapAvailable = vi.mocked(googleMaps.isMapAvailable)
@@ -1476,5 +1477,89 @@ describe('HomeScreen 주소', () => {
 
     expect(push).not.toHaveBeenCalled()
     expect(new URLSearchParams(window.location.search).get('area')).toBe('경복궁')
+  })
+})
+
+// ── 지도 위 CCTV ─────────────────────────────────────────────────────────
+//
+// 명소를 고르면 그 주변 CCTV가 지도에 함께 뜬다. **지도와 시트가 같은 선택을
+// 나눠 갖는지**가 여기서 잡을 것이다 — 마커로 눌러도 시트의 그 줄이 열려야
+// 하고, 명소를 갈아타면 앞 명소의 영상이 남아 있으면 안 된다.
+describe('HomeScreen — 지도 위 CCTV', () => {
+  const CAMERAS = [
+    { name: '광화문', coords: { lat: 37.5755, lng: 126.9784 }, streamUrl: 'https://a/1.m3u8' },
+    { name: '서울광장', coords: { lat: 37.5655, lng: 126.978 }, streamUrl: '' },
+    { name: '좌표없음', coords: null, streamUrl: 'https://a/2.m3u8' },
+  ]
+
+  beforeEach(() => {
+    // **인자를 보고 답해야 한다.** 실제 훅은 명소가 없으면 `enabled: false`라
+    // 조회 자체를 안 하고 `data`가 undefined다. 인자와 무관하게 값을 주는
+    // 목이면 「목록에서는 안 그린다」를 확인할 방법이 사라진다 — 실제로
+    // 그렇게 짰다가 첫 테스트가 통과해 버렸다.
+    useCctv.mockImplementation((areaName?: string) =>
+      (areaName === undefined
+        ? { data: undefined, isPending: true, isError: false }
+        : { data: CAMERAS, isPending: false, isError: false }) as unknown as ReturnType<
+        typeof useCctv
+      >,
+    )
+  })
+
+  it('목록에서는 CCTV 마커를 그리지 않는다', () => {
+    render(<HomeScreen />)
+
+    const layer = document.querySelector('[data-map-layer]') as HTMLElement
+    expect(within(layer).queryByRole('img', { name: /광화문 CCTV/ })).not.toBeInTheDocument()
+  })
+
+  it('명소를 열면 좌표가 있는 CCTV가 지도에 뜬다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(mapMarker(/경복궁/))
+
+    const layer = document.querySelector('[data-map-layer]') as HTMLElement
+    expect(within(layer).getByRole('img', { name: '광화문 CCTV' })).toBeInTheDocument()
+    // 영상이 없는 카메라도 자리는 보여준다 — 다만 못 튼다고 이름에 적는다.
+    expect(
+      within(layer).getByRole('img', { name: '서울광장 CCTV (영상 없음)' }),
+    ).toBeInTheDocument()
+    // 좌표가 없으면 찍을 자리가 없다.
+    expect(within(layer).queryByRole('img', { name: /좌표없음/ })).not.toBeInTheDocument()
+  })
+
+  // **지도와 시트가 같은 선택을 본다.** 마커를 눌렀는데 시트가 안 열리면
+  // 둘이 서로 다른 상태를 들고 있다는 뜻이다.
+  it('지도의 CCTV 마커를 누르면 시트의 그 줄이 열린다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(mapMarker(/경복궁/))
+
+    const layer = document.querySelector('[data-map-layer]') as HTMLElement
+    await userEvent.click(
+      within(layer).getByRole('img', { name: '광화문 CCTV' }).closest('button')!,
+    )
+
+    const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
+    expect(within(sheet).getByRole('button', { name: /광화문/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  })
+
+  // 안 접으면 앞 명소의 영상이 계속 흐른 채로 다른 상세가 열린다.
+  it('다른 명소로 갈아타면 펼쳐 둔 영상을 접는다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(mapMarker(/경복궁/))
+
+    const layer = document.querySelector('[data-map-layer]') as HTMLElement
+    await userEvent.click(
+      within(layer).getByRole('img', { name: '광화문 CCTV' }).closest('button')!,
+    )
+    await userEvent.click(mapMarker(/강남역/))
+
+    const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
+    expect(within(sheet).getByRole('button', { name: /광화문/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
   })
 })
