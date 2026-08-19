@@ -900,6 +900,15 @@ export function HomeScreen() {
         onShowOnMap={showFacilityOnMap}
         openCctvStreamUrl={openCctv}
         onToggleCctv={toggleCctv}
+        // peek에서는 시트가 111px만 보이므로(390×844 실측) 73px짜리 바를 붙이면
+        // 남는 것이 「목록으로」 한 줄이다 — 근거는 `MapLinkButtons`의 `pinned`.
+        //
+        // `detent`가 아니라 `sheetDetent`인 이유는 지도가 죽었을 때다(위 주석).
+        // **`wide ||`가 필요하다.** PC 패널은 손잡이가 없어 단계를 못 바꾸는데
+        // 좁은 화면에서 peek으로 내려 둔 뒤 창을 넓히면 `sheetDetent`에 그
+        // 값이 남는다 — 전체 높이 패널에서 바만 5,400px 아래로 떨어진다.
+        // `showRecenter`도 같은 이유로 `wide ||`를 쓴다.
+        pinDirections={wide || sheetDetent !== 'peek'}
       />
     ) : route.kind === 'today' ? (
       <TodayScreen onSelectArea={openArea} onBack={showList} />

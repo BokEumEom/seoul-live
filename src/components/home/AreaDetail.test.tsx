@@ -115,7 +115,8 @@ function renderDetail(areaName = '강남역') {
   return render(
     <AreaDetail onShowOnMap={() => undefined}
         openCctvStreamUrl={null}
-        onToggleCctv={() => undefined} areaName={areaName} onBack={() => {}} onSelectArea={() => {}} />,
+        onToggleCctv={() => undefined}
+        pinDirections areaName={areaName} onBack={() => {}} onSelectArea={() => {}} />,
   )
 }
 
@@ -255,6 +256,7 @@ describe('AreaDetail', () => {
         onShowOnMap={onShowOnMap}
         openCctvStreamUrl={null}
         onToggleCctv={() => undefined}
+        pinDirections
       />,
     )
 
@@ -412,7 +414,8 @@ describe('AreaDetail', () => {
     render(
       <AreaDetail onShowOnMap={() => undefined}
         openCctvStreamUrl={null}
-        onToggleCctv={() => undefined} areaName="강남역" onBack={onBack} onSelectArea={() => {}} />,
+        onToggleCctv={() => undefined}
+        pinDirections areaName="강남역" onBack={onBack} onSelectArea={() => {}} />,
     )
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
     expect(onBack).toHaveBeenCalledTimes(1)
@@ -428,7 +431,8 @@ describe('AreaDetail', () => {
   it('목록으로 버튼이 글자 폭만 차지한다', () => {
     render(<AreaDetail onShowOnMap={() => undefined}
         openCctvStreamUrl={null}
-        onToggleCctv={() => undefined} areaName="강남역" onBack={() => {}} onSelectArea={() => {}} />)
+        onToggleCctv={() => undefined}
+        pinDirections areaName="강남역" onBack={() => {}} onSelectArea={() => {}} />)
     expect(screen.getByRole('button', { name: '목록으로' })).toHaveClass('w-fit')
   })
 
@@ -505,7 +509,8 @@ describe('AreaDetail', () => {
     rerender(
       <AreaDetail onShowOnMap={() => undefined}
         openCctvStreamUrl={null}
-        onToggleCctv={() => undefined} areaName="경복궁" onBack={() => {}} onSelectArea={() => {}} />,
+        onToggleCctv={() => undefined}
+        pinDirections areaName="경복궁" onBack={() => {}} onSelectArea={() => {}} />,
     )
     expect(screen.getByRole('status')).toBeEmptyDOMElement()
   })
@@ -555,6 +560,38 @@ describe('AreaDetail', () => {
       'line-clamp-2',
       'break-words',
     )
+  })
+
+  // 시트가 half에서 449px만 보이는데 내용은 5,396px이고 카카오맵 버튼이
+  // 5,369px 지점에 있었다(390×844 실측) — 주 CTA가 12화면 아래였다. 그래서
+  // 하단에 붙인다. **붙었는지는 jsdom이 못 잰다**(레이아웃이 없다) — 그 값을
+  // 만드는 클래스를 잠근다. `MapLinkButtons`의 `pinned` 주석이 실측을 갖는다.
+  it('길찾기가 시트 하단에 붙는다', () => {
+    renderDetail()
+    const bar = screen.getByRole('link', { name: '카카오맵' }).parentElement
+      ?.parentElement
+    expect(bar).toHaveClass('sticky', 'bottom-0')
+    // 배경이 없으면 밑으로 흐르는 글자가 버튼 사이로 비친다.
+    expect(bar).toHaveClass('bg-surface-container-lowest')
+  })
+
+  // peek(16%)에서는 시트가 111px만 보인다. 73px짜리 바를 붙이면 남는 것이
+  // 「목록으로」 한 줄이라, 지도를 보려고 내려 둔 시트를 버튼이 차지한다.
+  it('peek에서는 길찾기를 붙이지 않는다', () => {
+    render(
+      <AreaDetail
+        areaName="강남역"
+        onBack={() => undefined}
+        onSelectArea={() => undefined}
+        onShowOnMap={() => undefined}
+        openCctvStreamUrl={null}
+        onToggleCctv={() => undefined}
+        pinDirections={false}
+      />,
+    )
+    const bar = screen.getByRole('link', { name: '카카오맵' }).parentElement
+      ?.parentElement
+    expect(bar).not.toHaveClass('sticky')
   })
 
   // **아이콘뿐인 버튼이라 이름이 유일한 설명이다.** 목적지("인스타그램")만

@@ -29,6 +29,15 @@ interface Props {
   /** 지금 펼쳐 둔 CCTV. 지도 마커와 시트가 나눠 갖는 상태라 위에서 내려온다. */
   readonly openCctvStreamUrl: string | null
   readonly onToggleCctv: (streamUrl: string) => void
+  /**
+   * 길찾기 바를 시트 하단에 붙여 둘까. peek(16%)에서는 거짓이다 —
+   * 근거는 `MapLinkButtons`의 `pinned` 주석.
+   *
+   * 단계를 알아야 하는 것이 상세뿐이라 불리언 하나로 받는다. `Detent`를
+   * 그대로 넘기면 이 파일이 시트 단계 전체를 알게 되는데, 그러면 다른
+   * 절들도 단계를 보고 판단하기 시작한다.
+   */
+  readonly pinDirections: boolean
 }
 
 // 상세의 절 순서를 소유하는 파일이다. 각 절의 내용은 옆 파일들이 갖는다 —
@@ -42,6 +51,7 @@ export function AreaDetail({
   onShowOnMap,
   openCctvStreamUrl,
   onToggleCctv,
+  pinDirections,
 }: Props) {
   const entry = findAreaByName(areaName)
 
@@ -202,11 +212,14 @@ export function AreaDetail({
 
       <NearbyCalmSection exclude={entry.name} onSelectArea={onSelectArea} />
 
-      {/* **길찾기가 맨 아래다.** 샘플(서울 인파레이더)이 혼잡도·차트·CCTV·
-          주차·행사를 다 보여준 뒤 맨 끝에 「카카오맵 / 네이버 / 티맵」을
-          놓는다 — 화면의 순서가 곧 사용자의 순서라는 뜻이다. **읽고 나서
-          갈지 정한다.** 근거는 `MapLinkButtons`의 주석. */}
-      <MapLinkButtons entry={entry} />
+      {/* **길찾기는 시트 하단에 고정된 바다.** 마지막 자식인 것은 흐름 안의
+          제자리가 여기라는 뜻이고(sticky는 자기 자리를 남긴다), 그래서 맨
+          아래까지 굴리면 「근처 쾌적한 장소」 뒤로 돌아간다.
+
+          예전에 여기 「맨 아래에 두는 이유는 읽고 나서 갈지 정하기 때문」이라고
+          적혀 있었다. **그 근거가 틀렸다** — 샘플은 이것을 고정한다. 어떻게
+          잘못 읽었는지는 `MapLinkButtons`의 주석에 남겼다. */}
+      <MapLinkButtons entry={entry} pinned={pinDirections} />
     </div>
   )
 }
