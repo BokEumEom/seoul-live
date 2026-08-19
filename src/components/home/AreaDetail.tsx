@@ -86,13 +86,12 @@ export function AreaDetail({
     <div className="flex flex-col gap-3 pb-6">
       {header}
 
-      <AreaHero entry={entry} coords={location.coords} level={snapshot?.congestion} />
-
-      {/* 저장·공유. 히어로 바로 다음이다 — 예측 뒤에 두면 저장 버튼이 어느
-          대상 기기에서도 폴드 밖이라, 헤더의 별이 늘 보이던 것보다 못해진다.
+      {/* 즐겨찾기·인스타그램·공유가 **제목 줄 안**에 있다 — 샘플(서울
+          인파레이더)의 배치다. 예전에는 히어로 아래 별도의 48px 행이었는데,
+          그 행과 여백을 합쳐 72px을 아꼈다(근거는 `ActionButtons`의 주석).
           **길찾기 셋은 여기 없다. 맨 아래로 내려갔다**(`MapLinkButtons`) —
           저장은 다 읽기 전에도 하고 싶을 수 있지만 길찾기는 다 읽은 뒤에
-          하는 일이라서다. 혼잡도 응답 밖인 이유는 카탈로그만 있으면 이 둘이
+          하는 일이라서다. 혼잡도 응답 밖인 이유는 카탈로그만 있으면 이 셋이
           성립하기 때문이다 — API가 흔들린 날까지 사라지면 안 된다.
           즐겨찾기라는 사실은 여기 남는다. 넘기는 건 눌림 상태와 콜백뿐이다.
 
@@ -100,21 +99,26 @@ export function AreaDetail({
           컴포넌트가 언마운트되지 않아 저장 알림 리전에 앞 명소 문구가 남는다.
           다시 낭독되지는 않지만 리전을 훑는 사용자에게는 지금 화면과 무관한
           말이 적혀 있게 된다. */}
-      <ActionButtons
-        key={entry.name}
+      <AreaHero
         entry={entry}
-        saved={starred}
-        onSave={() => toggle(areaName)}
+        coords={location.coords}
+        level={snapshot?.congestion}
+        actions={
+          <ActionButtons
+            key={entry.name}
+            entry={entry}
+            saved={starred}
+            onSave={() => toggle(areaName)}
+          />
+        }
       />
 
-      {/* 요약 칩 한 줄. 샘플(서울 인파레이더)의 「주차 45% · 정체 · 행사 12」
-          자리이고, 아래 도시 정보 절들의 목차 노릇도 한다 — 도시 정보가 통째로
+      {/* 요약 칩 한 줄. 샘플(서울 인파레이더)의 「서행 · 행사 3 · 지하철 1 ·
+          CCTV 5」 자리이고, 아래 절들의 목차 노릇도 한다 — 도시 정보가 통째로
           펼쳐지면서 상세가 매우 길어졌기 때문이다.
 
-          **액션 행 다음, 혼잡도 앞이다.** 샘플은 이름 바로 아래에 두지만 우리는
-          그 자리에 저장·공유가 있다. 그 둘은 혼잡도 응답 없이도 성립해서 앞에
-          있어야 하고, 칩은 도시정보가 도착해야 생기므로 그 뒤가 맞다 —
-          반대로 두면 칩이 늦게 도착하면서 액션 행을 밀어낸다.
+          **히어로 바로 다음, 혼잡도 앞이다.** 조작부가 제목 줄로 올라가면서
+          샘플과 같은 자리가 됐다.
 
           추가 호출은 0이다. 이미 받아 둔 응답을 다시 셀 뿐이다. */}
       <div className="px-4">

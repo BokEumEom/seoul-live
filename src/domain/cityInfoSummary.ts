@@ -84,6 +84,28 @@ function subwayLineCount(info: CityInfo): number {
  * **그래서 샘플과 순서가 다르다.** 샘플(서울 인파레이더)은 주차를 맨 앞에
  * 두지만 그쪽 칩은 누를 수 없어 순서가 목차일 필요가 없다.
  */
+/**
+ * 「CCTV 5」 칩.
+ *
+ * **`summarizeCityInfo` 밖에 있다.** 저 함수는 `citydata` 응답 **하나**를
+ * 세는데 CCTV는 다른 엔드포인트에서 온다(`api/cctv`, 서울 OpenAPI가 아니라
+ * 쿼터 밖이다). 두 응답을 합친 인자를 새로 만들면 「이 응답을 요약한다」는
+ * 저 함수의 뜻이 흐려지고, 도시 정보 없이 CCTV만 도착한 순간을 표현할 수도
+ * 없어진다.
+ *
+ * 그래도 **도메인에 있다**. 화면에서 객체 리터럴로 짓지 않는 이유는 라벨 틀
+ * 때문이다 — `i18n.test.ts`가 칩 라벨을 도메인에서 뽑아 사전 완결성을
+ * 검사하는데, 화면에 두면 그 그물 밖으로 빠져 번역 없이 배포된다.
+ *
+ * 0대면 `null`이다. 「CCTV 0」은 목차로서 갈 곳이 없는 칩이다.
+ */
+export function cctvChip(count: number): CityInfoChip | null {
+  if (count === 0) {
+    return null
+  }
+  return { label: 'CCTV {개수}', labelParams: { 개수: count }, sectionId: 'cctv' }
+}
+
 export function summarizeCityInfo(info: CityInfo): readonly CityInfoChip[] {
   const vacancy = parkingVacancyRate(info.parking)
   const bikes = totalBikes(info.bikes)

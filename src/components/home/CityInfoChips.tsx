@@ -1,9 +1,32 @@
 import { t } from '../../i18n/t'
-import { useCityInfo } from '../../data/queries'
-import { cityInfoSectionDomId, summarizeCityInfo } from '../../domain/cityInfoSummary'
+import { useCctv, useCityInfo } from '../../data/queries'
+import {
+  cctvChip,
+  cityInfoSectionDomId,
+  summarizeCityInfo,
+  type CityInfoSectionId,
+} from '../../domain/cityInfoSummary'
+import { Icon, type IconName } from '../common/Icon'
 
 interface Props {
   readonly areaName: string
+}
+
+/**
+ * 칩에 붙는 글리프. **절 제목이 쓰는 것과 같은 아이콘이어야 한다** — 칩이
+ * 목차라서, 누르고 도착한 절의 제목에 다른 그림이 붙어 있으면 제대로 왔는지
+ * 알 수 없다. 매칭은 `CityInfoPanel`·`CctvSection`의 `icon` 속성이 기준이다.
+ *
+ * 도메인이 아니라 여기 있는 이유는 `t()`를 도메인에서 부르지 않는 것과 같다 —
+ * `CityInfoChip`은 「무엇을 말할지」만 정하고 그림·글자는 화면이 고른다.
+ */
+const CHIP_ICON: Readonly<Record<CityInfoSectionId, IconName>> = {
+  cctv: 'cctv',
+  road: 'road',
+  subway: 'subway',
+  parking: 'parking',
+  bikes: 'bike',
+  events: 'event',
 }
 
 // 상세 맨 위의 요약 칩 한 줄. 샘플(서울 인파레이더)의
@@ -24,13 +47,22 @@ interface Props {
 // 이 줄이 영영 안 오므로 빈 띠가 남는다.
 export function CityInfoChips({ areaName }: Props) {
   const cityInfo = useCityInfo(areaName)
+  const cctv = useCctv(areaName)
   const info = cityInfo.data
 
-  if (info === undefined) {
-    return null
-  }
+  // **CCTV 칩이 맨 앞이다.** 칩 순서 = 절 순서라는 계약(`cityInfoSummary.ts`)
+  // 때문이다 — CCTV 절이 도시 정보 패널보다 위에 있다(`AreaDetail`). 샘플은
+  // CCTV를 끝에 두지만 그쪽 칩은 누를 수 없어 순서가 목차일 필요가 없다.
+  //
+  // 추가 호출은 0이다. `CctvSection`·`CctvMarkerLayer`와 queryKey가 같다.
+  const cctvOne = cctvChip(cctv.data?.length ?? 0)
 
-  const chips = summarizeCityInfo(info)
+  // 도시 정보가 아직 없어도 CCTV만으로 줄이 설 수 있다. 둘은 별개 조회라
+  // 한쪽을 다른 쪽의 도착에 묶으면 먼저 온 값이 이유 없이 기다린다.
+  const chips = [
+    ...(cctvOne === null ? [] : [cctvOne]),
+    ...(info === undefined ? [] : summarizeCityInfo(info)),
+  ]
   if (chips.length === 0) {
     return null
   }
@@ -49,8 +81,12 @@ export function CityInfoChips({ areaName }: Props) {
               onClick={() => {
                 scrollToSection(cityInfoSectionDomId(chip.sectionId))
               }}
-              className="min-h-9 rounded-full border border-outline-variant bg-surface-container-lowest px-3 text-label-md whitespace-nowrap text-on-surface-variant"
+              className="flex min-h-9 items-center gap-1.5 rounded-full border border-outline-variant bg-surface-container-lowest px-3 text-label-md whitespace-nowrap text-on-surface-variant"
             >
+              {/* 샘플의 칩에도 글리프가 붙는다. 글자만 있으면 「지하철 1」과
+                  「행사 3」이 같은 모양이라 원하는 칩을 고르려면 다 읽어야
+                  한다 — 절 제목에 아이콘을 붙인 것과 같은 이유다. */}
+              <Icon name={CHIP_ICON[chip.sectionId]} className="size-4" />
               {t(chip.label, chip.labelParams)}
             </button>
           </li>

@@ -3,12 +3,26 @@ import userEvent from '@testing-library/user-event'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CityInfo } from '../../domain/cityInfo'
+import type { CctvCamera } from '../../domain/cctv'
 import { CityInfoChips } from './CityInfoChips'
 
-vi.mock('../../data/queries', () => ({ useCityInfo: vi.fn() }))
+vi.mock('../../data/queries', () => ({ useCityInfo: vi.fn(), useCctv: vi.fn() }))
 
 const queries = await import('../../data/queries')
 const useCityInfo = vi.mocked(queries.useCityInfo)
+const useCctv = vi.mocked(queries.useCctv)
+
+const CAMERAS: readonly CctvCamera[] = [
+  { name: '광화문', coords: null, streamUrl: 'https://a/1.m3u8' },
+  { name: '세종대로', coords: null, streamUrl: 'https://a/2.m3u8' },
+]
+
+/** CCTV가 아직 안 왔거나 없는 상태. 대부분의 테스트가 볼 것이 아니다. */
+function noCctv(): UseQueryResult<readonly CctvCamera[]> {
+  return { data: undefined, isPending: true, isError: false } as UseQueryResult<
+    readonly CctvCamera[]
+  >
+}
 
 const EMPTY: CityInfo = {
   areaName: '광화문·덕수궁',
@@ -34,6 +48,7 @@ function ok(info: CityInfo): UseQueryResult<CityInfo> {
  */
 function renderInSheet(info: CityInfo): HTMLElement {
   useCityInfo.mockReturnValue(ok(info))
+  useCctv.mockReturnValue(noCctv())
   const { container } = render(
     <div data-sheet-content>
       <CityInfoChips areaName="광화문·덕수궁" />
@@ -52,6 +67,8 @@ const WITH_PARKING: CityInfo = {
 
 beforeEach(() => {
   useCityInfo.mockReset()
+  useCctv.mockReset()
+  useCctv.mockReturnValue(noCctv())
 })
 
 describe('CityInfoChips', () => {
@@ -99,5 +116,53 @@ describe('CityInfoChips', () => {
     const { container } = render(<CityInfoChips areaName="광화문·덕수궁" />)
 
     expect(container).toBeEmptyDOMElement()
+  })
+
+  // 샘플(서울 인파레이더)의 칩 줄에 「CCTV 5」가 있다. 우리 CCTV는 도시정보와
+  // **다른 엔드포인트**라, 도메인 요약 함수 하나만 보면 이 칩이 영영 안 생긴다.
+  it('CCTV 대수를 칩으로 세운다', () => {
+    useCityInfo.mockReturnValue(ok(WITH_PARKING))
+    useCctv.mockReturnValue({
+      data: CAMERAS,
+      isPending: false,
+      isError: false,
+    } as UseQueryResult<readonly CctvCamera[]>)
+    render(<CityInfoChips areaName="광화문·덕수궁" />)
+
+    expect(screen.getByRole('button', { name: 'CCTV 2' })).toBeInTheDocument()
+  })
+
+  // 칩 순서가 곧 절 순서라는 계약이 있다(`cityInfoSummary.ts`). CCTV 절은
+  // 도시정보 패널보다 **위**에 있으므로(`AreaDetail`) 칩도 맨 앞이어야 한다 —
+  // 어긋나면 왼쪽 칩이 아래쪽 절로 뛰어 방향 감각이 깨진다.
+  it('CCTV 칩이 도시정보 칩보다 앞이다', () => {
+    useCityInfo.mockReturnValue(ok(WITH_PARKING))
+    useCctv.mockReturnValue({
+      data: CAMERAS,
+      isPending: false,
+      isError: false,
+    } as UseQueryResult<readonly CctvCamera[]>)
+    render(<CityInfoChips areaName="광화문·덕수궁" />)
+
+    const labels = screen.getAllByRole('button').map((chip) => chip.textContent)
+    expect(labels).toEqual(['CCTV 2', '주차 45%'])
+  })
+
+  // 도시정보와 CCTV는 별개 조회다. 한쪽을 다른 쪽의 도착에 묶으면 먼저 온
+  // 값이 이유 없이 기다린다 — 도시정보가 통째로 없는 명소도 있다.
+  it('도시 정보가 없어도 CCTV만으로 줄이 선다', () => {
+    useCityInfo.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+    } as UseQueryResult<CityInfo>)
+    useCctv.mockReturnValue({
+      data: CAMERAS,
+      isPending: false,
+      isError: false,
+    } as UseQueryResult<readonly CctvCamera[]>)
+    render(<CityInfoChips areaName="광화문·덕수궁" />)
+
+    expect(screen.getByRole('button', { name: 'CCTV 2' })).toBeInTheDocument()
   })
 })

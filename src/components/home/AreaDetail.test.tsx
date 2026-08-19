@@ -520,18 +520,52 @@ describe('AreaDetail', () => {
     expect(screen.queryByText('정보 없음')).toBeNull()
   })
 
-  // Google Maps의 Directions·Save·Share 자리다. 저장을 공유 아래 한 줄로 더
-  // 쌓으면 액션 행이 세 줄이 되어 그만큼 아래가 폴드 밖으로 밀린다(계획서 Step 3).
-  it('저장이 공유와 같은 줄에 같은 기하로 선다', () => {
+  // 셋이 **제목과 같은 줄**에 선다 — 샘플(서울 인파레이더)의 배치이고, 아래에
+  // 별도의 액션 행을 두면 48px + 여백 24px이 그만큼 아래를 폴드 밖으로 민다.
+  it('즐겨찾기·인스타·공유가 제목과 같은 줄에 같은 기하로 선다', () => {
     renderDetail()
     const save = screen.getByRole('button', { name: '저장' })
+    const instagram = screen.getByRole('link', { name: '인스타그램에서 사진 보기' })
     const share = screen.getByRole('button', { name: '공유하기' })
-    expect(save.parentElement).toBe(share.parentElement)
-    // 한 줄에 나란히 서는 버튼의 높이·반경·간격이 갈리면 줄이 어긋난다.
-    for (const geometry of ['min-h-12', 'flex-1', 'gap-1.5', 'rounded-action']) {
+
+    // 한 상자 안에 셋이 나란히 있고, 그 상자가 제목과 같은 줄에 있다.
+    expect(instagram.parentElement).toBe(save.parentElement)
+    expect(share.parentElement).toBe(save.parentElement)
+    const title = screen.getByRole('heading', { name: '강남역' })
+    expect(save.parentElement?.parentElement).toBe(title.parentElement?.parentElement)
+
+    // 아이콘만 남은 버튼의 타깃이 갈리면 줄이 어긋난다. 48px은 이 저장소가
+    // 아이콘뿐인 버튼에 쓰는 크기다(`ThemeToggle`과 같다).
+    for (const geometry of ['size-12', 'rounded-full']) {
       expect(save).toHaveClass(geometry)
+      expect(instagram).toHaveClass(geometry)
       expect(share).toHaveClass(geometry)
     }
+  })
+
+  // 조작부가 제목 줄로 올라오면서 제목에 남는 폭이 약 130px이 됐다(390×844
+  // 실측). 「Gyeongbokgung」은 한 낱말이라 그 폭에서 줄을 바꿀 자리가 없어,
+  // `break-words`가 없으면 `line-clamp`의 `overflow: hidden`에 걸려 **말줄임표도
+  // 없이** 「Gyeongbokgu」에서 뚝 끊긴다. 눈으로 봐야만 보이는 고장이라 잠근다.
+  it('긴 이름이 낱말 중간에서라도 줄을 바꾼다', () => {
+    renderDetail()
+    expect(screen.getByRole('heading', { name: '강남역' })).toHaveClass(
+      'line-clamp-2',
+      'break-words',
+    )
+  })
+
+  // **아이콘뿐인 버튼이라 이름이 유일한 설명이다.** 목적지("인스타그램")만
+  // 적으면 앱 밖으로 나간다는 사실이 빠진다. href가 실제로 채워져 있어야
+  // 브리지가 없는 환경에서도 폴백이 성립한다(`MapLinkButtons`와 같은 규칙).
+  it('인스타그램이 그 명소의 해시태그로 열린다', () => {
+    renderDetail()
+    expect(
+      screen.getByRole('link', { name: '인스타그램에서 사진 보기' }),
+    ).toHaveAttribute(
+      'href',
+      'https://www.instagram.com/explore/tags/%EA%B0%95%EB%82%A8%EC%97%AD/',
+    )
   })
 
   // **주소가 없으면 공유가 아니다.** 예전에는 문장 하나("강남역 실시간 혼잡도

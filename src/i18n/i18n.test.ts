@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { AGE_LABELS } from '../domain/composition'
 import { congestionHeadline } from '../domain/congestion'
 import { filterLabel, PRESETS } from '../domain/presets'
-import { summarizeCityInfo } from '../domain/cityInfoSummary'
+import { cctvChip, summarizeCityInfo } from '../domain/cityInfoSummary'
 import { AREA_CATEGORIES, CATEGORY_LABEL, CONGESTION_LEVELS } from '../domain/types'
 import { EN } from './en'
 
@@ -12,7 +12,13 @@ import { EN } from './en'
  * 하나 늘 때 여기가 낡는데, 이렇게 두면 그때 「사전에 없다」로 죽는다.
  */
 function chipLabels(): readonly string[] {
-  return summarizeCityInfo({
+  // CCTV 칩만 `summarizeCityInfo` 밖에 있다 — 도시정보 응답이 아니라 별개
+  // 엔드포인트에서 오기 때문이다(근거는 `cityInfoSummary.ts`의 `cctvChip`).
+  // 그물에서 빠지지 않게 여기서 함께 뽑는다.
+  const cctv = cctvChip(5)
+  return [
+    ...(cctv === null ? [] : [cctv.label]),
+    ...summarizeCityInfo({
     areaName: '광화문·덕수궁',
     areaCode: 'POI009',
     freshness: null,
@@ -30,7 +36,8 @@ function chipLabels(): readonly string[] {
     events: [{ name: '행사', period: '', place: '', free: null, url: '' }],
     alerts: [],
     subway: [{ station: '시청', line: '1호선', direction: '', terminal: '', message: '' }],
-  }).map((chip) => chip.label)
+    }).map((chip) => chip.label),
+  ]
 }
 
 /**

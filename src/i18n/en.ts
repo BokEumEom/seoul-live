@@ -66,6 +66,11 @@ export const EN: Readonly<Record<string, string>> = {
   저장: 'Save',
   저장됨: 'Saved',
   공유하기: 'Share',
+  // **목적지가 아니라 무슨 일이 일어나는지를 적는다.** 아이콘뿐인 버튼이라
+  // 이 문장이 유일한 설명이고, 앱 밖으로 나간다는 사실이 빠지면 돌아올 수
+  // 없다고 느낀다. 「사진」인 것은 우리가 여는 곳이 그 명소의 해시태그
+  // 페이지이기 때문이다(`domain/socialLinks.ts`).
+  '인스타그램에서 사진 보기': 'See photos on Instagram',
   카카오맵: 'KakaoMap',
   네이버: 'Naver',
   티맵: 'TMAP',
@@ -235,6 +240,10 @@ export const EN: Readonly<Record<string, string>> = {
   '통합대기 {등급}': 'Air quality {등급}',
 
   // ── 상세: 요약 칩 ──
+  // 이 하나만 `summarizeCityInfo` 밖에서 만들어진다(CCTV는 다른 엔드포인트라
+  // 도시정보 응답에 없다). 그래서 `i18n.test.ts`의 칩 라벨 검사가 못 잡는다 —
+  // 지울 때 조심할 것.
+  'CCTV {개수}': 'Cameras {개수}',
   '주차 {비율}%': '{비율}% parking free',
   '지하철 {개수}': 'Subway {개수}',
   '따릉이 {대수}대': '{대수} bikes',
