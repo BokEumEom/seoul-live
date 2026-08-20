@@ -3,13 +3,14 @@ import userEvent from '@testing-library/user-event'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CityInfo } from '../../domain/cityInfo'
-import type { AreaSnapshot } from '../../domain/types'
+import type { AreaCongestion, AreaSnapshot } from '../../domain/types'
 import { reset } from '../../hooks/favoritesStore'
+import { findAreaByName } from '../../data/areas'
 import { AreaDetail } from './AreaDetail'
 
 vi.mock('../../data/queries', () => ({
   useAreaSnapshot: vi.fn(),
-  useAreaSnapshots: vi.fn(),
+  useAreaCongestion: vi.fn(),
   useCityInfo: vi.fn(),
   // CCTV는 이 파일이 볼 것이 아니다(CctvSection.test.tsx의 몫). 다만 목록을
   // 안 주면 조회 중으로 남아 절이 안 그려지므로, 여기서는 「없는 명소」로 둔다 —
@@ -37,7 +38,7 @@ const locationContext = await import('../../app/locationContext')
 const links = await import('../../platform/links')
 const shareMessage = vi.mocked(links.shareMessage)
 const useAreaSnapshot = vi.mocked(queries.useAreaSnapshot)
-const useAreaSnapshots = vi.mocked(queries.useAreaSnapshots)
+const useAreaCongestion = vi.mocked(queries.useAreaCongestion)
 const useCityInfo = vi.mocked(queries.useCityInfo)
 const useLocation = vi.mocked(locationContext.useLocation)
 
@@ -86,10 +87,8 @@ beforeEach(() => {
   localStorage.clear()
   vi.clearAllMocks()
   useAreaSnapshot.mockReturnValue(ok(SNAPSHOT))
-  useAreaSnapshots.mockReturnValue(
-    ok<readonly (AreaSnapshot | null)[]>([]) as UseQueryResult<
-      readonly (AreaSnapshot | null)[]
-    >,
+  useAreaCongestion.mockReturnValue(
+    ok<readonly AreaCongestion[]>([]),
   )
   useCityInfo.mockReturnValue(ok(EMPTY_CITY_INFO))
   standAt(null)
@@ -110,6 +109,13 @@ function before(first: Element, second: Element): boolean {
     first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING,
   )
 }
+
+// **좌표를 숫자로 박아 두지 않는다.** 예전에는 강남역이 (37.498, 127.0276)이라고
+// 적고 거기서 0.009° 북쪽 같은 값을 손으로 계산했는데, 2026-08-20에 카탈로그
+// 좌표를 서울시가 주는 폴리곤 중심으로 갈아 끼우면서 네 테스트가 한꺼번에
+// 깨졌다. 재려던 것은 「거리 계산과 표기」이지 강남역이 정확히 어디냐가 아니다.
+// 그래서 기준점을 카탈로그에서 읽고, 거기서의 **차이**만 여기서 정한다.
+const GANGNAM = findAreaByName('강남역')!
 
 function renderDetail(areaName = '강남역') {
   return render(
@@ -138,7 +144,7 @@ describe('AreaDetail', () => {
   // 지구 반지름(6,371km)에서 1,000.75m가 나온다 — formatDistance가 10m 단위로
   // 반올림해 "1.0km", walkingMinutes(시속 4km)가 round(15.01)=15분이다.
   it('히어로가 카테고리·거리·도보 시간을 한 줄로 보여준다', () => {
-    standAt({ lat: 37.507, lng: 127.0276 })
+    standAt({ lat: GANGNAM.lat + 0.009, lng: GANGNAM.lng })
     renderDetail()
     expect(screen.getByText('역·번화가 · 1.0km · 도보 15분')).toBeInTheDocument()
   })
@@ -147,7 +153,7 @@ describe('AreaDetail', () => {
   // 도보 시간이 통째로 사라진다(AreaListItem이 같은 함정을 주석으로 남겼다).
   // walkingMinutes의 하한 1분도 여기서 함께 잠긴다.
   it('명소 위에 서 있어도 거리와 도보 시간을 지우지 않는다', () => {
-    standAt({ lat: 37.498, lng: 127.0276 })
+    standAt({ lat: GANGNAM.lat, lng: GANGNAM.lng })
     renderDetail()
     expect(screen.getByText('역·번화가 · 0m · 도보 1분')).toBeInTheDocument()
   })
@@ -156,7 +162,7 @@ describe('AreaDetail', () => {
   // 구간만 빠지고 거리는 남는다. 「도보 160분」(홍대입구역 10.7km)은 이 앱을
   // 쓸 이유를 만드는 첫 세 줄의 신뢰를 깎는다.
   it('걸어갈 거리가 아니면 도보 시간을 적지 않는다', () => {
-    standAt({ lat: 37.543, lng: 127.0276 })
+    standAt({ lat: GANGNAM.lat + 0.045, lng: GANGNAM.lng })
     renderDetail()
     expect(screen.getByText('역·번화가 · 5.0km')).toBeInTheDocument()
   })
@@ -299,7 +305,7 @@ describe('AreaDetail', () => {
       ok({
         ...EMPTY_CITY_INFO,
         bikes: [
-          { name: '가까운 대여소', coords: { lat: 37.5, lng: 127.0276 }, bikes: 6, racks: 21 },
+          { name: '가까운 대여소', coords: { lat: GANGNAM.lat + 0.00198, lng: GANGNAM.lng }, bikes: 6, racks: 21 },
         ],
       }),
     )
@@ -446,15 +452,15 @@ describe('AreaDetail', () => {
       status: 'granted',
       retry: vi.fn(),
     } as unknown as ReturnType<typeof locationContext.useLocation>)
-    useAreaSnapshots.mockReturnValue(
-      ok<readonly (AreaSnapshot | null)[]>(
+    useAreaCongestion.mockReturnValue(
+      ok<readonly AreaCongestion[]>(
         AREA_NAMES.map((name) => ({
           ...SNAPSHOT,
           code: name,
           name,
           congestion: '여유' as const,
         })),
-      ) as UseQueryResult<readonly (AreaSnapshot | null)[]>,
+      ) as UseQueryResult<readonly AreaCongestion[]>,
     )
 
     renderDetail('경복궁')

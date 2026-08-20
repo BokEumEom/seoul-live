@@ -10,8 +10,8 @@ import { RankList } from '../components/today/RankList'
 import { RecommendationCard } from '../components/today/RecommendationCard'
 import { SummaryCard } from '../components/today/SummaryCard'
 import { ThemeSetting } from '../components/today/ThemeSetting'
-import { AREA_CATALOG, AREA_NAMES } from '../data/areas'
-import { useAreaSnapshots } from '../data/queries'
+import { AREA_CATALOG } from '../data/areas'
+import { useAreaCongestion } from '../data/queries'
 import {
   categoryAverages,
   summarize,
@@ -36,7 +36,7 @@ interface Props {
 // **useCityInfo를 부르지 않는다.** 추가 호출이 0이라는 것이 이 화면의 존재
 // 근거다. 재난문자는 상세에서 이미 받아둔 캐시에 있는 것만 모은다.
 export function TodayScreen({ onSelectArea, onBack }: Props) {
-  const snapshots = useAreaSnapshots(AREA_NAMES)
+  const snapshots = useAreaCongestion()
   const location = useLocation()
   const alerts = useCachedCityAlerts()
 

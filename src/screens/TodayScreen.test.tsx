@@ -3,17 +3,17 @@ import userEvent from '@testing-library/user-event'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CityAlert } from '../domain/cityInfo'
-import type { AreaSnapshot } from '../domain/types'
+import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { TodayScreen } from './TodayScreen'
 
-vi.mock('../data/queries', () => ({ useAreaSnapshots: vi.fn() }))
+vi.mock('../data/queries', () => ({ useAreaCongestion: vi.fn() }))
 vi.mock('../hooks/useCachedCityAlerts', () => ({ useCachedCityAlerts: vi.fn() }))
 vi.mock('../app/locationContext', () => ({ useLocation: vi.fn() }))
 
 const queries = await import('../data/queries')
 const cached = await import('../hooks/useCachedCityAlerts')
 const locationContext = await import('../app/locationContext')
-const useAreaSnapshots = vi.mocked(queries.useAreaSnapshots)
+const useAreaCongestion = vi.mocked(queries.useAreaCongestion)
 const useCachedCityAlerts = vi.mocked(cached.useCachedCityAlerts)
 const useLocation = vi.mocked(locationContext.useLocation)
 
@@ -37,11 +37,11 @@ function snapshotFor(
 }
 
 function mockSnapshots(data: readonly (AreaSnapshot | null)[]): void {
-  useAreaSnapshots.mockReturnValue({
+  useAreaCongestion.mockReturnValue({
     data,
     isPending: false,
     isError: false,
-  } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+  } as unknown as UseQueryResult<readonly AreaCongestion[]>)
 }
 
 /** 명소마다 혼잡도를 다르게 준다 — 전부 같으면 TOP 순서 테스트가 무의미하다. */
@@ -87,7 +87,8 @@ describe('TodayScreen', () => {
   it('혼잡도 분포를 한 줄로 요약한다', () => {
     render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     // 30곳을 네 단계로 돌려 배분하면 붐빔은 7곳이다(인덱스 3,7,...,27).
-    expect(screen.getByText(/30곳 중 붐빔 7곳/)).toBeInTheDocument()
+    // 121곳에 네 등급을 돌려 가며 매기므로 붐빔은 index%4===3인 30곳이다.
+    expect(screen.getByText(/121곳 중 붐빔 30곳/)).toBeInTheDocument()
   })
 
   it('항목을 누르면 명소를 올려보낸다', async () => {
@@ -118,8 +119,9 @@ describe('TodayScreen', () => {
   })
 
   it('스냅샷이 하나도 없으면 그 사실을 말한다', async () => {
-    const { AREA_CATALOG } = await import('../data/areas')
-    mockSnapshots(AREA_CATALOG.map(() => null))
+    // **빈 배열이 「하나도 못 받았다」이다.** 예전에는 카탈로그 길이만큼 `null`을
+    // 채웠는데, 이름으로 맞추는 지금은 배열에 이름이 없는 것이 곧 없는 것이다.
+    mockSnapshots([])
     render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     expect(screen.getByText('혼잡도 정보를 아직 받지 못했어요.')).toBeInTheDocument()
     // 순위를 매길 근거가 없으면 목록 자체를 그리지 않는다.
@@ -127,12 +129,12 @@ describe('TodayScreen', () => {
   })
 
   it('혼잡도 조회가 실패하면 에러를 보여준다', () => {
-    useAreaSnapshots.mockReturnValue({
+    useAreaCongestion.mockReturnValue({
       data: undefined,
       isPending: false,
       isError: true,
       refetch: vi.fn(),
-    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+    } as unknown as UseQueryResult<readonly AreaCongestion[]>)
     render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     expect(screen.getByText('혼잡도 정보를 가져오지 못했어요.')).toBeInTheDocument()
   })
@@ -149,11 +151,11 @@ describe('TodayScreen', () => {
   it('로딩 중에도 목록으로 돌아갈 수 있다', () => {
     // 뒤로가기를 데이터가 온 뒤에만 그리면, 느린 응답을 기다리는 동안
     // 시트가 화면의 92%를 덮은 채 빠져나갈 길이 없다.
-    useAreaSnapshots.mockReturnValue({
+    useAreaCongestion.mockReturnValue({
       data: undefined,
       isPending: true,
       isError: false,
-    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+    } as unknown as UseQueryResult<readonly AreaCongestion[]>)
     render(<TodayScreen onSelectArea={() => {}} onBack={() => {}} />)
     expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
   })

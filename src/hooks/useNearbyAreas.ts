@@ -5,7 +5,7 @@ import { haversineMeters } from '../domain/distance'
 import type {
   AreaCatalogEntry,
   AreaCategory,
-  AreaSnapshot,
+  AreaCongestion,
   Coords,
   NearbyArea,
 } from '../domain/types'
@@ -23,7 +23,8 @@ const MAX_RECOMMENDATIONS = 5
 
 interface BuildInput {
   readonly entries: readonly AreaCatalogEntry[]
-  readonly snapshots: readonly (AreaSnapshot | null)[]
+  /** 이름을 키로 맞춘다 — 순서도 개수도 `entries`와 같을 필요가 없다. */
+  readonly snapshots: readonly AreaCongestion[]
   readonly coords: Coords | null
   readonly category: CategoryFilterValue
   /** 기본은 거리순. 좌표가 없으면 무엇을 골라도 혼잡도순으로 내려간다. */
@@ -58,11 +59,18 @@ function compareByBusiest(a: NearbyArea, b: NearbyArea): number {
 export function buildNearbyList(input: BuildInput): readonly NearbyArea[] {
   const { entries, snapshots, coords, category, sort = 'distance' } = input
 
+  // **자리(index)가 아니라 이름으로 맞춘다.** 예전에는 `snapshots[index]`였다 —
+  // 호출부가 넘긴 배열이 `entries`와 같은 순서·같은 길이라는 약속에 기대고
+  // 있었고, 어긋나면 **명소 A의 혼잡도가 B에 붙는다**(조용히, 그럴듯하게).
+  // 출처가 「이름을 키로 주는 한 번의 일괄 조회」로 바뀌면서 그 약속을 지킬
+  // 방법 자체가 없어졌고, 이름으로 맞추면 애초에 지킬 것이 없다.
+  const byName = new Map(snapshots.map((row) => [row.name, row]))
+
   const combined = entries
     .map(
-      (entry, index): NearbyArea => ({
+      (entry): NearbyArea => ({
         entry,
-        snapshot: snapshots[index] ?? null,
+        snapshot: byName.get(entry.name) ?? null,
         distanceMeters: coords === null ? null : haversineMeters(coords, entry),
       }),
     )
@@ -95,7 +103,7 @@ export function pickRecommendations(
 }
 
 export function useNearbyAreas(
-  snapshots: readonly (AreaSnapshot | null)[],
+  snapshots: readonly AreaCongestion[],
   coords: Coords | null,
   category: CategoryFilterValue,
   sort: SortMode = 'distance',

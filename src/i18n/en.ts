@@ -262,7 +262,6 @@ export const EN: Readonly<Record<string, string>> = {
   // ── 오늘의 서울 ──
   '오늘의 서울': "Seoul today",
   '지금 서울': 'Seoul now',
-  '{시각} 업데이트됨': 'updated {시각}',
   '{전체}곳 중 {받음}곳만 정보가 왔어요.': 'Data for {받음} of {전체} places.',
   '재난문자 {건수}건': '{건수} emergency alerts',
   '지도에 안 보이는 전체 그림': 'The bigger picture',

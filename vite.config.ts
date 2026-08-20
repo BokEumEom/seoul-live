@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { fetchArea } from './api/_lib/seoul.js'
 import { isAllowedAreaName } from './api/_lib/allowed-areas.js'
 import { mapWithConcurrency } from './api/_lib/concurrency.js'
-import { fetchCctvRows } from './api/_lib/seoulRtd.js'
+import { fetchCctvRows, fetchHotspotRows } from './api/_lib/seoulRtd.js'
 
 /** 배포의 api/citydata-bulk.ts와 같은 값. 근거는 그 파일과 concurrency.ts 주석. */
 const UPSTREAM_CONCURRENCY = 8
@@ -47,6 +47,20 @@ function seoulApiDevServer(env: Record<string, string>): Plugin {
           res.statusCode = status
           res.setHeader('Content-Type', 'application/json; charset=utf-8')
           res.end(JSON.stringify(body))
+        }
+
+        // **명소 전체 혼잡도도 인증키 검사보다 먼저다** — CCTV와 같은 상류다.
+        // 이게 아래 가드 뒤에 있으면 키 없이 화면만 만지는 개발에서 **목록과
+        // 지도가 통째로 죽는다**(CCTV는 한 절이 비는 정도였다).
+        if (url.pathname === '/api/hotspots') {
+          try {
+            send(200, { rows: await fetchHotspotRows() })
+          } catch (error) {
+            // 배포(api/hotspots.ts)와 같은 판단 — 혼잡도는 본체라 502로 올린다.
+            console.error('[dev api] /api/hotspots', error)
+            send(502, { error: '혼잡도 정보를 가져오지 못했습니다.' })
+          }
+          return
         }
 
         // **CCTV는 인증키 검사보다 먼저다.** 상류가 서울 OpenAPI가 아니라

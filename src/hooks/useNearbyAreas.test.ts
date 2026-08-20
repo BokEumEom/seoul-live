@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AREA_CATALOG } from '../data/areas'
-import type { AreaCatalogEntry, AreaSnapshot } from '../domain/types'
+import type { AreaCatalogEntry, AreaCongestion } from '../domain/types'
 import {
   buildNearbyList,
   pickRecommendations,
@@ -27,26 +27,17 @@ const ENTRIES: readonly AreaCatalogEntry[] = [
   { code: 'C', name: '먼여유', nameEn: '먼여유', lat: 37.65, lng: 127.05, category: '공원' },
 ]
 
+// 목록이 명소 하나에 대해 읽는 것은 이름과 등급뿐이다(`AreaCongestion`).
+// 예전에는 여기서 인구수·예보·구성비까지 채운 큰 스냅샷을 지어냈는데, 그 값들은
+// 이 훅이 한 번도 안 보는 것이라 「테스트가 뭘 요구하는가」를 흐렸다.
 function snapshot(
   name: string,
-  congestion: AreaSnapshot['congestion'],
-): AreaSnapshot {
-  return {
-    code: name,
-    name,
-    congestion,
-    message: '',
-    populationMin: 0,
-    populationMax: 0,
-    observedAt: '2026-08-03 14:00',
-    observedAtLabel: '14:00',
-    forecasts: [],
-    composition: null,
-    replaced: null,
-  }
+  congestion: AreaCongestion['congestion'],
+): AreaCongestion {
+  return { name, congestion }
 }
 
-const SNAPSHOTS: readonly AreaSnapshot[] = [
+const SNAPSHOTS: readonly AreaCongestion[] = [
   snapshot('가까운여유', '여유'),
   snapshot('가까운붐빔', '붐빔'),
   snapshot('먼여유', '여유'),
@@ -65,15 +56,17 @@ describe('buildNearbyList — 붐비는 순', () => {
     { code: 'E', name: '정보없음', nameEn: '정보없음', lat: 37.5, lng: 127, category: '공원' },
   ]
 
-  const BUSY_SNAPSHOTS: readonly (AreaSnapshot | null)[] = [
+  // **다섯째 명소는 목록에 없다.** 예전에는 그 자리에 `null`을 넣었는데,
+  // 이제 이름으로 맞추므로 「받아 온 값이 없다」는 곧 **배열에 그 이름이 없는
+  // 것**이다. 자리를 비워 두는 표현 자체가 사라졌다.
+  const BUSY_SNAPSHOTS: readonly AreaCongestion[] = [
     snapshot('여유1', '여유'),
     snapshot('붐빔1', '붐빔'),
     snapshot('보통1', '보통'),
     snapshot('여유2', '여유'),
-    null,
   ]
 
-  function levels(sort: SortMode): readonly (AreaSnapshot['congestion'] | null)[] {
+  function levels(sort: SortMode): readonly (AreaCongestion['congestion'] | null)[] {
     return buildNearbyList({
       entries: BUSY_ENTRIES,
       snapshots: BUSY_SNAPSHOTS,
@@ -183,7 +176,7 @@ describe('buildNearbyList', () => {
   it('스냅샷이 없는 명소도 목록에 남기되 snapshot은 null이다', () => {
     const list = buildNearbyList({
       entries: ENTRIES,
-      snapshots: [null, null, null],
+      snapshots: [],
       coords: HERE,
       category: '전체',
     })
@@ -197,7 +190,7 @@ describe('buildNearbyList', () => {
     // 정보가 안 보인다.
     const list = buildNearbyList({
       entries: ENTRIES,
-      snapshots: [null, SNAPSHOTS[1], SNAPSHOTS[2]],
+      snapshots: [SNAPSHOTS[1], SNAPSHOTS[2]],
       coords: null,
       category: '전체',
     })

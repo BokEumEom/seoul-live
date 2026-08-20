@@ -1,7 +1,7 @@
 import { t } from '../../i18n/t'
 import { useLocation } from '../../app/locationContext'
-import { AREA_NAMES } from '../../data/areas'
-import { useAreaSnapshots } from '../../data/queries'
+
+import { useAreaCongestion } from '../../data/queries'
 import { useNearbyAreas } from '../../hooks/useNearbyAreas'
 import { AreaList } from '../list/AreaList'
 import { AreaListItem } from '../list/AreaListItem'
@@ -18,7 +18,7 @@ interface Props {
 // 홈이 이미 받아둔 캐시를 그대로 쓴다. 추가 호출이 나가지 않는다.
 export function NearbyCalmSection({ exclude, onSelectArea }: Props) {
   const location = useLocation()
-  const snapshots = useAreaSnapshots(AREA_NAMES)
+  const snapshots = useAreaCongestion()
   const { recommended } = useNearbyAreas(snapshots.data ?? [], location.coords, '전체')
 
   const alternatives = recommended

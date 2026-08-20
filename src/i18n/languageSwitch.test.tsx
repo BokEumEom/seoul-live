@@ -83,7 +83,14 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Share' }))
 
     const message = share.mock.calls[0]?.[0] ?? ''
-    expect(message).toContain(encodeURIComponent(AREA_CATALOG[0].name))
+    // **인코딩 방식을 못 박지 않는다.** 예전에는 `encodeURIComponent(name)`을
+    // 그대로 찾았는데, 그건 첫 명소가 「강남역」이라 공백이 없어서 통했을 뿐이다.
+    // 카탈로그가 121곳이 되면서 첫 자리가 「강남 MICE 관광특구」가 됐고, 공백을
+    // `%20`으로 쓰느냐 `+`로 쓰느냐는 둘 다 옳은 URL이라 그 차이로 테스트가
+    // 깨졌다. 정작 확인하려던 것은 **주소에 실린 이름이 한국어인가**이므로,
+    // 다시 읽어서 값으로 비교한다.
+    const shared = new URL(/https?:\/\/\S+/.exec(message)?.[0] ?? '')
+    expect([...shared.searchParams.values()]).toContain(AREA_CATALOG[0].name)
     // 사람이 읽는 줄은 영어다. 둘이 한 문자열에 함께 산다.
     expect(message).toContain(AREA_CATALOG[0].nameEn)
   })

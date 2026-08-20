@@ -7,8 +7,9 @@ import {
 import { z } from 'zod'
 import type { CctvCamera } from '../domain/cctv'
 import type { CityInfo } from '../domain/cityInfo'
-import type { AreaSnapshot } from '../domain/types'
+import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import {
+  fetchAreaCongestion,
   fetchAreaSnapshot,
   fetchAreaSnapshots,
   fetchCctv,
@@ -166,6 +167,26 @@ export function useCctv(areaName: string | undefined): UseQueryResult<readonly C
     // 여기까지 오는 에러는 사실상 없고, 재시도는 문서화되지 않은 남의 서버에
     // 요청을 더 보내는 일일 뿐이다.
     retry: false,
+  })
+}
+
+/**
+ * 명소 **전부**의 지금 혼잡도. 목록·지도·「오늘의 서울」의 출처다.
+ *
+ * **`useAreaSnapshots`와 달리 인자가 없다.** 한 번에 전부 오므로 고를 것이
+ * 없고, 그 덕에 `queryKey`도 상수 하나다 — 저쪽이 배열을 키로 쓰면서 감수하던
+ * 「원소 구성이 바뀌면 캐시가 미스된다」는 문제가 여기서는 생기지 않는다.
+ *
+ * `staleTime`이 5분인 것은 상류의 실제 갱신 주기다(`api/_lib/seoul.ts`의
+ * `hotspotsCacheTtlSeconds` 주석). 서버 캐시와 같은 값을 두어, 클라이언트가
+ * 더 자주 물어봐야 CDN이 같은 응답을 돌려주는 헛걸음을 막는다.
+ */
+export function useAreaCongestion(): UseQueryResult<readonly AreaCongestion[]> {
+  return useQuery({
+    queryKey: ['area-congestion'],
+    queryFn: fetchAreaCongestion,
+    staleTime: FIVE_MINUTES,
+    retry: shouldRetry,
   })
 }
 

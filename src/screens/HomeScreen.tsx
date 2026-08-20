@@ -36,7 +36,7 @@ import {
   type RecenterDetent,
 } from '../components/map/RecenterButton'
 import { AREA_CATALOG, AREA_NAMES, findAreaByName } from '../data/areas'
-import { useAreaSnapshots } from '../data/queries'
+import { useAreaCongestion } from '../data/queries'
 import { useResolvedTheme } from '../hooks/themeStore'
 import { PANEL_WIDTH_PX, useWideScreen } from '../hooks/useWideScreen'
 import {
@@ -118,7 +118,9 @@ function offsetCenter(
 }
 
 export function HomeScreen() {
-  const snapshots = useAreaSnapshots(AREA_NAMES)
+  // 121곳 전부가 인증키 없는 한 번의 호출로 온다(`useAreaCongestion`).
+  // 예전의 `useAreaSnapshots(AREA_NAMES)`는 명소당 1회라 여기서만 하루 2,904회였다.
+  const snapshots = useAreaCongestion()
   // **넓은 화면에서는 시트가 왼쪽 패널이 된다.** 지도가 아래가 아니라 왼쪽을
   // 가리게 되므로 중심 보정의 축도 함께 바뀐다 — `focusMapOn` 참고.
   const wide = useWideScreen()

@@ -59,6 +59,28 @@ export function cctvCacheTtlSeconds(): number {
   return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_CCTV_TTL_SECONDS
 }
 
+// 명소 전체 혼잡도(SeoulRtd)용 TTL. **CCTV와 같은 상류인데 값이 정반대다** —
+// 저기는 거의 안 바뀌는 목록이라 1시간이고, 여기는 **움직이는 값 그 자체**다.
+//
+// **5분인 근거는 상류의 실제 갱신 주기다.** 서울시 인구 데이터는 5분마다
+// 갱신되고(공식 응답의 `PPLTN_TIME`이 5분 단위로 떨어진다), 2026-08-20에 이
+// 엔드포인트를 1분 간격으로 재 봤더니 그 주기로 값이 바뀌었다. 더 짧게 잡으면
+// 같은 값을 다시 받을 뿐이고, 더 길게 잡으면 우리만 묵은 값을 본다.
+//
+// **인증키를 안 쓰므로 하루 1,000회 한도와 무관하다.** 그래서 공식 API를 쓰던
+// 시절의 1시간(쿼터를 아끼려고 고른 값)을 여기까지 끌고 올 이유가 없다 —
+// 그 1시간은 우리 형편이었지 데이터의 성질이 아니었다.
+//
+// 5분이어도 상류 부하는 TTL당 한 번이다. 파라미터가 없어 CDN 캐시 키가 하나로
+// 수렴하기 때문이다(`api/hotspots.ts`).
+const DEFAULT_HOTSPOTS_TTL_SECONDS = 5 * 60
+
+export function hotspotsCacheTtlSeconds(): number {
+  const raw = Number(process.env.HOTSPOTS_CACHE_TTL_SECONDS)
+  // 정수만 받는 이유는 cacheTtlSeconds와 같다(RFC 9111 §1.2.2).
+  return Number.isInteger(raw) && raw > 0 ? raw : DEFAULT_HOTSPOTS_TTL_SECONDS
+}
+
 export function apiKey(): string {
   const key = process.env.SEOUL_API_KEY
   if (!key) {

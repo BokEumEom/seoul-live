@@ -4,8 +4,9 @@ import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CityInfo } from '../domain/cityInfo'
-import type { AreaSnapshot } from '../domain/types'
+import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { reset } from '../hooks/favoritesStore'
+import { findAreaByName } from '../data/areas'
 import { HomeScreen } from './HomeScreen'
 
 // jsdom에 Google Maps가 없다. App.test.tsx가 토스 SDK에 쓰는 방식과 같다.
@@ -101,7 +102,7 @@ vi.mock('@apps-in-toss/web-framework', () => ({
 }))
 
 vi.mock('../data/queries', () => ({
-  useAreaSnapshots: vi.fn(),
+  useAreaCongestion: vi.fn(),
   useAreaSnapshot: vi.fn(),
   useCityInfo: vi.fn(),
   // 상세가 CCTV 절을 품게 되면서 이 화면도 훅을 지난다. 여기서 볼 것은
@@ -122,7 +123,7 @@ const queries = await import('../data/queries')
 const cached = await import('../hooks/useCachedCityAlerts')
 const locationContext = await import('../app/locationContext')
 const googleMaps = await import('../platform/googleMaps')
-const useAreaSnapshots = vi.mocked(queries.useAreaSnapshots)
+const useAreaCongestion = vi.mocked(queries.useAreaCongestion)
 const useAreaSnapshot = vi.mocked(queries.useAreaSnapshot)
 const useCityInfo = vi.mocked(queries.useCityInfo)
 const useCctv = vi.mocked(queries.useCctv)
@@ -164,11 +165,11 @@ beforeEach(async () => {
   useCachedCityAlerts.mockReturnValue([])
   useLocation.mockReturnValue({ coords: null, status: 'unavailable', retry: vi.fn() })
   const { AREA_NAMES } = await import('../data/areas')
-  useAreaSnapshots.mockReturnValue({
+  useAreaCongestion.mockReturnValue({
     data: AREA_NAMES.map((name) => snapshotFor(name)),
     isPending: false,
     isError: false,
-  } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+  } as unknown as UseQueryResult<readonly AreaCongestion[]>)
   useAreaSnapshot.mockReturnValue({
     data: snapshotFor('강남역'),
     isPending: false,
@@ -287,13 +288,13 @@ describe('HomeScreen', () => {
   it('붐비는 마커가 여유로운 마커 위에 쌓인다', async () => {
     // 기본 목은 30곳이 전부 '보통'이라 순서가 갈리지 않는다 — 소재를 바꾼다.
     const { AREA_NAMES } = await import('../data/areas')
-    useAreaSnapshots.mockReturnValue({
+    useAreaCongestion.mockReturnValue({
       data: AREA_NAMES.map((name) =>
         snapshotFor(name, name === '강남역' ? '붐빔' : '여유'),
       ),
       isPending: false,
       isError: false,
-    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+    } as unknown as UseQueryResult<readonly AreaCongestion[]>)
     render(<HomeScreen />)
 
     const busy = Number(mapMarker(/강남역/).dataset.z)
@@ -406,13 +407,17 @@ describe('HomeScreen', () => {
 
     expect(map).toHaveAttribute('data-zoom', '15')
     const [lat, lng] = (map.getAttribute('data-center') ?? '').split(',').map(Number)
-    expect(lng).toBe(126.977) // 경복궁의 경도 그대로
+    // 좌표를 숫자로 박아 두지 않는다 — 카탈로그가 서울시 값으로 갱신되면
+    // 그때마다 깨진다(2026-08-20에 실제로 깨졌다). 재려는 것은 「지도가 그
+    // 명소를 따라가는가」이지 경복궁이 정확히 어디냐가 아니다.
+    const 경복궁 = findAreaByName('경복궁')!
+    expect(lng).toBe(경복궁.lng) // 경복궁의 경도 그대로
     // **중심은 명소보다 남쪽이다.** 지도가 뷰포트를 꽉 채우고 시트가 아래를
     // 덮으므로, 명소를 지도 한가운데 놓으면 시트 뒤로 들어가 안 보인다.
     // 얼마나 비켜 잡는지는 `centerBelowSheet`가 픽셀로 잠근다 — 여기서는
     // 「비켜 잡되 화면 밖으로 던지지는 않는다」만 본다.
-    expect(lat).toBeLessThan(37.5796)
-    expect(lat).toBeGreaterThan(37.5796 - 0.02)
+    expect(lat).toBeLessThan(경복궁.lat)
+    expect(lat).toBeGreaterThan(경복궁.lat - 0.02)
   })
 
   // half에 머무는 것의 눈에 보이는 값이다. full은 검색 바·칩 열·「내 주변」을
@@ -554,7 +559,11 @@ describe('HomeScreen', () => {
   it('오늘의 서울에서 연 상세를 닫으면 오늘의 서울이 아니라 목록이다', async () => {
     render(<HomeScreen />)
     await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
-    await userEvent.click(sheetRow(/강남역/))
+    // **이름으로 찍지 않는다.** 121곳이 되면서 특정 명소가 「지금 가장 붐비는
+    // 곳」 상위에 들어온다는 보장이 없어졌다. 여기서 재는 것은 「거기서 연
+    // 상세를 닫으면 어디로 돌아오는가」이므로 아무 행이나 하나면 된다.
+    const busiest = screen.getByRole('heading', { name: '지금 가장 붐비는 곳' })
+    await userEvent.click(busiest.parentElement?.querySelectorAll('button')[0] as HTMLElement)
 
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
 
@@ -873,22 +882,22 @@ describe('HomeScreen', () => {
     // 걸러진 목록으로 세면 하나를 고르는 순간 나머지 두 칩이 0이 되어
     // 비활성으로 굳고, 다른 목적으로 갈아탈 방법이 사라진다.
     const { AREA_CATALOG } = await import('../data/areas')
-    useAreaSnapshots.mockReturnValue({
+    useAreaCongestion.mockReturnValue({
       // 공원은 여유(나들이·데이트에 걸린다), 나머지는 붐빔(핫플에 걸린다).
       data: AREA_CATALOG.map((entry) =>
         snapshotFor(entry.name, entry.category === '공원' ? '여유' : '붐빔'),
       ),
       isPending: false,
       isError: false,
-    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+    } as unknown as UseQueryResult<readonly AreaCongestion[]>)
 
     render(<HomeScreen />)
     const kidsChip = screen.getByRole('button', { name: /아이와 나들이 10/ })
-    expect(screen.getByRole('button', { name: /지금 핫플 20/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /지금 핫플 88/ })).toBeEnabled()
 
     await userEvent.click(kidsChip)
 
-    expect(screen.getByRole('button', { name: /지금 핫플 20/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /지금 핫플 88/ })).toBeEnabled()
   })
 
   it('내 장소 칩이 즐겨찾기만 남긴다', async () => {
@@ -1090,12 +1099,12 @@ describe('HomeScreen', () => {
   // 띄우므로 같은 자리에서 두 문장이 어긋난다. CitySummary에 실패를 표현할
   // 수단이 없어 스트립 혼자서는 못 고친다.
   it('혼잡도 조회가 실패하면 요약 스트립을 감춘다', () => {
-    useAreaSnapshots.mockReturnValue({
+    useAreaCongestion.mockReturnValue({
       data: undefined,
       isPending: false,
       isError: true,
       refetch: vi.fn(),
-    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+    } as unknown as UseQueryResult<readonly AreaCongestion[]>)
     render(<HomeScreen />)
 
     expect(screen.getByText('혼잡도 정보를 가져오지 못했어요.')).toBeInTheDocument()
@@ -1108,12 +1117,12 @@ describe('HomeScreen', () => {
   // 통째로 감춘다」는 구현이 그대로 통과한다 — 목록은 카탈로그만 있으면
   // 서고, 혼잡도는 배지 자리에서 「정보 없음」이 될 뿐이다.
   it('혼잡도 조회가 실패해도 명소 목록은 남는다', () => {
-    useAreaSnapshots.mockReturnValue({
+    useAreaCongestion.mockReturnValue({
       data: undefined,
       isPending: false,
       isError: true,
       refetch: vi.fn(),
-    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+    } as unknown as UseQueryResult<readonly AreaCongestion[]>)
     render(<HomeScreen />)
 
     expect(screen.getByText('혼잡도 정보를 가져오지 못했어요.')).toBeInTheDocument()
@@ -1126,11 +1135,11 @@ describe('HomeScreen', () => {
   it('스냅샷이 아직 없을 뿐이면 요약 스트립이 그 사실을 말한다', () => {
     // 실패와 로딩을 가르는 반대편이다. 실패가 아니면 스트립은 남아야 한다 —
     // 안 그러면 「스트립을 아예 안 그린다」로도 위 테스트가 통과한다.
-    useAreaSnapshots.mockReturnValue({
+    useAreaCongestion.mockReturnValue({
       data: [],
       isPending: false,
       isError: false,
-    } as unknown as UseQueryResult<readonly (AreaSnapshot | null)[]>)
+    } as unknown as UseQueryResult<readonly AreaCongestion[]>)
     render(<HomeScreen />)
 
     expect(

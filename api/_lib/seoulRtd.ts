@@ -78,21 +78,66 @@ async function get(url: string, init: RequestInit): Promise<Response> {
  * 부트스트랩하면 **쿠키는 멀쩡히 받아 오는데 목록은 302다** — 「쿠키가 있으니
  * 됐다」고 착각하기 딱 좋은 자리다.
  */
-export async function fetchCctvRows(areaName: string): Promise<readonly unknown[]> {
-  const encoded = encodeURIComponent(areaName)
-
-  const bootstrap = await get(`${SEOUL_RTD_BASE}/map?hotspotNm=${encoded}`, {})
-  const cookie = sessionCookie(bootstrap.headers)
-
-  const listed = await get(`${SEOUL_RTD_BASE}/api/cctv?hotspotNm=${encoded}`, {
+/**
+ * 세션을 잡고 `/api/…` 하나를 부른다.
+ *
+ * **부트스트랩에 `hotspotNm`을 실어야 한다.** 없이 부르면 쿠키는 멀쩡히 받아
+ * 오는데 정작 목록이 302다 — 「쿠키가 있으니 됐다」고 착각하기 딱 좋은 자리이고
+ * 실제로 한 번 여기서 헤맸다.
+ */
+async function withSession(path: string, seedArea: string): Promise<Response> {
+  const bootstrap = await get(
+    `${SEOUL_RTD_BASE}/map?hotspotNm=${encodeURIComponent(seedArea)}`,
+    {},
+  )
+  return get(`${SEOUL_RTD_BASE}${path}`, {
     headers: {
-      Cookie: cookie,
+      Cookie: sessionCookie(bootstrap.headers),
       // 셋 다 있어야 통과한다. 하나라도 빼고 부르면 302를 받는다.
       Referer: `${SEOUL_RTD_BASE}/map`,
       'X-Requested-With': 'XMLHttpRequest',
       Accept: 'application/json',
     },
   })
+}
+
+/**
+ * 명소 **전부**의 지금 혼잡도. 한 번의 호출로 121곳이 온다.
+ *
+ * **이 함수가 하루 1,000회 제약을 푼다.** 같은 값을 공식 OpenAPI에서 받으려면
+ * `AREA_NM`이 필수라 명소당 1회씩, 121곳이면 갱신 한 번에 121회다(하루 24번이면
+ * 2,904회 — 한도의 세 배). 이쪽은 인증키를 안 쓰고 한 번에 다 준다.
+ *
+ * 공식 API와 **같은 데이터인 것도 확인했다** — 2026-08-20에 같은 순간을 재서
+ * 30곳 중 29곳이 일치했고(남은 하나는 등급 경계), 애초에 공식 응답의 봉투
+ * 이름이 `SeoulRtd.citydata_ppltn`이다. 두 문이 한 창고로 이어져 있다.
+ *
+ * **주는 것이 적다.** 등급·좌표·분류뿐이고 인구수·예보·관측시각이 없다. 그래서
+ * 이건 목록과 지도의 출처이고, 상세는 공식 API를 그대로 쓴다.
+ *
+ * `hotspotNm`이 빈 문자열이면 전체가 온다 — 그 웹의 검색창이 비어 있을 때와
+ * 같은 호출이다.
+ */
+export async function fetchHotspotRows(): Promise<readonly unknown[]> {
+  // 부트스트랩 씨앗은 아무 명소나 되지만, 실호출로 응답을 확인해 픽스처까지
+  // 떠 둔 곳으로 고정한다(`ALERT_SOURCE_AREA`와 같은 이유).
+  const listed = await withSession('/api/hotspot?hotspotNm=', '광화문·덕수궁')
+
+  if (!listed.ok) {
+    throw new Error(`SeoulRtd hotspot responded ${listed.status}`)
+  }
+
+  const body: unknown = await listed.json()
+  const rows = (body as { row?: unknown })?.row
+  if (!Array.isArray(rows)) {
+    throw new Error('SeoulRtd hotspot 응답에 row 배열이 없다')
+  }
+  return rows
+}
+
+export async function fetchCctvRows(areaName: string): Promise<readonly unknown[]> {
+  const encoded = encodeURIComponent(areaName)
+  const listed = await withSession(`/api/cctv?hotspotNm=${encoded}`, areaName)
 
   if (!listed.ok) {
     throw new Error(`SeoulRtd CCTV responded ${listed.status}`)

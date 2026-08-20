@@ -102,8 +102,32 @@ export interface AreaSnapshot {
   readonly replaced: boolean | null
 }
 
+/**
+ * 목록·지도·「오늘의 서울」이 명소 하나에 대해 **실제로 필요로 하는 전부.**
+ *
+ * **`AreaSnapshot`보다 훨씬 작고, 그게 요점이다.** 저 큰 타입은 명소당 1회
+ * 호출이 드는 공식 OpenAPI에서만 나오는데, 121곳이면 갱신 한 번에 121회다
+ * (하루 한도 1,000에 24번 갱신이면 2,904회). 반면 이 두 필드는 인증키 없는
+ * 한 번의 호출로 121곳이 전부 온다(`api/hotspots.ts`).
+ *
+ * 그 교환이 성립하는 이유는 **목록이 원래 등급만 읽고 있었기 때문**이다 —
+ * 목록 행·지도 마커·혼잡도 분포·프리셋 개수가 전부 `congestion` 하나만 본다.
+ * 인구수·예보·구성비는 상세에서만 쓰이고, 상세는 사용자가 연 한 곳뿐이라
+ * 공식 API를 그대로 써도 호출량이 는 만큼 감당된다.
+ *
+ * **`AreaSnapshot`이 이 모양을 구조적으로 만족한다.** 그래서 상세가 받아 둔
+ * 큰 스냅샷을 이 자리에 그대로 넘길 수 있고, 두 경로가 한 타입 아래서 만난다.
+ *
+ * `congestion`이 `null`일 수 있는 것은 상류가 모르는 등급 문자열을 준 경우다 —
+ * 짐작해서 끼워 넣지 않는다(`hotspotsSchema.ts`).
+ */
+export interface AreaCongestion {
+  readonly name: string
+  readonly congestion: CongestionLevel | null
+}
+
 export interface NearbyArea {
   readonly entry: AreaCatalogEntry
-  readonly snapshot: AreaSnapshot | null
+  readonly snapshot: AreaCongestion | null
   readonly distanceMeters: number | null
 }

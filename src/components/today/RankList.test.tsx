@@ -7,19 +7,7 @@ import { RankList } from './RankList'
 function area(name: string): NearbyArea {
   return {
     entry: { code: name, name, nameEn: name, lat: 0, lng: 0, category: '공원' },
-    snapshot: {
-      code: name,
-      name,
-      congestion: '붐빔',
-      message: '',
-      populationMin: 0,
-      populationMax: 0,
-      observedAt: '2026-08-07 11:00',
-      observedAtLabel: '11:00',
-      forecasts: [],
-      composition: null,
-      replaced: null,
-    },
+    snapshot: { name, congestion: '붐빔' },
     distanceMeters: null,
   }
 }

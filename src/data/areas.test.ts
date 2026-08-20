@@ -4,8 +4,8 @@ import { ALERT_SOURCE_AREA, AREA_CATALOG, findAreaByName } from './areas'
 import { OFFICIAL_AREA_NAMES } from './official-areas'
 
 describe('AREA_CATALOG', () => {
-  it('1차 목표인 30곳을 담는다', () => {
-    expect(AREA_CATALOG).toHaveLength(30)
+  it('공식 목록 121곳을 전부 담는다', () => {
+    expect(AREA_CATALOG).toHaveLength(121)
   })
 
   it('명소 이름이 중복되지 않는다', () => {
@@ -23,7 +23,7 @@ describe('AREA_CATALOG', () => {
   //
   // **한국어 `name`은 API 호출 키이자 지도 앱 검색어라 그대로 둔다.** 여기
   // 더하는 것은 표시용 이름뿐이고, 값과 표시를 가르는 규칙은 AGENTS.md 「언어」에.
-  it('30곳 전부 영어 이름이 있다', () => {
+  it('121곳 전부 영어 이름이 있다', () => {
     const missing = AREA_CATALOG.filter((area) => area.nameEn.trim() === '')
     expect(missing.map((area) => area.name)).toEqual([])
   })
@@ -80,22 +80,26 @@ describe('AREA_CATALOG', () => {
   // 매뉴얼 PDF에서 목록을 뽑았는데 텍스트 추출이 공백을 임의로 넣는다
   // ("광장( 전통) 시장", "홍대입구역(2 호선)"). 괄호 주변 공백을 지워 정규화했지만
   // 실제 API가 받는 형태와 같은지는 호출해봐야 안다.
-  it.todo('인증키 발급 후 30곳을 실제 호출해 공백까지 일치하는지 확인한다')
+  // 2026-08-20에 확인했다 — 서울시가 주는 121개 이름과 이 카탈로그가 괄호
+  // 주변 공백까지 121/121 일치한다. 그래서 `it.todo`를 지운다.
 })
 
 describe('공식 카테고리 마이그레이션', () => {
-  it('카탈로그 30곳이 공식 분류로만 이루어진다', () => {
+  it('카탈로그 121곳이 공식 분류로만 이루어진다', () => {
     const counts = AREA_CATALOG.reduce<Record<string, number>>((acc, entry) => {
       acc[entry.category] = (acc[entry.category] ?? 0) + 1
       return acc
     }, {})
 
+    // 매뉴얼 PDF p9~10의 분포와 같아야 한다. 30곳 시절에는 발달상권·공원에
+    // 쏠려 있었는데(12/10/3/3/2), 121곳에서는 인구밀집지역이 절반 가까이다 —
+    // 서울시가 고른 「주요장소」의 실제 성격이 그렇다.
     expect(counts).toEqual({
-      발달상권: 12,
-      공원: 10,
-      관광특구: 3,
-      '고궁·문화유산': 3,
-      인구밀집지역: 2,
+      인구밀집지역: 48,
+      공원: 33,
+      발달상권: 28,
+      관광특구: 7,
+      '고궁·문화유산': 5,
     })
   })
 
@@ -105,7 +109,7 @@ describe('공식 카테고리 마이그레이션', () => {
 
   it('이름에 관광특구가 든 명소는 관광특구로 분류된다', () => {
     const specials = AREA_CATALOG.filter((e) => e.name.includes('관광특구'))
-    expect(specials).toHaveLength(3)
+    expect(specials).toHaveLength(7)
     for (const entry of specials) {
       expect(entry.category).toBe('관광특구')
     }

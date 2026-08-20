@@ -1,8 +1,10 @@
 import type { CctvCamera } from '../domain/cctv'
 import type { CityInfo } from '../domain/cityInfo'
-import type { AreaSnapshot } from '../domain/types'
+import type { AreaCongestion, AreaSnapshot } from '../domain/types'
+import { AREA_NAMES } from './areas'
 import { parseCctvResponse } from './cctvSchema'
 import { parseCityInfoResponse } from './cityInfoSchema'
+import { parseHotspotsResponse } from './hotspotsSchema'
 import { buildMockSnapshot } from './mock'
 import { buildMockCctv } from './mockCctv'
 import { buildMockCityInfo } from './mockCityInfo'
@@ -206,6 +208,34 @@ export async function fetchCctv(areaName: string): Promise<readonly CctvCamera[]
     console.error(`[${areaName}] CCTV 조회 실패:`, error)
     return []
   }
+}
+
+/**
+ * 명소 **전부**의 지금 혼잡도. 목록과 지도가 쓴다.
+ *
+ * **`fetchAreaSnapshots`를 대신한다.** 그쪽은 이름 목록을 받아 명소당 1회씩
+ * 공식 API를 부르는데, 121곳에서는 갱신 한 번에 121회라 하루 한도(1,000)를
+ * 세 배로 넘긴다. 이쪽은 인증키 없는 상류라 **한 번에 다 오고 쿼터를 안 쓴다**.
+ *
+ * **이름을 인자로 안 받는다.** 전체가 오기 때문이기도 하고, 인자가 없어야
+ * URL이 하나로 굳어 CDN 캐시를 사용자 전체가 나눠 쓰기 때문이다 — 저쪽이
+ * 이름을 정렬·중복제거해서 보내며 애써 만들던 성질을 여기서는 공짜로 얻는다.
+ *
+ * 카탈로그에 없는 명소가 섞여 와도 그대로 둔다. 거르는 자리는 호출부이고
+ * (카탈로그와 이름으로 맞춘다), 여기서 걸러 봐야 같은 일을 두 번 한다.
+ */
+export async function fetchAreaCongestion(): Promise<readonly AreaCongestion[]> {
+  if (isMockMode()) {
+    const failing = mockFailureAreaNames()
+    return AREA_NAMES.filter((name) => !failing.has(name)).map((name) => ({
+      name,
+      congestion: parseCitydataResponse(buildMockSnapshot(name), name).congestion,
+    }))
+  }
+
+  const url = `${baseUrl()}/api/hotspots`
+  const { body } = await requestJson(url, BULK_TIMEOUT_MS, '혼잡도 정보')
+  return parseHotspotsResponse(body)
 }
 
 export async function fetchAreaSnapshots(

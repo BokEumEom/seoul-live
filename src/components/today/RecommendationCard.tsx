@@ -44,11 +44,13 @@ export function RecommendationCard({ area, onSelect }: Props) {
           {walkMinutes !== null && <span>{t('· 도보 {분}분', { 분: walkMinutes })}</span>}
         </p>
       )}
-      {snapshot !== null && (
-        <p className="text-label-sm text-outline">
-          {t('{시각} 업데이트됨', { 시각: snapshot.observedAtLabel })}
-        </p>
-      )}
+      {/* **카드마다 적던 「HH:MM 업데이트됨」을 뺐다(2026-08-20).** 목록이
+          121곳으로 늘면서 출처가 명소별 조회에서 **한 번에 전부 받는 한 호출**로
+          바뀌었고(`useAreaCongestion`), 그 응답에는 명소별 관측 시각이 없다.
+
+          없는 값을 지어내지 않는다. 그리고 원래도 이 자리는 카드마다 **같은
+          값**을 반복하고 있었다 — 한 번의 일괄 조회에서 나온 값들이라서다.
+          제대로 된 자리는 화면 위의 한 줄이고, 그건 아직 없다(STATE.md). */}
     </button>
   )
 }
