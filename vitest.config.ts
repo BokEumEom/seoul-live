@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
@@ -11,6 +11,20 @@ import react from '@vitejs/plugin-react'
  * 다크 모드 완결성 검사가 이걸 쓴다: 화면에서 쓰는 색 토큰인데 다크 값이
  * 없으면 밤에 그 자리만 라이트 색이 남는다.
  */
+/**
+ * 디자인 토큰 정본을 찾는다. 없으면 빈 문자열이다.
+ *
+ * **새 자리가 `docs/DESIGN.md`다.** 옛 자리(`stitch_ui/seoul_flow/DESIGN.md`)도
+ * 계속 본다 — 정본이 시안 폴더 안에 있던 것이 원래 어색했고, 옮기는 동안 둘
+ * 다 성립해야 한다. 새 디자인이 `docs/DESIGN.md`로 들어오면 `tokens.test.ts`의
+ * 양방향 대조가 저절로 되살아난다.
+ */
+function readDesignSource(): string {
+  const candidates = ['docs/DESIGN.md', 'stitch_ui/seoul_flow/DESIGN.md']
+  const found = candidates.find((path) => existsSync(path))
+  return found === undefined ? '' : readFileSync(found, 'utf8')
+}
+
 function readSourceFiles(dir: string): string {
   return readdirSync(dir, { withFileTypes: true })
     .map((entry) => {
@@ -65,9 +79,15 @@ export default defineConfig({
     // 죽는다. `src`는 브라우저용 tsconfig라 테스트에서 `node:fs`를 못 쓰므로
     // (`types: ["vite/client"]`) 여기서 주입한다 — `__INDEX_CSS__`와 같은 방식이다.
     __INDEX_HTML__: JSON.stringify(readFileSync('index.html', 'utf8')),
-    __DESIGN_MD__: JSON.stringify(
-      readFileSync('stitch_ui/seoul_flow/DESIGN.md', 'utf8'),
-    ),
+    // 디자인 토큰의 정본. **없어도 러너가 떠야 한다.**
+    //
+    // 예전에는 `stitch_ui/seoul_flow/DESIGN.md`를 그냥 읽었는데, 그 폴더가
+    // 지워지자 **테스트 스위트가 시작조차 못 했다**(ENOENT, Startup Error).
+    // 정본 문서 하나가 없다고 1,239개가 통째로 안 도는 것은 과한 결합이다.
+    //
+    // 빈 문자열이면 `tokens.test.ts`가 대조를 건너뛰되 **「정본이 없다」를
+    // 시끄럽게 적는다** — 조용히 사라지지 않게 하는 것이 요점이다.
+    __DESIGN_MD__: JSON.stringify(readDesignSource()),
     __SRC_SOURCES__: JSON.stringify(readSourceFiles('src')),
     // 화면 파일만. 「감싸지 않은 한국어」 검사가 쓴다 — `src/data`의 명소
     // 카탈로그와 목업, `src/domain`의 API 값은 화면 글자가 아니라 데이터라

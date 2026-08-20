@@ -4,9 +4,19 @@ import { describe, expect, it } from 'vitest'
 declare const __INDEX_CSS__: string
 const CSS = __INDEX_CSS__
 
-/** `stitch_ui/seoul_flow/DESIGN.md`의 원문. 같은 경로로 들어온다. */
+/**
+ * 디자인 토큰 정본(`docs/DESIGN.md`)의 원문. 같은 경로로 들어온다.
+ *
+ * **없으면 빈 문자열이다.** 옛 정본이 있던 `stitch_ui/`가 2026-08-20에
+ * 지워졌고(새 디자인을 넣기로 했다), 그때 이 값이 파일을 직통으로 읽고 있어서
+ * **테스트 스위트가 시작조차 못 했다.** 지금은 `vitest.config.ts`가 없으면 빈
+ * 문자열을 준다 — 아래 대조가 그 상태를 알아보고 시끄럽게 비켜선다.
+ */
 declare const __DESIGN_MD__: string
 const DESIGN = __DESIGN_MD__
+
+/** 정본이 지금 저장소에 있나. */
+const HAS_DESIGN_SOURCE = DESIGN.trim() !== ''
 
 /** `src/`의 컴포넌트 원문(테스트 제외). 같은 경로로 들어온다 — 여기서
     `node:fs`를 부르면 브라우저용 tsconfig가 죽는다(vitest.config.ts 주석). */
@@ -68,6 +78,22 @@ describe('contrast()', () => {
 // 양방향으로 본다. 한쪽만 보면 반대 방향 드리프트가 그대로 산다 — 코드에만
 // 토큰을 더하면 정본이 낡고, 정본에만 더하면 화면에 없는 값을 문서가 약속한다.
 describe('DESIGN.md와 index.css의 색이 일치한다', () => {
+  // **정본이 없으면 대조할 것이 없다.** 그렇다고 describe를 통째로 지우면
+  // 「검사가 있었다」는 사실까지 사라진다 — 이 저장소는 그 규칙이 문장으로만
+  // 있던 동안 실제로 열 곳이 갈렸던 곳이다(2026-08-12 감사).
+  //
+  // 그래서 **매 실행마다 한 줄로 상태를 적는다.** 테스트 이름이 곧 알림이다.
+  // 새 디자인이 `docs/DESIGN.md`로 들어오는 순간 아래 대조가 되살아난다.
+  if (!HAS_DESIGN_SOURCE) {
+    it('정본(docs/DESIGN.md)이 아직 없어 색 대조를 건너뛴다', () => {
+      expect(DESIGN).toBe('')
+      // 정본이 없어도 **코드 쪽은 여전히 읽혀야 한다.** 이게 0이면 정본이
+      // 없는 게 아니라 정규식이나 주입이 깨진 것이다.
+      expect(colorsOfCss().size).toBeGreaterThan(40)
+    })
+    return
+  }
+
   function colorsOfCss(): Map<string, string> {
     return new Map(
       [...CSS.matchAll(/--color-([a-z0-9-]+):\s*(#[0-9a-fA-F]{6})/g)].map(
