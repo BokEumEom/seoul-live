@@ -56,8 +56,16 @@ export function PopulationLead({ snapshot, pattern }: Props) {
           숫자만 굵게 두려면 span이 갈려야 한다. 한 키로 묶으면 어순은
           안전해지지만 32px 시절과 같은 「덩어리 한 줄」로 돌아간다.
           영어에서도 앞뒤가 그대로 붙는다: 「Now about 40,000–42,000 people」. */}
-      <p className="text-headline-md text-on-surface">
-        <span className="text-body-md font-normal text-on-surface-variant">
+      {/* **`headline-md`(24px)에서 내렸다.** 그 크기는 제목(`광화문·덕수궁`)과
+          **똑같아서** 한 화면에 헤드라인이 둘 있는 꼴이었다 — 무엇이 이 화면의
+          주인인지 흐려진다. 게다가 우리 숫자가 샘플보다 넓다: 같은
+          「40,000~42,000명」이 우리는 197px, 샘플은 줄 전체가 208px이다
+          (390×844 / 412px 실측). 20px이면 숫자 부분이 약 164px이라 「지금 약」과
+          함께 한 줄에 넉넉히 들어가고, 제목보다 한 단 작아 위계가 선다.
+
+          여전히 화면에서 둘째로 큰 글씨다 — 「인원을 먼저」는 유지된다. */}
+      <p className="text-headline-sm text-on-surface">
+        <span className="text-label-md font-normal text-on-surface-variant">
           {t('지금 약')}{' '}
         </span>
         {t('{최소}~{최대}명', {
