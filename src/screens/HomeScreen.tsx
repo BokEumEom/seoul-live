@@ -673,8 +673,10 @@ export function HomeScreen() {
   // (근거는 `RecenterButton`의 산식).
   const recenterDetent: RecenterDetent | null =
     wide || sheetDetent === 'full' ? null : sheetDetent
-  // 상세가 열려 있으면 지도가 통째로 가려지므로 「내 주변」도 물러난다.
-  const showRecenter = !detailOpen && (wide || sheetDetent !== 'full')
+  // 상세가 열려 있으면 지도가 가려지므로 「내 주변」도 물러난다 — **넓은
+  // 화면은 예외다.** 거기서는 상세가 왼쪽 패널 자리에만 서고 지도가 그대로
+  // 보이므로 버튼도 그대로 쓸 수 있어야 한다.
+  const showRecenter = wide || (!detailOpen && sheetDetent !== 'full')
 
   // **시트가 움직이면 지도도 움직인다.** 시트가 커지면 보이는 띠가 위로 줄어드는데
   // 지도가 가만히 있으면 보고 있던 곳이 시트 뒤로 밀려 들어간다 — 「목록에서
@@ -1027,7 +1029,10 @@ export function HomeScreen() {
           크기로 깔린다」는 것은 지도가 어느 레이어에 속하는지로만 확인되는데,
           jsdom에는 레이아웃이 없어 위치로는 못 잡는다. 마커를 목록 행과
           구별해 집는 데도 이 표식을 쓴다. */}
-      <div data-map-layer inert={detailOpen} className="absolute inset-0">
+      {/* **넓은 화면에서는 상세가 지도를 안 덮으므로 잠그지 않는다.** 상세는
+          왼쪽 패널 자리에만 서고 지도는 그 오른쪽에 그대로 보인다 — 그때
+          지도를 잠그면 보이는 것을 조작할 수 없게 된다. */}
+      <div data-map-layer inert={detailOpen && !wide} className="absolute inset-0">
         {mapPane}
       </div>
 
@@ -1151,7 +1156,23 @@ export function HomeScreen() {
           `z-30`은 검색 오버레이(`z-20`)보다 위다. 그 열은 상세가 열리면 아예
           안 그려지지만(위 `!detailOpen`), 층 번호로도 관계가 읽혀야 한다. */}
       {detailOpen && route.kind === 'area' && (
-        <div className="absolute inset-0 z-30">
+        <div
+          // **넓은 화면에서는 전체를 안 덮는다.** 좁은 화면에서 전체 화면인
+          // 이유는 세로가 모자라서인데(시트 안에서는 5,395px을 줄일 방법이
+          // 없었다) 넓은 화면에는 그 문제가 없다 — 시트가 왼쪽 400px 패널이라
+          // 세로를 하나도 안 가리기 때문이다. 1440px에서 상세를 통째로 펴면
+          // 카드 두 칸이 700px씩 되고 지도가 이유 없이 사라진다.
+          //
+          // 패널과 **같은 자리·같은 폭**이라 그 자리를 갈아 끼우는 것처럼
+          // 보인다. `w-100`(400px)이 `PANEL_WIDTH_PX`와 갈리면 안 된다 —
+          // `useWideScreen.ts`가 정본이고 여기 클래스는 그 값을 Tailwind
+          // 눈금으로 옮긴 것이다(400 ÷ 4 = 100).
+          className={
+            wide
+              ? 'absolute inset-y-0 left-0 z-30 w-100 border-r border-outline-variant shadow-floating'
+              : 'absolute inset-0 z-30'
+          }
+        >
           <AreaDetailScreen
             key={route.name}
             areaName={route.name}

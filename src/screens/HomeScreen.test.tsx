@@ -1612,6 +1612,56 @@ describe('HomeScreen 주소', () => {
 // 남은 것은 「목록에서는 안 그린다」 하나다. 이 단언은 지금도 참이고, 층이
 // 되살아날 때(새 시안의 지도 레이어 토글) **먼저 깨질 자리**이기도 하다 —
 // 그때는 상세와 무관하게 켜고 끄는 층이라 조건 자체가 달라진다.
+// ── 넓은 화면 ────────────────────────────────────────────────────────────
+//
+// 768px을 넘으면 시트가 **왼쪽 400px 패널**이 된다(`useWideScreen`). 상세도
+// 그 규칙을 따라야 한다 — 좁은 화면에서 전체 화면인 이유는 세로가 모자라서인데
+// (시트 안에서는 5,395px을 줄일 방법이 없었다) 넓은 화면에는 그 문제가 없다.
+// 1440px에서 상세를 통째로 펴면 카드 두 칸이 700px씩 되고 지도가 이유 없이
+// 사라진다.
+describe('HomeScreen — 넓은 화면의 상세', () => {
+  beforeEach(() => {
+    // `useWideScreen`이 `matchMedia`를 본다. setup의 기본 목은 언제나
+    // `matches: false`(좁은 화면)라 여기서만 갈아 끼운다.
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: query.includes('768px'),
+          media: query,
+          onchange: null,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+          addListener: () => undefined,
+          removeListener: () => undefined,
+          dispatchEvent: () => false,
+        }) as MediaQueryList,
+    )
+  })
+
+  it('상세가 화면을 안 덮고 패널 자리에만 선다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetRow(/강남역/))
+
+    // 상세 층은 뒤로가기 버튼을 품은 상자의 조상이다. `inset-0`이면 화면을
+    // 통째로 덮는다는 뜻이라 그 클래스가 없어야 한다.
+    const layer = screen
+      .getByRole('button', { name: '뒤로' })
+      .closest('.absolute') as HTMLElement
+    expect(layer).toHaveClass('w-100')
+    expect(layer).not.toHaveClass('inset-0')
+  })
+
+  // 좁은 화면에서는 상세가 지도를 통째로 덮으므로 잠근다. 넓은 화면에서는
+  // 지도가 그대로 보이는데, 그때도 잠그면 **보이는 것을 조작할 수 없다.**
+  it('지도를 잠그지 않고 「내 주변」도 남는다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetRow(/강남역/))
+
+    expect(document.querySelector('[data-map-layer]')).not.toHaveAttribute('inert')
+    expect(screen.getByRole('button', { name: '내 주변' })).toBeInTheDocument()
+  })
+})
+
 describe('HomeScreen — 지도 위 CCTV', () => {
   const CAMERAS = [
     { name: '광화문', coords: { lat: 37.5755, lng: 126.9784 }, streamUrl: 'https://a/1.m3u8' },
