@@ -84,12 +84,18 @@
      tertiary(약간 붐빔) · error(붐빔)다.
 
      보통만 대응 계열이 없다. tertiary를 밝혀 쓰면 「약간 붐빔」과 색상이 붙어
-     두 단계가 하나로 읽혀서 별도 색조를 뒀다. */
+     두 단계가 하나로 읽혀서 별도 색조를 뒀다.
+
+     **여기 넷은 지도 핀에 칠하는 값이다**(`CongestionMarker`의 `TONE_PIN_CLASS`)
+     — 배지는 아래 `-container` 짝을 쓴다. 그래서 밝기를 배지가 아니라 **지도
+     타일**에 맞춘다: 밝은 타일(#e8eaed)에서 네 색 전부 3:1을 넘긴다
+     (5.37 / 3.15 / 3.73 / 5.36). 처음에 보통을 #7d5800으로 뒀다가 헤드리스
+     실측 화면에서 **갈색으로 읽혀** 올렸다 — 값은 맞았지만 색상이 틀렸다. */
   --color-calm: #006d37;
   --color-calm-container: #a8f5c2;
-  --color-normal: #7d5800;
+  --color-normal: #b07800;
   --color-normal-container: #ffdea6;
-  --color-busy: #9e4300;
+  --color-busy: #c55500;
   --color-busy-container: #ffdbcb;
   --color-crowded: #ba1a1a;
   --color-crowded-container: #ffdad6;

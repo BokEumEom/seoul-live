@@ -1,4 +1,5 @@
 import { t } from '../../i18n/t'
+import { Icon } from '../common/Icon'
 import { filterLabel, PRESETS, type FilterKey } from '../../domain/presets'
 
 // 이름은 domain/presets의 `filterLabel`에서만 온다. 여기에 복사해두면 라벨을
@@ -83,11 +84,13 @@ export function FilterChips({ counts, value, onChange }: Props) {
             }`}
           >
             {chip === 'fav' && (
-              // ★는 장식이다. 접근성 이름에 넣으면 "블랙 스타 내 장소 3"으로
-              // 읽히는데 「내 장소」가 이미 같은 말을 한다.
-              <span aria-hidden="true" className="mr-1">
-                ★
-              </span>
+              // 글리프는 장식이다. `Icon`이 `aria-hidden`이라 접근성 이름에는
+              // 안 들어간다 — 「내 장소」가 이미 같은 말을 한다.
+              //
+              // **문자(★)가 아니라 아이콘이다.** 문자는 기기 폰트를 타서
+              // 안드로이드와 iOS에서 굵기·크기가 갈렸고, 저장 버튼이 별에서
+              // 책갈피로 바뀌면서(2026-08-20) 같은 뜻을 두 모양으로 말하게 됐다.
+              <Icon name="bookmarkFilled" className="mr-1 inline size-4 align-[-2px]" />
             )}
             {t(filterLabel(chip))} {count}
           </button>

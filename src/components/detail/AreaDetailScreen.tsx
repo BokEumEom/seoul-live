@@ -140,9 +140,11 @@ export function AreaDetailScreen({
           앱 바 높이를 탭 줄의 `top`에 적어야 하고, 그 숫자는 안전영역 때문에
           기기마다 다르다.
 
-          `pb-6`은 `MapLinkButtons`의 `-mb-6`과 짝이다 — 그게 없으면 sticky의
-          담는 상자가 24px 위에서 끝나 바가 밑변에서 떠 있다. */}
-      <div className="flex-1 overflow-y-auto overscroll-contain pb-6">
+          **아래 패딩을 두지 않는다.** sticky가 붙는 자리는 이 상자의 패딩
+          안쪽이라, `pb-6`을 주면 길찾기 바가 화면 밑변에서 24px 떠 있다
+          (390×844 실측으로 확인했다). 바가 흐름의 마지막 요소라 제 자리를
+          남기므로 아래 여백은 따로 필요하지 않다. */}
+      <div className="flex-1 overflow-y-auto overscroll-contain">
         <DetailHero entry={entry} coords={location.coords} snapshot={snapshot} />
 
         <DetailTabs value={tab} onChange={setTab} />

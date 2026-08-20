@@ -50,9 +50,9 @@ colors:
   on-error-container: '#93000a'
   calm: '#006d37'
   calm-container: '#a8f5c2'
-  normal: '#7d5800'
+  normal: '#b07800'
   normal-container: '#ffdea6'
-  busy: '#9e4300'
+  busy: '#c55500'
   busy-container: '#ffdbcb'
   crowded: '#ba1a1a'
   crowded-container: '#ffdad6'
@@ -216,6 +216,11 @@ spacing:
 
 보통(앰버)만 이 배색에 대응 계열이 없다. tertiary(주황)를 밝혀 쓰면 「약간
 붐빔」과 색상이 붙어 두 단계가 하나로 읽히므로 별도 색조를 뒀다.
+
+**핀 넷의 밝기는 배지가 아니라 지도 타일에 맞춘다.** 그 자리에서 색이 곧
+값이므로 밝은 타일(#e8eaed)에서 넷 다 3:1(WCAG 1.4.11)을 넘겨야 한다 —
+지금 5.37 / 3.15 / 3.73 / 5.36이다. 「약간 붐빔」이 `tertiary-container`
+(#c55500)와 같은 값인 것은 우연이 아니라 그 계열의 밝은 끝을 고른 결과다.
 
 **`on-*-container`는 두 일을 한다.** 배지 글자이면서 지도 마커 알약의 **배경**
 이다. 값이 같아도 되는 이유는 두 요구가 어긋나지 않아서다 — 둘 다 그 색상의
