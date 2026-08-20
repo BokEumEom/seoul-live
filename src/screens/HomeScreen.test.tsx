@@ -7,6 +7,8 @@ import type { CityInfo } from '../domain/cityInfo'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { reset } from '../hooks/favoritesStore'
 import { findAreaByName } from '../data/areas'
+import { centerBelowSheet, DEFAULT_ZOOM, SEOUL_CENTER } from '../domain/map'
+import { SHEET_RATIO } from '../domain/sheet'
 import { HomeScreen } from './HomeScreen'
 
 // jsdom에 Google Maps가 없다. App.test.tsx가 토스 SDK에 쓰는 방식과 같다.
@@ -214,6 +216,22 @@ function sheetHandle(): HTMLElement {
   return screen.getByRole('button', { name: /시트 높이 조절/ })
 }
 
+// **초기 중심은 `SEOUL_CENTER` 그대로가 아니다 — 시트만큼 남쪽으로 비켜 잡는다.**
+//
+// 예전에는 두 테스트가 `data-center="37.5665,126.978"`을 그대로 기대했고, 그건
+// **버그를 고정하고 있었다.** 진입 단계가 `half`라 보이는 띠가 화면의 절반도
+// 안 되는데 시청을 뷰포트 기하학적 중심에 놓으면 시트 뒤로 숨는다 —
+// 2026-08-20 헤드리스 실측에서 첫 화면에 의정부·도봉구가 떴다.
+//
+// 명소를 열 때·내 위치로 갈 때와 **같은 규칙**이므로 같은 모양으로 잰다:
+// 경도는 그대로, 위도는 더 남쪽이되 화면 밖으로 던지지는 않는다.
+function expectSeoulWideCenter(map: HTMLElement): void {
+  const [lat, lng] = (map.getAttribute('data-center') ?? '').split(',').map(Number)
+  expect(lng).toBe(126.978)
+  expect(lat).toBeLessThan(37.5665)
+  expect(lat).toBeGreaterThan(37.5665 - 0.2)
+}
+
 describe('HomeScreen', () => {
   it('지도가 시트 뒤에 전체 크기로 깔린다', () => {
     render(<HomeScreen />)
@@ -395,13 +413,38 @@ describe('HomeScreen', () => {
     expect(map.getAttribute('data-center')).toMatch(/,126.9775$/)
   })
 
+  // **이 테스트가 「의정부 버그」를 잠근다.** 위 두 곳의
+  // `expectSeoulWideCenter`는 「남쪽 어딘가」까지만 보므로, 보정을 반만 하거나
+  // 엉뚱한 비율로 해도 통과한다. 여기서는 **정확히 시트 보정값과 같은지**를 잰다.
+  //
+  // 값을 리터럴로 적지 않고 `centerBelowSheet`를 다시 부르는 이유는, 이 산식이
+  // 바뀔 때 테스트가 함께 따라와야지 옛 숫자를 지키면 안 되기 때문이다.
+  // 재는 것은 「초기 중심이 명소를 열 때와 같은 규칙을 쓰는가」다.
+  it('첫 화면 중심이 시트 높이만큼 비켜 잡혀 있다', () => {
+    render(<HomeScreen />)
+    const map = screen.getByRole('region', { name: '지도' })
+    const expected = centerBelowSheet(
+      SEOUL_CENTER,
+      DEFAULT_ZOOM,
+      window.innerHeight,
+      SHEET_RATIO.half,
+    )
+
+    expect(map).toHaveAttribute(
+      'data-center',
+      `${expected.lat},${expected.lng}`,
+    )
+    // 보정을 안 하면 시청이 뷰포트 한가운데(y=422)에 놓여 시트 뒤로 숨는다.
+    expect(expected.lat).toBeLessThan(SEOUL_CENTER.lat)
+  })
+
   // 서울 인파레이더가 그렇게 한다 — 목록에서 고르면 지도가 그리로 간다.
   // 시트가 half에 머물게 되면서 지도가 계속 보이니, 따라가지 않으면 상세는
   // 경복궁을 말하는데 지도는 서울 전역인 채로 남는다.
   it('명소를 고르면 지도가 그 명소로 따라간다', async () => {
     render(<HomeScreen />)
     const map = screen.getByRole('region', { name: '지도' })
-    expect(map).toHaveAttribute('data-center', '37.5665,126.978') // 서울 전역
+    expectSeoulWideCenter(map)
 
     await userEvent.click(sheetRow(/경복궁/))
 
@@ -497,7 +540,7 @@ describe('HomeScreen', () => {
     })
     render(<HomeScreen />)
     const map = screen.getByRole('region', { name: '지도' })
-    expect(map).toHaveAttribute('data-center', '37.5665,126.978') // 서울 전역
+    expectSeoulWideCenter(map)
 
     await userEvent.click(screen.getByRole('button', { name: '내 주변' }))
 

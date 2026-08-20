@@ -156,15 +156,27 @@ export function HomeScreen() {
   // `SHEET_RATIO.half`로 시작하므로, 초기값 단계에서 같은 비율로 비켜 잡아
   // 두어야 시트 보정 effect가 이 자리를 한 번 더 밀지 않는다.
   const [center, setCenter] = useState<Coords>(() => {
-    if (initialRoute.kind !== 'area') return SEOUL_CENTER
-    const entry = findAreaByName(initialRoute.name)
-    if (entry === undefined) return SEOUL_CENTER
-    return offsetCenter(
-      { lat: entry.lat, lng: entry.lng },
-      AREA_ZOOM,
-      SHEET_RATIO.half,
-      wide,
-    )
+    // **서울 전역으로 열 때도 시트만큼 비켜 잡는다.** 예전에는 여기서
+    // `SEOUL_CENTER`를 날것으로 돌려줬는데, 그러면 서울시청이 뷰포트의 기하학적
+    // 중심(844px 화면에서 y=422)에 놓인다. 진입 단계가 `half`라 **보이는 띠는
+    // 0~371px뿐**이므로 시청은 시트 뒤에 숨고, 화면에는 그보다 북쪽인
+    // 의정부·도봉구가 뜬다.
+    //
+    // **아래 effect가 대신 고쳐 주지 않는다.** `appliedRatioRef`가
+    // `SHEET_RATIO.half`로 시작해서 「이미 half만큼 보정했다」고 여기므로,
+    // 진입 직후에는 그 effect가 한 번도 안 돈다. 초기값에서 맞춰야 한다.
+    //
+    // 2026-08-20에 헤드리스 실측으로 확인했다. 2026-08-18에 「보이는 띠가
+    // 0~709px이라 띠 안에 있다」고 산수로 결론 냈던 것은 **peek(135px)을
+    // 가정한 계산**이었다 — 진입 단계는 peek이 아니라 half다.
+    const target =
+      initialRoute.kind === 'area'
+        ? findAreaByName(initialRoute.name)
+        : undefined
+    const coords =
+      target === undefined ? SEOUL_CENTER : { lat: target.lat, lng: target.lng }
+    const nextZoom = target === undefined ? DEFAULT_ZOOM : AREA_ZOOM
+    return offsetCenter(coords, nextZoom, SHEET_RATIO.half, wide)
   })
   const [zoom, setZoom] = useState<number>(
     initialRoute.kind === 'area' ? AREA_ZOOM : DEFAULT_ZOOM,
