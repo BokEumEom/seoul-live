@@ -56,16 +56,48 @@ interface MapLink {
   readonly icon: IconName;
   /** 카탈로그 항목을 통째로 받는다 — 티맵은 이름이 아니라 좌표로 목적지를 넘긴다. */
   readonly href: (entry: AreaCatalogEntry) => string;
-  readonly className: string;
+  /**
+   * **아이콘 글리프에만 걸리는 색.** 상자는 셋이 `ACTION_BASE` 하나를 나눠 쓴다.
+   *
+   * `Icon`이 `fill="currentColor"`라 색은 이 자리에서만 갈린다 — `<a>`에 걸면
+   * 라벨까지 브랜드 색이 되어 대비 규정 안으로 다시 들어온다.
+   */
+  readonly iconClassName: string;
 }
 
-// 배경은 남의 브랜드 색이라 우리가 못 고친다 — 맞출 수 있는 것은 글자 쪽이다.
-// 네이버에 흰 글자를 얹으면 2.25:1로 무너졌다(카카오는 원래 어두운 글자라
-// 문제가 없었다). 둘 다 `text-brand-ink`로 맞춘다: 네이버 7.32, 카카오 12.90.
-// **`text-on-surface`가 아닌 이유가 다크 모드다.** 그 토큰은 밤에 크림색으로
-// 뒤집히는데, 배경인 카카오 노랑은 남의 자산이라 그대로다 — 노랑 위의 크림
-// 글자는 1.2:1로 통째로 사라진다. `--color-brand-ink`는 어느 모드에서도 안 바뀐다.
-// 값과 근거는 index.css의 `--color-brand-*` 주석에, 대비는 `tokens.test.ts`에.
+// **세 버튼이 같은 스타일이다. 브랜드 색은 아이콘에만 있다.**
+//
+// 예전에는 카카오를 노랑으로, 네이버를 초록으로 **칠했다.** 그러면 시트 밑에
+// 남의 브랜드 색 두 덩이가 상시로 깔려 한 줄이 신호등이 된다 — 이 파일 주석이
+// 티맵을 테두리형으로 남긴 이유로 이미 그 걱정을 적어 뒀는데, 정작 둘은
+// 칠해 놓고 있었다.
+//
+// 샘플(서울 인파레이더)을 픽셀로 재 보니 **셋 다 같은 중립 배경**이다
+// (`rgb(239,239,236)` + 테두리 `rgb(219,219,218)`), 브랜드 색은 화살표 글리프
+// 하나에만 들어간다. 그쪽이 맞다:
+//
+// 1. **정보를 나르는 것은 라벨이다.** 「카카오맵」이라 적혀 있으면 배경까지
+//    노랑일 필요가 없다. 색은 훑을 때 찾는 단서로만 쓰면 족하다.
+// 2. **다크 모드가 저절로 풀린다.** 노랑·초록은 남의 자산이라 밤에도 안 바뀌는데
+//    그 위의 글자는 바뀌어야 해서 `text-brand-ink`라는 토큰을 따로 박아 뒀었다.
+//    배경이 우리 토큰이면 `text-on-surface`가 두 모드에서 알아서 맞는다 —
+//    그 토큰은 쓸 자리가 없어져 **지웠다.**
+// 3. **셋의 무게가 같아진다.** 지도 앱 선택은 취향이라 우리가 하나를 밀 이유가
+//    없다. 칠해 두면 칠한 쪽이 커 보인다.
+//
+// **옮기면서 하나가 딸려 왔다: 배경으로 멀쩡하던 색이 전경에서 무너진다.**
+// 카카오 노랑(`#fee500`)은 배경일 때 어두운 글자를 얹어 12.90:1이었는데,
+// 같은 값을 흰 표면 위 아이콘으로 놓으면 **1.28:1**이라 통째로 사라진다.
+// 그래서 카카오만 색상을 유지한 채 명도를 내린 값(`brand-kakao-ink`)을 쓴다.
+// 네이버 초록은 2.25:1로 3:1에 못 미치지만 초록이라는 것은 읽혀서 손대지
+// 않았다. 값과 근거는 `index.css`의 `--color-brand-*` 주석에 있다.
+//
+// **아이콘 색 자체는 대비 규정 밖이다** — 라벨이 같은 말을 하므로 색은 장식이다
+// (WCAG 1.4.1: 색만으로 정보를 전하지 않는다). 카카오를 3:1까지 올린 것은
+// 규정이 아니라 **훑을 때 단서로 쓰이려면 일단 보여야 하기 때문**이다.
+// `tokens.test.ts`의 「글자 대비」 검사가 브랜드 색에서 손을 떼고 아이콘
+// 가시성 검사로 바뀐 것이 이 구분이다.
+//
 // 라벨에서 「길찾기」를 뺐다. 셋이 한 줄에 서면서 320px에서 버튼 하나에 배정되는
 // 폭이 138px → **87px**로 줄었는데 「카카오맵 길찾기」는 그 폭에 못 들어간다.
 // 헤드리스 크롬 실측(320/360/390px): 배정 87/101/111px, 필요 75(카카오맵)·
@@ -81,29 +113,35 @@ function mapLinks(): readonly MapLink[] {
       label: t("카카오맵"),
       icon: "pin",
       href: (entry) => kakaoMapSearchUrl(entry.name),
-      className: "bg-brand-kakao text-brand-ink",
+      // **진짜 카카오 노랑이 아니다.** `#fee500`은 흰 표면에서 1.28:1이라
+      // 아이콘이 사라진다 — 배경일 때는 멀쩡하던 색이 전경이 되면서 무너진
+      // 것이다. 색상만 남기고 명도를 내린 우리 값이다(index.css의 주석).
+      iconClassName: "text-brand-kakao-ink",
     },
     {
       label: t("네이버"),
       icon: "map",
       href: (entry) => naverMapSearchUrl(entry.name),
-      className: "bg-brand-naver text-brand-ink",
+      // 이쪽은 실제 브랜드 값 그대로다. 2.25:1로 3:1에 못 미치지만 초록이라는
+      // 것은 읽힌다 — 손대지 않는 쪽이 맞다.
+      iconClassName: "text-brand-naver",
     },
     {
-      // 티맵 로고 색을 토큰으로 들이지 않았다. 카카오·네이버는 시안이 브랜드
-      // 배경을 쓰지만 셋째까지 색을 채우면 한 줄이 신호등이 된다 — 이것만
-      // 테두리형으로 두어 「길찾기 둘 + 내비 하나」로 읽히게 했다.
+      // **티맵 로고 색은 토큰으로 안 들였다.** 셋째 브랜드 색을 하나 더 들이는
+      // 값보다 얻는 것이 적다 — 라벨이 이미 「티맵」이라 적혀 있다. 아이콘이
+      // 라벨과 같은 색을 쓰므로 셋의 무게는 그대로 같다.
       label: t("티맵"),
       icon: "navigation",
       href: (entry) => tmapRouteUrl(entry.name, entry),
-      className:
-        "border border-outline-variant bg-surface-container-lowest text-on-surface",
+      iconClassName: "text-on-surface",
     },
   ];
 }
 
+// 셋이 나눠 쓰는 상자. **예전에는 티맵만 이 모양이었다** — 카카오·네이버는
+// 브랜드 배경을 칠하고 있었다. 지금은 셋이 같다.
 const ACTION_BASE =
-  "flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-action text-label-md font-semibold";
+  "flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-action border border-outline-variant bg-surface-container-lowest text-label-md font-semibold text-on-surface";
 
 export function MapLinkButtons({ entry, pinned }: Props) {
   // href를 실제로 채운 <a>로 둔다. 브리지가 없을 때 열 주소가 여기 남아 있어야
@@ -140,9 +178,9 @@ export function MapLinkButtons({ entry, pinned }: Props) {
               event.preventDefault();
               void openExternalUrl(link.href(entry));
             }}
-            className={`${ACTION_BASE} ${link.className}`}
+            className={ACTION_BASE}
           >
-            <Icon name={link.icon} className="size-5" />
+            <Icon name={link.icon} className={`size-5 ${link.iconClassName}`} />
             {link.label}
           </a>
         ))}

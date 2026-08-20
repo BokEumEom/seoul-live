@@ -147,22 +147,54 @@ describe('혼잡도 배지 색 대비', () => {
   })
 })
 
-// 길찾기 버튼 둘은 상세 화면의 1차 CTA다(`ActionButtons`). 배경이 남의 브랜드
-// 색이라 우리가 못 고치므로 **글자 쪽으로 맞춘다.**
+// 길찾기 버튼 셋은 이제 **같은 중립 상자**다. 브랜드 색은 아이콘 한 글리프에만
+// 들어간다(`MapLinkButtons`) — 그래서 여기서 재는 것이 바뀌었다.
 //
-// 네이버 녹색에 흰 글자를 얹으면 2.25:1로 무너진다(카카오는 원래 어두운 글자라
-// 문제가 없었다). 브랜드 규정 안에서 쓸 수 있는 조합을 재 보니 어두운 글자가
-// 답이었다 — 흰 배경에 녹색 글자로 뒤집는 길도 2.25:1로 똑같이 실패한다.
-// 그 녹색 자체가 흰색과 2.25:1이라 어느 쪽으로 놓아도 같다.
+// **예전에는 「브랜드 배경 위의 글자」를 쟀다.** 카카오 노랑·네이버 초록을
+// 배경에 칠했기 때문이다. 네이버 초록에 흰 글자는 2.25:1로 무너지고 흰 배경에
+// 초록 글자로 뒤집어도 같은 2.25:1이라(그 초록 자체가 흰색과 2.25:1이다) 어두운
+// 글자가 유일한 답이었고, 그걸 `--color-brand-ink`로 박아 뒀다. 배경이 우리
+// 토큰으로 돌아오면서 그 제약이 사라졌다 — 글자는 `text-on-surface`이므로
+// 아래 표면 대비 검사가 이미 덮고, `brand-ink`는 지웠다.
 //
-// 브랜드 색을 컴포넌트의 raw hex가 아니라 토큰으로 둔 이유가 이것이다 —
-// 여기서 재려면 한 파일에 모여 있어야 한다.
-describe('길찾기 버튼 색 대비', () => {
+// **대신 반대쪽 함정이 생겼다: 배경으로 멀쩡하던 색이 전경에서 무너진다.**
+// 카카오 노랑(`#fee500`)을 흰 표면 위 아이콘으로 놓으면 1.28:1이라 통째로
+// 사라진다. 배경일 때는 「어두운 글자를 얹으면 된다」로 풀리던 문제가, 전경이
+// 되는 순간 색 자체를 바꾸는 것 말고 길이 없어진 것이다.
+//
+// **그래서 4.5:1이 아니라 3:1을 잰다.** 라벨이 「카카오맵」이라 적혀 있어 색은
+// 정보를 나르지 않는다 — WCAG 1.4.1이 금지하는 「색만으로 전하기」가 아니고,
+// 1.4.11(비텍스트 3:1)도 색이 **의미를 지닐 때** 걸리는 조항이다. 여기 3:1은
+// 규정이 아니라 우리가 고른 바다: **훑을 때 단서로 쓰이려면 일단 보여야 한다.**
+describe('길찾기 버튼 아이콘 색', () => {
+  // 상자는 셋 다 `surface-container-lowest`다(`MapLinkButtons`의 `ACTION_BASE`).
+  // 표면 토큰을 바꾸면 이 검사가 함께 움직인다 — 그게 이 검사의 값어치다.
+  const LIGHT = 'surface-container-lowest'
+
+  // **이 토큰이 존재하는 이유가 이 검사다.** 진짜 카카오 노랑을 되돌려 놓으면
+  // 밝은 쪽이 1.28:1로 죽는다(되돌려 확인했다).
   it.each([
-    ['카카오맵', 'brand-kakao'],
-    ['네이버', 'brand-naver'],
-  ])('%s 버튼 글자가 4.5:1을 넘는다', (_name, brand) => {
-    expect(contrast(token('on-surface'), token(brand))).toBeGreaterThanOrEqual(4.5)
+    ['밝은 표면', () => contrast(token('brand-kakao-ink'), token(LIGHT))],
+    ['어두운 표면', () => contrast(token('brand-kakao-ink'), darkToken(LIGHT))],
+  ] as const)('카카오 아이콘이 %s에서 3:1을 넘는다', (_where, measure) => {
+    expect(measure()).toBeGreaterThanOrEqual(3)
+  })
+
+  // **네이버는 밝은 표면에서 3:1을 못 넘는다. 알고 두는 것이다** — 2.25:1은
+  // 「초록이구나」가 읽히는 값이고, 1.28:1의 노랑과 다르다. 실제 브랜드 값을
+  // 그대로 두는 쪽을 골랐으므로 여기서는 **지금보다 나빠지지 않는 것**만 잠근다.
+  // 이 값이 흔들린다면 그건 네이버가 아니라 표면 토큰이 바뀐 것이다.
+  it('네이버 아이콘이 지금보다 나빠지지 않는다', () => {
+    expect(contrast(token('brand-naver'), token(LIGHT))).toBeGreaterThanOrEqual(2.2)
+    expect(contrast(token('brand-naver'), darkToken(LIGHT))).toBeGreaterThanOrEqual(3)
+  })
+
+  // 위 둘이 「같은 색 하나를 두 번 재는」 것으로 통과하는 것을 막는다. 아이콘
+  // 색은 보이기만 하면 되는 게 아니라 **어느 앱인지를 가리켜야** 한다.
+  // (색상이 실제로 갈리는지는 대비로 못 잰다 — 여기서 잠그는 것은 값이 서로
+  // 다르다는 사실뿐이고, 「노랑」·「초록」인지는 사람이 봐야 한다.)
+  it('두 색이 같은 값이 아니다', () => {
+    expect(token('brand-kakao-ink')).not.toBe(token('brand-naver'))
   })
 })
 
@@ -278,8 +310,12 @@ describe('다크 히트맵 램프', () => {
 // 다크 블록에 없으면, 밤에 그 자리만 라이트 값이 남아 배경과 뭉개진다 —
 // 새 색을 쓰기 시작할 때 가장 조용히 빠지는 자리라 사람이 기억할 일이 아니다.
 describe('다크 모드 완결성', () => {
-  /** 브랜드 배경과 그 위의 글자. 남의 자산이라 밤이라고 바꿀 수 없다. */
-  const EXEMPT: ReadonlySet<string> = new Set(['brand-kakao', 'brand-naver', 'brand-ink'])
+  /**
+   * 길찾기 아이콘의 브랜드 색. 그 색이 곧 「카카오」·「네이버」라는 단서라
+   * 밤이라고 갈아 끼우면 단서 노릇을 못 한다. 그래도 되는 이유는 둘 다 어두운
+   * 표면에서 더 잘 보이기 때문이고, 그 값은 위 「길찾기 버튼 아이콘 색」이 잰다.
+   */
+  const EXEMPT: ReadonlySet<string> = new Set(['brand-kakao-ink', 'brand-naver'])
 
   const UTILITIES = [
     'bg',
@@ -342,11 +378,13 @@ describe('다크 모드 완결성', () => {
     expect(darkOverrides().size).toBeGreaterThan(20)
   })
 
-  // 브랜드 버튼 글자는 밤에도 안 바뀌어야 한다. 바뀌면 카카오 노랑 위에 크림
-  // 글자가 얹혀 1.2:1로 사라진다 — 배경을 못 바꾸니 글자도 못 바꾼다.
-  it('브랜드 글자색은 다크에서 갈아 끼우지 않는다', () => {
-    expect(darkOverrides().has('brand-ink')).toBe(false)
-    expect(contrast(token('brand-ink'), token('brand-kakao'))).toBeGreaterThanOrEqual(4.5)
-    expect(contrast(token('brand-ink'), token('brand-naver'))).toBeGreaterThanOrEqual(4.5)
-  })
+  // **위 EXEMPT가 진짜로 필요한 상태인지 여기서 다시 확인한다.** 면제 목록은
+  // 한 번 적어 두면 늙는다 — 누가 다크 값을 나중에 넣으면 면제가 거짓말이 되고,
+  // 그때는 아이콘 색이 밤에 갈리면서 「그 색이 곧 브랜드」라는 전제가 깨진다.
+  it.each(['brand-kakao-ink', 'brand-naver'])(
+    '%s는 다크에서 갈아 끼우지 않는다',
+    (name) => {
+      expect(darkOverrides().has(name)).toBe(false)
+    },
+  )
 })
