@@ -27,6 +27,11 @@ interface Props {
    * 이유로 지도도 손끝을 따라온다.
    */
   readonly onDragRatioChange: (ratio: number | null) => void
+  /**
+   * 시트를 통째로 잠근다. 전체 화면 상세가 위를 덮을 때 참이다 —
+   * 덮인 시트는 눈에만 안 보일 뿐 탭 키와 스크린리더에는 그대로 남는다.
+   */
+  readonly inert?: boolean
   readonly children: ReactNode
 }
 
@@ -84,6 +89,7 @@ export function BottomSheet({
   detent,
   onDetentChange,
   onDragRatioChange,
+  inert = false,
   children,
 }: Props) {
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -244,7 +250,10 @@ export function BottomSheet({
   // 여기 클래스는 그 값을 Tailwind 눈금으로 옮긴 것이다(400 ÷ 4 = 100).
   if (wide) {
     return (
-      <div className="absolute inset-y-0 left-0 z-10 flex w-100 flex-col border-r border-outline-variant bg-surface-container-lowest shadow-floating">
+      <div
+        inert={inert}
+        className="absolute inset-y-0 left-0 z-10 flex w-100 flex-col border-r border-outline-variant bg-surface-container-lowest shadow-floating"
+      >
         <div
           data-sheet-content
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
@@ -258,6 +267,7 @@ export function BottomSheet({
   return (
     <div
       ref={sheetRef}
+      inert={inert}
       // 비율을 퍼센트로 옮길 때 잘라 낸다. `0.56 * 100`이 이진 부동소수에서
       // `56.00000000000001`이라 그대로 두면 그 숫자가 DOM 스타일에 실린다
       // (0.16·0.46·0.92는 우연히 깨끗해서 여태 안 드러났을 뿐이다).

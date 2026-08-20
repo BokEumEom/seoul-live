@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  congestionHeadline,
+  congestionSentence,
   congestionRank,
   congestionTone,
   isUncrowded,
@@ -60,20 +60,26 @@ describe('isUncrowded', () => {
   })
 })
 
-describe('congestionHeadline', () => {
+describe('congestionSentence', () => {
   it('4단계 모두 서로 다른 문구를 준다', () => {
-    const headlines = CONGESTION_LEVELS.map(congestionHeadline)
-    expect(new Set(headlines).size).toBe(CONGESTION_LEVELS.length)
+    const sentences = CONGESTION_LEVELS.map(congestionSentence)
+    expect(new Set(sentences).size).toBe(CONGESTION_LEVELS.length)
   })
 
-  it('시안의 문구를 그대로 쓴다', () => {
-    // stitch_ui/_3 시안의 큰 제목이 "극심한 혼잡"이다.
-    expect(congestionHeadline('붐빔')).toBe('극심한 혼잡')
+  // **「원활」이 여기 없는 것이 요점이다.** 예전 문구(매우 원활/원활/다소 혼잡/
+  // 극심한 혼잡)는 교통정보 어조라 같은 화면의 **도로소통 값**과 같은 낱말을
+  // 썼다 — 사람이 붐비는지 차가 막히는지 구별되지 않았다.
+  it('도로소통 값과 같은 낱말을 쓰지 않는다', () => {
+    const sentences = CONGESTION_LEVELS.map(congestionSentence)
+    for (const road of ['원활', '서행', '정체']) {
+      expect(sentences).not.toContain(road)
+    }
   })
 
-  it('붐빌수록 강한 표현이 된다', () => {
-    expect(congestionHeadline('여유')).toBe('매우 원활')
-    expect(congestionHeadline('보통')).toBe('원활')
-    expect(congestionHeadline('약간 붐빔')).toBe('다소 혼잡')
+  it('시안(stitch_ui_ux/_2)의 어조를 그대로 쓴다', () => {
+    expect(congestionSentence('여유')).toBe('지금은 여유로워요')
+    expect(congestionSentence('보통')).toBe('지금은 보통이에요')
+    expect(congestionSentence('약간 붐빔')).toBe('지금은 약간 붐벼요')
+    expect(congestionSentence('붐빔')).toBe('지금은 붐벼요')
   })
 })

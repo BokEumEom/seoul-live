@@ -146,12 +146,15 @@ describe('App', () => {
 
     await userEvent.click(sheetRow(/광화문·덕수궁/))
 
-    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
-    // 예전 구조에서는 상세로 가면 지도가 통째로 사라졌다.
+    // **상세가 전체 화면 층이 됐다**(2026-08-20) — 시트 안의 「목록으로」 링크가
+    // 상단 바의 뒤로 화살표로 바뀌었다. 근거는 `AreaDetailScreen`의 주석.
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
+    // **지도는 덮이되 언마운트되지 않는다.** 그래야 뒤로가기가 즉시이고,
+    // 상세 안의 「지도에서 보기」가 그 지도를 옮길 수 있다.
     expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
-    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
+    expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
   })
 
   it('오늘의 서울은 탭이 아니라 시트 안 뷰다', async () => {
@@ -184,7 +187,7 @@ describe('App', () => {
 
     await userEvent.click(second)
 
-    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
   })
@@ -202,7 +205,7 @@ describe('App', () => {
 
     await userEvent.click(sheetRow(/광화문·덕수궁/))
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
-    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
 
     expect(await screen.findByRole('button', { name: '내 장소 1' })).toBeInTheDocument()
   })
@@ -282,7 +285,7 @@ describe('App', () => {
     const callsAfterMount = getLocation.mock.calls.length
 
     await userEvent.click(sheetRow(/광화문·덕수궁/))
-    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
 
     // 위치는 LocationProvider가 앱 수준에서 한 번만 잡는다.
     expect(getLocation.mock.calls.length).toBe(callsAfterMount)

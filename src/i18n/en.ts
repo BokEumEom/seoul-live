@@ -20,11 +20,19 @@ export const EN: Readonly<Record<string, string>> = {
   '약간 붐빔': 'Busy',
   붐빔: 'Crowded',
 
-  // 혼잡도 헤드라인. 4단계를 사람 말로 옮긴 것이라 단계와 따로 논다.
-  '매우 원활': 'Very quiet',
-  원활: 'Quiet',
-  '다소 혼잡': 'Getting busy',
-  '극심한 혼잡': 'Very crowded',
+  // 상세 히어로의 한 문장. 4단계를 **말 거는 어조로** 옮긴 것이라 단계 배지와
+  // 따로 논다. 예전에는 교통정보 어조였는데(매우 원활/원활/다소 혼잡/극심한
+  // 혼잡) 같은 화면의 도로소통 값과 낱말이 겹쳤다 — 근거는 `congestion.ts`.
+  '지금은 여유로워요': "It's quiet right now",
+  '지금은 보통이에요': "It's about average right now",
+  '지금은 약간 붐벼요': "It's a little busy right now",
+  '지금은 붐벼요': "It's crowded right now",
+
+  // 도로소통 값의 **접두어 없는** 키. 요약 카드가 쓴다 — 카드에는 「도로」라는
+  // 이름표가 이미 있어 접두어를 붙이면 「도로 / 도로 원활」이 된다.
+  원활: 'Clear',
+  서행: 'Slow',
+  정체: 'Jammed',
 
   // ── 명소 카테고리. 서울시 공식 5종이다 ──
   '고궁·문화유산': 'Palaces & heritage',
@@ -57,6 +65,7 @@ export const EN: Readonly<Record<string, string>> = {
   '내 주변': 'My location',
   '현재 위치': 'Current location',
   '즐겨찾기한 곳': 'Saved place',
+  뒤로: 'Back',
   목록으로: 'Back to list',
   '살짝 열림': 'peek',
   절반: 'half',
@@ -84,7 +93,7 @@ export const EN: Readonly<Record<string, string>> = {
 
   // ── 상세: 혼잡도 ──
   '지금 얼마나 붐비나': 'How crowded is it now',
-  '마지막 업데이트: {시각}': 'Last updated {시각}',
+  '{시각} 기준': 'As of {시각}',
   // **상세에서 가장 큰 글씨다.** 「지금 약」을 숫자와 따로 둔 이유는 굵기다 —
   // 샘플처럼 앞은 흐리고 숫자만 굵게 두려면 span이 갈려야 한다. 영어에서도
   // 앞뒤가 그대로 붙는다: 「Now about 40,000–42,000 people」.
@@ -215,15 +224,24 @@ export const EN: Readonly<Record<string, string>> = {
   '누르면 지금 화면이 나와요': 'Tap to watch live',
   '영상 없음': 'No video',
   '{시설} 실시간 영상': 'Live camera at {시설}',
-  '{시설} CCTV': '{시설} camera',
-  '{시설} CCTV (영상 없음)': '{시설} camera (no video)',
+  // (지도 CCTV 마커의 이름표 둘이 여기 있었다. 상세가 전체 화면이 되면서 그
+  // 층은 그려지는 동안 언제나 덮여 있어 지웠다 — 근거는 `HomeScreen`의 주석.)
   '영상을 불러오는 중이에요': 'Loading video…',
   // 원인을 단정하지 않는다(상류 점검·기기 네트워크·우리 프록시를 구분할 수 없다).
   '지금은 영상을 불러올 수 없어요': 'Video unavailable right now',
   '이 명소 주변에는 공개된 CCTV가 없어요.': 'No public cameras near this place.',
   '진행 중인 문화행사가 없어요.': 'No events running now.',
-  '이 명소에는 지금 제공되는 도시 정보가 없어요.':
-    'No city information available for this place right now.',
+  // 상세가 탭으로 갈리면서 「없어요」도 탭마다 갈렸다. 예전에는 도시 정보
+  // 전체를 한 문장으로 덮었는데, 탭을 눌러 들어온 사용자에게는 **그 탭에**
+  // 무엇이 없는지가 답이다.
+  '이 명소에는 지금 제공되는 교통 정보가 없어요.':
+    'No traffic information for this place right now.',
+  '이 명소에는 지금 제공되는 날씨 정보가 없어요.':
+    'No weather information for this place right now.',
+  '주변 주차장·따릉이 정보가 없어요.': 'No parking or bike docks nearby.',
+  '지금 이 근처에 전해진 사고·재난 소식이 없어요.':
+    'No incidents or alerts reported nearby.',
+  '사고·통제': 'Incidents & closures',
   '총 {면수}면': '{면수} spaces',
   '{면수}면': '{면수} free',
   만차: 'Full',
@@ -243,15 +261,34 @@ export const EN: Readonly<Record<string, string>> = {
   매우나쁨: 'Very bad',
   '통합대기 {등급}': 'Air quality {등급}',
 
-  // ── 상세: 요약 칩 ──
-  // 이 하나만 `summarizeCityInfo` 밖에서 만들어진다(CCTV는 다른 엔드포인트라
-  // 도시정보 응답에 없다). 그래서 `i18n.test.ts`의 칩 라벨 검사가 못 잡는다 —
-  // 지울 때 조심할 것.
-  'CCTV {개수}': 'Cameras {개수}',
-  '주차 {비율}%': '{비율}% parking free',
-  '지하철 {개수}': 'Subway {개수}',
-  '따릉이 {대수}대': '{대수} bikes',
-  '행사 {개수}': 'Events {개수}',
+  // ── 상세: 탭과 요약 카드 ──
+  // **예전에는 요약 칩 줄이었다.** 상세가 전체 화면 + 탭이 되면서 그 자리를
+  // 2열 카드 격자가 대신한다 — 카드는 같은 값을 보여주면서 **다른 화면**으로
+  // 데려간다(`SummaryGrid`).
+  요약: 'Summary',
+  인구: 'People',
+  교통: 'Transit',
+  주변: 'Nearby',
+  행사: 'Events',
+  안전: 'Safety',
+  '명소 정보 분류': 'Place information categories',
+  // 앞의 쉼표는 보이는 글자 뒤에 이어 붙는 sr-only 조각이라 그대로 둔다.
+  ', {분류} 자세히 보기': ', see {분류} details',
+  혼잡도: 'Crowding',
+  날씨: 'Weather',
+  대기질: 'Air quality',
+  통합대기: 'Air index',
+  도로: 'Roads',
+  지하철: 'Subway',
+  주차: 'Parking',
+  '가까운 역': 'Nearby stations',
+  '주변 주차장': 'Nearby lots',
+  '{비율}% 비어 있어요': '{비율}% free',
+  대여소: 'Docks',
+  '대여 가능': 'Available now',
+  '진행 중': 'Running now',
+  '{개수}곳': '{개수}',
+  '{개수}건': '{개수}',
 
   // ── 상세: 근처 ──
   '근처 쾌적한 장소': 'Quieter places nearby',

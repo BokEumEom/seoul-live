@@ -1,33 +1,22 @@
 import type { BikeStation, CityInfo, ParkingLot } from './cityInfo'
 
 /**
- * 상세 맨 위의 요약 칩 하나.
+ * 도시 정보 응답을 **한 값으로 접는** 함수들이 사는 자리.
  *
- * `sectionId`가 있는 이유는 화면 길이다. 도시 정보가 통째로 펼쳐지면서 상세가
- * 매우 길어졌는데, 칩이 요약만 하고 끝나면 사용자는 그 값을 확인하러 손으로
- * 한참 스크롤해야 한다. 칩이 곧 목차가 되게 한다 — 샘플(서울 인파레이더)의
- * 칩은 정보만 담고 누를 수 없지만, 그쪽은 4,000px짜리 한 장을 그냥 스크롤하게
- * 둔다. 우리는 시트 안이라 더 좁다.
+ * **예전에는 요약 칩 줄(`CityInfoChips`)이 이 파일의 주인이었다.** 상세가 한
+ * 장으로 5,395px까지 자라던 시절, 칩이 값을 요약하면서 목차 노릇을 했다.
+ * 2026-08-20에 상세가 전체 화면 + 탭이 되면서 그 일은 요약 탭의 카드 격자가
+ * 맡는다(`SummaryGrid`) — 카드는 같은 값을 보여주면서 **다른 화면**으로
+ * 데려가므로, 같은 화면 안에서 스크롤하던 칩보다 할 수 있는 일이 넓다.
+ *
+ * 그래서 칩 관련 타입과 `summarizeCityInfo`는 사라졌고, 여러 항목을 하나로
+ * 접는 셈법만 남았다. 이 셈법은 그대로 카드가 쓴다.
  */
-export interface CityInfoChip {
-  /**
-   * 번역 키와 값. **완성된 글자가 아니다.**
-   *
-   * 도메인은 순수해야 해서 언어를 볼 수 없다(`t()`는 모듈 상태를 읽는다).
-   * 그래서 「무엇을 말할지」만 정하고 「어느 말로 적을지」는 화면이 정한다 —
-   * 「주차 {비율}%」가 영어에서 「45% parking free」로 어순까지 바뀐다.
-   */
-  readonly label: string
-  readonly labelParams?: Readonly<Record<string, string | number>>
-  /** 눌렀을 때 갈 절. `InfoSection`이 이 값을 id로 단다. */
-  readonly sectionId: CityInfoSectionId
-}
-
 export type CityInfoSectionId = 'parking' | 'road' | 'subway' | 'bikes' | 'events' | 'cctv'
 
 /**
- * 칩이 뛰어갈 절의 DOM id. **칩과 절이 이 함수를 나눠 써야 한다** — 양쪽에서
- * 문자열을 따로 지으면 한쪽만 고쳤을 때 칩이 조용히 아무 데도 안 간다.
+ * 절의 DOM id. **여러 곳이 이 함수를 나눠 써야 한다** — 문자열을 각자 지으면
+ * 한쪽만 고쳤을 때 조용히 어긋난다.
  *
  * 컴포넌트 파일이 아니라 여기 있는 이유는 `toneClass.ts`와 같다: 컴포넌트를
  * export하는 파일이 함수까지 함께 export하면 빠른 새로고침이 깨진다.
@@ -68,84 +57,6 @@ export function totalBikes(stations: readonly BikeStation[]): number | null {
 }
 
 /** 도착 정보가 오는 역·호선 수. 열차 수를 세면 무엇을 세는지 알 수 없어진다. */
-function subwayLineCount(info: CityInfo): number {
+export function subwayLineCount(info: CityInfo): number {
   return new Set(info.subway.map((train) => `${train.station} ${train.line}`)).size
-}
-
-/**
- * 값이 **있는 것만** 칩으로 만든다. 「주차 -」처럼 빈 칩을 세우면 한 줄이
- * 모르는 것들로 채워진다.
- *
- * **순서는 고정이고, 아래 절의 순서와 같다.** 두 가지 이유가 겹친다. 하나는
- * 값이 있는 것만 세우다 보면 명소마다 칩 순서가 달라져 같은 자리에 다른 뜻이
- * 오기 때문이고, 다른 하나는 이 칩이 목차 노릇을 하기 때문이다 — 칩 순서와
- * 절 순서가 어긋나면 왼쪽 칩이 아래쪽 절로 뛰어 방향 감각이 깨진다.
- *
- * **그래서 샘플과 순서가 다르다.** 샘플(서울 인파레이더)은 주차를 맨 앞에
- * 두지만 그쪽 칩은 누를 수 없어 순서가 목차일 필요가 없다.
- */
-/**
- * 「CCTV 5」 칩.
- *
- * **`summarizeCityInfo` 밖에 있다.** 저 함수는 `citydata` 응답 **하나**를
- * 세는데 CCTV는 다른 엔드포인트에서 온다(`api/cctv`, 서울 OpenAPI가 아니라
- * 쿼터 밖이다). 두 응답을 합친 인자를 새로 만들면 「이 응답을 요약한다」는
- * 저 함수의 뜻이 흐려지고, 도시 정보 없이 CCTV만 도착한 순간을 표현할 수도
- * 없어진다.
- *
- * 그래도 **도메인에 있다**. 화면에서 객체 리터럴로 짓지 않는 이유는 라벨 틀
- * 때문이다 — `i18n.test.ts`가 칩 라벨을 도메인에서 뽑아 사전 완결성을
- * 검사하는데, 화면에 두면 그 그물 밖으로 빠져 번역 없이 배포된다.
- *
- * 0대면 `null`이다. 「CCTV 0」은 목차로서 갈 곳이 없는 칩이다.
- */
-export function cctvChip(count: number): CityInfoChip | null {
-  if (count === 0) {
-    return null
-  }
-  return { label: 'CCTV {개수}', labelParams: { 개수: count }, sectionId: 'cctv' }
-}
-
-export function summarizeCityInfo(info: CityInfo): readonly CityInfoChip[] {
-  const vacancy = parkingVacancyRate(info.parking)
-  const bikes = totalBikes(info.bikes)
-  const lines = subwayLineCount(info)
-
-  const candidates: readonly (CityInfoChip | null)[] = [
-    // **「도로」를 붙인다.** 예전에는 「정체」·「서행」이 그 자체로 한 낱말이라
-    // 접두어 없이 값을 그대로 썼는데, 그러면 **영어로 옮길 수가 없다** —
-    // 이 앱은 한국어 원문이 곧 사전 키인데 `원활`은 혼잡도 헤드라인이 이미
-    // 갖고 있고 뜻이 다르다(장소가 한산하다 / 차가 잘 흐른다). 한 낱말에 두
-    // 뜻을 담을 수 없어 도로소통만 통째로 번역에서 빠져 있었고, 영어 화면의
-    // 칩 줄 맨 앞에 「정체」가 한국어로 남았다.
-    //
-    // 접두어가 붙으면 키가 갈라져 둘 다 번역된다. 대가는 칩 폭이고(2자 → 5자)
-    // 칩 줄은 가로로 스크롤되므로 감당할 수 있다. 덤으로 「지하철 2」·
-    // 「주차 50%」 옆에서 무엇에 대한 값인지가 분명해진다.
-    //
-    // 모르는 값이 오면 `t()`가 키를 그대로 돌려주므로 「도로 ○○」로 뜬다 —
-    // 한국어로는 읽히고 영어 화면에는 한국어가 남는다. 서울 API의 자유 값을
-    // 다루는 다른 자리와 같은 규칙이다.
-    info.roadTraffic === null || info.roadTraffic.index === ''
-      ? null
-      : { label: `도로 ${info.roadTraffic.index}`, sectionId: 'road' },
-    lines === 0
-      ? null
-      : { label: '지하철 {개수}', labelParams: { 개수: lines }, sectionId: 'subway' },
-    vacancy === null
-      ? null
-      : { label: '주차 {비율}%', labelParams: { 비율: vacancy }, sectionId: 'parking' },
-    bikes === null
-      ? null
-      : { label: '따릉이 {대수}대', labelParams: { 대수: bikes }, sectionId: 'bikes' },
-    info.events.length === 0
-      ? null
-      : {
-          label: '행사 {개수}',
-          labelParams: { 개수: info.events.length },
-          sectionId: 'events',
-        },
-  ]
-
-  return candidates.filter((chip): chip is CityInfoChip => chip !== null)
 }

@@ -86,7 +86,7 @@ export function ActionButtons({ entry }: Props) {
         }}
         className={`${ICON_ACTION} ${saved ? 'text-primary' : ''}`}
       >
-        <Icon name={saved ? 'starFilled' : 'star'} className="size-6" />
+        <Icon name={saved ? 'bookmarkFilled' : 'bookmark'} className="size-6" />
       </button>
 
       {/* href를 실제로 채운 <a>로 둔다. 브리지가 없을 때 열 주소가 여기 남아

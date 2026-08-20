@@ -11,7 +11,7 @@ import { useLocation } from '../app/locationContext'
 import { ErrorState } from '../components/common/ErrorState'
 import { SkeletonRows } from '../components/common/SkeletonCard'
 import { AlertBanner } from '../components/home/AlertBanner'
-import { AreaDetail } from '../components/home/AreaDetail'
+import { AreaDetailScreen } from '../components/detail/AreaDetailScreen'
 import type { FacilityLocation } from '../domain/cityInfo'
 import { BottomSheet } from '../components/home/BottomSheet'
 import { FilterChips } from '../components/home/FilterChips'
@@ -24,7 +24,6 @@ import { AreaListItem } from '../components/list/AreaListItem'
 import { CategoryFilter } from '../components/list/CategoryFilter'
 import { LocationNotice } from '../components/list/LocationNotice'
 import { SortSegmented } from '../components/list/SortSegmented'
-import { CctvMarkerLayer } from '../components/map/CctvMarkerLayer'
 import { CongestionMarker } from '../components/map/CongestionMarker'
 import { FacilityMarker } from '../components/map/FacilityMarker'
 import {
@@ -196,10 +195,10 @@ export function HomeScreen() {
   // 그 높이를 따라가야 해서 여기까지 올라왔다 — `BottomSheet`의 주석 참조.
   // 지도에서 짚어 둔 주차장·따릉이 한 곳. 명소를 갈아타면 지운다.
   const [focusedFacility, setFocusedFacility] = useState<FacilityLocation | null>(null)
-  // 지금 펼쳐 둔 CCTV의 스트림 주소. **지도와 시트가 나눠 갖는 하나의 선택이라
-  // 여기서 산다** — 시트 안에 두면 지도 마커가 그걸 못 읽고, 지도에 두면
-  // 시트가 못 읽는다. 둘은 같은 선택을 보는 두 창이다.
-  const [openCctv, setOpenCctv] = useState<string | null>(null)
+  // (여기 `openCctv`가 있었다. 지도 마커와 시트가 **같은 선택을 보는 두 창**
+  // 이라 화면 꼭대기에서 들고 있었는데, 상세가 전체 화면이 되면서 창이 하나만
+  // 남았다 — 상세를 여는 동안 지도가 통째로 덮이므로 CCTV 마커를 누를 길이
+  // 없다. 지금은 상세가 그 상태를 제 안에 둔다.)
   const [dragRatio, setDragRatio] = useState<number | null>(null)
   const [view, setView] = useState<'list' | 'today'>(
     initialRoute.kind === 'today' ? 'today' : 'list',
@@ -409,11 +408,13 @@ export function HomeScreen() {
     // 앞 명소에서 짚어 둔 주차장·따릉이 핀을 지운다. 안 지우면 경복궁 상세를
     // 보는데 지도에는 강남역 주차장 핀이 떠 있게 된다.
     setFocusedFacility(null)
-    // 펼쳐 둔 CCTV도 접는다. 안 접으면 **앞 명소의 영상이 계속 흐른 채로**
-    // 다른 명소 상세가 열린다 — 스트림도 남고 화면과도 어긋난다.
-    setOpenCctv(null)
+    // 펼쳐 둔 CCTV는 상세가 통째로 새로 마운트되면서 저절로 접힌다
+    // (`AreaDetailScreen`에 명소 이름이 `key`로 붙어 있다).
     moveMapTo(name)
-    requestSheetFocus()
+    // **여기서는 시트에 포커스를 주지 않는다.** 상세가 전체 화면 층으로
+    // 나가면서 시트는 그 뒤에서 `inert`가 된다 — inert 요소는 포커스를 못
+    // 받으므로 요청해 봐야 포커스가 `document.body`에 남는다. 포커스를
+    // 가져가는 것은 상세 화면 자신이다(`AreaDetailScreen`의 마운트 effect).
   }
 
   function openArea(name: string): void {
@@ -476,6 +477,16 @@ export function HomeScreen() {
         ? { kind: 'today' }
         : LIST_ROUTE
 
+  /**
+   * 상세가 열려 있나. **지도·오버레이·FAB·시트가 전부 이 값을 본다.**
+   *
+   * 전체 화면 상세는 뒤의 모든 것을 덮는데, 덮인 것들은 **눈에만** 안 보인다 —
+   * 탭 키는 그대로 통과하고 스크린리더도 읽는다. `inert`로 통째로 잠근다.
+   * 언마운트하지 않는 이유는 지도가 살아 있어야 뒤로가기가 즉시이고,
+   * 「지도에서 보기」가 그 지도를 옮길 수 있어서다.
+   */
+  const detailOpen = route.kind === 'area'
+
   // **뒤로/앞으로 가기.** 주소가 유일한 진실이라 `history.state`를 안 본다.
   //
   // **의존성 배열을 주지 않는다.** 이 리스너가 부르는 `applyRoute`는
@@ -509,17 +520,21 @@ export function HomeScreen() {
   // 지도가 그 자리로 간다. 이름만으로는 「광화문역 5번출구」가 어느 쪽인지,
   // 걸어서 얼마인지 알 길이 없다.
   //
-  // 단계를 half로 되돌리는 것이 핵심이다. 이 아이콘은 도시 정보 절에 있어
-  // 사용자는 거의 언제나 시트를 full로 올린 채 누르는데, 그대로 두면 지도가
-  // 옮겨간 것을 **볼 수가 없다** — 누른 보람이 화면에 하나도 안 나타난다.
-  // 같은 줄을 다시 누르면 접는다. 목록과 지도 마커가 이 함수를 함께 쓴다 —
-  // 어느 쪽으로 눌러도 같은 하나가 열리고 닫혀야 한다.
-  function toggleCctv(streamUrl: string): void {
-    setOpenCctv((current) => (current === streamUrl ? null : streamUrl))
-  }
-
+  /**
+   * 주차장·따릉이 한 곳을 지도에 짚는다.
+   *
+   * **상세를 닫는다.** 예전에는 시트를 half로 내리기만 했다 — 그때는 지도가
+   * 시트 뒤에 반쯤 보였으므로 그것으로 충분했다. 상세가 전체 화면이 된 지금
+   * 닫지 않으면 지도가 옮겨간 것을 **볼 수가 없다.** 누른 보람이 화면에
+   * 하나도 안 나타나는 버튼이 된다.
+   *
+   * 「지도에서 보기」라고 적힌 버튼이므로 지도로 나오는 것이 이름과 맞는다.
+   * 상세로 돌아가는 길은 그 명소를 다시 누르는 것이고, 지도는 이미 그 자리에
+   * 줌인해 있다.
+   */
   function showFacilityOnMap(place: FacilityLocation): void {
     setFocusedFacility(place)
+    setSelectedName(null)
     setDetent('half')
     focusMapOn(place.coords, FACILITY_ZOOM)
   }
@@ -658,7 +673,8 @@ export function HomeScreen() {
   // (근거는 `RecenterButton`의 산식).
   const recenterDetent: RecenterDetent | null =
     wide || sheetDetent === 'full' ? null : sheetDetent
-  const showRecenter = wide || sheetDetent !== 'full'
+  // 상세가 열려 있으면 지도가 통째로 가려지므로 「내 주변」도 물러난다.
+  const showRecenter = !detailOpen && (wide || sheetDetent !== 'full')
 
   // **시트가 움직이면 지도도 움직인다.** 시트가 커지면 보이는 띠가 위로 줄어드는데
   // 지도가 가만히 있으면 보고 있던 곳이 시트 뒤로 밀려 들어간다 — 「목록에서
@@ -785,19 +801,14 @@ export function HomeScreen() {
           </AdvancedMarker>
         )}
 
-        {/* 고른 명소 주변의 CCTV. **조회는 이 층이 스스로 한다** — 화면
-            꼭대기에서 구독하면 응답이 올 때마다 지도·시트·목록이 통째로
-            다시 그려진다(근거는 `CctvMarkerLayer`의 주석). */}
-        <CctvMarkerLayer
-          areaName={route.kind === 'area' ? route.name : undefined}
-          openStreamUrl={openCctv}
-          onSelect={(streamUrl) => {
-            toggleCctv(streamUrl)
-            // 시트가 살짝 열림이면 펼쳐진 영상이 안 보인다. 절반까지 올려서
-            // 방금 연 것이 화면에 들어오게 한다.
-            setDetent('half')
-          }}
-        />
+        {/* **CCTV 마커 층이 여기 있었다.** 고른 명소 주변 카메라를 지도에
+            깔고, 마커를 누르면 시트의 그 줄이 펼쳐졌다. 상세가 전체 화면이
+            되면서 그 층은 **닿을 수가 없다** — 마커가 그려지는 조건이 「상세가
+            열려 있을 때」인데 그때 지도는 통째로 덮인다. 안 보이는 것을 그리는
+            대신 지웠다.
+
+            되살릴 자리는 새 시안(stitch_ui_ux/_1)의 지도 레이어 토글이다 —
+            거기서는 상세와 무관하게 켜고 끄는 층이라 앞뒤가 맞는다. */}
 
         {markers.map((marker) => (
           <AdvancedMarker
@@ -995,28 +1006,13 @@ export function HomeScreen() {
     </div>
   )
 
-  // 시트 내용은 셋 중 하나다. **어느 것인지는 `route`가 정한다** — 여기서
-  // 상태를 다시 읽어 판단하면 주소와 시트가 서로 다른 답을 낼 수 있다.
+  // **시트 내용은 이제 둘 중 하나다.** 상세는 시트를 떠나 전체 화면 층이 됐다
+  // (아래 `detailOpen`) — 근거는 `AreaDetailScreen`의 주석.
+  //
+  // **어느 것인지는 `route`가 정한다** — 여기서 상태를 다시 읽어 판단하면
+  // 주소와 시트가 서로 다른 답을 낼 수 있다.
   const sheetContent =
-    route.kind === 'area' ? (
-      <AreaDetail
-        areaName={route.name}
-        onBack={showList}
-        onSelectArea={openArea}
-        onShowOnMap={showFacilityOnMap}
-        openCctvStreamUrl={openCctv}
-        onToggleCctv={toggleCctv}
-        // peek에서는 시트가 111px만 보이므로(390×844 실측) 73px짜리 바를 붙이면
-        // 남는 것이 「목록으로」 한 줄이다 — 근거는 `MapLinkButtons`의 `pinned`.
-        //
-        // `detent`가 아니라 `sheetDetent`인 이유는 지도가 죽었을 때다(위 주석).
-        // **`wide ||`가 필요하다.** PC 패널은 손잡이가 없어 단계를 못 바꾸는데
-        // 좁은 화면에서 peek으로 내려 둔 뒤 창을 넓히면 `sheetDetent`에 그
-        // 값이 남는다 — 전체 높이 패널에서 바만 5,400px 아래로 떨어진다.
-        // `showRecenter`도 같은 이유로 `wide ||`를 쓴다.
-        pinDirections={wide || sheetDetent !== 'peek'}
-      />
-    ) : route.kind === 'today' ? (
+    route.kind === 'today' ? (
       <TodayScreen onSelectArea={openArea} onBack={showList} />
     ) : (
       listPane
@@ -1031,7 +1027,7 @@ export function HomeScreen() {
           크기로 깔린다」는 것은 지도가 어느 레이어에 속하는지로만 확인되는데,
           jsdom에는 레이아웃이 없어 위치로는 못 잡는다. 마커를 목록 행과
           구별해 집는 데도 이 표식을 쓴다. */}
-      <div data-map-layer className="absolute inset-0">
+      <div data-map-layer inert={detailOpen} className="absolute inset-0">
         {mapPane}
       </div>
 
@@ -1074,7 +1070,11 @@ export function HomeScreen() {
           1440px에서 검색창이 1,358px로 늘어나 한 줄 입력이 화면을 가로질렀고,
           칩은 왼쪽에 몰리고 오른쪽이 텅 비었다(실측). 패널 안으로 들이면
           폭이 400px로 묶이고, 지도 위가 깨끗해져 「지도가 주인공」이 산다. */}
-      {!wide && sheetDetent !== 'full' && (
+      {/* **상세가 열려 있으면 이 열도 물러난다.** 전체 화면 상세가 지도를
+          통째로 덮으므로 그 위에 뜬 검색 바는 보이지도 않고, `z-20`이라
+          상세 층(`z-30`)에 가리기만 한다. 조건부 렌더인 것은 아래 FAB과 같은
+          이유다 — 포인터 이벤트와 접근성 트리가 함께 정리된다. */}
+      {!detailOpen && !wide && sheetDetent !== 'full' && (
         <>
           <div
             // `data-overlay`도 테스트 손잡이다. 검색 바가 **지도 위에 떠 있다**는
@@ -1141,11 +1141,33 @@ export function HomeScreen() {
         />
       )}
 
+      {/* **명소 상세는 지도 위를 통째로 덮는 층이다.**
+
+          `key`가 명소 이름인 것이 중요하다. 「근처 쾌적한 장소」로 갈아타면
+          컴포넌트가 새로 만들어져 탭이 요약으로 돌아가고 스크롤이 맨 위에서
+          시작한다 — effect로 되돌리면 한 프레임 동안 앞 명소의 탭이 새 명소의
+          데이터로 그려진다.
+
+          `z-30`은 검색 오버레이(`z-20`)보다 위다. 그 열은 상세가 열리면 아예
+          안 그려지지만(위 `!detailOpen`), 층 번호로도 관계가 읽혀야 한다. */}
+      {detailOpen && route.kind === 'area' && (
+        <div className="absolute inset-0 z-30">
+          <AreaDetailScreen
+            key={route.name}
+            areaName={route.name}
+            onBack={showList}
+            onSelectArea={openArea}
+            onShowOnMap={showFacilityOnMap}
+          />
+        </div>
+      )}
+
       <BottomSheet
         wide={wide}
         detent={sheetDetent}
         onDetentChange={setDetent}
         onDragRatioChange={setDragRatio}
+        inert={detailOpen}
       >
         {/* 여백을 걸지 않는다 — 시트의 규칙이 아니라 뷰의 몫이다(BottomSheet
             주석 참조). 이 상자는 오직 포커스를 받기 위한 것이다.

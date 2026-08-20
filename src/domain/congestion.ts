@@ -43,17 +43,26 @@ export function isUncrowded(level: CongestionLevel | null): boolean {
   return congestionRank(level) <= congestionRank('보통')
 }
 
-// 교통정보 같은 어조로 네 단계를 나란히 맞췄다. '극심한 혼잡'만 시안(stitch_ui/_3)의
-// 문구를 그대로 쓴다. API 원문(여유/보통/약간 붐빔/붐빔)은 배지가 따로 보여주므로,
-// 이 문구는 원문을 대체하는 게 아니라 큰 제목으로 한 번 더 요약하는 역할이다.
-const HEADLINE_BY_LEVEL: Readonly<Record<CongestionLevel, string>> = {
-  여유: '매우 원활',
-  보통: '원활',
-  '약간 붐빔': '다소 혼잡',
-  붐빔: '극심한 혼잡',
+// 상세 히어로의 한 문장. **말을 거는 어조다** — 새 시안(stitch_ui_ux/_2)의
+// 「지금은 약간 붐벼요」 그대로다.
+//
+// **예전에는 교통정보 어조였다**(매우 원활 / 원활 / 다소 혼잡 / 극심한 혼잡).
+// 두 가지가 걸렸다. 하나는 「원활」이 같은 화면의 **도로소통 값**과 같은
+// 말이라(`RoadTrafficCard`의 원활/서행/정체) 사람 혼잡도인지 차 흐름인지
+// 구별되지 않았다. 다른 하나는 그 문구를 쓰던 자리가 배지 바로 아래여서 같은
+// 말이 두 번 나오는 것으로 읽혔고, 그래서 화면에서 통째로 빠져 **아무 데서도
+// 안 쓰이는 표**로 남아 있었다.
+//
+// 전체 화면 상세에서는 배지가 히어로에 없다 — 이 문장이 그 자리의 주인이라
+// 등급을 되풀이하는 것이 아니라 **처음 말하는 것**이 됐다.
+const SENTENCE_BY_LEVEL: Readonly<Record<CongestionLevel, string>> = {
+  여유: '지금은 여유로워요',
+  보통: '지금은 보통이에요',
+  '약간 붐빔': '지금은 약간 붐벼요',
+  붐빔: '지금은 붐벼요',
 }
 
-/** 상세 화면 맨 위에 크게 띄우는 한 줄 요약. */
-export function congestionHeadline(level: CongestionLevel): string {
-  return HEADLINE_BY_LEVEL[level]
+/** 상세 화면 맨 위에 크게 띄우는 한 문장. */
+export function congestionSentence(level: CongestionLevel): string {
+  return SENTENCE_BY_LEVEL[level]
 }

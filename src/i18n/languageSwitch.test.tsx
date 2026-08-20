@@ -60,7 +60,7 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
   // 함정**이라, 컴포넌트만 갈아 끼우고 단언은 그대로 둔다.
   it('지도 앱 버튼이 영어로 바뀐다', () => {
     setLanguage('en')
-    render(<MapLinkButtons entry={AREA_CATALOG[0]} pinned />)
+    render(<MapLinkButtons entry={AREA_CATALOG[0]} />)
 
     expect(screen.getByRole('link', { name: /KakaoMap/ })).toBeInTheDocument()
   })

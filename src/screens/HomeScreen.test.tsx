@@ -295,7 +295,7 @@ describe('HomeScreen', () => {
     await userEvent.click(sheetRow(/경복궁/))
 
     expect(screen.getByRole('heading', { name: '경복궁' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
   })
 
   it('지도 마커를 눌러도 그 명소의 상세가 열린다', async () => {
@@ -365,37 +365,41 @@ describe('HomeScreen', () => {
     expect(map).toHaveAttribute('data-zoom', '15')
   })
 
-  // **명소를 여는 것은 시트를 올리는 일이 아니다.** 한때 `openArea`가
-  // `setDetent('full')`을 불렀는데, 목록에서 한 곳을 누르면 시트가 화면의 92%로
-  // 튀어올라 지도가 통째로 사라졌다 — 지도 위에 얹힌 시트라는 이 화면의 전제가
-  // 누를 때마다 무너진 셈이다. 상세는 언제나 half에서 연다.
-  it('명소를 눌러도 시트가 올라가지 않아 지도가 계속 보인다', async () => {
+  // **상세가 전체 화면 층이 됐다**(2026-08-20). 지도와 시트는 언마운트되지
+  // 않고 그 아래에 살아 있다 — 그래야 뒤로가기가 즉시이고 「지도에서 보기」가
+  // 그 지도를 옮길 수 있다. 대신 **잠긴다**: 덮인 것들은 눈에만 안 보일 뿐
+  // 탭 키와 스크린리더에는 그대로 남기 때문이다.
+  //
+  // **jsdom은 `inert`의 효과를 못 잰다**(레이아웃도 접근성 트리도 없다) —
+  // 그래서 속성 자체를 본다. 이 테스트가 지키는 것은 「가려진 것이 잠겼는가」의
+  // 결정이지 브라우저의 실제 동작이 아니다.
+  it('명소를 열면 지도와 시트가 잠긴 채 살아 있다', async () => {
     render(<HomeScreen />)
     await userEvent.click(areaButtons(/강남역/)[0])
-    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
-    expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
-    // 지도는 문서에 있는 것으로 모자란다 — full에서도 뒤에 살아 있었다.
-    // 시트가 half라야 실제로 화면의 44%가 지도로 남는다.
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
+
     expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
+    expect(document.querySelector('[data-map-layer]')).toHaveAttribute('inert')
+    expect(document.querySelector('[data-sheet-content]')?.closest('[inert]')).not.toBeNull()
   })
 
-  // 위 규칙의 반대쪽 끝이다. 「올리지 않는다」만 지키면 사용자가 full로 펼쳐 둔
-  // 상태에서 목록 행을 눌렀을 때 상세가 full에 그대로 앉아 지도가 안 보인다 —
-  // 「지도는 계속 보여야 한다」가 거기서 깨진다. 상세의 높이는 하나뿐이다.
-  it('전체로 펼쳐 둔 채 명소를 열면 지도가 보이는 높이로 내려온다', async () => {
+  // 상세가 전체 화면이 되면서 「상세를 여는 동안 지도가 보여야 한다」는
+  // 성립하지 않는다. 그래도 `showArea`가 단계를 half로 되돌리는 일은 남는다 —
+  // **돌아왔을 때** 목록이 화면의 92%를 덮은 채 지도를 가리면 안 되기 때문이다.
+  it('전체로 펼쳐 둔 채 명소를 열었다 돌아오면 시트가 절반이다', async () => {
     render(<HomeScreen />)
     await userEvent.click(sheetHandle()) // half → full
     expect(sheetHandle()).toHaveAccessibleName(/현재 전체/)
 
     await userEvent.click(sheetRow(/강남역/))
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
 
-    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
   })
 
   // 서울 인파레이더가 그렇게 한다 — 주차장·따릉이 줄의 아이콘을 누르면 지도가
   // 그 자리로 간다. 이름만으로는 「1번 대여소」가 어느 쪽인지 알 수 없다.
-  it('따릉이 대여소를 누르면 지도가 그 자리로 가고 시트가 내려온다', async () => {
+  it('따릉이 대여소를 누르면 상세가 닫히고 지도가 그 자리로 간다', async () => {
     useCityInfo.mockReturnValue({
       data: {
         areaName: '강남역',
@@ -425,16 +429,18 @@ describe('HomeScreen', () => {
     } as unknown as UseQueryResult<CityInfo>)
     render(<HomeScreen />)
     await userEvent.click(areaButtons(/강남역/)[0])
-    await userEvent.click(sheetHandle()) // half → full. 도시 정보는 아래쪽이라
-    expect(sheetHandle()).toHaveAccessibleName(/현재 전체/)
+    // 따릉이는 「주변」 탭이다. 상세가 전체 화면 + 탭이 되면서 시트를 올리는
+    // 대신 탭을 옮긴다.
+    await userEvent.click(screen.getByRole('tab', { name: '주변' }))
 
     await userEvent.click(
       screen.getByRole('button', { name: '광화문역 5번출구 지도에서 보기' }),
     )
 
-    // **시트가 내려오는 것이 핵심이다.** 이 아이콘은 도시 정보 절에 있어
-    // 사용자는 거의 언제나 full로 올린 채 누르는데, 그대로 두면 지도가
-    // 옮겨간 것을 볼 수가 없다 — 누른 보람이 화면에 하나도 안 나타난다.
+    // **상세가 닫히는 것이 핵심이다.** 예전에는 시트를 half로 내리기만 했는데
+    // 그때는 지도가 시트 뒤에 반쯤 보였다. 전체 화면 상세를 안 닫으면 지도가
+    // 옮겨간 것을 **볼 수가 없다** — 누른 보람이 화면에 하나도 안 나타난다.
+    expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
 
     const map = screen.getByRole('region', { name: '지도' })
@@ -495,17 +501,22 @@ describe('HomeScreen', () => {
     expect(lat).toBeGreaterThan(경복궁.lat - 0.02)
   })
 
-  // half에 머무는 것의 눈에 보이는 값이다. full은 검색 바·칩 열·「내 주변」을
-  // 통째로 걷어내므로(아래 테스트들) 상세를 열 때마다 지도 위 조작부가 전부
-  // 사라졌다 — 다른 곳을 찾으려면 시트부터 내려야 했다.
-  it('상세를 열어도 지도 위 조작부가 그대로 남는다', async () => {
+  // **상세가 전체 화면이 되면서 지도 위 조작부는 물러난다.** 검색 바는 `z-20`,
+  // 상세는 `z-30`이라 어차피 안 보이는데, 그리기만 하면 포인터 이벤트와 접근성
+  // 트리에는 남는다. `opacity-0`이 아니라 조건부 렌더인 것이 그 뜻이다.
+  //
+  // 돌아올 길은 막히지 않는다 — 상단 바의 뒤로 화살표가 목록으로 되돌린다.
+  it('상세를 열면 지도 위 조작부가 물러난다', async () => {
     render(<HomeScreen />)
 
     await userEvent.click(sheetRow(/강남역/))
 
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(screen.queryByRole('group', { name: '필터' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '내 주변' })).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
     expect(screen.getByRole('searchbox')).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: '필터' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '내 주변' })).toBeInTheDocument()
   })
 
   // (C) full에서 검색 바와 칩 열은 손잡이 히트 영역(시트 상단 위 20px까지)을
@@ -597,20 +608,10 @@ describe('HomeScreen', () => {
     expect(screen.getByRole('searchbox')).toBeInTheDocument()
   })
 
-  it('상세가 열린 채로 검색하면 목록으로 돌아간다', async () => {
-    // 상세가 half에서 열리므로 검색 바는 그 자리에 그대로 있다(예전에는 full
-    // 이라 시트부터 내려야 했다). 검색이 선택을 푸는 규칙 자체는 그대로다 —
-    // 걸러져 사라진 명소의 상세가 남으면 목록에 없는 곳의 요약이 떠 있게 된다.
-    render(<HomeScreen />)
-    await userEvent.click(areaButtons(/강남역/)[0])
-    await userEvent.type(screen.getByRole('searchbox'), '경복궁')
-    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
-    expect(areaButtons(/경복궁/).length).toBeGreaterThan(0)
-    // **친 글자가 다 남아야 한다.** 첫 글자에서 선택이 풀리며 뷰가 갈리는데,
-    // 그때 포커스 처방이 입력에서 포커스를 가져가면 둘째 글자부터 사라진다.
-    // 위 두 단언은 `'경'` 한 글자만으로도 통과해 그 회귀를 놓쳤다.
-    expect(screen.getByRole('searchbox')).toHaveValue('경복궁')
-  })
+  // (「상세가 열린 채로 검색하면 목록으로 돌아간다」가 여기 있었다. 상세가
+  // 전체 화면이 되면서 **그 상태를 만들 수가 없다** — 상세가 열려 있는 동안
+  // 검색 바는 그려지지도 않는다. 검색이 선택을 푸는 규칙 자체는 그대로 살아
+  // 있고 `useHomeFilters.test.ts`가 잠근다.)
 
   it('요약 스트립을 누르면 오늘의 서울이 열린다', async () => {
     render(<HomeScreen />)
@@ -626,11 +627,10 @@ describe('HomeScreen', () => {
     const busiest = screen.getByRole('heading', { name: '지금 가장 붐비는 곳' })
       .parentElement as HTMLElement
     await userEvent.click(busiest.querySelectorAll('button')[0])
-    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
   })
 
   // `openArea`의 `setView('list')`가 없으면 여기서 오늘의 서울로 되돌아간다.
-  // 버튼 이름이 「목록으로」이므로 이름과 가는 곳이 갈리면 안 된다.
   it('오늘의 서울에서 연 상세를 닫으면 오늘의 서울이 아니라 목록이다', async () => {
     render(<HomeScreen />)
     await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
@@ -640,7 +640,7 @@ describe('HomeScreen', () => {
     const busiest = screen.getByRole('heading', { name: '지금 가장 붐비는 곳' })
     await userEvent.click(busiest.parentElement?.querySelectorAll('button')[0] as HTMLElement)
 
-    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
 
     expect(screen.queryByRole('heading', { name: '오늘의 서울' })).toBeNull()
     expect(screen.getByRole('button', { name: /오늘의 서울 열기/ })).toBeInTheDocument()
@@ -655,17 +655,14 @@ describe('HomeScreen', () => {
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
   })
 
-  it('목록으로를 누르면 다시 목록이 나오고 시트도 내려온다', async () => {
-    // 목록만 돌려놓고 시트를 full에 두면 목록이 화면의 92%를 덮은 채 남아
-    // 지도가 안 보인다 — 상세를 닫는다는 건 지도로 돌아온다는 뜻이다.
-    //
-    // **상세를 연 뒤 손잡이로 full까지 올려 놓고 닫는다.** 상세가 half에서
-    // 열리게 된 지금, 그냥 열고 닫으면 half→half라 `onBack`의 `setDetent`를
-    // 통째로 지워도 통과한다 — 실제로 확인했다. 내릴 것이 있어야 내리는지 안다.
+  // **시트 단계는 이제 이 경로에서 안 움직인다.** 상세를 열 때 이미 half로
+  // 내려가고(`showArea`), 상세가 전체 화면이라 그동안 손잡이를 잡을 수도 없다
+  // (시트가 `inert`다). 「닫으면 half로 내려온다」를 재는 자리는 오늘의
+  // 서울 쪽으로 옮겼다 — 거기는 full로 열리므로 내릴 것이 실제로 있다.
+  it('뒤로를 누르면 다시 목록이 나온다', async () => {
     render(<HomeScreen />)
     await userEvent.click(areaButtons(/강남역/)[0])
-    await userEvent.click(sheetHandle()) // half → full
-    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
     // **특정 명소를 이름으로 찾지 않는다.** 명소를 열면 지도가 그 자리로
     // 줌인하고 목록은 그 화면을 따르므로(`areasForList`), 8km 떨어진 경복궁이
     // 돌아온 목록에 있으리라는 보장이 없다. 재려는 것은 「목록이 돌아왔는가」다.
@@ -848,17 +845,21 @@ describe('HomeScreen', () => {
   // 없다. jsdom에는 레이아웃이 없어 옵션이 무시된다 — 시트가 스크롤
   // 컨테이너라 기본 동작이 방금 연 뷰를 맨 위가 아닌 곳에서 시작하게 만든다는
   // 것은 실기기 몫이다. 잡을 수 있는 것은 「포커스가 시트를 벗어나지 않는다」이다.
-  it('시트 안에서 뷰가 갈려도 포커스가 시트를 벗어나지 않는다', async () => {
+  it('뷰가 갈려도 포커스가 몸통으로 떨어지지 않는다', async () => {
     render(<HomeScreen />)
     const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
     // 첫 렌더에서는 뺏지 않는다. 진입하자마자 시트가 포커스를 가져가면
     // 스크린리더가 화면 첫머리 대신 시트를 읽는다.
     expect(document.activeElement).toBe(document.body)
 
+    // **상세는 시트 밖이다.** 전체 화면 층이 되면서 포커스를 가져가는 주체가
+    // 시트에서 상세 화면 자신으로 옮겨졌다(`AreaDetailScreen`의 마운트
+    // effect) — 시트는 그동안 `inert`라 포커스를 받을 수 없다.
     await userEvent.click(sheetRow(/강남역/))
-    expect(sheet.contains(document.activeElement)).toBe(true)
+    expect(sheet.contains(document.activeElement)).toBe(false)
+    expect(document.activeElement).not.toBe(document.body)
 
-    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
     expect(sheet.contains(document.activeElement)).toBe(true)
 
     await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
@@ -887,20 +888,20 @@ describe('HomeScreen', () => {
   //
   // jsdom에는 레이아웃이 없어 **잘렸다는 사실 자체는** 못 잡는다. 잡을 수 있는
   // 것은 `scrollTop = 0` 대입이고(jsdom이 대입값을 보존한다) 그게 처방이다.
+  //
+  // **상세는 이 컨테이너를 더 이상 안 쓴다.** 전체 화면 층이라 제 스크롤 상자를
+  // 갖고, 명소를 갈아탈 때마다 통째로 새로 마운트된다(`key`가 명소 이름이다) —
+  // 그래서 그쪽은 맨 위에서 시작하는 것이 공짜다. 남은 것은 목록↔오늘의 서울이다.
   it('뷰가 갈리면 시트 스크롤도 새 뷰의 맨 위로 돌아온다', async () => {
     render(<HomeScreen />)
     const scroller = document.querySelector('[data-sheet-content]') as HTMLElement
 
     scroller.scrollTop = 200
-    await userEvent.click(sheetRow(/강남역/))
+    await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
     expect(scroller.scrollTop).toBe(0)
 
     scroller.scrollTop = 200
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
-    expect(scroller.scrollTop).toBe(0)
-
-    scroller.scrollTop = 200
-    await userEvent.click(screen.getByRole('button', { name: /오늘의 서울 열기/ }))
     expect(scroller.scrollTop).toBe(0)
   })
 
@@ -908,28 +909,32 @@ describe('HomeScreen', () => {
   // 검색어를 치면 `setQuery`가 선택을 풀어 상세→목록 전환이 일어나는데, 그건
   // 사용자가 시트로 가려던 조작이 아니라 타이핑의 부수 효과다. 실제로 첫
   // 글자만 입력되고 둘째 글자부터 사라졌다.
+  //
+  // **소재가 바뀌었다.** 예전에는 상세를 열어 둔 채 검색했지만, 상세가 전체
+  // 화면이 된 뒤로는 그동안 검색 바가 그려지지 않는다. 같은 규칙이 걸리는
+  // 자리는 「필터 칩이 걸린 상태에서 검색어를 치면 칩이 풀린다」이다.
   it('뷰가 갈려도 사용자가 부른 이동이 아니면 포커스를 뺏지 않는다', async () => {
     render(<HomeScreen />)
-    await userEvent.click(sheetRow(/강남역/))
+    await userEvent.click(screen.getByRole('button', { name: /데이트/ }))
     const box = screen.getByRole('searchbox')
 
-    await userEvent.type(box, '경')
+    await userEvent.type(box, '경복궁')
 
-    // 상세가 닫히며 뷰는 갈렸는데 포커스는 입력에 남아야 한다.
-    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+    // 칩이 풀리며 목록이 통째로 갈렸는데 포커스는 입력에 남아야 한다.
+    // **친 글자가 다 남아야 한다** — 첫 글자에서 포커스를 뺏기면 둘째
+    // 글자부터 사라진다.
+    expect(box).toHaveValue('경복궁')
     expect(document.activeElement).toBe(box)
   })
 
-  it('칩을 눌러 선택이 풀려도 포커스는 칩 줄에 남는다', async () => {
-    // 같은 규칙의 다른 소재다. 칩도 선택을 푸는데(`useHomeFilters.setFilter`)
-    // 그때 손은 칩 줄에 있다 — 연달아 다른 칩을 누르려던 참이다.
+  it('칩을 눌러 목록이 갈려도 포커스는 칩 줄에 남는다', async () => {
+    // 같은 규칙의 다른 소재다. 칩을 누르면 목록이 통째로 갈리는데 그때 손은
+    // 칩 줄에 있다 — 연달아 다른 칩을 누르려던 참이다.
     render(<HomeScreen />)
-    await userEvent.click(sheetRow(/강남역/))
     const chip = screen.getByRole('button', { name: /데이트/ })
 
     await userEvent.click(chip)
 
-    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
     expect(document.activeElement).toBe(chip)
   })
 
@@ -1127,14 +1132,15 @@ describe('HomeScreen', () => {
     // 0에서도 누를 수 있게 하면서 그 대목은 더 이상 참이 아니다 — 남은 손해는
     // 담은 곳이 필터에 안 걸린다는 것 자체다.
     //
-    // **상세를 닫지 않고 본다.** 상세가 half에서 열리게 되면서 칩 줄이 그대로
-    // 남으므로 「곧바로」를 글자 그대로 잴 수 있다 — 예전에는 시트가 full이라
-    // 칩이 가려져 목록으로 돌아와서야 볼 수 있었다.
+    // **닫고 나서 본다.** 상세가 전체 화면이 되면서 칩 줄이 그동안 안 그려진다
+    // (예전에는 상세가 half라 칩이 옆에 남아 있었다). 「곧바로」가 뜻하는
+    // 것은 여전히 같다 — 목록을 다시 조회하지 않고도 숫자가 따라온다.
     render(<HomeScreen />)
     expect(screen.getByRole('button', { name: '내 장소 0' })).toBeEnabled()
 
     await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
 
     expect(await screen.findByRole('button', { name: '내 장소 1' })).toBeEnabled()
   })
@@ -1142,7 +1148,7 @@ describe('HomeScreen', () => {
   it('저장소가 막혀도 칩과 저장 버튼이 같은 것을 말한다', async () => {
     // 브리지도 localStorage도 막힌 상태다. 저장 실패가 버튼을 막지 않는 이상
     // 그 뒤에 열리는 화면들이 서로 다른 말을 하면 안 된다. 명소를 다시 열면
-    // AreaDetail이 새로 마운트되는데, 저장소만 읽으면 방금 담은 것을 못 본다.
+    // 상세가 새로 마운트되는데, 저장소만 읽으면 방금 담은 것을 못 본다.
     // window.Storage는 DOM 쪽이다(위에서 목업한 토스 SDK의 Storage가 아니다).
     // 인스턴스에 스파이를 걸면 jsdom이 조용히 무시해서 저장이 그대로 성공한다 —
     // 프로토타입이라야 실제로 막힌다.
@@ -1153,7 +1159,7 @@ describe('HomeScreen', () => {
 
     await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(screen.getByRole('button', { name: '저장' }))
-    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
 
     expect(screen.getByRole('button', { name: '내 장소 1' })).toBeEnabled()
 
@@ -1168,11 +1174,15 @@ describe('HomeScreen', () => {
     expect(screen.queryByRole('button', { name: /강남역/ })).toBeNull()
   })
 
-  it('상세를 열면 카테고리와 정렬은 목록과 함께 물러난다', async () => {
+  // **상세가 전체 화면이 되면서 목록은 언마운트되지 않는다** — 뒤에서 `inert`로
+  // 잠긴 채 남는다(그래야 돌아올 때 즉시다). jsdom은 그 효과를 못 재므로
+  // 속성을 본다: 카테고리 줄이 잠긴 상자 안에 있는지.
+  it('상세를 열면 카테고리와 정렬이 잠긴 채로 물러난다', async () => {
     render(<HomeScreen />)
+    const category = screen.getByRole('button', { name: '공원' })
     await userEvent.click(areaButtons(/강남역/)[0])
-    expect(screen.queryByRole('button', { name: '공원' })).toBeNull()
-    expect(screen.queryByRole('button', { name: '여유한 순' })).toBeNull()
+    expect(category.closest('[inert]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: '여유한 순' }).closest('[inert]')).not.toBeNull()
   })
 
   // (F) 조회가 영구 실패해도 스트립은 `혼잡도 정보를 아직 받지 못했어요.`라고
@@ -1472,11 +1482,11 @@ describe('HomeScreen 주소', () => {
   it('상세에서 뒤로 가기를 하면 목록으로 돌아온다', async () => {
     render(<HomeScreen />)
     await userEvent.click(sheetRow(/경복궁/))
-    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
 
     await goBack()
 
-    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
     expect(window.location.search).toBe('')
   })
 
@@ -1487,7 +1497,7 @@ describe('HomeScreen 주소', () => {
 
     // `findBy`가 아니라 `getBy`다 — 마운트 뒤 effect로 옮기면 목록이 한 프레임
     // 지나가는데, 그걸 잡는 것이 이 단언의 목적이다.
-    expect(screen.getByRole('button', { name: '목록으로' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
   })
 
   it('공유 링크로 들어오면 지도도 그 명소에 가 있다', async () => {
@@ -1512,7 +1522,7 @@ describe('HomeScreen 주소', () => {
 
     render(<HomeScreen />)
 
-    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
   })
 
   it('오늘의 서울도 주소에 실리고 뒤로 가기가 목록으로 온다', async () => {
@@ -1529,52 +1539,76 @@ describe('HomeScreen 주소', () => {
     expect(screen.getByRole('button', { name: /오늘의 서울 열기/ })).toBeInTheDocument()
   })
 
-  // 「목록으로」는 **앞으로 가는 이동이 아니다.** 칸을 쌓으면 뒤로 가기가
+  // 상세의 뒤로가기는 **앞으로 가는 이동이 아니다.** 칸을 쌓으면 뒤로 가기가
   // 화면이 안 바뀌는 칸을 거슬러 오르게 된다.
-  it('「목록으로」는 히스토리에 칸을 쌓지 않는다', async () => {
+  it('상세의 뒤로가기는 히스토리에 칸을 쌓지 않는다', async () => {
     render(<HomeScreen />)
     await userEvent.click(sheetRow(/경복궁/))
     const push = watchPush()
 
-    await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
 
     expect(window.location.search).toBe('')
     expect(push).not.toHaveBeenCalled()
   })
 
-  // `useHomeFilters`가 검색어를 받으면 선택을 조용히 푼다. 그 경로는 주소를
-  // 고칠 자리가 따로 없어, 「주소 맞추기」 effect가 없으면 화면은 목록인데
-  // 주소만 `?area=경복궁`으로 남는다 — 그 상태로 새로고침하면 상세가 뜬다.
-  it('검색해서 상세가 닫히면 주소도 따라 지워진다', async () => {
+  // 「주소 맞추기」 effect가 없으면 화면과 주소가 갈린다. 예전에는 검색이 그
+  // 경로였는데(검색어가 선택을 조용히 푼다) 상세가 전체 화면이 되면서 그동안
+  // 검색 바가 안 그려진다 — 같은 규칙이 걸리는 자리는 「지도에서 보기」다.
+  // 그 버튼은 상세를 닫고 지도로 나오는데, 주소를 직접 안 고친다.
+  it('지도에서 보기로 상세가 닫히면 주소도 따라 지워진다', async () => {
+    useCityInfo.mockReturnValue({
+      data: {
+        events: [],
+        alerts: [],
+        subway: [],
+        weather: null,
+        roadTraffic: null,
+        accidents: [],
+        parking: [],
+        bikes: [
+          {
+            name: '광화문역 5번출구',
+            coords: { lat: 37.5698, lng: 126.9775 },
+            bikes: 6,
+            racks: 21,
+          },
+        ],
+        freshness: null,
+      },
+      isPending: false,
+      isError: false,
+    } as unknown as UseQueryResult<CityInfo>)
     render(<HomeScreen />)
     await userEvent.click(sheetRow(/경복궁/))
     expect(window.location.search).not.toBe('')
 
-    await userEvent.type(screen.getByRole('searchbox'), '강남')
+    await userEvent.click(screen.getByRole('tab', { name: '주변' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: '광화문역 5번출구 지도에서 보기' }),
+    )
 
-    expect(screen.queryByRole('button', { name: '목록으로' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
     expect(window.location.search).toBe('')
   })
 
-  it('같은 명소를 두 번 열어도 칸이 하나다', async () => {
-    render(<HomeScreen />)
-    await userEvent.click(sheetRow(/경복궁/))
-    const push = watchPush()
-
-    // 상세가 half에서 열리므로 지도 마커가 그대로 살아 있다. 같은 마커를
-    // 다시 누르는 것은 실제로 일어나는 조작이다.
-    await userEvent.click(anyMapMarker().element)
-
-    expect(push).not.toHaveBeenCalled()
-    expect(new URLSearchParams(window.location.search).get('area')).toBe('경복궁')
-  })
+  // (「같은 명소를 두 번 열어도 칸이 하나다」가 여기 있었다. 상세가 전체
+  // 화면이 되면서 **그 조작을 만들 수가 없다** — 상세가 열려 있는 동안 지도
+  // 마커도 목록 행도 덮여 있어서 「이미 열린 명소를 또 누르기」에 닿을 길이
+  // 없다. 같은 주소면 칸을 안 쌓는다는 규칙 자체는 `platform/history.ts`에
+  // 살아 있고 `history.test.ts`가 잠근다.)
 })
 
 // ── 지도 위 CCTV ─────────────────────────────────────────────────────────
 //
-// 명소를 고르면 그 주변 CCTV가 지도에 함께 뜬다. **지도와 시트가 같은 선택을
-// 나눠 갖는지**가 여기서 잡을 것이다 — 마커로 눌러도 시트의 그 줄이 열려야
-// 하고, 명소를 갈아타면 앞 명소의 영상이 남아 있으면 안 된다.
+// **층이 사라졌다**(2026-08-20). 명소를 고르면 그 주변 CCTV가 지도에 함께
+// 떴고 마커를 누르면 시트의 그 줄이 열렸는데, 상세가 전체 화면이 되면서 그
+// 층은 **그려지는 동안 언제나 덮여 있다** — 마커가 나타나는 조건이 「상세가
+// 열려 있을 때」이기 때문이다. 안 보이는 것을 그리는 대신 지웠다.
+//
+// 남은 것은 「목록에서는 안 그린다」 하나다. 이 단언은 지금도 참이고, 층이
+// 되살아날 때(새 시안의 지도 레이어 토글) **먼저 깨질 자리**이기도 하다 —
+// 그때는 상세와 무관하게 켜고 끄는 층이라 조건 자체가 달라진다.
 describe('HomeScreen — 지도 위 CCTV', () => {
   const CAMERAS = [
     { name: '광화문', coords: { lat: 37.5755, lng: 126.9784 }, streamUrl: 'https://a/1.m3u8' },
@@ -1585,8 +1619,7 @@ describe('HomeScreen — 지도 위 CCTV', () => {
   beforeEach(() => {
     // **인자를 보고 답해야 한다.** 실제 훅은 명소가 없으면 `enabled: false`라
     // 조회 자체를 안 하고 `data`가 undefined다. 인자와 무관하게 값을 주는
-    // 목이면 「목록에서는 안 그린다」를 확인할 방법이 사라진다 — 실제로
-    // 그렇게 짰다가 첫 테스트가 통과해 버렸다.
+    // 목이면 「목록에서는 안 그린다」를 확인할 방법이 사라진다.
     useCctv.mockImplementation((areaName?: string) =>
       (areaName === undefined
         ? { data: undefined, isPending: true, isError: false }
@@ -1596,70 +1629,30 @@ describe('HomeScreen — 지도 위 CCTV', () => {
     )
   })
 
-  it('목록에서는 CCTV 마커를 그리지 않는다', () => {
+  it('지도에 CCTV 마커를 그리지 않는다', async () => {
     render(<HomeScreen />)
 
     const layer = document.querySelector('[data-map-layer]') as HTMLElement
     expect(within(layer).queryByRole('img', { name: /광화문 CCTV/ })).not.toBeInTheDocument()
+
+    await userEvent.click(anyMapMarker().element)
+    expect(within(layer).queryByRole('img', { name: /광화문 CCTV/ })).not.toBeInTheDocument()
   })
 
-  it('명소를 열면 좌표가 있는 CCTV가 지도에 뜬다', async () => {
+  // 상세 안에서는 여전히 펼쳐진다. 상태가 화면 꼭대기에서 상세로 내려왔을 뿐
+  // 목록 쪽 동작은 그대로다.
+  it('상세의 CCTV 줄은 그대로 펼쳐진다', async () => {
     render(<HomeScreen />)
     await userEvent.click(anyMapMarker().element)
 
-    const layer = document.querySelector('[data-map-layer]') as HTMLElement
-    expect(within(layer).getByRole('img', { name: '광화문 CCTV' })).toBeInTheDocument()
-    // 영상이 없는 카메라도 자리는 보여준다 — 다만 못 튼다고 이름에 적는다.
-    expect(
-      within(layer).getByRole('img', { name: '서울광장 CCTV (영상 없음)' }),
-    ).toBeInTheDocument()
-    // 좌표가 없으면 찍을 자리가 없다.
-    expect(within(layer).queryByRole('img', { name: /좌표없음/ })).not.toBeInTheDocument()
-  })
+    // 「광화문」은 명소 이름에도 들어 있다. CCTV 줄만 집으려면 `aria-expanded`를
+    // 가진 것으로 좁혀야 한다 — 접이식인 것은 이 줄뿐이다.
+    const row = screen
+      .getAllByRole('button', { name: /광화문/ })
+      .find((button) => button.hasAttribute('aria-expanded')) as HTMLElement
 
-  // **지도와 시트가 같은 선택을 본다.** 마커를 눌렀는데 시트가 안 열리면
-  // 둘이 서로 다른 상태를 들고 있다는 뜻이다.
-  it('지도의 CCTV 마커를 누르면 시트의 그 줄이 열린다', async () => {
-    render(<HomeScreen />)
-    await userEvent.click(anyMapMarker().element)
+    await userEvent.click(row)
 
-    const layer = document.querySelector('[data-map-layer]') as HTMLElement
-    await userEvent.click(
-      within(layer).getByRole('img', { name: '광화문 CCTV' }).closest('button')!,
-    )
-
-    const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
-    expect(within(sheet).getByRole('button', { name: /광화문/ })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    )
-  })
-
-  // 안 접으면 앞 명소의 영상이 계속 흐른 채로 다른 상세가 열린다.
-  it('다른 명소로 갈아타면 펼쳐 둔 영상을 접는다', async () => {
-    render(<HomeScreen />)
-    await userEvent.click(anyMapMarker().element)
-
-    const layer = document.querySelector('[data-map-layer]') as HTMLElement
-    await userEvent.click(
-      within(layer).getByRole('img', { name: '광화문 CCTV' }).closest('button')!,
-    )
-    // **다른 마커로 갈아탄다.** 이름으로 먼 명소를 찍지 않는다 — 앞의 마커를
-    // 여는 순간 지도가 거기로 줌인하므로, 그 화면에 남아 있는 마커 중 하나를
-    // 골라야 실제로 갈아탈 수 있다.
-    const other = within(layer)
-      .getAllByRole('button')
-      .find(
-        (button) =>
-          button.dataset.z !== undefined &&
-          !within(button).queryByRole('img', { name: /CCTV/ }),
-      )
-    await userEvent.click(other as HTMLElement)
-
-    const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
-    expect(within(sheet).getByRole('button', { name: /광화문/ })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
+    expect(row).toHaveAttribute('aria-expanded', 'true')
   })
 })

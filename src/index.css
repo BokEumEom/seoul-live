@@ -477,6 +477,14 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* 아래로 12px 띄우되 홈 인디케이터는 **추가로** 피한다.
+   `pb-3 pb-safe`처럼 나란히 쓸 수 없다 — 둘 다 `padding-bottom`이라 뒤엣것이
+   앞엣것을 덮고, 노치 없는 기기에서는 `env()`가 0이라 여백이 통째로 사라진다.
+   상세 하단의 길찾기 바가 쓴다(`MapLinkButtons`). */
+@utility pb-safe-3 {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
 /* 화면 아래 끝에서 24px 띄우되 홈 인디케이터는 피한다.
 
    「내 주변」 FAB이 넓은 화면(시트가 왼쪽 패널이라 아래가 비는 배치)에서 쓴다.

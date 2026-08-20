@@ -22,6 +22,33 @@ export const TONE_CLASS: Readonly<Record<CongestionTone, string>> = {
 export const NEUTRAL_TONE_CLASS = 'bg-surface-container text-on-surface-variant'
 
 /**
+ * **표면 위에 바로 얹는 글자**의 톤. 상세 히어로의 인원수와 요약 카드의 값이
+ * 쓴다 — 배지처럼 옅은 상자를 깔지 않고 흰 카드에 글자만 놓는 자리다.
+ *
+ * `text-calm` 같은 선명한 쪽이 아니라 `-container`의 짝을 쓰는 이유는
+ * `TONE_CLASS`와 같다: 선명한 값은 지도 타일 위에서 튀라고 고른 것이라 흰
+ * 표면에서는 대비가 모자란다. 지금 이 넷은 흰 카드에서 7.2~9.4:1이다.
+ */
+export const TONE_TEXT_CLASS: Readonly<Record<CongestionTone, string>> = {
+  calm: 'text-on-calm-container',
+  normal: 'text-on-normal-container',
+  busy: 'text-on-busy-container',
+  crowded: 'text-on-crowded-container',
+}
+
+/**
+ * 「지금」을 뜻하는 작은 점. 글자가 아니라 **도형**이라 선명한 쪽을 쓴다 —
+ * 12px 원은 대비 4.5:1이 아니라 3:1(WCAG 1.4.11) 기준이고, 옆에 같은 뜻을
+ * 적은 문장이 있어 색이 정보를 혼자 나르지도 않는다.
+ */
+export const TONE_DOT_CLASS: Readonly<Record<CongestionTone, string>> = {
+  calm: 'bg-calm',
+  normal: 'bg-normal',
+  busy: 'bg-busy',
+  crowded: 'bg-crowded',
+}
+
+/**
  * 히트맵 칸처럼 **글자 없이 색만으로** 값을 말하는 자리.
  *
  * 전용 토큰(`--color-heat-*`)을 쓴다. 예전에는 `-container` 둘 + 진한 색 둘을

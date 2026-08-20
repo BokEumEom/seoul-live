@@ -48,7 +48,7 @@ export function AreaListItem({ area, favorite = false, onSelect }: Props) {
               aria-label={t("즐겨찾기한 곳")}
               className="shrink-0 text-primary"
             >
-              <Icon name="starFilled" className="size-4" />
+              <Icon name="bookmarkFilled" className="size-4" />
             </span>
           )}
         </span>

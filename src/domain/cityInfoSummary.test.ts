@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BikeStation, CityInfo, ParkingLot } from './cityInfo'
-import { parkingVacancyRate, summarizeCityInfo, totalBikes } from './cityInfoSummary'
+import { parkingVacancyRate, subwayLineCount, totalBikes } from './cityInfoSummary'
 
 function info(overrides: Partial<CityInfo> = {}): CityInfo {
   return {
@@ -79,83 +79,38 @@ describe('totalBikes', () => {
   })
 })
 
-describe('summarizeCityInfo', () => {
-  it('값이 있는 것만 칩으로 만든다', () => {
-    // 빈 칩("주차 -")을 만들면 한 줄이 모르는 것들로 채워진다. 샘플도 값이
-    // 있는 것만 세워 둔다.
-    const chips = summarizeCityInfo(
-      info({
-        parking: [lot(100, 45)],
-        roadTraffic: { index: '정체', speed: 13.9, message: '', updatedAt: '' },
-        events: [
-          { name: '행사', period: '', place: '', free: null, url: '' },
-          { name: '행사2', period: '', place: '', free: null, url: '' },
-        ],
-        bikes: [station(131)],
-      }),
-    )
-
-    // **완성된 글자가 아니라 번역 키와 값이다.** 도메인은 순수해야 해서 언어를
-    // 볼 수 없다 — 「무엇을 말할지」만 정하고 「어느 말로 적을지」는 화면이 정한다.
-    expect(chips.map((chip) => chip.label)).toEqual([
-      // 값(`정체`)이 아니라 「도로」가 붙은 키다. 접두어가 없으면 `원활`이
-      // 혼잡도 헤드라인과 같은 칸을 다퉈 영어로 옮길 수 없다(en.ts 주석).
-      '도로 정체',
-      '주차 {비율}%',
-      '따릉이 {대수}대',
-      '행사 {개수}',
-    ])
-    expect(chips.map((chip) => chip.labelParams)).toEqual([
-      undefined,
-      { 비율: 45 },
-      { 대수: 131 },
-      { 개수: 2 },
-    ])
+// 요약 카드의 「지하철 2곳」이 이 값을 쓴다(`SummaryGrid`). 열차 수를 세면
+// 「12」가 무엇의 12인지 알 수 없어진다 — 그래서 역·호선으로 접는다.
+describe('subwayLineCount', () => {
+  it('같은 역 같은 호선의 열차는 한 곳으로 센다', () => {
+    expect(
+      subwayLineCount(
+        info({
+          subway: [
+            { station: '시청', line: '1호선', direction: '', terminal: '', message: '' },
+            { station: '시청', line: '1호선', direction: '', terminal: '', message: '' },
+          ],
+        }),
+      ),
+    ).toBe(1)
   })
 
-  it('아무 값도 없으면 빈 줄을 만들지 않는다', () => {
-    expect(summarizeCityInfo(info())).toEqual([])
+  it('같은 역이라도 호선이 다르면 따로 센다', () => {
+    // 환승역에서 실제로 그렇다. 「시청 1호선」과 「시청 2호선」은 사용자가
+    // 갈아탈지 말지를 정하는 데 서로 다른 정보다.
+    expect(
+      subwayLineCount(
+        info({
+          subway: [
+            { station: '시청', line: '1호선', direction: '', terminal: '', message: '' },
+            { station: '시청', line: '2호선', direction: '', terminal: '', message: '' },
+          ],
+        }),
+      ),
+    ).toBe(2)
   })
 
-  it('칩마다 어느 절로 가는지 들고 있다', () => {
-    // 상세가 통째로 펼쳐지면서 화면이 길어졌다. 칩이 요약만 하고 끝나면
-    // 사용자는 그 값을 확인하러 손으로 한참 스크롤해야 한다.
-    const chips = summarizeCityInfo(info({ parking: [lot(100, 45)] }))
-
-    expect(chips[0].sectionId).toBe('parking')
-  })
-
-  it('지하철은 역·호선 수를 센다', () => {
-    // 열차 수를 세면 「지하철 12」처럼 커져서 무엇을 세는지 알 수 없다.
-    // 샘플의 「지하철 3」은 도착 정보가 오는 노선 수다.
-    const chips = summarizeCityInfo(
-      info({
-        subway: [
-          { station: '광화문', line: '5호선', direction: '', terminal: '', message: '' },
-          { station: '광화문', line: '5호선', direction: '', terminal: '', message: '' },
-          { station: '시청', line: '1호선', direction: '', terminal: '', message: '' },
-        ],
-      }),
-    )
-
-    expect(chips[0].label).toBe('지하철 {개수}')
-    expect(chips[0].labelParams).toEqual({ 개수: 2 })
-  })
-
-  it('아래 절과 같은 순서로 세운다', () => {
-    // 값이 있는 것만 세우면 명소마다 칩 순서가 달라져 같은 자리에 다른 뜻이
-    // 온다. 게다가 이 칩은 목차라 절 순서와 어긋나면 왼쪽 칩이 아래쪽 절로
-    // 뛴다 — 그래서 샘플(주차가 맨 앞)과 순서가 다르다.
-    const chips = summarizeCityInfo(
-      info({
-        bikes: [station(10)],
-        parking: [lot(100, 50)],
-        subway: [
-          { station: '시청', line: '1호선', direction: '', terminal: '', message: '' },
-        ],
-      }),
-    )
-
-    expect(chips.map((chip) => chip.sectionId)).toEqual(['subway', 'parking', 'bikes'])
+  it('도착 정보가 없으면 0이다', () => {
+    expect(subwayLineCount(info())).toBe(0)
   })
 })

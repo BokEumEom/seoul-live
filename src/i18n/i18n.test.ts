@@ -1,44 +1,11 @@
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { AGE_LABELS } from '../domain/composition'
-import { congestionHeadline } from '../domain/congestion'
+import { congestionSentence } from '../domain/congestion'
+import { DETAIL_TABS } from '../domain/detailTabs'
 import { filterLabel, PRESETS } from '../domain/presets'
-import { cctvChip, summarizeCityInfo } from '../domain/cityInfoSummary'
 import { AREA_CATEGORIES, CATEGORY_LABEL, CONGESTION_LEVELS } from '../domain/types'
 import { EN } from './en'
-
-/**
- * 요약 칩의 라벨 틀. **도메인을 실제로 불러서 뽑는다** — 손으로 적으면 칩이
- * 하나 늘 때 여기가 낡는데, 이렇게 두면 그때 「사전에 없다」로 죽는다.
- */
-function chipLabels(): readonly string[] {
-  // CCTV 칩만 `summarizeCityInfo` 밖에 있다 — 도시정보 응답이 아니라 별개
-  // 엔드포인트에서 오기 때문이다(근거는 `cityInfoSummary.ts`의 `cctvChip`).
-  // 그물에서 빠지지 않게 여기서 함께 뽑는다.
-  const cctv = cctvChip(5)
-  return [
-    ...(cctv === null ? [] : [cctv.label]),
-    ...summarizeCityInfo({
-    areaName: '광화문·덕수궁',
-    areaCode: 'POI009',
-    freshness: null,
-    weather: null,
-    // **도로소통도 이제 들어온다.** 예전에는 번역할 수 없어 `null`로 뺐는데
-    // (키가 혼잡도 헤드라인의 `원활`과 다퉜다), 도메인이 「도로」를 붙여 칸을
-    // 가르면서 셋 다 사전에 들어왔다. 값의 종류를 다 알지는 못하므로 여기서
-    // 고정하는 것은 실제로 본 셋이다.
-    roadTraffic: { index: '정체', speed: 13.9, message: '', updatedAt: '' },
-    accidents: [],
-    parking: [
-      { name: '주차장', coords: null, capacity: 100, available: 45, liveAvailable: true, paid: null },
-    ],
-    bikes: [{ name: '대여소', coords: null, bikes: 5, racks: 10 }],
-    events: [{ name: '행사', period: '', place: '', free: null, url: '' }],
-    alerts: [],
-    subway: [{ station: '시청', line: '1호선', direction: '', terminal: '', message: '' }],
-    }).map((chip) => chip.label),
-  ]
-}
 
 /**
  * 감싸지 않아도 되는 한국어. **화면에 안 나오는 값들이다.**
@@ -77,14 +44,26 @@ const RESIDENCE_LABELS = ['외지인이 많아요', '동네 생활권이에요']
 /** 통합대기환경등급. 서울 API가 주는 값이다. */
 const AIR_GRADE_LABELS = ['좋음', '보통', '나쁨', '매우나쁨'] as const
 /**
- * 도로소통 칩. 도메인이 값 앞에 「도로」를 붙여 만든다.
+ * 도로소통 절이 쓰는 키. 화면이 값 앞에 「도로」를 붙인다(`RoadTrafficCard`).
  *
- * **명세에 값의 종류가 없어 이 셋이 전부라고 단언할 수 없다.** 그래서 위
- * `chipLabels()`처럼 도메인에서 뽑아 오지 못하고 여기 손으로 적는다 — 새 값을
- * 보거든 여기와 `en.ts`에 함께 더하라. 못 더한 값은 영어 화면에서 「도로 ○○」로
+ * **명세에 값의 종류가 없어 이 셋이 전부라고 단언할 수 없다.** 그래서 다른
+ * 목록들처럼 도메인에서 뽑아 오지 못하고 여기 손으로 적는다 — 새 값을 보거든
+ * 여기와 `en.ts`에 함께 더하라. 못 더한 값은 영어 화면에서 「도로 ○○」로
  * 한국어가 남고, 그건 죽지 않는다(사전에 없으면 키를 그대로 돌려준다).
  */
 const ROAD_CHIP_LABELS = ['도로 원활', '도로 서행', '도로 정체'] as const
+/**
+ * 같은 값의 **접두어 없는** 키. 요약 카드가 쓴다(`SummaryGrid`) — 카드에는
+ * 바로 위에 「도로」라는 이름표가 이미 있어 접두어를 붙이면 「도로 / 도로
+ * 원활」이 된다. 접두어를 만들게 했던 충돌 상대(혼잡도 헤드라인의 「원활」)는
+ * 2026-08-20에 사라졌다.
+ *
+ * 위와 같은 이유로 **이 셋이 전부라고 단언할 수 없다.** 새 값을 보거든 두
+ * 목록과 `en.ts`에 함께 더하라.
+ */
+const ROAD_STATE_LABELS = ['원활', '서행', '정체'] as const
+/** 상세 탭의 글자. 도메인에서 뽑으므로 탭이 하나 늘면 여기서 죽는다. */
+const DETAIL_TAB_LABELS = DETAIL_TABS.map((tab) => tab.label)
 const LOCATION_ERROR_MESSAGES = [
   '위치 권한이 거부되었습니다',
   '이 환경에는 위치 기능이 없습니다',
@@ -136,7 +115,7 @@ function translatedKeys(): readonly string[] {
 function dynamicKeys(): readonly string[] {
   return [
     ...CONGESTION_LEVELS,
-    ...CONGESTION_LEVELS.map(congestionHeadline),
+    ...CONGESTION_LEVELS.map(congestionSentence),
     ...AREA_CATEGORIES,
     ...AREA_CATEGORIES.map((category) => CATEGORY_LABEL[category]),
     ...PRESETS.map((preset) => filterLabel(preset.key)),
@@ -147,8 +126,9 @@ function dynamicKeys(): readonly string[] {
     ...RESIDENCE_LABELS,
     ...AIR_GRADE_LABELS,
     ...ROAD_CHIP_LABELS,
+    ...ROAD_STATE_LABELS,
+    ...DETAIL_TAB_LABELS,
     ...LOCATION_ERROR_MESSAGES,
-    ...chipLabels(),
   ]
 }
 

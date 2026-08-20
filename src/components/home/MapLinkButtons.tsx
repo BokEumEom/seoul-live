@@ -35,20 +35,11 @@ import { Icon, type IconName } from "../common/Icon";
 // **저장·공유는 함께 안 내려왔다.** 그 둘은 제목 줄에 아이콘으로 남는다
 // (`ActionButtons`) — 자리를 거의 안 먹으므로 고정할 이유가 없다.
 
+// **`pinned` 스위치는 없어졌다**(2026-08-20). 상세가 시트를 벗어나 전체 화면이
+// 되면서 「시트가 135px만 보이는 peek 단계」라는 상태 자체가 사라졌다 — 그
+// 스위치가 있던 이유가 그 단계 하나였다. 언제나 붙어 있다.
 interface Props {
   readonly entry: AreaCatalogEntry;
-  /**
-   * 시트 하단에 붙여 둘까.
-   *
-   * **peek(16%)에서는 거짓이다.** 그 단계에서 시트가 보여주는 높이는 135px뿐인데
-   * (390×844) 이 바가 64px을 먹으면 남는 것이 「목록으로」 한 줄이다 — 사용자가
-   * 지도를 보려고 내려 둔 시트를 버튼이 차지하는 꼴이 된다.
-   *
-   * 거짓이면 **흐름 안의 마지막 요소로 돌아간다**(고정 이전과 같은 자리).
-   * 조건부로 아예 안 그리지 않는 이유는 단계가 바뀔 때 내용 높이가 흔들리지
-   * 않게 하려는 것이다 — peek에서는 어차피 스크롤 밖이라 보이지 않는다.
-   */
-  readonly pinned: boolean;
 }
 
 interface MapLink {
@@ -143,7 +134,7 @@ function mapLinks(): readonly MapLink[] {
 const ACTION_BASE =
   "flex min-h-12 flex-1 items-center justify-center gap-1.5 rounded-action border border-outline-variant bg-surface-container-lowest text-label-md font-semibold text-on-surface";
 
-export function MapLinkButtons({ entry, pinned }: Props) {
+export function MapLinkButtons({ entry }: Props) {
   // href를 실제로 채운 <a>로 둔다. 브리지가 없을 때 열 주소가 여기 남아 있어야
   // 폴백이 성립하고, 스크린리더도 링크로 읽는다. 실제 열기는 openExternalUrl이
   // 맡으므로 기본 동작은 막는다 — 웹뷰에서 두 번 열리는 걸 방지한다.
@@ -155,18 +146,15 @@ export function MapLinkButtons({ entry, pinned }: Props) {
     // 배경과 위쪽 선이 필수다. 내용이 이 바 아래로 흐르므로 투명하면 글자가
     // 버튼 사이로 비친다. 배경색은 시트 뿌리와 같은 토큰이라 이어져 보인다.
     //
-    // `-mb-6`으로 상세 뿌리의 `pb-6`을 상쇄한다. 그게 없으면 sticky의 담는
-    // 상자가 그 24px 위에서 끝나 **바가 시트 밑변에서 24px 떠 있다.**
+    // `-mb-6`으로 스크롤 상자의 `pb-6`을 상쇄한다. 그게 없으면 sticky의 담는
+    // 상자가 그 24px 위에서 끝나 **바가 화면 밑변에서 24px 떠 있다.**
     //
-    // z-10은 위쪽 절들보다만 높으면 된다. 지도 마커(z-5·z-10)와 겨루지 않는다 —
-    // 시트가 이미 지도 위 층이다.
-    <div
-      className={
-        pinned
-          ? "sticky bottom-0 z-10 -mb-6 border-t border-outline-variant bg-surface-container-lowest px-4 pt-3 pb-3"
-          : "px-4"
-      }
-    >
+    // `pb-safe-3`가 홈 인디케이터를 피한다. 시트 안에 있던 시절에는 시트가
+    // 대신 피해 줬는데, 전체 화면에서는 이 바가 화면 맨 아래다.
+    //
+    // z-10은 위쪽 절들보다만 높으면 된다. 탭 줄(z-10)과 같은 층이지만 둘은
+    // 화면의 위아래 끝이라 겹칠 일이 없다.
+    <div className="sticky bottom-0 z-10 -mb-6 border-t border-outline-variant bg-surface-container-lowest px-4 pt-3 pb-safe-3">
       <div className="flex gap-3">
         {mapLinks().map((link) => (
           <a
