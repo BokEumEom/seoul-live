@@ -29,7 +29,7 @@ export function CongestionCard({ snapshot }: Props) {
       <h3 className="sr-only">{t('지금 얼마나 붐비나')}</h3>
 
       {quietHour !== null && (
-        <div className="flex gap-2 rounded-card bg-secondary-container px-3 py-3">
+        <div className="flex gap-2 rounded-card bg-surface-container-high px-3 py-3">
           <Icon name="info" className="size-5 text-primary" />
           <p className="text-label-md leading-6 text-on-surface">
             {t('{시}시엔 여유 예상 — 한산한 시간을 원하시면 조금만 기다려주세요.', {

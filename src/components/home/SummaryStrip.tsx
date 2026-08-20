@@ -43,7 +43,7 @@ export function SummaryStrip({ summary, onOpen }: Props) {
       //
       // font-medium을 쓰지 않는다 — --text-label-md--font-weight가 이미 500이라
       // 같은 값을 두 번 쓰는 것이고, 나중에 토큰을 고쳐도 여기만 안 따라온다.
-      className="flex w-full items-center justify-between gap-2 rounded-card bg-secondary-container px-3 py-2 text-label-md text-primary"
+      className="flex w-full items-center justify-between gap-2 rounded-card bg-surface-container-high px-3 py-2 text-label-md text-primary"
     >
       <span className="truncate">{label}</span>
       {/* 보이는 문구는 상태 읽어주기라 눌러서 무엇이 열리는지 말해주지 않는다.

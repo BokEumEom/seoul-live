@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Seoul Now</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-error": "#ffffff",
+                        "secondary": "#006d37",
+                        "primary-container": "#1a73e8",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-container-high": "#e6e8f2",
+                        "on-primary-fixed": "#001a41",
+                        "surface-variant": "#e0e2ec",
+                        "on-secondary-fixed": "#00210c",
+                        "on-surface-variant": "#414754",
+                        "surface-container-low": "#f2f3fd",
+                        "primary-fixed-dim": "#adc7ff",
+                        "outline-variant": "#c1c6d6",
+                        "inverse-on-surface": "#eff0fa",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb691",
+                        "secondary-fixed": "#6bfe9c",
+                        "inverse-primary": "#adc7ff",
+                        "on-primary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#783100",
+                        "on-background": "#191c23",
+                        "on-secondary-container": "#00743a",
+                        "surface-bright": "#f9f9ff",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#6bfe9c",
+                        "on-primary-fixed-variant": "#004493",
+                        "on-tertiary-container": "#0e0200",
+                        "surface": "#f9f9ff",
+                        "on-tertiary-fixed": "#341100",
+                        "secondary-fixed-dim": "#4ae183",
+                        "on-surface": "#191c23",
+                        "background": "#f9f9ff",
+                        "surface-dim": "#d8d9e3",
+                        "on-secondary-fixed-variant": "#005228",
+                        "primary": "#005bbf",
+                        "surface-container": "#ecedf7",
+                        "inverse-surface": "#2d3038",
+                        "outline": "#727785",
+                        "surface-container-highest": "#e0e2ec",
+                        "surface-tint": "#005bc0",
+                        "on-primary-container": "#ffffff",
+                        "tertiary-fixed": "#ffdbcb",
+                        "error": "#ba1a1a",
+                        "tertiary": "#9e4300",
+                        "tertiary-container": "#c55500"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-desktop": "24px",
+                        "gutter": "12px",
+                        "card-gap": "8px",
+                        "unit": "4px",
+                        "margin-mobile": "16px"
+                    },
+                    fontFamily: {
+                        "label-sm": ["Be Vietnam Pro", "sans-serif"],
+                        "headline-md": ["Plus Jakarta Sans", "sans-serif"],
+                        "headline-sm": ["Plus Jakarta Sans", "sans-serif"],
+                        "body-md": ["Be Vietnam Pro", "sans-serif"],
+                        "body-sm": ["Be Vietnam Pro", "sans-serif"],
+                        "headline-lg": ["Plus Jakarta Sans", "sans-serif"],
+                        "body-lg": ["Be Vietnam Pro", "sans-serif"],
+                        "label-md": ["Be Vietnam Pro", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased h-screen w-full overflow-hidden flex flex-col font-body-md">
+<!-- Map Background -->
+<div class="absolute inset-0 z-0">
+<div class="w-full h-full bg-cover bg-center" data-alt="A highly stylized, modern, flat vector map of Seoul, South Korea. The map uses a very light, clean theme with predominantly white and light gray tones, accented by subtle, muted blues for water bodies. It has a high-density, professional urban aesthetic suitable for a real-time data application, avoiding any photorealistic textures or 3D elements. The lighting is bright and flat, characteristic of a premium light-mode UI." data-location="Seoul" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAHNSFW5B8TV7y5daq1uMa89rRCeLNMNGoTy6HpLeLUujmoOj1PveVo2yVASY4cZGu_wzcsePMqZlB8ZE_yq9f0EMBR6JK-1h_qakjqSgmnJ6l0ya3VP_8_k-Q5XJ3tL6vTuL6CegSgDgR9DX2wcTw4ntIQ23igMxXKidWdL-ik8Z6afyDFXftV5slNdGB01W1P9PXzWDpDQbKtWrCAhUyG0ycakNB0RBusI1Ai0WAMk_zpLe-Un362DQ')"></div>
+</div>
+<!-- Map Markers (Simulated) -->
+<div class="absolute inset-0 z-10 pointer-events-none">
+<!-- Highlighted Marker (Gwanghwamun/Deoksugung) -->
+<div class="absolute top-[45%] left-[40%] flex flex-col items-center pointer-events-auto transform transition-transform hover:scale-110 active:scale-95">
+<div class="bg-surface rounded-full shadow-lg border border-[#EEEEEE] px-3 py-1 flex items-center gap-1.5 mb-1.5">
+<div class="w-2.5 h-2.5 rounded-full bg-tertiary-container"></div>
+<span class="font-label-md text-label-md text-on-surface whitespace-nowrap">광화문·덕수궁</span>
+</div>
+<div class="w-4 h-4 bg-tertiary-container rounded-full border-2 border-white shadow-md relative">
+<div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[6px] border-t-tertiary-container"></div>
+</div>
+</div>
+<!-- Other minor markers -->
+<div class="absolute top-[30%] left-[55%] w-2 h-2 rounded-full bg-secondary border border-white shadow-sm"></div>
+<div class="absolute top-[60%] left-[65%] w-2 h-2 rounded-full bg-secondary-fixed border border-white shadow-sm"></div>
+<div class="absolute top-[50%] left-[25%] w-2 h-2 rounded-full bg-error border border-white shadow-sm"></div>
+<div class="absolute top-[35%] left-[30%] w-2 h-2 rounded-full bg-tertiary border border-white shadow-sm"></div>
+</div>
+<!-- Floating Top UI (Overlays Map) -->
+<div class="relative z-20 pt-margin-mobile px-margin-mobile flex flex-col gap-unit pointer-events-none">
+<!-- Search Bar -->
+<div class="bg-surface/95 backdrop-blur-md rounded-full shadow-lg border border-[#EEEEEE] h-14 flex items-center px-4 pointer-events-auto transition-transform duration-200">
+<button class="text-on-surface-variant p-2 hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined text-[24px]">menu</span>
+</button>
+<div class="flex-1 px-3">
+<input class="w-full bg-transparent border-none focus:ring-0 font-body-lg text-body-lg text-on-surface placeholder-on-surface-variant outline-none" placeholder="장소, 지하철역, 지역 검색" readonly="" type="text"/>
+</div>
+<div class="flex items-center gap-1">
+<button class="text-on-surface-variant p-2 hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined text-[24px]">search</span>
+</button>
+<button class="text-primary p-2 hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">my_location</span>
+</button>
+</div>
+</div>
+<!-- Filter Groups -->
+<div class="pointer-events-auto w-full overflow-hidden mt-2">
+<!-- Group 1: Density -->
+<div class="flex overflow-x-auto hide-scrollbar gap-2 pb-2 px-1">
+<button class="px-4 py-1.5 rounded-full border border-[#EEEEEE] bg-surface text-on-surface font-label-md text-label-md shadow-sm whitespace-nowrap shrink-0 hover:bg-surface-container-low">전체</button>
+<button class="px-4 py-1.5 rounded-full border border-secondary bg-surface text-secondary font-label-md text-label-md shadow-sm whitespace-nowrap shrink-0 hover:bg-secondary-fixed/20">한적</button>
+<button class="px-4 py-1.5 rounded-full border border-secondary-fixed-dim bg-surface text-secondary-fixed-dim font-label-md text-label-md shadow-sm whitespace-nowrap shrink-0 hover:bg-surface-container-low">보통</button>
+<button class="px-4 py-1.5 rounded-full bg-tertiary-container text-on-tertiary border border-tertiary-container font-label-md text-label-md shadow-sm whitespace-nowrap shrink-0 hover:bg-tertiary">약간 붐빔</button>
+<button class="px-4 py-1.5 rounded-full border border-error bg-surface text-error font-label-md text-label-md shadow-sm whitespace-nowrap shrink-0 hover:bg-error-container/30">붐빔</button>
+</div>
+<!-- Group 2: Categories -->
+<div class="flex overflow-x-auto hide-scrollbar gap-2 pb-2 px-1 mt-1">
+<button class="px-3 py-1.5 rounded-full border border-[#EEEEEE] bg-surface/90 backdrop-blur-sm text-on-surface-variant font-label-sm text-label-sm shadow-sm whitespace-nowrap shrink-0 flex items-center gap-1 hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px]">routine</span>날씨
+                </button>
+<button class="px-3 py-1.5 rounded-full border border-[#EEEEEE] bg-surface/90 backdrop-blur-sm text-on-surface-variant font-label-sm text-label-sm shadow-sm whitespace-nowrap shrink-0 flex items-center gap-1 hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px]">directions_car</span>교통
+                </button>
+<button class="px-3 py-1.5 rounded-full border border-[#EEEEEE] bg-surface/90 backdrop-blur-sm text-on-surface-variant font-label-sm text-label-sm shadow-sm whitespace-nowrap shrink-0 flex items-center gap-1 hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px]">directions_bus</span>대중교통
+                </button>
+<button class="px-3 py-1.5 rounded-full border border-[#EEEEEE] bg-surface/90 backdrop-blur-sm text-on-surface-variant font-label-sm text-label-sm shadow-sm whitespace-nowrap shrink-0 flex items-center gap-1 hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px]">local_parking</span>주차
+                </button>
+<button class="px-3 py-1.5 rounded-full border border-[#EEEEEE] bg-surface/90 backdrop-blur-sm text-on-surface-variant font-label-sm text-label-sm shadow-sm whitespace-nowrap shrink-0 flex items-center gap-1 hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[16px]">pedal_bike</span>따릉이
+                </button>
+</div>
+</div>
+</div>
+<!-- Main Content Area (Fills space, map is underneath) -->
+<main class="flex-1 relative w-full pointer-events-none">
+<!-- The map is visual only here, interactions handled above/below -->
+</main>
+<!-- Bottom Sheet (Collapsed) -->
+<div class="relative z-30 w-full bg-surface rounded-t-2xl shadow-[0_-4px_12px_rgba(0,0,0,0.05)] border-t border-[#EEEEEE] pointer-events-auto flex flex-col mb-[72px]">
+<!-- Grabber -->
+<div class="w-full flex justify-center pt-3 pb-2 cursor-pointer">
+<div class="w-10 h-1 bg-outline-variant/50 rounded-full"></div>
+</div>
+<!-- Sheet Content (Summary Row) -->
+<div class="px-margin-mobile pb-margin-mobile flex justify-between items-center cursor-pointer hover:bg-surface-container-lowest transition-colors">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">광화문·덕수궁</h2>
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">chevron_right</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1 bg-tertiary-container/10 px-2 py-0.5 rounded text-tertiary-container font-label-sm text-label-sm">
+<div class="w-2 h-2 rounded-full bg-tertiary-container"></div>
+<span>약간 붐빔</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">32,000 ~ 34,000명</span>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">sunny</span>
+<span class="font-body-sm text-body-sm">27°C</span>
+</div>
+<span class="font-label-sm text-label-sm text-secondary">미세먼지 좋음</span>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation Bar (Shared Component Executed) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe bg-surface dark:bg-surface-dim border-t border-[#EEEEEE] dark:border-outline-variant md:hidden">
+<!-- Item 1 (Active) -->
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed font-bold bg-secondary-container/20 dark:bg-secondary-container/10 rounded-xl px-3 py-1 transition-all duration-200 ease-in-out">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">map</span>
+<span class="font-label-sm text-label-sm mt-1">지도</span>
+</button>
+<!-- Item 2 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:bg-surface-container dark:hover:bg-surface-container-high rounded-xl px-3 py-1 transition-all duration-200 ease-in-out">
+<span class="material-symbols-outlined text-[24px]">explore</span>
+<span class="font-label-sm text-label-sm mt-1">탐색</span>
+</button>
+<!-- Item 3 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:bg-surface-container dark:hover:bg-surface-container-high rounded-xl px-3 py-1 transition-all duration-200 ease-in-out">
+<span class="material-symbols-outlined text-[24px]">location_on</span>
+<span class="font-label-sm text-label-sm mt-1">주변</span>
+</button>
+<!-- Item 4 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:bg-surface-container dark:hover:bg-surface-container-high rounded-xl px-3 py-1 transition-all duration-200 ease-in-out">
+<span class="material-symbols-outlined text-[24px]">bookmark</span>
+<span class="font-label-sm text-label-sm mt-1">저장</span>
+</button>
+<!-- Item 5 -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline hover:bg-surface-container dark:hover:bg-surface-container-high rounded-xl px-3 py-1 transition-all duration-200 ease-in-out">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-label-sm text-label-sm mt-1">MY</span>
+</button>
+</nav>
+</body></html>

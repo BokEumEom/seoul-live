@@ -1,89 +1,98 @@
 @import "tailwindcss";
 
-/* stitch_ui는 디자인 시안 HTML이라 앱 번들과 무관하다.
-   스캔 대상에서 빼지 않으면 쓰지 않는 유틸리티가 CSS에 섞인다. */
-/* 시안 폴더는 스캔에서 뺀다. 지금은 그 폴더가 없지만, 없는 경로를
-   적어 두는 것은 무해하고 새 시안이 같은 자리에 들어올 수 있다. */
+/* 시안 폴더는 스캔에서 뺀다. 디자인 시안 HTML이라 앱 번들과 무관한데,
+   빼지 않으면 쓰지 않는 유틸리티가 CSS에 섞인다. 옛 자리(`stitch_ui`)도
+   함께 적어 둔다 — 없는 경로는 무해하고, 시안이 다시 그 이름으로 들어올 수
+   있다. */
 @source not "../stitch_ui";
+@source not "../stitch_ui_ux";
 
-/* 값의 출처는 stitch_ui/seoul_flow/DESIGN.md 하나다. 여기서 손으로 바꾸지 말고
-   그 파일을 고친 뒤 옮길 것. */
+/* 값의 출처는 docs/DESIGN.md 하나다. 여기서 손으로 바꾸지 말고 그 파일을 고친
+   뒤 옮길 것. `tokens.test.ts`가 두 파일을 양방향으로 대조한다. */
 @theme {
-  /* 주요 색 */
-  --color-primary: #004ac6;
+  /* 주요 색 — **Seoul Blue.** 2026-08-20에 시안(stitch_ui_ux/seoul_now)이
+     통째로 갈렸다. 활성 상태·주요 버튼·내비게이션 포커스가 이 파랑이다. */
+  --color-primary: #005bbf;
   --color-on-primary: #ffffff;
-  --color-primary-container: #2563eb;
-  --color-on-primary-container: #eeefff;
-  --color-primary-fixed: #dbe1ff;
-  --color-primary-fixed-dim: #b4c5ff;
-  --color-on-primary-fixed: #00174b;
-  --color-on-primary-fixed-variant: #003ea8;
-  --color-inverse-primary: #b4c5ff;
-  --color-surface-tint: #0053db;
+  --color-primary-container: #1a73e8;
+  --color-on-primary-container: #ffffff;
+  --color-primary-fixed: #d8e2ff;
+  --color-primary-fixed-dim: #adc7ff;
+  --color-on-primary-fixed: #001a41;
+  --color-on-primary-fixed-variant: #004493;
+  --color-inverse-primary: #adc7ff;
+  --color-surface-tint: #005bc0;
 
-  /* 보조. 표면과 같은 이유로 따뜻한 쪽이다 — `bg-secondary-container`가
-     「근처 쾌적한 장소」·「평소 대비」처럼 표면 위에 얹히는 상자라, 차가운
-     파랑 상자만 남으면 크림 배경에서 그 상자만 떠 보인다. */
-  --color-secondary: #5f5647;
+  /* 보조가 **초록**이다. 예전 정본에서는 따뜻한 갈색이었고 「표면 위에 얹히는
+     부드러운 상자」로 쓰였는데, 이 배색에서 secondary는 그런 중립 상자가 아니라
+     **「좋음·원활·여유」의 색**이다(`--color-calm`이 같은 값인 것이 그 뜻이다).
+     부드러운 상자가 필요한 자리는 `surface-container-high`로 옮겼다 —
+     그쪽이 이 배색이 색조 층을 쌓는 방식이다. */
+  --color-secondary: #006d37;
   --color-on-secondary: #ffffff;
-  --color-secondary-container: #f0e6d6;
-  --color-on-secondary-container: #4a4234;
-  --color-secondary-fixed: #f0e6d6;
-  --color-secondary-fixed-dim: #d4c8b5;
-  --color-on-secondary-fixed: #1e1810;
-  --color-on-secondary-fixed-variant: #4a4234;
+  --color-secondary-container: #6bfe9c;
+  --color-on-secondary-container: #00743a;
+  --color-secondary-fixed: #6bfe9c;
+  --color-secondary-fixed-dim: #4ae183;
+  --color-on-secondary-fixed: #00210c;
+  --color-on-secondary-fixed-variant: #005228;
 
-  --color-tertiary: #943700;
+  --color-tertiary: #9e4300;
   --color-on-tertiary: #ffffff;
-  --color-tertiary-container: #bc4800;
-  --color-on-tertiary-container: #ffede6;
-  --color-tertiary-fixed: #ffdbcd;
-  --color-tertiary-fixed-dim: #ffb596;
-  --color-on-tertiary-fixed: #360f00;
-  --color-on-tertiary-fixed-variant: #7d2d00;
+  --color-tertiary-container: #c55500;
+  --color-on-tertiary-container: #0e0200;
+  --color-tertiary-fixed: #ffdbcb;
+  --color-tertiary-fixed-dim: #ffb691;
+  --color-on-tertiary-fixed: #341100;
+  --color-on-tertiary-fixed-variant: #783100;
 
-  /* 표면. **중립색이 따뜻한 쪽이다.** 예전에는 파랑-보라 기운(#faf8ff, 색상
-     ~250°)이었는데, 그 위에 놓인 혼잡도 4색이 전부 따뜻한 계열(초록·노랑·
-     주황·빨강)이라 배경과 데이터가 서로 밀어냈다. 배경을 크림 쪽(색상 ~38°)
-     으로 옮기면 같은 4색이 배경에 얹힌 것처럼 앉는다.
+  /* 표면. **중립이 다시 차가운 쪽이다.**
 
-     강조색(primary)은 파랑 그대로다. 따뜻한 강조색은 혼잡도의 주황
-     (`--color-busy` #ea580c)과 색상이 붙어 「길찾기 버튼」과 「약간 붐빔」이
-     같은 색으로 읽힌다 — 이 앱에서 색은 값이라 그 혼동이 특히 비싸다. */
-  --color-background: #fffbf4;
-  --color-on-background: #241e17;
-  --color-surface: #fffbf4;
-  --color-surface-dim: #e6ded0;
-  --color-surface-bright: #fffbf4;
-  --color-surface-variant: #ede3d0;
+     예전(Seoul Flow)에는 크림(#fffbf4, 색상 ~38°)이었고 근거는 「혼잡도 4색이
+     전부 따뜻한 계열이라 차가운 배경과 서로 밀어낸다」였다. 관찰은 맞았지만
+     **이 정본은 같은 문제를 반대편에서 푼다** — 배경을 데이터 쪽으로 옮기는
+     대신 **데이터를 팔레트 안으로 들였다.** 혼잡도 4색이 이제 임의의 초록·
+     주황·빨강이 아니라 이 배색의 secondary·tertiary·error 계열에서 나온다.
+     그러면 차가운 표면 위에서도 네 색이 남의 색으로 튀지 않는다. */
+  --color-background: #f9f9ff;
+  --color-on-background: #191c23;
+  --color-surface: #f9f9ff;
+  --color-surface-dim: #d8d9e3;
+  --color-surface-bright: #f9f9ff;
+  --color-surface-variant: #e0e2ec;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #fdf6ec;
-  --color-surface-container: #f8f0e3;
-  --color-surface-container-high: #f3ead9;
-  --color-surface-container-highest: #ede3d0;
-  --color-inverse-surface: #3a3229;
-  --color-inverse-on-surface: #faefe1;
+  --color-surface-container-low: #f2f3fd;
+  --color-surface-container: #ecedf7;
+  --color-surface-container-high: #e6e8f2;
+  --color-surface-container-highest: #e0e2ec;
+  --color-inverse-surface: #2d3038;
+  --color-inverse-on-surface: #eff0fa;
 
-  --color-on-surface: #241e17;
-  --color-on-surface-variant: #544a3d;
-  --color-outline: #7d7163;
-  --color-outline-variant: #e7dccb;
+  --color-on-surface: #191c23;
+  --color-on-surface-variant: #414754;
+  --color-outline: #727785;
+  --color-outline-variant: #c1c6d6;
 
   --color-error: #ba1a1a;
   --color-on-error: #ffffff;
   --color-error-container: #ffdad6;
   --color-on-error-container: #93000a;
 
-  /* 혼잡도 4단계. DESIGN.md는 3색(Success/Warning/Danger)이지만 서울 API가 주는
-     값이 4단계라 정보 손실을 피해 '약간 붐빔'(busy)을 하나 더 뒀다. */
-  --color-calm: #059669;
-  --color-calm-container: #d1fae5;
-  --color-normal: #d97706;
-  --color-normal-container: #fef3c7;
-  --color-busy: #ea580c;
-  --color-busy-container: #ffedd5;
-  --color-crowded: #dc2626;
-  --color-crowded-container: #fee2e2;
+  /* 혼잡도 4단계. 시안 본문은 "four-step scale (Green to Red)"라고 **말만 하고**
+     `colors:`에 값을 안 적었다 — 서울 API가 주는 값이 4단계라 그 손실을 감당할
+     수 없어 여기서 정한다. 계열은 secondary(여유) · 앰버(보통) ·
+     tertiary(약간 붐빔) · error(붐빔)다.
+
+     보통만 대응 계열이 없다. tertiary를 밝혀 쓰면 「약간 붐빔」과 색상이 붙어
+     두 단계가 하나로 읽혀서 별도 색조를 뒀다. */
+  --color-calm: #006d37;
+  --color-calm-container: #a8f5c2;
+  --color-normal: #7d5800;
+  --color-normal-container: #ffdea6;
+  --color-busy: #9e4300;
+  --color-busy-container: #ffdbcb;
+  --color-crowded: #ba1a1a;
+  --color-crowded-container: #ffdad6;
 
   /* 배지 글자용. **`--color-calm` 등을 그대로 쓰면 안 된다** — 한 토큰이 두 일을
      맡고 있었고 두 일의 요구가 반대다. 지도 핀·마커 알약·히트맵은 지도 타일
@@ -125,24 +134,23 @@
      사실상 둘로 읽혔다: 이웃 대비가 여유→보통 **1.02**(명도가 오히려 뒤집혀
      있었다), 보통→약간붐빔 3.20, 약간붐빔→붐빔 1.36.
 
-     지금 값은 여유~붐빔 전체 대비(5.70)를 **세 구간에 등비로 나눠** 역산한
-     목표 명도(0.468 / 0.240 / 0.112)에 가장 가까운 색을 고른 것이다. 결과는
-     1.89 / 1.66 / 1.82로 고르다. `tokens.test.ts`가 단조성과 최소 간격을
+     지금 값은 여유~붐빔 전체 대비(7.24)를 **세 구간에 등비로 나눠** 역산한
+     목표 명도(0.376 / 0.170)에 가장 가까운 색을 고른 것이다. 결과는
+     1.92 / 1.92 / 1.96으로 고르다. `tokens.test.ts`가 단조성과 최소 간격을
      잠근다.
 
      **「관측 없음」은 여기 없다.** 그 칸은 값이 아니라 값의 부재이고, 어떤
-     회색을 골라도 여유(L 0.876)와 명도가 겹쳐 다섯째 단계처럼 읽힌다
-     (`#e1e2ed`로 재면 1.14였다). 채우지 않고 테두리로 표현한다 —
-     `toneClass.ts`의 `EMPTY_CELL_CLASS`. */
-  --color-heat-calm: #d1fae5;
-  --color-heat-normal: #f59e0b;
-  --color-heat-busy: #ea580c;
-  --color-heat-crowded: #b91c1c;
+     회색을 골라도 여유(L 0.775)와 명도가 겹쳐 다섯째 단계처럼 읽힌다.
+     채우지 않고 테두리로 표현한다 — `toneClass.ts`의 `EMPTY_CELL_CLASS`. */
+  --color-heat-calm: #a8f5c2;
+  --color-heat-normal: #d99a12;
+  --color-heat-busy: #bf5300;
+  --color-heat-crowded: #8f1414;
 
-  --color-on-calm-container: #065f46;
-  --color-on-normal-container: #92400e;
-  --color-on-busy-container: #9a3412;
-  --color-on-crowded-container: #991b1b;
+  --color-on-calm-container: #00522a;
+  --color-on-normal-container: #5e4200;
+  --color-on-busy-container: #783100;
+  --color-on-crowded-container: #93000a;
 
   /* 웹폰트를 쓰지 않는다. 근거는 index.html의 주석에 한 벌 있다 — 요약하면
      Hanken Grotesk 229KB가 한글을 못 그려서 화면의 대부분은 어차피 기기
@@ -166,28 +174,38 @@
     sans-serif;
 
   /* 타이포 스케일. DESIGN.md의 typography 블록과 1:1이다.
-     "걸으면서도 읽히게" 일반 유틸리티 앱보다 한 단계 크게 잡혀 있다. */
-  --text-display-lg: 2rem; /* 32px */
-  --text-display-lg--line-height: 2.5rem;
+     **제목이 한 단계 작아졌다** — 시안의 "모바일에서 헤드라인은 24px을 넘기지
+     말 것, 지도 면적을 지켜라"를 따랐다(32/24/20 → 24/20/16).
+
+     **본문 16px은 안 줄였다.** 시안의 `body-lg`가 16px이고, 걸으면서 읽는
+     화면에서 14px 본문은 다르게 잰다 — 제목은 지도를 먹지만 본문은 안 그렇다. */
+  --text-display-lg: 1.5rem; /* 24px */
+  --text-display-lg--line-height: 2rem;
   --text-display-lg--font-weight: 700;
   --text-display-lg--letter-spacing: -0.02em;
 
-  --text-headline-md: 1.5rem; /* 24px */
-  --text-headline-md--line-height: 2rem;
-  --text-headline-md--font-weight: 600;
+  --text-headline-md: 1.25rem; /* 20px */
+  --text-headline-md--line-height: 1.75rem;
+  --text-headline-md--font-weight: 700;
   --text-headline-md--letter-spacing: -0.01em;
 
-  --text-headline-sm: 1.25rem; /* 20px */
-  --text-headline-sm--line-height: 1.75rem;
+  --text-headline-sm: 1rem; /* 16px */
+  --text-headline-sm--line-height: 1.5rem;
   --text-headline-sm--font-weight: 600;
 
-  --text-body-lg: 1.125rem; /* 18px */
-  --text-body-lg--line-height: 1.75rem;
+  --text-body-lg: 1rem; /* 16px */
+  --text-body-lg--line-height: 1.5rem;
   --text-body-lg--font-weight: 400;
 
   --text-body-md: 1rem; /* 16px */
   --text-body-md--line-height: 1.5rem;
   --text-body-md--font-weight: 400;
+
+  /* 카드 캡션. `label-sm`과 크기는 같고 무게가 다르다 — 「18대」 아래
+     「대여 가능」처럼 **값이 아니라 설명**인 줄이라 굵으면 값과 다툰다. */
+  --text-body-sm: 0.75rem; /* 12px */
+  --text-body-sm--line-height: 1.125rem;
+  --text-body-sm--font-weight: 400;
 
   --text-label-md: 0.875rem; /* 14px */
   --text-label-md--line-height: 1.25rem;
@@ -198,6 +216,13 @@
   --text-label-sm--line-height: 1rem;
   --text-label-sm--font-weight: 600;
   --text-label-sm--letter-spacing: 0.02em;
+
+  /* 카드 머리의 아이콘 + 라벨 줄. **10px을 본문에 쓰면 안 된다** — 여기 쓰는
+     자리는 바로 아래 큰 값이 뜻을 다 지고 있고 이 줄은 그 값의 이름표다. */
+  --text-label-xs: 0.625rem; /* 10px */
+  --text-label-xs--line-height: 0.75rem;
+  --text-label-xs--font-weight: 700;
+  --text-label-xs--letter-spacing: 0.02em;
 
   /* 히트맵 칸처럼 아주 작은 모서리. Tailwind v4의 기본 `rounded-sm`이 마침
      같은 0.25rem이라 여태 안 적어도 맞았지만, 그건 우리 값이 아니라 우연이다 —
@@ -215,68 +240,73 @@
      라이트 값의 대비를 재는 척하면서 실은 다크 값을 잰다. 값은 한 이름에 한
      번만 적고, 바꿔 끼우는 일은 `var()`로 한다 — 그러면 정규식이 안 걸린다.
 
-     중립은 라이트와 같은 따뜻한 색상(~35°)에 명도만 뒤집었다. 회색을 그대로
+     **시안에는 다크 토큰이 하나도 없다. 그래도 유지한다** — 밤에 지도를 보는
+     앱이고 화면 전체가 이미 다크에 맞춰져 있다. 시안이 안 준 것은 시안이
+     라이트 한 벌만 그린 것이지 「다크를 버리라」가 아니다.
+
+     중립은 라이트와 같은 **차가운 색상**에 명도만 뒤집었다(예전에는 따뜻한
+     ~35°였고, 라이트가 크림에서 파랑으로 갈리면서 함께 옮겼다). 회색을 그대로
      어둡게 하면 낮과 밤이 다른 앱처럼 보인다.
 
-     **혼잡도 4색도 갈아 끼운다.** 짙은 #dc2626·#059669는 어두운 카드 위에서
+     **혼잡도 4색도 갈아 끼운다.** 짙은 #ba1a1a·#006d37은 어두운 카드 위에서
      서로 뭉개진다. 지도 타일도 함께 어두워지므로(아래 `colorScheme`) 핀 색이
      밝아지는 편이 지도에서도 낫다.
 
      히트맵 램프는 **방향이 뒤집힌다.** 라이트에서는 붐빌수록 어두워지지만
      어두운 배경에서 같은 방향으로 가면 「붐빔」이 배경에 잠겨 사라진다.
      다크에서는 붐빌수록 밝아진다 — 단조성과 이웃 간격은 라이트와 똑같이
-     `tokens.test.ts`가 잠근다(지금 1.68 / 1.70 / 1.68). */
-  --color-dark-background: #16120c;
-  --color-dark-on-background: #f0e5d7;
-  --color-dark-surface: #16120c;
-  --color-dark-surface-dim: #16120c;
-  --color-dark-surface-bright: #3d352b;
-  --color-dark-surface-variant: #4d4539;
+     `tokens.test.ts`가 잠근다(지금 1.75 / 1.75 / 2.04). */
+  --color-dark-background: #101319;
+  --color-dark-on-background: #e2e4ee;
+  --color-dark-surface: #101319;
+  --color-dark-surface-dim: #101319;
+  --color-dark-surface-bright: #363a44;
+  --color-dark-surface-variant: #434a58;
   /* **밤에는 카드가 배경보다 밝다.** Material 3의 다크 램프는 `-lowest`가
      표면보다 어둡지만, 이 앱은 그 토큰을 「카드 바탕」으로 쓴다 — 낮에는
-     크림 배경 위의 흰 카드라 떠 보이는데, M3를 글자 그대로 따르면 밤에만
+     옅은 파랑 배경 위의 흰 카드라 떠 보이는데, M3를 글자 그대로 따르면 밤에만
      카드가 가라앉아 본문 자리가 구멍처럼 파인다(390px 실측에서 보였다).
      쓰임을 따라 방향을 맞춘다. */
-  --color-dark-surface-container-lowest: #1e1912;
-  --color-dark-surface-container-low: #241e16;
-  --color-dark-surface-container: #2a231a;
-  --color-dark-surface-container-high: #332b21;
-  --color-dark-surface-container-highest: #3d342a;
-  --color-dark-inverse-surface: #f0e5d7;
-  --color-dark-inverse-on-surface: #362f27;
+  --color-dark-surface-container-lowest: #181c24;
+  --color-dark-surface-container-low: #1d212a;
+  --color-dark-surface-container: #222732;
+  --color-dark-surface-container-high: #2c313d;
+  --color-dark-surface-container-highest: #373d49;
+  --color-dark-inverse-surface: #e2e4ee;
+  --color-dark-inverse-on-surface: #2d3038;
 
-  --color-dark-on-surface: #f0e5d7;
-  --color-dark-on-surface-variant: #d4c7b4;
-  --color-dark-outline: #9d9080;
-  --color-dark-outline-variant: #4d4539;
+  --color-dark-on-surface: #e2e4ee;
+  --color-dark-on-surface-variant: #c4c9d9;
+  --color-dark-outline: #8f95a5;
+  --color-dark-outline-variant: #434a58;
 
-  /* 파랑은 그대로 쓸 수 없다 — #004ac6은 어두운 표면에서 1.4:1이라 글자가
+  /* 파랑은 그대로 쓸 수 없다 — #005bbf는 어두운 표면에서 1.4:1이라 글자가
      안 보인다. 라이트의 `--color-inverse-primary`와 같은 값이다. */
-  --color-dark-primary: #b4c5ff;
-  --color-dark-on-primary: #002a78;
-  --color-dark-secondary: #d0c3b0;
-  --color-dark-secondary-container: #3c342a;
+  --color-dark-primary: #adc7ff;
+  --color-dark-on-primary: #002f65;
+  --color-dark-secondary: #4ae183;
+  --color-dark-secondary-container: #1f4d33;
 
   --color-dark-error-container: #93000a;
   --color-dark-on-error-container: #ffdad6;
 
-  --color-dark-calm: #34d399;
-  --color-dark-calm-container: #06402f;
-  --color-dark-on-calm-container: #a7f3d0;
-  --color-dark-normal: #fbbf24;
-  --color-dark-normal-container: #653008;
-  --color-dark-on-normal-container: #fde68a;
-  --color-dark-busy: #fb923c;
-  --color-dark-busy-container: #6b2710;
-  --color-dark-on-busy-container: #fed7aa;
-  --color-dark-crowded: #f87171;
-  --color-dark-crowded-container: #6e1a1a;
-  --color-dark-on-crowded-container: #fecaca;
+  --color-dark-calm: #4ae183;
+  --color-dark-calm-container: #0a3d24;
+  --color-dark-on-calm-container: #8ff2b8;
+  --color-dark-normal: #f0c04d;
+  --color-dark-normal-container: #4a3407;
+  --color-dark-on-normal-container: #ffdea6;
+  --color-dark-busy: #ffb691;
+  --color-dark-busy-container: #5c2a0c;
+  --color-dark-on-busy-container: #ffdbcb;
+  --color-dark-crowded: #ff8f8a;
+  --color-dark-crowded-container: #6b1512;
+  --color-dark-on-crowded-container: #ffdad6;
 
-  --color-dark-heat-calm: #14532d;
-  --color-dark-heat-normal: #9a5b0a;
-  --color-dark-heat-busy: #d97706;
-  --color-dark-heat-crowded: #fca5a5;
+  --color-dark-heat-calm: #16452c;
+  --color-dark-heat-normal: #7a5c0e;
+  --color-dark-heat-busy: #c2761f;
+  --color-dark-heat-crowded: #ffb0a8;
 }
 
 /* **기기 설정이 아니라 `data-theme` 속성을 본다.**

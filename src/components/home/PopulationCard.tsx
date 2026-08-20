@@ -26,25 +26,30 @@ const MIN_DENOMINATOR = 100
 // 동적 클래스 금지라 리터럴 맵으로 둔다. 20~30대를 진하게 해서 어느 층이
 // 많은지 색만으로도 읽히게 한다.
 //
+// **한 색상의 농도 단계다.** 예전에는 secondary(갈색)와 primary(파랑)를 번갈아
+// 썼는데, 새 배색에서 secondary는 중립 상자가 아니라 **「여유」의 초록**이라
+// 그대로 두면 연령 막대가 혼잡도를 말하는 것처럼 읽힌다. 여기서 말하려는 것은
+// 등급이 아니라 **많고 적음**이고, 그건 색상이 아니라 농도가 나른다.
+//
 // AGE_LABELS와 길이가 묶여 있지 않다 — 연령 구간이 늘면 여기 칸이 모자라
 // className이 undefined가 되고 색 없는 막대가 조용히 생긴다. 타입으로는 못
 // 막아서 PopulationCard.test.tsx의 "연령 구간이 늘어도"가 잠근다.
 const AGE_CLASS: readonly string[] = [
-  'bg-secondary-container',
-  'bg-secondary',
+  'bg-primary/30',
+  'bg-primary/60',
   'bg-primary',
   'bg-primary',
-  'bg-secondary',
-  'bg-secondary-container',
-  'bg-surface-container',
-  'bg-surface-container',
+  'bg-primary/60',
+  'bg-primary/30',
+  'bg-surface-container-highest',
+  'bg-surface-container-highest',
 ]
 
 // 알약 기하는 셋이 함께 움직인다. 색만 갈라 두어 패딩을 고칠 때 한쪽만 고치는
 // 일이 없게 한다.
 const CHIP_BASE = 'rounded-card px-2.5 py-1 text-label-sm'
 const CHIP_NEUTRAL = `${CHIP_BASE} bg-surface-container text-on-surface-variant`
-const CHIP_ACCENT = `${CHIP_BASE} bg-secondary-container text-primary`
+const CHIP_ACCENT = `${CHIP_BASE} bg-primary/10 text-primary`
 
 interface Props {
   readonly composition: PopulationComposition

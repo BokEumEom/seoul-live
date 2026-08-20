@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Seoul Now - 문화행사</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-dim": "#d8d9e3",
+                      "on-secondary-fixed-variant": "#005228",
+                      "secondary-fixed-dim": "#4ae183",
+                      "on-secondary-fixed": "#00210c",
+                      "secondary-container": "#6bfe9c",
+                      "on-primary-container": "#ffffff",
+                      "surface-container-highest": "#e0e2ec",
+                      "on-tertiary-fixed": "#341100",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary-container": "#00743a",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-fixed-variant": "#783100",
+                      "on-secondary": "#ffffff",
+                      "surface-container-low": "#f2f3fd",
+                      "primary-fixed": "#d8e2ff",
+                      "inverse-on-surface": "#eff0fa",
+                      "surface-tint": "#005bc0",
+                      "on-primary-fixed": "#001a41",
+                      "on-primary-fixed-variant": "#004493",
+                      "outline": "#727785",
+                      "surface-variant": "#e0e2ec",
+                      "surface-container": "#ecedf7",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed": "#ffdbcb",
+                      "primary-fixed-dim": "#adc7ff",
+                      "background": "#f9f9ff",
+                      "primary": "#005bbf",
+                      "on-surface-variant": "#414754",
+                      "secondary": "#006d37",
+                      "surface-container-high": "#e6e8f2",
+                      "secondary-fixed": "#6bfe9c",
+                      "surface-bright": "#f9f9ff",
+                      "on-tertiary": "#ffffff",
+                      "on-surface": "#191c23",
+                      "tertiary-container": "#c55500",
+                      "inverse-primary": "#adc7ff",
+                      "tertiary-fixed-dim": "#ffb691",
+                      "outline-variant": "#c1c6d6",
+                      "surface": "#f9f9ff",
+                      "primary-container": "#1a73e8",
+                      "on-error": "#ffffff",
+                      "error-container": "#ffdad6",
+                      "inverse-surface": "#2d3038",
+                      "on-tertiary-container": "#0e0200",
+                      "tertiary": "#9e4300",
+                      "on-background": "#191c23",
+                      "on-primary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "24px",
+                      "unit": "4px",
+                      "card-gap": "8px",
+                      "margin-mobile": "16px",
+                      "gutter": "12px"
+              },
+              "fontFamily": {
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "body-lg": ["Be Vietnam Pro"],
+                      "body-md": ["Be Vietnam Pro"],
+                      "label-md": ["Be Vietnam Pro"],
+                      "label-sm": ["Be Vietnam Pro"],
+                      "headline-sm": ["Plus Jakarta Sans"],
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "body-sm": ["Be Vietnam Pro"]
+              },
+              "fontSize": {
+                      "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "label-sm": ["10px", {"lineHeight": "12px", "fontWeight": "700"}],
+                      "headline-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-sm": ["12px", {"lineHeight": "18px", "fontWeight": "400"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        /* Custom subtle scrollbar for horizontal lists */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .shadow-subtle {
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased pb-safe selection:bg-primary/20 selection:text-primary">
+<!-- Internal Screen Header (Overrides Global Nav due to task focus) -->
+<header class="sticky top-0 z-50 bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 px-4 h-14 flex items-center justify-between">
+<button aria-label="뒤로가기" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors -ml-2">
+<span class="material-symbols-outlined text-on-surface" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-on-surface absolute left-1/2 transform -translate-x-1/2">문화행사</h1>
+<button aria-label="검색" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors -mr-2">
+<span class="material-symbols-outlined text-on-surface" style="font-variation-settings: 'FILL' 0;">search</span>
+</button>
+</header>
+<main class="flex flex-col pb-8">
+<!-- Hero Section (Featured Event) -->
+<section class="relative w-full aspect-[4/3] max-h-[400px] overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center w-full h-full" data-alt="A high-quality, bright, and inviting photograph of an outdoor library setup in a modern city square. People are relaxing on colorful beanbags and reading books under the sun, surrounded by clean white bookshelves and green trees. The scene is bathed in bright daylight, showcasing a clean, modern urban lifestyle aesthetic with a focus on community and culture in a light-mode color palette." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAfoUvPtzyez2EN4XCoHZkjJTy0djhArqq-wRZ9L7nvEVduvyPv4EbwisIGpiTgH5--6yfpVA05rkv0YxL0y6P-Le1-Bby83TiZ5qdP_YuFhauKCF7VIsd6U8hsHoiNLgCsu5dqDirUQpUJ6E200sY1uCehgEw61Ok9N7lD1G_B-g3UmrpS9utY0YxTFwaESTf9UYbnYKuwJP9Tf-Gpm6Fl4lwzhRuJya151VBeej5LNAdVx7bheALnww')"></div>
+<!-- Gradient Overlay for Text Readability -->
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+<div class="absolute bottom-0 left-0 w-full p-4 flex flex-col gap-1 text-white">
+<span class="bg-primary text-on-primary font-label-sm text-label-sm px-2 py-1 rounded-full w-max mb-1 uppercase">Featured</span>
+<h2 class="font-headline-lg text-headline-lg text-white">서울 야외도서관</h2>
+<div class="flex items-center gap-4 mt-1">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+<span class="font-body-sm text-body-sm">광화문광장</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+<span class="font-body-sm text-body-sm">8.20 ~ 8.24</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Category Filters -->
+<section class="mt-6 px-4">
+<div class="flex overflow-x-auto no-scrollbar gap-2 pb-2">
+<button class="px-4 py-2 rounded-full border border-primary bg-primary text-on-primary font-label-md text-label-md whitespace-nowrap transition-colors">전체</button>
+<button class="px-4 py-2 rounded-full border border-outline-variant bg-surface text-on-surface-variant font-label-md text-label-md whitespace-nowrap hover:bg-surface-container transition-colors">축제 (Festival)</button>
+<button class="px-4 py-2 rounded-full border border-outline-variant bg-surface text-on-surface-variant font-label-md text-label-md whitespace-nowrap hover:bg-surface-container transition-colors">전시 (Exhibition)</button>
+<button class="px-4 py-2 rounded-full border border-outline-variant bg-surface text-on-surface-variant font-label-md text-label-md whitespace-nowrap hover:bg-surface-container transition-colors">공연 (Performance)</button>
+</div>
+</section>
+<!-- Current Events List -->
+<section class="mt-4 px-4 flex flex-col gap-6">
+<!-- Detailed Event Card 1 -->
+<article class="bg-surface rounded-xl border border-outline-variant shadow-subtle overflow-hidden flex flex-col">
+<div class="relative h-48 w-full">
+<img class="w-full h-full object-cover" data-alt="A vibrant street festival in Seoul during daytime, featuring modern art installations and small white canopy tents. The scene is captured with bright, natural lighting emphasizing the clean, modern urban aesthetic of the design system. Soft shadows and a light-mode color palette highlight the joyful, professional, and cultural atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeYFar7s4MlVyJ-adV7yBPDrSM2YsgPDFoUmhhzZQ3MWRTOy54qrF0ag9JSRexIVckDAPH36D21ag7o5FhzswdAOxZPKE6UdTOWpQVjMV3VOHOqwprVwN3X03RG4bCl7oZC35_0hF8jiFrA4Tso4fwow3zE6w-TAULyUa1iaZ2w-eXVQBNzVBod7lmozruWXohAB6IoGGVKcqxmncbWY_4da09lzzvbz_U2kecGc22WrDIvEqngPCX9g"/>
+<div class="absolute top-3 left-3 bg-white/90 backdrop-blur text-primary font-label-sm text-label-sm px-2 py-1 rounded-full border border-outline-variant/30 shadow-sm">축제</div>
+<div class="absolute top-3 right-3 bg-secondary text-on-secondary font-label-sm text-label-sm px-2 py-1 rounded-full shadow-sm">무료</div>
+</div>
+<div class="p-4 flex flex-col gap-4">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">2024 한강 달빛 야시장</h3>
+<div class="flex flex-col gap-2 mt-2">
+<div class="flex items-start gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px] mt-0.5">calendar_month</span>
+<span class="font-body-md text-body-md">2024.09.01 ~ 10.29 (매주 토,일)</span>
+</div>
+<div class="flex items-start gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px] mt-0.5">map</span>
+<span class="font-body-md text-body-md">여의도 한강공원 물빛광장</span>
+</div>
+</div>
+</div>
+<!-- Map Snippet Integration -->
+<div class="rounded-lg overflow-hidden border border-outline-variant/50 h-24 relative bg-surface-container-low flex items-center justify-center">
+<img class="absolute inset-0 w-full h-full object-cover opacity-80 mix-blend-multiply" data-alt="A clean, minimalist 2D map snippet centered on Yeouido Hangang Park in Seoul. The map uses a light-mode color palette with pale gray roads, subtle green parks, and light blue water. A single primary blue marker pinpoints the exact location, matching the modern, flat 2.0 corporate aesthetic of the app's design system." data-location="Seoul, Yeouido Hangang Park" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvkfPGjZXAToRUeJ0QBFIZYDMd9af1IZy29nDxCx8I9Ry1svlH3rZwAGyIDUTjqKjP1wPbblnehLq7Tv51iLffv2-XXjmQxp9JpJnT6argEXvLYm4b2vYQxcR8Dt90TJW_IrPIiZ0IG57HG68EKSHHhrZ9n7Vxj9uq3vXW7t7nIXnqFzCxGjkxEcUZiBiDTkdlnI8nBIVbVA9Ml9SiaawumA2LG0t53LOVs8mLutlHGHCPR1O9xnY6-Q"/>
+<button class="relative z-10 bg-surface/90 backdrop-blur border border-outline-variant text-primary font-label-md text-label-md px-4 py-1.5 rounded-full shadow-sm hover:bg-surface transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">location_on</span>
+                            지도에서 보기
+                        </button>
+</div>
+<div class="flex gap-2 pt-2 border-t border-outline-variant/30">
+<button class="flex-1 bg-primary text-on-primary font-label-md text-label-md py-2.5 rounded-lg text-center hover:bg-primary/90 transition-colors">상세보기</button>
+<button aria-label="저장" class="w-12 flex items-center justify-center border border-outline-variant text-on-surface-variant rounded-lg hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">bookmark</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Standard Event Card 2 -->
+<article class="bg-surface rounded-xl border border-outline-variant shadow-subtle overflow-hidden flex">
+<div class="w-1/3 min-w-[120px] relative">
+<img class="w-full h-full object-cover" data-alt="A modern, minimalist art exhibition interior space with bright, white walls and large windows letting in natural light. Contemporary sculptures and paintings are displayed neatly. The lighting is soft and diffused, perfectly matching a clean, professional light-mode aesthetic with a calm and trustworthy mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7A-IPY40KTBAHkY767ABUHp3tCWAjvR-DyhM3WIwpxeJCW_dnuf6VN2gmwtBWWgX6A8d9zcH3jn1b-s83dvvW38nH5TDTOVXxhGU4NsxJZuKrG5cZ4OubKzk4VUSp3H9qEY-l3Y7jL_WPx80U2TmZxwtsd12CJafOIN7ljoQCTK6iOoBOLR3vaZHqfvd2te-LQFsGKGsHGYzSc23Ab332qaWLACaa7MTQufekzb7H7eoI15fvif9xyg"/>
+</div>
+<div class="p-3 flex flex-col justify-between flex-1 gap-2">
+<div>
+<div class="flex justify-between items-start mb-1">
+<span class="text-surface-tint font-label-sm text-label-sm">전시</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm bg-surface-container-high px-1.5 py-0.5 rounded">유료</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface leading-tight line-clamp-2">동대문 디자인 플라자 (DDP) 특별전</h3>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span>
+<span class="font-body-sm text-body-sm">상시운영</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+<span class="font-body-sm text-body-sm truncate">DDP 배움터</span>
+</div>
+</div>
+</div>
+</article>
+<!-- Standard Event Card 3 -->
+<article class="bg-surface rounded-xl border border-outline-variant shadow-subtle overflow-hidden flex">
+<div class="w-1/3 min-w-[120px] relative">
+<img class="w-full h-full object-cover" data-alt="An elegant outdoor classical music performance setting in a Seoul palace courtyard during late afternoon. Gentle warm sunlight illuminates the musicians and the clean white seating arrangement. The scene conveys a sophisticated, modern cultural event, maintaining a bright, light-mode palette and professional aesthetic without heavy shadows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuANoVPT70Hm18QL4mI-ob0y6ciCLIioiBb057KPXvJgV2i5E0mJlSSt5jNoHe36eJgZpAMl0egBCSRsQ4njDlzIScGt793Sp-kszUCPxiv_q-brqvOGISlLFVBqEYFkoAdmero-tBI8kW1VHW9qfZwB7IhuzkDjxb_1rzofREAWzKX0ZHjivS8zKv0JZHaxoWwMdBnM_0gdY-ujjAjhi0Fr-GNdTj8Tfks2QfUIkeDEOk2EnXagm-zrYg"/>
+</div>
+<div class="p-3 flex flex-col justify-between flex-1 gap-2">
+<div>
+<div class="flex justify-between items-start mb-1">
+<span class="text-surface-tint font-label-sm text-label-sm">공연</span>
+<span class="text-secondary font-label-sm text-label-sm bg-secondary-container/30 px-1.5 py-0.5 rounded">무료</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface leading-tight line-clamp-2">고궁 음악회 - 창경궁 야간개장</h3>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span>
+<span class="font-body-sm text-body-sm">10.05 ~ 10.15</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+<span class="font-body-sm text-body-sm truncate">창경궁 명정전</span>
+</div>
+</div>
+</div>
+</article>
+</section>
+</main>
+</body></html>

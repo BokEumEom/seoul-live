@@ -30,7 +30,7 @@ export function NearbyCalmSection({ exclude, onSelectArea }: Props) {
   }
 
   return (
-    <section className="mx-4 rounded-card bg-secondary-container p-4">
+    <section className="mx-4 rounded-card bg-surface-container-high p-4">
       <h3 className="text-headline-sm text-primary">{t('근처 쾌적한 장소')}</h3>
       <p className="mt-1 text-label-md text-on-surface-variant">
         {t('여기가 너무 붐비나요? 2km 안에서 한산한 곳이에요.')}

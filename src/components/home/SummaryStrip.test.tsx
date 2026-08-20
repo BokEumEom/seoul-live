@@ -42,7 +42,7 @@ describe('SummaryStrip', () => {
   it('재난문자를 말하지 않고 경보색도 쓰지 않는다', () => {
     render(<SummaryStrip summary={summary()} onOpen={() => {}} />)
     const strip = screen.getByRole('button')
-    expect(strip).toHaveClass('bg-secondary-container', 'text-primary')
+    expect(strip).toHaveClass('bg-surface-container-high', 'text-primary')
     expect(strip).not.toHaveClass('bg-error-container')
     expect(screen.queryByText(/재난문자/)).toBeNull()
   })

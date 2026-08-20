@@ -966,7 +966,7 @@ export function HomeScreen() {
             <button
               type="button"
               onClick={() => filters.setFilter(null)}
-              className="mt-3 min-h-12 rounded-full bg-secondary-container px-4 text-label-md font-semibold text-primary"
+              className="mt-3 min-h-12 rounded-full bg-surface-container-high px-4 text-label-md font-semibold text-primary"
             >
               {t('필터 해제')}
             </button>

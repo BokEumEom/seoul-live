@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Seoul Now - 사고/재난 알림</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary": "#006d37",
+                    "surface-container-lowest": "#ffffff",
+                    "error": "#ba1a1a",
+                    "tertiary-fixed-dim": "#ffb691",
+                    "tertiary-fixed": "#ffdbcb",
+                    "tertiary-container": "#c55500",
+                    "on-surface": "#191c23",
+                    "on-secondary-fixed": "#00210c",
+                    "on-secondary-fixed-variant": "#005228",
+                    "primary-container": "#1a73e8",
+                    "on-primary-container": "#ffffff",
+                    "secondary-container": "#6bfe9c",
+                    "surface-container": "#ecedf7",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed-dim": "#4ae183",
+                    "on-tertiary-container": "#0e0200",
+                    "inverse-on-surface": "#eff0fa",
+                    "primary-fixed-dim": "#adc7ff",
+                    "background": "#f9f9ff",
+                    "surface-container-low": "#f2f3fd",
+                    "outline": "#727785",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed": "#341100",
+                    "on-primary-fixed-variant": "#004493",
+                    "on-surface-variant": "#414754",
+                    "inverse-surface": "#2d3038",
+                    "on-primary-fixed": "#001a41",
+                    "primary-fixed": "#d8e2ff",
+                    "on-tertiary-fixed-variant": "#783100",
+                    "on-secondary-container": "#00743a",
+                    "surface-container-highest": "#e0e2ec",
+                    "outline-variant": "#c1c6d6",
+                    "surface": "#f9f9ff",
+                    "tertiary": "#9e4300",
+                    "inverse-primary": "#adc7ff",
+                    "surface-bright": "#f9f9ff",
+                    "on-primary": "#ffffff",
+                    "surface-container-high": "#e6e8f2",
+                    "on-secondary": "#ffffff",
+                    "surface-variant": "#e0e2ec",
+                    "error-container": "#ffdad6",
+                    "primary": "#005bbf",
+                    "on-error-container": "#93000a",
+                    "surface-dim": "#d8d9e3",
+                    "surface-tint": "#005bc0",
+                    "on-background": "#191c23",
+                    "secondary-fixed": "#6bfe9c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "card-gap": "8px",
+                    "margin-desktop": "24px",
+                    "gutter": "12px",
+                    "margin-mobile": "16px",
+                    "unit": "4px"
+            },
+            "fontFamily": {
+                    "headline-sm": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "label-md": [
+                            "Be Vietnam Pro"
+                    ],
+                    "label-sm": [
+                            "Be Vietnam Pro"
+                    ],
+                    "body-md": [
+                            "Be Vietnam Pro"
+                    ],
+                    "body-sm": [
+                            "Be Vietnam Pro"
+                    ],
+                    "headline-md": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "headline-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "body-lg": [
+                            "Be Vietnam Pro"
+                    ]
+            },
+            "fontSize": {
+                    "headline-sm": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-md": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-sm": [
+                            "10px",
+                            {
+                                    "lineHeight": "12px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "18px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-lg": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        /* Map background texture */
+        .bg-map-pattern {
+            background-color: #f9f9ff;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M54.627 0l.83.83-3.053 3.052-5.71-5.71-1.026 1.026 6.012 6.01L40 16.924V30l-7-7V0h-2v24.586l-9.172 9.17-5.656-5.655-1.414 1.414 6.364 6.364L14 42.678v1.73l-10-10V50h2V37.242l8.586 8.587L16 47.243v7.344l-5 5v5.828l3-3V50l5-5v-5.586l10-10V18.172l11.656 11.656-5.656 5.656 1.414 1.414 4.242-4.242 1.415 1.414-2.829 2.828 1.414 1.414 1.414-1.414 2.829 2.828-4.243 4.243 1.414 1.414 5.657-5.657 7.071 7.071-2.828 2.829 1.414 1.414 4.242-4.243L50 54.172V60h2v-7.243l6.586 6.586 1.414-1.414-6.586-6.586H60v-2h-5.828l3-3H60v-2h-3.828l4.242-4.243-1.414-1.414-4.242 4.243h-2.829l1.414-1.414-2.828-2.829 4.243-4.242-1.414-1.414-5.657 5.657-11.657-11.657V22.242l10-10H50V2.242L60 12.243V0h-5.373z' fill='%23e0e2ec' fill-opacity='0.4' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body class="bg-map-pattern min-h-screen text-on-surface antialiased pb-24 font-body-md relative">
+<!-- Header Overlay -->
+<header class="fixed top-0 left-0 right-0 z-50 px-4 pt-10 pb-4 bg-gradient-to-b from-surface/90 to-surface/0 backdrop-blur-sm pointer-events-none">
+<div class="pointer-events-auto flex items-center justify-between bg-surface-container-lowest/90 backdrop-blur-md rounded-full border border-[#EEEEEE] shadow-sm px-2 py-2 h-14">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-on-surface flex-1 text-center">사고·재난 알림</h1>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">tune</span>
+</button>
+</div>
+</header>
+<!-- Main Content Container (Floating Overlay Style) -->
+<main class="pt-28 px-4 max-w-lg mx-auto relative z-10 space-y-4">
+<!-- Summary & Filters -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm border border-[#EEEEEE] p-4 space-y-4 relative overflow-hidden">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+<p class="font-headline-sm text-headline-sm text-on-surface">현재 서울에 <span class="text-error font-bold">3건</span>의 사고·재난이 발생했습니다</p>
+</div>
+<!-- Filter Chips Horizontal Scroll -->
+<div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full font-label-md text-label-md bg-primary text-on-primary shadow-sm">전체 (3)</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full font-label-md text-label-md bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low">교통사고 (1)</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full font-label-md text-label-md bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low">화재/재난 (1)</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full font-label-md text-label-md bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low">집회/시위 (1)</button>
+</div>
+</div>
+<!-- Alert Cards List -->
+<div class="space-y-4">
+<!-- Alert Card 1: Fire (Serious) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-error/20 p-4">
+<div class="flex items-start gap-4">
+<!-- Icon Badge -->
+<div class="flex-shrink-0 w-12 h-12 rounded-full bg-error-container flex items-center justify-center text-error border-2 border-surface-container-lowest shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<!-- Content -->
+<div class="flex-1 space-y-2">
+<div class="flex justify-between items-start">
+<div>
+<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-error text-on-error mb-1">심각도 높음</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">종로구 서린동 화재 발생</h3>
+</div>
+<span class="font-label-md text-label-md text-error">10분 전</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">소방차 출동 중, 청계천로 일대 주변 도로 전면 통제 중입니다. 우회 바랍니다.</p>
+<div class="flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+<span>1.2km 거리</span>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="mt-4 pt-3 border-t border-[#EEEEEE] flex gap-2">
+<button class="flex-1 py-2 bg-surface-container-low text-on-surface font-label-md text-label-md rounded-lg hover:bg-surface-container transition-colors flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[16px]">map</span>
+                        지도에서 보기
+                    </button>
+<button class="flex-1 py-2 bg-error/10 text-error font-label-md text-label-md rounded-lg hover:bg-error/20 transition-colors">
+                        상세보기
+                    </button>
+</div>
+</div>
+<!-- Alert Card 2: Traffic Accident (Caution) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#EEEEEE] p-4">
+<div class="flex items-start gap-4">
+<div class="flex-shrink-0 w-12 h-12 rounded-full bg-tertiary-container/20 flex items-center justify-center text-tertiary-container border-2 border-surface-container-lowest shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">car_crash</span>
+</div>
+<div class="flex-1 space-y-2">
+<div class="flex justify-between items-start">
+<div>
+<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-tertiary-container/10 text-tertiary-container mb-1">주의</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">강변북로 한남대교 부근 추돌사고</h3>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">32분 전</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">2차선 화물차 추돌 사고로 구리 방향 2개 차로 통제 중. 정체 심함.</p>
+<div class="flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+<span>3.5km 거리</span>
+</div>
+</div>
+</div>
+<div class="mt-4 pt-3 border-t border-[#EEEEEE] flex gap-2">
+<button class="flex-1 py-2 bg-surface-container-low text-on-surface font-label-md text-label-md rounded-lg hover:bg-surface-container transition-colors flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[16px]">map</span>
+                        지도에서 보기
+                    </button>
+<button class="flex-1 py-2 bg-surface border border-[#EEEEEE] text-on-surface font-label-md text-label-md rounded-lg hover:bg-surface-container-low transition-colors">
+                        상세보기
+                    </button>
+</div>
+</div>
+<!-- Alert Card 3: Protest (Caution) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#EEEEEE] p-4">
+<div class="flex items-start gap-4">
+<div class="flex-shrink-0 w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary-container border-2 border-surface-container-lowest shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+</div>
+<div class="flex-1 space-y-2">
+<div class="flex justify-between items-start">
+<div>
+<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-surface-container-high text-on-surface-variant mb-1">안내</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">광화문 광장 대규모 집회</h3>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">1시간 전</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">광화문에서 시청 방향 3개 차로 점거 시위 진행 중. 대중교통 이용 권장.</p>
+<div class="flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+<span>1.8km 거리</span>
+</div>
+</div>
+</div>
+<div class="mt-4 pt-3 border-t border-[#EEEEEE] flex gap-2">
+<button class="flex-1 py-2 bg-surface-container-low text-on-surface font-label-md text-label-md rounded-lg hover:bg-surface-container transition-colors flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[16px]">map</span>
+                        지도에서 보기
+                    </button>
+<button class="flex-1 py-2 bg-surface border border-[#EEEEEE] text-on-surface font-label-md text-label-md rounded-lg hover:bg-surface-container-low transition-colors">
+                        상세보기
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 pb-safe bg-surface border-t border-[#EEEEEE] shadow-lg md:hidden transition-all duration-200 ease-in-out">
+<button class="flex flex-col items-center justify-center text-on-surface-variant group">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" style="font-variation-settings: 'FILL' 0;">map</span>
+<span class="font-label-sm text-label-sm mt-1">Map</span>
+</button>
+<!-- 'Discover' is active based on context (browsing real-time events) -->
+<button class="flex flex-col items-center justify-center text-primary font-bold bg-secondary-container/20 rounded-xl px-3 py-1 group">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">explore</span>
+<span class="font-label-sm text-label-sm mt-1">Discover</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant group">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" style="font-variation-settings: 'FILL' 0;">location_on</span>
+<span class="font-label-sm text-label-sm mt-1">Nearby</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant group">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" style="font-variation-settings: 'FILL' 0;">bookmark</span>
+<span class="font-label-sm text-label-sm mt-1">Saved</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant group">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" style="font-variation-settings: 'FILL' 0;">person</span>
+<span class="font-label-sm text-label-sm mt-1">My</span>
+</button>
+</nav>
+</body></html>

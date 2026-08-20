@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Seoul Now - 상권 상세</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;family=Be+Vietnam+Pro:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface-variant": "#414754",
+                      "outline": "#727785",
+                      "tertiary": "#9e4300",
+                      "on-secondary-container": "#00743a",
+                      "secondary-container": "#6bfe9c",
+                      "on-primary-fixed-variant": "#004493",
+                      "secondary-fixed-dim": "#4ae183",
+                      "on-primary": "#ffffff",
+                      "surface-bright": "#f9f9ff",
+                      "on-error-container": "#93000a",
+                      "surface-container-high": "#e6e8f2",
+                      "on-tertiary-fixed": "#341100",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed-dim": "#adc7ff",
+                      "tertiary-container": "#c55500",
+                      "secondary-fixed": "#6bfe9c",
+                      "surface-container": "#ecedf7",
+                      "primary": "#005bbf",
+                      "tertiary-fixed-dim": "#ffb691",
+                      "background": "#f9f9ff",
+                      "primary-fixed": "#d8e2ff",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-container-low": "#f2f3fd",
+                      "error-container": "#ffdad6",
+                      "on-primary-container": "#ffffff",
+                      "on-secondary-fixed": "#00210c",
+                      "on-tertiary-container": "#0e0200",
+                      "secondary": "#006d37",
+                      "surface-variant": "#e0e2ec",
+                      "on-surface": "#191c23",
+                      "on-error": "#ffffff",
+                      "surface-container-highest": "#e0e2ec",
+                      "outline-variant": "#c1c6d6",
+                      "on-primary-fixed": "#001a41",
+                      "on-secondary": "#ffffff",
+                      "surface": "#f9f9ff",
+                      "on-tertiary-fixed-variant": "#783100",
+                      "inverse-primary": "#adc7ff",
+                      "tertiary-fixed": "#ffdbcb",
+                      "primary-container": "#1a73e8",
+                      "surface-dim": "#d8d9e3",
+                      "inverse-on-surface": "#eff0fa",
+                      "error": "#ba1a1a",
+                      "on-background": "#191c23",
+                      "surface-tint": "#005bc0",
+                      "on-secondary-fixed-variant": "#005228",
+                      "inverse-surface": "#2d3038"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "margin-mobile": "16px",
+                      "gutter": "12px",
+                      "card-gap": "8px",
+                      "margin-desktop": "24px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Be Vietnam Pro"
+                      ],
+                      "body-md": [
+                              "Be Vietnam Pro"
+                      ],
+                      "label-sm": [
+                              "Be Vietnam Pro"
+                      ],
+                      "label-md": [
+                              "Be Vietnam Pro"
+                      ],
+                      "headline-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Be Vietnam Pro"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "10px",
+                              {
+                                      "lineHeight": "12px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-sm": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .pt-safe { padding-top: env(safe-area-inset-top); }
+        body { -webkit-tap-highlight-color: transparent; }
+      </style>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen flex flex-col pt-14 pb-safe relative">
+<!-- Subpage TopAppBar (Overriding JSON TopAppBar for Task Intent) -->
+<header class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-14 bg-surface/90 backdrop-blur-md border-b border-[#EEEEEE]">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container-highest rounded-full transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm text-on-surface">상권 상세</h1>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface hover:bg-surface-container-highest rounded-full transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">share</span>
+</button>
+</header>
+<main class="flex-1 p-margin-mobile flex flex-col gap-margin-mobile">
+<!-- Hero Section -->
+<section class="bg-surface rounded-xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#EEEEEE]">
+<div class="flex flex-col gap-2">
+<span class="font-label-sm text-label-sm text-primary px-2 py-1 bg-primary-container/10 rounded-full w-fit">실시간 상권 요약</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">지금 이 지역 상권은<br/><span class="text-primary">활발한 편</span>이에요</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">최근 결제가 평소보다 활발하게 일어나고 있습니다. 주요 식당가와 쇼핑 구역에 유동인구가 집중되어 있습니다.</p>
+<div class="flex items-center gap-1 mt-2 text-outline">
+<span class="material-symbols-outlined text-[14px]">update</span>
+<span class="font-label-sm text-label-sm">방금 전 업데이트 됨</span>
+</div>
+</div>
+</section>
+<!-- Real-time Consumption Metrics Bento Grid -->
+<section class="grid grid-cols-2 gap-card-gap">
+<div class="bg-surface rounded-xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#EEEEEE] flex flex-col justify-between aspect-square">
+<div>
+<div class="flex items-center gap-2 text-on-surface-variant mb-2">
+<span class="material-symbols-outlined text-[20px]">receipt_long</span>
+<h3 class="font-label-md text-label-md">결제 건수</h3>
+</div>
+<div class="font-headline-lg text-headline-lg text-on-surface">1,420<span class="font-body-sm text-body-sm text-outline ml-1">건/시간</span></div>
+</div>
+<div class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+<span class="font-label-sm text-label-sm">어제 대비 15% 증가</span>
+</div>
+</div>
+<div class="bg-surface rounded-xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#EEEEEE] flex flex-col justify-between aspect-square">
+<div>
+<div class="flex items-center gap-2 text-on-surface-variant mb-2">
+<span class="material-symbols-outlined text-[20px]">payments</span>
+<h3 class="font-label-md text-label-md">결제 금액</h3>
+</div>
+<div class="font-headline-lg text-headline-lg text-on-surface">4.5<span class="font-body-sm text-body-sm text-outline ml-1">억/시간</span></div>
+</div>
+<div class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+<span class="font-label-sm text-label-sm">어제 대비 8% 증가</span>
+</div>
+</div>
+</section>
+<!-- Industry Activity List -->
+<section class="bg-surface rounded-xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#EEEEEE]">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">업종별 활성도</h3>
+<div class="flex flex-col gap-0 divide-y divide-[#EEEEEE]">
+<div class="py-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface font-semibold">음식점</span>
+</div>
+<span class="font-label-sm text-label-sm px-3 py-1 bg-primary/10 text-primary rounded-full">활발</span>
+</div>
+<div class="py-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined">local_cafe</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface font-semibold">카페</span>
+</div>
+<span class="font-label-sm text-label-sm px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full">보통</span>
+</div>
+<div class="py-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined">shopping_bag</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface font-semibold">쇼핑</span>
+</div>
+<span class="font-label-sm text-label-sm px-3 py-1 bg-tertiary-container text-on-tertiary-container rounded-full">매우 활발</span>
+</div>
+<div class="py-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined">storefront</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface font-semibold">편의점</span>
+</div>
+<span class="font-label-sm text-label-sm px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full">보통</span>
+</div>
+</div>
+</section>
+<!-- Demographics Section -->
+<section class="bg-surface rounded-xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.05)] border border-[#EEEEEE]">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-6">누가 많이 이용하고 있나요?</h3>
+<!-- Gender -->
+<div class="mb-6">
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-md text-label-md text-on-surface-variant">성별 비율</span>
+</div>
+<div class="h-4 rounded-full flex overflow-hidden">
+<div class="bg-primary h-full w-[45%]" title="남성 45%"></div>
+<div class="bg-tertiary h-full w-[55%]" title="여성 55%"></div>
+</div>
+<div class="flex justify-between mt-2 font-label-sm text-label-sm">
+<div class="flex items-center gap-1 text-primary"><div class="w-2 h-2 rounded-full bg-primary"></div>남성 45%</div>
+<div class="flex items-center gap-1 text-tertiary"><div class="w-2 h-2 rounded-full bg-tertiary"></div>여성 55%</div>
+</div>
+</div>
+<!-- Age Groups -->
+<div>
+<span class="font-label-md text-label-md text-on-surface-variant block mb-4">연령대별 비율</span>
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-2">
+<span class="w-10 font-label-sm text-label-sm text-outline text-right">20대</span>
+<div class="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 35%"></div>
+</div>
+<span class="w-8 font-label-sm text-label-sm text-on-surface font-semibold">35%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-10 font-label-sm text-label-sm text-outline text-right">30대</span>
+<div class="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary/80 h-full rounded-full" style="width: 28%"></div>
+</div>
+<span class="w-8 font-label-sm text-label-sm text-on-surface font-semibold">28%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-10 font-label-sm text-label-sm text-outline text-right">40대</span>
+<div class="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary/60 h-full rounded-full" style="width: 18%"></div>
+</div>
+<span class="w-8 font-label-sm text-label-sm text-on-surface font-semibold">18%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-10 font-label-sm text-label-sm text-outline text-right">10대</span>
+<div class="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary/40 h-full rounded-full" style="width: 12%"></div>
+</div>
+<span class="w-8 font-label-sm text-label-sm text-on-surface font-semibold">12%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-10 font-label-sm text-label-sm text-outline text-right">50대+</span>
+<div class="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
+<div class="bg-primary/20 h-full rounded-full" style="width: 7%"></div>
+</div>
+<span class="w-8 font-label-sm text-label-sm text-on-surface font-semibold">7%</span>
+</div>
+</div>
+</div>
+</section>
+<!-- View Raw Data Action -->
+<button class="w-full py-4 bg-surface-container-low hover:bg-surface-container text-primary font-label-md text-label-md rounded-xl transition-colors border border-primary/20 mt-4 mb-8 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">data_object</span>
+            전체 상권 데이터 보기 (API 원문)
+        </button>
+</main>
+</body></html>
