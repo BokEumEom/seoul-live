@@ -49,7 +49,7 @@ export const EN: Readonly<Record<string, string>> = {
   '내 장소': 'Saved',
   '아이와 나들이': 'With kids',
   데이트: 'Date spots',
-  '지금 핫플': 'Trending now',
+  한적: 'Quiet',
   카테고리: 'Category',
   필터: 'Filter',
   '필터 해제': 'Clear filter',

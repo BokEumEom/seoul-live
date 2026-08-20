@@ -1,7 +1,7 @@
 import { isUncrowded } from './congestion'
 import type { NearbyArea, Purpose } from './types'
 
-export type PresetKey = 'kids' | 'date' | 'hot'
+export type PresetKey = 'calm' | 'crowded' | 'kids' | 'date'
 
 /** 필터 칩 한 줄의 값. 즐겨찾기는 프리셋이 아니지만 같은 줄에서 배타적으로
  * 동작한다.
@@ -24,6 +24,32 @@ function hasPurpose(area: NearbyArea, purpose: Purpose): boolean {
 // "한산하다"고 말할 수 없다. 지도 전체 보기에서는 회색 "정보 없음" 마커로
 // 남지만 프리셋을 켜면 빠진다.
 export const PRESETS: readonly Preset[] = [
+  // **상태 둘이 목적 앞이다**(2026-08-20, 새 시안 stitch_ui_ux/121·_1).
+  //
+  // 목적 칩(아이와 나들이·데이트)은 카탈로그의 `purposes` 태그에 기대는데,
+  // 명소가 121곳으로 늘면서 **태그가 붙은 곳이 19곳뿐**이다 — 102곳은 어떤
+  // 목적 칩에도 안 걸린다. 상태 칩은 태그가 필요 없다: 혼잡도는 121곳 전부에
+  // 대해 매 5분 들어온다.
+  //
+  // 그리고 이게 이 앱의 첫 질문이다. 「어디가 한산한가」는 목적보다 먼저 묻는
+  // 것이고, 예전 칩 줄에는 그 질문에 곧장 답하는 칩이 하나도 없었다.
+  {
+    key: 'calm',
+    label: '한적',
+    // `isUncrowded`가 여유와 보통을 함께 본다 — 「거기 가도 좋다」를 뜻하는
+    // 자리에서 쓰는 술어다. 모르는 곳은 빠진다(그 함수의 주석).
+    matches: (area) => area.snapshot !== null && isUncrowded(area.snapshot.congestion),
+  },
+  {
+    key: 'crowded',
+    label: '붐빔',
+    // **예전 「지금 핫플」이 있던 자리다.** 그쪽은 `붐빔` 하나만 봤는데,
+    // 상태 축의 반대편으로 세우려면 「한적」의 여집합이라야 짝이 맞는다 —
+    // 두 칩을 합치면 혼잡도를 아는 곳 전부가 된다.
+    //
+    // 이름이 등급과 같은 낱말인 것은 시안의 것이고, 실제로 그 뜻이다.
+    matches: (area) => area.snapshot !== null && !isUncrowded(area.snapshot.congestion),
+  },
   {
     key: 'kids',
     label: '아이와 나들이',
@@ -42,13 +68,6 @@ export const PRESETS: readonly Preset[] = [
       hasPurpose(area, 'date') &&
       area.snapshot !== null &&
       area.snapshot.congestion !== '붐빔',
-  },
-  {
-    key: 'hot',
-    label: '지금 핫플',
-    // 붐비는 것이 곧 지금 사람이 몰린다는 신호다. 이 앱의 다른 화면들이
-    // 혼잡을 피하는 쪽이라면 이 프리셋만 반대 방향을 본다.
-    matches: (area) => area.snapshot?.congestion === '붐빔',
   },
 ]
 
@@ -118,8 +137,9 @@ export function filterCounts(
 
   return {
     fav: count('fav'),
+    calm: count('calm'),
+    crowded: count('crowded'),
     kids: count('kids'),
     date: count('date'),
-    hot: count('hot'),
   }
 }

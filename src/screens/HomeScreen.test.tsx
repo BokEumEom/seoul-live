@@ -969,7 +969,7 @@ describe('HomeScreen', () => {
     // 비활성으로 굳고, 다른 목적으로 갈아탈 방법이 사라진다.
     const { AREA_CATALOG } = await import('../data/areas')
     useAreaCongestion.mockReturnValue({
-      // 공원은 여유(나들이·데이트에 걸린다), 나머지는 붐빔(핫플에 걸린다).
+      // 공원은 여유(한적·나들이·데이트에 걸린다), 나머지는 붐빔.
       data: AREA_CATALOG.map((entry) =>
         snapshotFor(entry.name, entry.category === '공원' ? '여유' : '붐빔'),
       ),
@@ -979,11 +979,14 @@ describe('HomeScreen', () => {
 
     render(<HomeScreen />)
     const kidsChip = screen.getByRole('button', { name: /아이와 나들이 10/ })
-    expect(screen.getByRole('button', { name: /지금 핫플 88/ })).toBeEnabled()
+    // 「붐빔 88」은 칩 줄에만 있어야 하는데, 이 목업에서는 목록 행의 배지도
+    // 「붐빔」이라 정규식 하나로는 여럿이 걸린다. 칩 줄 안에서 찾는다.
+    const chipRow = screen.getByRole('group', { name: '필터' })
+    expect(within(chipRow).getByRole('button', { name: /붐빔 88/ })).toBeEnabled()
 
     await userEvent.click(kidsChip)
 
-    expect(screen.getByRole('button', { name: /지금 핫플 88/ })).toBeEnabled()
+    expect(within(chipRow).getByRole('button', { name: /붐빔 88/ })).toBeEnabled()
   })
 
   it('내 장소 칩이 즐겨찾기만 남긴다', async () => {
@@ -1077,7 +1080,7 @@ describe('HomeScreen', () => {
     render(<HomeScreen />)
     await userEvent.click(sheetHandle()) // half → full
     await userEvent.click(sheetHandle()) // full → peek
-    // 「지금 핫플」은 이 파일의 기본 목업(전부 '보통')에서 0이라 비활성이다.
+    // 「붐빔」은 이 파일의 기본 목업(전부 '보통')에서 0이라 비활성이다.
     // 비활성 칩을 누르면 아무 일도 안 일어나므로 무엇을 넣든 통과한다.
     const chip = screen.getByRole('button', { name: /데이트/ })
     expect(chip).toBeEnabled()

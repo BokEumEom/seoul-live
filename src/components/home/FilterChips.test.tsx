@@ -3,19 +3,22 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { FilterChips } from './FilterChips'
 
-const COUNTS = { fav: 3, kids: 10, date: 19, hot: 7 } as const
+const COUNTS = { fav: 3, kids: 10, date: 19, calm: 12, crowded: 7 } as const
 
 describe('FilterChips', () => {
-  it('내 장소가 맨 앞이고 프리셋 셋이 순서대로 뒤따른다', () => {
+  it('내 장소가 맨 앞이고 상태 둘·목적 둘이 뒤따른다', () => {
     render(<FilterChips counts={COUNTS} value={null} onChange={vi.fn()} />)
 
-    // 줄 전체를 고정한다. 첫 칸만 보면 뒤의 셋을 아무렇게나 섞어도 통과한다.
+    // 줄 전체를 고정한다. 첫 칸만 보면 뒤의 넷을 아무렇게나 섞어도 통과한다.
+    // **상태(한적·붐빔)가 목적보다 앞이다** — 목적 태그는 121곳 중 19곳에만
+    // 붙어 있고 상태는 전부에 있다.
     const names = screen.getAllByRole('button').map((chip) => chip.textContent ?? '')
     expect(names).toEqual([
       expect.stringContaining('내 장소'),
+      expect.stringContaining('한적'),
+      expect.stringContaining('붐빔'),
       expect.stringContaining('아이와 나들이'),
       expect.stringContaining('데이트'),
-      expect.stringContaining('지금 핫플'),
     ])
   })
 
@@ -39,25 +42,25 @@ describe('FilterChips', () => {
     expect(screen.getByRole('button', { name: '내 장소 3' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '아이와 나들이 10' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '데이트 19' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '지금 핫플 7' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '붐빔 7' })).toBeInTheDocument()
   })
 
-  it('★는 눈에만 보이고 접근성 이름에는 들어가지 않는다', () => {
-    // 「내 장소」가 이미 같은 말을 한다. ★를 이름에 넣으면 스크린리더가
-    // "블랙 스타 내 장소 3"으로 읽는다.
+  it('책갈피 글리프는 눈에만 보이고 접근성 이름에는 안 들어간다', () => {
+    // 「내 장소」가 이미 같은 말을 한다. 글리프를 이름에 넣으면 스크린리더가
+    // 같은 말을 두 번 읽는다.
     render(<FilterChips counts={COUNTS} value={null} onChange={vi.fn()} />)
 
     const chip = screen.getByRole('button', { name: '내 장소 3' })
-    expect(chip).toHaveTextContent('★')
+    expect(chip.querySelector('svg')).not.toBeNull()
     expect(chip).toHaveAccessibleName('내 장소 3')
   })
 
   it('0인 프리셋은 비활성이다', () => {
     render(
-      <FilterChips counts={{ ...COUNTS, hot: 0 }} value={null} onChange={vi.fn()} />,
+      <FilterChips counts={{ ...COUNTS, crowded: 0 }} value={null} onChange={vi.fn()} />,
     )
 
-    expect(screen.getByRole('button', { name: '지금 핫플 0' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '붐빔 0' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '데이트 19' })).toBeEnabled()
   })
 
@@ -86,7 +89,7 @@ describe('FilterChips', () => {
     { key: 'fav', name: '내 장소 3' },
     { key: 'kids', name: '아이와 나들이 10' },
     { key: 'date', name: '데이트 19' },
-    { key: 'hot', name: '지금 핫플 7' },
+    { key: 'crowded', name: '붐빔 7' },
   ] as const
 
   it.each(CHIP_CASES)('「$name」을 고르면 $key를 올려보낸다', async ({ key, name }) => {
@@ -142,16 +145,16 @@ describe('FilterChips', () => {
     // 나머지는 aria-pressed가 빠진 게 아니라 false여야 한다.
     expect(
       chips.filter((chip) => chip.getAttribute('aria-pressed') === 'false'),
-    ).toHaveLength(3)
+    ).toHaveLength(chips.length - 1)
   })
 
   it('비활성인 칩을 눌러도 값이 안 올라간다', async () => {
     const onChange = vi.fn()
     render(
-      <FilterChips counts={{ ...COUNTS, hot: 0 }} value={null} onChange={onChange} />,
+      <FilterChips counts={{ ...COUNTS, crowded: 0 }} value={null} onChange={onChange} />,
     )
 
-    await userEvent.click(screen.getByRole('button', { name: '지금 핫플 0' }))
+    await userEvent.click(screen.getByRole('button', { name: '붐빔 0' }))
 
     expect(onChange).not.toHaveBeenCalled()
   })
@@ -165,9 +168,9 @@ describe('FilterChips', () => {
     // 실제로 Task 10 전까지 소재가 `fav`였고, 면제를 넣는 순간
     // `!selected`를 통째로 지워도 잡히지 않는 상태가 됐다.
     const onChange = vi.fn()
-    render(<FilterChips counts={{ ...COUNTS, hot: 0 }} value="hot" onChange={onChange} />)
+    render(<FilterChips counts={{ ...COUNTS, crowded: 0 }} value="crowded" onChange={onChange} />)
 
-    const chip = screen.getByRole('button', { name: '지금 핫플 0' })
+    const chip = screen.getByRole('button', { name: '붐빔 0' })
     expect(chip).toBeEnabled()
 
     await userEvent.click(chip)

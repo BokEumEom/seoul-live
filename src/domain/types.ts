@@ -42,7 +42,8 @@ export const CATEGORY_LABEL: Readonly<Record<AreaCategory, string>> = {
 // 구역인가"이고 이건 "거기서 뭘 하려는가"다. 광장(전통)시장과 청담동
 // 명품거리가 같은 발달상권인데 데이트 적합성은 정반대다.
 //
-// 'hot'은 없다. 「지금 핫플」은 혼잡도만 보므로 태그가 필요 없다.
+// 상태 칩(한적·붐빔)은 없다. 그 둘은 혼잡도만 보므로 태그가 필요 없고,
+// 그래서 121곳 전부에 걸린다 — 태그가 붙은 곳은 19곳뿐이다.
 export type Purpose = 'kids' | 'date'
 
 export interface AreaCatalogEntry extends Coords {
