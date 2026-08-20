@@ -6,9 +6,11 @@
 **작업 브랜치:** `master`. 개편 둘과 상세 기능 셋이 전부 들어와 있다.
 **원격:** <https://github.com/BokEumEom/seoul-live.git> — GitHub 기본 브랜치는 `master`다.
 
-**로컬 `master`가 `origin/master`보다 1커밋 앞서 있다**(2026-08-18 확인). 정확한 수는 늘 `git rev-list --count origin/master..master`로 다시 세라 — 이 줄은 적히는 순간부터 낡는다.
+**로컬 `master`와 `origin/master`가 같다**(2026-08-20 확인, `bbba96e`). 정확한 수는 늘 `git rev-list --count origin/master..master`로 다시 세라 — 이 줄은 적히는 순간부터 낡는다.
 
-**남은 브랜치 셋은 전부 `master`에 들어가 있다** — `feat/nearby-forecast`·`feat/road-traffic-section`·`feat/weekly-pattern`. 지워도 된다(`feat/nearby-forecast`는 원격에도 남아 있다). 이전 STATE가 2026-08-07에 지웠다고 적었지만 실제로는 남아 있었으니, **지웠다고 적기 전에 `git branch -a`로 확인해라.**
+**브랜치는 `master` 하나뿐이다**(2026-08-20). `feat/nearby-forecast`·`feat/road-traffic-section`·`feat/weekly-pattern` 셋을 지웠다 — 셋 다 `master`에 없는 커밋이 **0개**이고 `git merge-base --is-ancestor`로 조상임을 확인한 뒤 `git branch -d`(머지 안 됐으면 거부하는 쪽)로 지웠다. 삭제 후 `git branch -a`로 `master`와 `origin/master`만 남은 것도 봤다. `origin/feat/nearby-forecast`는 그전에 이미 원격에서 사라져 있었고 `git fetch --prune`이 정리했다.
+
+> **이 줄은 두 번째로 적는 것이다.** 이전 STATE가 2026-08-07에 지웠다고 적었지만 실제로는 남아 있었다. 그래서 위에 **무엇으로 확인했는지**를 함께 적었다 — 「지웠다」는 문장만으로는 다음 사람이 믿을 근거가 없다. 되살릴 일이 생기면 `git reflog`에 tip이 남아 있다(`be27cc6`·`24f2eb6`·`50af3a2`).
 
 **새 세션이면 여기부터:** 「한 줄 요약」 → 「다음에 할 일」의 *다음 후보* → 「사람이 해야 하는 것」 순으로 읽으면 지금 상태와 다음 할 일이 잡힌다. 나머지 절은 그때그때 참조용이다.
 
