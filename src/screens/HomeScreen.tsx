@@ -40,6 +40,12 @@ import { useAreaCongestion } from '../data/queries'
 import { useResolvedTheme } from '../hooks/themeStore'
 import { PANEL_WIDTH_PX, useWideScreen } from '../hooks/useWideScreen'
 import {
+  areasForList,
+  sortByDistanceFromView,
+  thinForLegibility,
+  type MapViewport,
+} from '../domain/viewport'
+import {
   centerBelowSheet,
   centerRightOfPanel,
   DEFAULT_ZOOM,
@@ -518,7 +524,63 @@ export function HomeScreen() {
     focusMapOn(place.coords, FACILITY_ZOOM)
   }
 
-  const list = useMemo(
+  /**
+   * 지도가 지금 무엇을 비추고 있나. 목록과 마커가 **같은 값**을 본다.
+   *
+   * **단계와 무관하게 `half` 기준의 고정된 띠를 쓴다.** 지금 실제로 보이는
+   * 높이를 그대로 쓰면 두 가지가 깨진다.
+   *
+   * 1. **`full`에서 목록이 통째로 빈다.** 그 단계의 띠는 화면의 8%뿐인데,
+   *    사용자가 시트를 끝까지 올린 것은 **목록을 읽으려는** 조작이다.
+   *    목록을 보려고 올렸더니 목록이 사라지면 안 된다.
+   * 2. **단계를 바꿀 때마다 마커가 재배치된다.** 시트를 조금 내렸다 올리는
+   *    것만으로 지도의 핀이 갈리면 산만하다.
+   *
+   * `half`가 진입 단계이고 peek·full은 일시적인 상태다. 데이터가 보는 영역을
+   * 그 기준 하나로 고정하면 목록과 마커가 **단계와 무관하게 예측 가능**해진다.
+   *
+   * 넓은 화면에서는 패널이 **왼쪽**을 가린다 — 어느 쪽이 가려지는지를
+   * `viewport.ts`가 몰라도 되도록 직사각형 하나로 넘긴다.
+   */
+  const mapViewport = useMemo<MapViewport>(() => {
+    const width = window.innerWidth
+    const height = window.innerHeight
+    return {
+      center,
+      zoom,
+      width,
+      height,
+      visible: wide
+        ? { left: PANEL_WIDTH_PX, top: 0, right: width, bottom: height }
+        : {
+            left: 0,
+            top: 0,
+            right: width,
+            bottom: height * (1 - SHEET_RATIO.half),
+          },
+    }
+  }, [center, zoom, wide])
+
+  // **목록이 지도를 따라간다.** 121곳을 통째로 세우면 7,422px(16.5화면)이고,
+  // 위치 권한이 없으면 「거리순」이 카탈로그 순서로 떨어져 사실상 무작위였다
+  // (실측: 첫 세 줄이 홍대 관광특구 → 서울 암사동 유적 → 김포공항).
+  //
+  // 지금 보이는 영역으로 좁히면 둘 다 풀린다 — 줌인하면 목록이 짧아지고,
+  // 권한이 없어도 **화면 한가운데**라는 기준점이 생긴다.
+  //
+  // **마커처럼 솎아내지는 않는다.** 지도는 겹치면 못 읽지만 목록은 굴리면
+  // 되므로, 보이는 영역 안은 전부 답으로 내놓는 쪽이 맞다.
+  //
+  // **다만 두 조작은 화면 밖으로 나간다.**
+  //
+  // 1. **검색.** 이름을 친 것은 「어디 있든 찾아 달라」는 뜻이다. 뷰포트에
+  //    가두면 강남역을 열어 지도가 그리로 줌인한 상태에서 「경복궁」을 쳤을 때
+  //    결과가 0이 된다 — 검색이 방금 본 곳에만 듣는 셈이라 말이 안 된다.
+  // 2. **★내 장소.** 담아 둔 곳은 몇 개 안 되고, 지금 화면 밖에 있다고 해서
+  //    숨길 이유가 없다. 「담은 곳이 여기 다 있다」가 그 칩의 약속이다.
+  //
+  // 카테고리·프리셋은 화면을 따른다 — 그쪽은 「지금 이 근처에서」가 자연스럽다.
+  const all = useMemo(
     () =>
       buildNearbyList({
         entries: AREA_CATALOG,
@@ -529,6 +591,27 @@ export function HomeScreen() {
       }),
     [snapshots.data, location.coords, filters.category, filters.sort],
   )
+
+  const list = useMemo(() => {
+    // 칩이 하나라도 눌려 있으면 화면 밖까지 본다 — 칩은 「여기 말고 다른
+    // 데」로 가는 통로이고, 뷰포트에 가두면 개수가 0이 되어 칩이 굳는다.
+    if (filters.query !== '' || filters.filter !== null) {
+      return all
+    }
+    const scoped = areasForList(all, mapViewport)
+    // 좌표가 있으면 `buildNearbyList`가 이미 내 위치 기준으로 정렬해 뒀다.
+    // 화면 기준 정렬은 **그게 불가능할 때만** 대신 들어간다.
+    return filters.sort === 'distance' && location.coords === null
+      ? sortByDistanceFromView(scoped, mapViewport)
+      : scoped
+  }, [
+    all,
+    mapViewport,
+    filters.query,
+    filters.filter,
+    filters.sort,
+    location.coords,
+  ])
 
   // 개수는 걸러지기 전 목록으로 센다. 걸러진 목록으로 세면 칩 하나를 고르는
   // 순간 나머지 셋이 0이 되어 비활성으로 굳고, 다른 목적으로 갈아탈 방법이
@@ -554,9 +637,18 @@ export function HomeScreen() {
   // `useEffect(..., [object, prop, value])`로 `marker.position = value`를 거는데,
   // 매 렌더 새 배열이면 그 안의 `position`도 새 객체라 지도를 팬할 때마다
   // 마커 30개에 대입이 나간다. 팬 중에는 카메라 이벤트가 연속으로 들어온다.
+  //
+  // **겹치는 것을 솎아낸다.** 실측(390×844)에서 371px 띠에 110개가 들어와
+  // 269쌍이 겹쳤다 — 다른 마커와 겹치는 것이 103개(94%)였다. 지도가 정보가
+  // 아니라 잡음이 되는 지점이다. 근거와 우선순위는 `domain/viewport.ts`.
   const markers = useMemo(
-    () => (snapshots.isPending ? [] : toMapMarkers(visible)),
-    [snapshots.isPending, visible],
+    () =>
+      snapshots.isPending
+        ? []
+        : toMapMarkers(
+            thinForLegibility(visible, mapViewport, filters.selectedName),
+          ),
+    [snapshots.isPending, visible, mapViewport, filters.selectedName],
   )
   const showLabel = shouldShowMarkerLabel(zoom)
   const showName = shouldShowMarkerName(zoom)

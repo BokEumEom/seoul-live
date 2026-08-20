@@ -67,7 +67,7 @@ vi.mock('@vis.gl/react-google-maps', () => ({
         type="button"
         aria-label="지도 카메라 변경"
         onClick={() =>
-          onCameraChanged?.({ detail: { center: { lat: 37.6, lng: 127.1 }, zoom: 15 } })
+          onCameraChanged?.({ detail: { center: { lat: 37.5735, lng: 126.9769 }, zoom: 15 } })
         }
       />
       {children}
@@ -199,10 +199,30 @@ function areaButtons(name: string | RegExp) {
   return screen.getAllByRole('button', { name })
 }
 
-/** 지도 마커. 지도 레이어 안으로 좁힌다. */
-function mapMarker(name: string | RegExp): HTMLElement {
+/**
+ * 지도에 **실제로 그려진** 마커 하나와 그 이름.
+ *
+ * **이름으로 찍지 않는다.** 121곳이 되면서 지도는 겹치는 마커를 솎아낸다
+ * (`domain/viewport.ts`의 `thinForLegibility`) — 도시 전역 줌에서 경복궁은
+ * 1km 옆 광화문·덕수궁에 밀려 안 그려진다. 그건 결함이 아니라 그 줌에서
+ * 둘을 따로 그릴 픽셀이 없다는 사실이다.
+ *
+ * 아래 테스트들이 재려는 것은 「마커를 누르면 그 명소가 열리는가」이지 특정
+ * 명소가 그려지는가가 아니다. 그래서 그려진 것 하나를 집어 **그 이름으로**
+ * 결과를 확인한다.
+ */
+function anyMapMarker(): { element: HTMLElement; areaName: string } {
   const layer = document.querySelector('[data-map-layer]') as HTMLElement
-  return within(layer).getAllByRole('button', { name })[0]
+  // **`data-z`가 있는 것만 마커다.** 이 레이어에는 목이 심어 둔 「지도 스크립트
+  // 로드 실패」 버튼도 살고 있어서, 아무 버튼이나 집으면 그게 걸린다.
+  const element = within(layer)
+    .getAllByRole('button')
+    .find((button) => button.dataset.z !== undefined) as HTMLElement
+  // 이름은 버튼이 아니라 안쪽 `<span role="img">`이 갖는다(`CongestionMarker`) —
+  // 「<명소> <등급>」 꼴이라 등급을 떼어 낸다.
+  const label =
+    within(element).getByRole('img').getAttribute('aria-label') ?? ''
+  return { element, areaName: label.replace(/ [^ ]+$/, '') }
 }
 
 /** 시트 안 목록 행. 마커가 아니라 `AreaListItem`을 누른다. */
@@ -281,9 +301,13 @@ describe('HomeScreen', () => {
   it('지도 마커를 눌러도 그 명소의 상세가 열린다', async () => {
     render(<HomeScreen />)
 
-    await userEvent.click(mapMarker(/경복궁/))
+    const marker = anyMapMarker()
 
-    expect(screen.getByRole('heading', { name: '경복궁' })).toBeInTheDocument()
+    await userEvent.click(marker.element)
+
+    expect(
+      screen.getByRole('heading', { name: marker.areaName }),
+    ).toBeInTheDocument()
   })
 
   // 지도를 움직이면 그 카메라를 화면이 받아 들고 있어야 한다. 안 받으면
@@ -304,19 +328,27 @@ describe('HomeScreen', () => {
   // 곳이 피할 수 있는 곳 뒤에 숨는다. 순서를 정하는 규칙 자체는 `domain/map`의
   // `markerZIndex`가 잠그고, 여기서는 **그 값이 실제로 지도까지 가는지**만 본다.
   it('붐비는 마커가 여유로운 마커 위에 쌓인다', async () => {
-    // 기본 목은 30곳이 전부 '보통'이라 순서가 갈리지 않는다 — 소재를 바꾼다.
-    const { AREA_NAMES } = await import('../data/areas')
+    // 기본 목은 전부 '보통'이라 순서가 갈리지 않는다 — 소재를 바꾼다.
+    // **명소 하나만 붐빔으로 두지 않는다.** 그 하나가 솎여 나가면
+    // (`thinForLegibility`) 비교할 마커 자체가 없어진다. 카테고리로 갈라
+    // 두면 어느 쪽이 남든 양쪽이 다 그려진다.
+    const { AREA_CATALOG } = await import('../data/areas')
     useAreaCongestion.mockReturnValue({
-      data: AREA_NAMES.map((name) =>
-        snapshotFor(name, name === '강남역' ? '붐빔' : '여유'),
+      data: AREA_CATALOG.map((entry) =>
+        snapshotFor(entry.name, entry.category === '관광특구' ? '붐빔' : '여유'),
       ),
       isPending: false,
       isError: false,
     } as unknown as UseQueryResult<readonly AreaCongestion[]>)
     render(<HomeScreen />)
 
-    const busy = Number(mapMarker(/강남역/).dataset.z)
-    const calm = Number(mapMarker(/경복궁/).dataset.z)
+    const layer = document.querySelector('[data-map-layer]') as HTMLElement
+    const busy = Number(
+      within(layer).getAllByRole('button', { name: /붐빔$/ })[0].dataset.z,
+    )
+    const calm = Number(
+      within(layer).getAllByRole('button', { name: /여유$/ })[0].dataset.z,
+    )
 
     expect(busy).toBeGreaterThan(calm)
   })
@@ -329,7 +361,7 @@ describe('HomeScreen', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '지도 카메라 변경' }))
 
-    expect(map).toHaveAttribute('data-center', '37.6,127.1')
+    expect(map).toHaveAttribute('data-center', '37.5735,126.9769')
     expect(map).toHaveAttribute('data-zoom', '15')
   })
 
@@ -634,7 +666,13 @@ describe('HomeScreen', () => {
     await userEvent.click(areaButtons(/강남역/)[0])
     await userEvent.click(sheetHandle()) // half → full
     await userEvent.click(screen.getByRole('button', { name: '목록으로' }))
-    expect(areaButtons(/경복궁/).length).toBeGreaterThan(0)
+    // **특정 명소를 이름으로 찾지 않는다.** 명소를 열면 지도가 그 자리로
+    // 줌인하고 목록은 그 화면을 따르므로(`areasForList`), 8km 떨어진 경복궁이
+    // 돌아온 목록에 있으리라는 보장이 없다. 재려는 것은 「목록이 돌아왔는가」다.
+    const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
+    expect(
+      within(sheet).getAllByRole('button', { name: /여유|보통|붐빔/ }).length,
+    ).toBeGreaterThan(0)
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
   })
 
@@ -680,8 +718,8 @@ describe('HomeScreen', () => {
     )
       .split(',')
       .map(Number)
-    expect(lat).toBeCloseTo(37.6, 6)
-    expect(lng).toBe(127.1)
+    expect(lat).toBeCloseTo(37.5735, 6)
+    expect(lng).toBe(126.9769)
   })
 
   it('검색하면 목록이 줄어든다', async () => {
@@ -904,9 +942,9 @@ describe('HomeScreen', () => {
   // 눈에는 안 보이지만 키보드·스위치·스크린리더 사용자는 맥락을 잃는다.
   it('같은 명소를 다시 눌러도 포커스 요청이 남지 않는다', async () => {
     render(<HomeScreen />)
-    await userEvent.click(mapMarker(/경복궁/))
+    await userEvent.click(anyMapMarker().element)
     // 두 번째 클릭이 렌더를 일으키지 않는 그 지점이다.
-    await userEvent.click(mapMarker(/경복궁/))
+    await userEvent.click(anyMapMarker().element)
 
     const camera = screen.getByRole('button', { name: '지도 카메라 변경' })
     await userEvent.click(camera)
@@ -1525,7 +1563,7 @@ describe('HomeScreen 주소', () => {
 
     // 상세가 half에서 열리므로 지도 마커가 그대로 살아 있다. 같은 마커를
     // 다시 누르는 것은 실제로 일어나는 조작이다.
-    await userEvent.click(mapMarker(/경복궁/))
+    await userEvent.click(anyMapMarker().element)
 
     expect(push).not.toHaveBeenCalled()
     expect(new URLSearchParams(window.location.search).get('area')).toBe('경복궁')
@@ -1567,7 +1605,7 @@ describe('HomeScreen — 지도 위 CCTV', () => {
 
   it('명소를 열면 좌표가 있는 CCTV가 지도에 뜬다', async () => {
     render(<HomeScreen />)
-    await userEvent.click(mapMarker(/경복궁/))
+    await userEvent.click(anyMapMarker().element)
 
     const layer = document.querySelector('[data-map-layer]') as HTMLElement
     expect(within(layer).getByRole('img', { name: '광화문 CCTV' })).toBeInTheDocument()
@@ -1583,7 +1621,7 @@ describe('HomeScreen — 지도 위 CCTV', () => {
   // 둘이 서로 다른 상태를 들고 있다는 뜻이다.
   it('지도의 CCTV 마커를 누르면 시트의 그 줄이 열린다', async () => {
     render(<HomeScreen />)
-    await userEvent.click(mapMarker(/경복궁/))
+    await userEvent.click(anyMapMarker().element)
 
     const layer = document.querySelector('[data-map-layer]') as HTMLElement
     await userEvent.click(
@@ -1600,13 +1638,23 @@ describe('HomeScreen — 지도 위 CCTV', () => {
   // 안 접으면 앞 명소의 영상이 계속 흐른 채로 다른 상세가 열린다.
   it('다른 명소로 갈아타면 펼쳐 둔 영상을 접는다', async () => {
     render(<HomeScreen />)
-    await userEvent.click(mapMarker(/경복궁/))
+    await userEvent.click(anyMapMarker().element)
 
     const layer = document.querySelector('[data-map-layer]') as HTMLElement
     await userEvent.click(
       within(layer).getByRole('img', { name: '광화문 CCTV' }).closest('button')!,
     )
-    await userEvent.click(mapMarker(/강남역/))
+    // **다른 마커로 갈아탄다.** 이름으로 먼 명소를 찍지 않는다 — 앞의 마커를
+    // 여는 순간 지도가 거기로 줌인하므로, 그 화면에 남아 있는 마커 중 하나를
+    // 골라야 실제로 갈아탈 수 있다.
+    const other = within(layer)
+      .getAllByRole('button')
+      .find(
+        (button) =>
+          button.dataset.z !== undefined &&
+          !within(button).queryByRole('img', { name: /CCTV/ }),
+      )
+    await userEvent.click(other as HTMLElement)
 
     const sheet = document.querySelector('[data-sheet-content]') as HTMLElement
     expect(within(sheet).getByRole('button', { name: /광화문/ })).toHaveAttribute(
