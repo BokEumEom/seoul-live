@@ -31,13 +31,14 @@ interface Props {
  */
 export function DetailAppBar({ entry, onBack, actions }: Props) {
   return (
-    // `sticky`가 아니라 흐름 안의 첫 자식이고, 스크롤 상자 밖이다
-    // (`AreaDetailScreen`이 자리를 준다). 그래야 아래 탭 줄만 sticky로 붙어도
-    // 두 층이 겹치는 계산을 안 해도 된다.
+    // **`sticky top-0`이고 높이가 48px로 고정이다.** 시트 안이라 노치를 피할
+    // 일이 없어(`pt-safe`가 없다) 높이가 기기에 따라 흔들리지 않는다 — 바로
+    // 아래 탭 줄이 `top-12`로 이 바에 붙는 근거가 그것이다. 둘 중 하나의
+    // 높이를 고치면 다른 하나의 `top`이 따라와야 한다.
     //
-    // **`pt-safe`가 노치를 피하는 자리다.** 전체 화면이라 지도처럼 「끝까지
-    // 가는 것이 목적」인 층이 없다 — 이 바가 화면 맨 위다.
-    <header className="flex items-center gap-1 border-b border-outline-variant bg-surface-container-lowest pt-safe">
+    // `z-20`은 탭 줄(`z-10`)보다 위다. 스크롤하면 탭 줄이 이 바 **아래로**
+    // 지나가야 하는데, 같은 층이면 그리는 순서가 그것을 정해 버린다.
+    <header className="sticky top-0 z-20 flex h-12 items-center gap-1 border-b border-outline-variant bg-surface-container-lowest">
       <button
         type="button"
         onClick={onBack}

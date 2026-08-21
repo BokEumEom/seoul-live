@@ -1,5 +1,5 @@
 import { m } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { t } from '../../i18n/t'
 import { useLocation } from '../../app/locationContext'
 import { MotionProvider } from '../../app/MotionProvider'
@@ -36,20 +36,24 @@ interface Props {
 }
 
 /**
- * 명소 상세 — **전체 화면 + 탭.**
+ * 명소 상세 — **시트 안의 한 뷰 + 탭.**
  *
- * **예전에는 하단 시트 안의 한 뷰였다.** 도시 정보를 접이식에서 상시 펼침으로
- * 바꾸면서 한 장의 길이가 **5,395px**까지 자랐고(2026-08-20 실측, 390×844),
- * 주 조작인 길찾기가 화면 열두 개 아래에 있었다. 시트 안에서는 그 길이를 줄일
- * 방법이 없다 — 지도를 위에 남겨 두느라 세로의 절반을 이미 내줬기 때문이다.
+ * **전체 화면이었다가 되돌아왔다**(2026-08-21, 사용자 결정). 전체 화면으로 뺀
+ * 이유는 길이였다 — 도시 정보를 상시 펼침으로 바꾸며 한 장이 **5,395px**까지
+ * 자랐고(2026-08-20 실측, 390×844) 주 조작인 길찾기가 화면 열두 개 아래였다.
  *
- * 전체 화면으로 나오면서 둘을 얻는다. 하나는 **높이 전부**이고, 다른 하나는
- * **탭으로 가를 명분**이다. 「탭 한 번 뒤에 감추지 않는다」던 예전 판단은
- * 여전히 지켜진다 — 요약 탭의 카드 여덟 칸이 값까지 보여주고, 자세히 볼
- * 사람만 넘긴다(`SummaryGrid`).
+ * **그 이유는 이제 없다.** 같은 회차에 탭 일곱으로 갈랐고, 길이를 만든 것은
+ * 시트가 아니라 「한 장에 전부」였다. 탭이 그것을 풀었으므로 시트로 돌아와도
+ * 5,395px은 되살아나지 않는다 — 지금 가장 긴 패널도 한 화면 남짓이다.
  *
- * **지도는 뒤에 그대로 살아 있다.** `HomeScreen`이 이 화면을 지도 위 층으로
- * 얹으므로 뒤로가기가 즉시이고, 주차장 「지도에서 보기」도 그대로 동작한다.
+ * 되돌려서 얻는 것은 **지도가 살아 있는 것**이다. 전체 화면은 지도를 통째로
+ * 덮어서, 「어디쯤인가」를 보려면 뒤로 나갔다 다시 들어와야 했다. 이 앱에서
+ * 혼잡도는 언제나 **장소에 붙은 값**이라 지도가 곧 맥락이다.
+ *
+ * **스크롤 상자를 갖지 않는다.** 시트(`data-sheet-content`)가 이미 스크롤
+ * 컨테이너다. 여기서 하나 더 만들면 상자가 둘이 되어 시트의 드래그·스크롤
+ * 되돌리기가 안쪽 상자를 못 본다. 상단 바와 탭 줄은 `sticky`로 그 상자에
+ * 붙는다.
  */
 export function AreaDetailScreen({
   areaName,
@@ -101,28 +105,16 @@ export function AreaDetailScreen({
    */
   const [openCctv, setOpenCctv] = useState<string | null>(null)
 
-  /**
-   * **이 화면이 열리면 포커스가 여기로 온다.**
-   *
-   * 예전에는 시트가 포커스를 받았다(`HomeScreen`의 `requestSheetFocus`).
-   * 상세가 전체 화면 층으로 나가면서 시트는 뒤에서 `inert`가 되므로 그 길이
-   * 막혔고, 그대로 두면 명소를 여는 순간 포커스가 `document.body`로 떨어진다 —
-   * body에서 누른 Tab은 문서 맨 앞부터 다시 세는데, 상세 앞에는 지도 레이어가
-   * 통째로 놓여 있다(지금은 inert라 건너뛰지만 순서를 다시 세는 것은 같다).
-   *
-   * 마운트 때 한 번만 돈다. `HomeScreen`이 명소 이름을 `key`로 주므로 명소를
-   * 갈아타면 새 마운트가 되고, 그래서 「갈아탈 때도 포커스가 따라온다」가
-   * 의존성 배열 없이 성립한다.
-   */
-  const rootRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    rootRef.current?.focus({ preventScroll: true })
-  }, [])
+  // **포커스는 이 화면이 가져가지 않는다.** 시트 안으로 돌아오면서 시트의
+  // 받침대(`HomeScreen`의 `viewRef`)가 다시 그 일을 한다 — 뷰가 목록·상세·
+  // 오늘의 서울 중 무엇으로 갈리든 같은 상자가 받아야 「포커스를 옮긴 뒤 그
+  // 요소가 사라지면?」이 표현 불가능해진다. 전체 화면 시절에는 시트가 `inert`라
+  // 그 길이 막혀 여기서 직접 받았다.
 
   if (entry === undefined) {
     return (
-      <div ref={rootRef} tabIndex={-1} className="flex size-full flex-col bg-surface">
-        <header className="flex items-center gap-1 pt-safe">
+      <div className="flex flex-col bg-surface">
+        <header className="flex items-center gap-1">
           <button
             type="button"
             onClick={onBack}
@@ -138,35 +130,34 @@ export function AreaDetailScreen({
     )
   }
 
-  // `tabIndex={-1}`은 포커스 받침대다 — 탭 순서에는 안 들어가고 위 effect가
-  // 프로그램으로만 포커스를 준다. 이름을 안 주는 이유는 `HomeScreen`의 시트
-  // 받침대와 같다: `generic` role에는 이름을 못 붙이고, 이 화면의 정체는 바로
-  // 아래 상단 바의 제목이 이미 말한다.
   return (
     // 위 「못 찾음」 갈래는 `m.*`를 안 쓰므로 감싸지 않는다. 근거는
     // `app/MotionProvider.tsx` — 이 화면이 혼자 렌더돼도 탭 패널이
     // `initial`(opacity 0)에 얼어붙지 않게 하려는 것이다.
     <MotionProvider>
-      <div ref={rootRef} tabIndex={-1} className="flex size-full flex-col bg-surface">
-      <DetailAppBar
-        entry={entry}
-        onBack={onBack}
-        // key를 명소 이름으로 두는 이유: 「근처 쾌적한 장소」로 갈아타면 저장
-        // 알림 리전에 앞 명소 문구가 남는다. 다시 낭독되지는 않지만 리전을
-        // 훑는 사용자에게는 지금 화면과 무관한 말이 적혀 있게 된다.
-        actions={<ActionButtons key={entry.name} entry={entry} />}
-      />
+      <div className="flex flex-col bg-surface">
+        <DetailAppBar
+          entry={entry}
+          onBack={onBack}
+          // key를 명소 이름으로 두는 이유: 「근처 쾌적한 장소」로 갈아타면 저장
+          // 알림 리전에 앞 명소 문구가 남는다. 다시 낭독되지는 않지만 리전을
+          // 훑는 사용자에게는 지금 화면과 무관한 말이 적혀 있게 된다.
+          actions={<ActionButtons key={entry.name} entry={entry} />}
+        />
 
-      {/* **스크롤 상자가 앱 바 아래에서 시작한다.** 그래야 탭 줄의 `sticky
-          top-0`이 앱 바에 정확히 붙는다 — 한 상자에서 둘 다 sticky로 쌓으면
-          앱 바 높이를 탭 줄의 `top`에 적어야 하고, 그 숫자는 안전영역 때문에
-          기기마다 다르다.
+        {/* **스크롤 상자를 여기서 만들지 않는다.** 시트가 이미 하나이고
+            (`data-sheet-content`), 안에 하나 더 두면 시트의 「뷰를 갈아 끼울 때
+            scrollTop을 0으로」가 바깥 상자만 되돌려 상세가 앞 뷰의 스크롤 자리에서
+            시작한다.
 
-          **아래 패딩을 두지 않는다.** sticky가 붙는 자리는 이 상자의 패딩
-          안쪽이라, `pb-6`을 주면 길찾기 바가 화면 밑변에서 24px 떠 있다
-          (390×844 실측으로 확인했다). 바가 흐름의 마지막 요소라 제 자리를
-          남기므로 아래 여백은 따로 필요하지 않다. */}
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+            그래서 앱 바와 탭 줄이 **한 상자에서 함께 sticky**다. 예전에 이 조합을
+            피했던 이유는 앱 바 높이가 `pt-safe` 때문에 기기마다 달라서였는데,
+            시트 안에서는 그 패딩이 없다 — 이 바는 화면 맨 위가 아니라 손잡이
+            아래다. 높이가 48px(`size-12`)로 고정이라 탭 줄의 `top-12`가 성립한다.
+
+            **아래 패딩을 두지 않는다.** sticky가 붙는 자리는 스크롤 상자의 패딩
+            안쪽이라, `pb-6`을 주면 길찾기 바가 시트 밑변에서 24px 떠 있다
+            (390×844 실측으로 확인했다). */}
         <DetailHero entry={entry} coords={location.coords} snapshot={snapshot} />
 
         <DetailTabs value={tab} onChange={setTab} />
@@ -256,7 +247,6 @@ export function AreaDetailScreen({
             질문이라, 요약에만 두면 날씨를 보다 가기로 마음먹은 사용자가
             탭을 되돌아가야 한다. */}
         <MapLinkButtons entry={entry} />
-      </div>
       </div>
     </MotionProvider>
   )

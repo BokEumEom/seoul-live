@@ -373,19 +373,34 @@ describe('HomeScreen', () => {
   // **jsdom은 `inert`의 효과를 못 잰다**(레이아웃도 접근성 트리도 없다) —
   // 그래서 속성 자체를 본다. 이 테스트가 지키는 것은 「가려진 것이 잠겼는가」의
   // 결정이지 브라우저의 실제 동작이 아니다.
-  it('명소를 열면 지도와 시트가 잠긴 채 살아 있다', async () => {
+  // **2026-08-21에 뒤집혔다.** 예전에는 「잠긴 채 살아 있다」였다 — 상세가
+  // 전체 화면이라 뒤의 지도·시트가 눈에만 안 보이고 탭 키는 통과해서 `inert`로
+  // 잠갔다. 상세가 시트 안으로 돌아오면서 덮는 것이 없어졌고, **잠그면 보이는
+  // 것을 조작할 수 없게 된다.**
+  it('명소를 열어도 지도가 조작 가능한 채로 남는다', async () => {
     render(<HomeScreen />)
     await userEvent.click(areaButtons(/강남역/)[0])
     expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
 
     expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
-    expect(document.querySelector('[data-map-layer]')).toHaveAttribute('inert')
-    expect(document.querySelector('[data-sheet-content]')?.closest('[inert]')).not.toBeNull()
+    // `inert`가 **없어야** 한다. 있으면 지도가 보이는데 못 누르는 상태다.
+    expect(document.querySelector('[data-map-layer]')).not.toHaveAttribute('inert')
+    expect(document.querySelector('[data-sheet-content]')?.closest('[inert]')).toBeNull()
   })
 
-  // 상세가 전체 화면이 되면서 「상세를 여는 동안 지도가 보여야 한다」는
-  // 성립하지 않는다. 그래도 `showArea`가 단계를 half로 되돌리는 일은 남는다 —
-  // **돌아왔을 때** 목록이 화면의 92%를 덮은 채 지도를 가리면 안 되기 때문이다.
+  // **상세가 시트 안이라 지도와 한 화면에 산다.** 시트가 `half`(56%)라 지도가
+  // 44%를 갖는다 — 「상세를 보는 동안에도 어디쯤인지 보인다」가 되돌아온 이유다.
+  it('명소를 열면 시트가 절반이라 지도가 함께 보인다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetHandle()) // half → full
+    expect(sheetHandle()).toHaveAccessibleName(/현재 전체/)
+
+    await userEvent.click(sheetRow(/강남역/))
+
+    expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
+  })
+
   it('전체로 펼쳐 둔 채 명소를 열었다 돌아오면 시트가 절반이다', async () => {
     render(<HomeScreen />)
     await userEvent.click(sheetHandle()) // half → full
@@ -505,22 +520,22 @@ describe('HomeScreen', () => {
     expect(lat).toBeGreaterThan(경복궁.lat - 0.02)
   })
 
-  // **상세가 전체 화면이 되면서 지도 위 조작부는 물러난다.** 검색 바는 `z-20`,
-  // 상세는 `z-30`이라 어차피 안 보이는데, 그리기만 하면 포인터 이벤트와 접근성
-  // 트리에는 남는다. `opacity-0`이 아니라 조건부 렌더인 것이 그 뜻이다.
+  // **2026-08-21에 뒤집혔다.** 예전에는 「물러난다」였다 — 전체 화면 상세가
+  // 지도를 덮으니 그 위의 검색 바(`z-20`)는 보이지도 않으면서 포인터 이벤트와
+  // 접근성 트리에만 남았다. 상세가 시트로 돌아온 지금은 **지도가 살아 있으므로
+  // 그 위의 조작부도 살아 있어야 한다** — 상세를 보다 다른 곳을 찾는 데 뒤로
+  // 한 번이 덜 든다.
   //
-  // 돌아올 길은 막히지 않는다 — 상단 바의 뒤로 화살표가 목록으로 되돌린다.
-  it('상세를 열면 지도 위 조작부가 물러난다', async () => {
+  // 물러나는 규칙은 하나만 남았다: 시트가 `full`일 때(바로 아래 테스트).
+  it('상세를 열어도 지도 위 조작부가 그대로 있다', async () => {
     render(<HomeScreen />)
 
     await userEvent.click(sheetRow(/강남역/))
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
 
-    expect(screen.queryByRole('searchbox')).toBeNull()
-    expect(screen.queryByRole('group', { name: '필터' })).toBeNull()
-    expect(screen.queryByRole('button', { name: '내 주변' })).toBeNull()
-
-    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
     expect(screen.getByRole('searchbox')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: '필터' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '내 주변' })).toBeInTheDocument()
   })
 
   // (C) full에서 검색 바와 칩 열은 손잡이 히트 영역(시트 상단 위 20px까지)을
@@ -857,12 +872,11 @@ describe('HomeScreen', () => {
     // 스크린리더가 화면 첫머리 대신 시트를 읽는다.
     expect(document.activeElement).toBe(document.body)
 
-    // **상세는 시트 밖이다.** 전체 화면 층이 되면서 포커스를 가져가는 주체가
-    // 시트에서 상세 화면 자신으로 옮겨졌다(`AreaDetailScreen`의 마운트
-    // effect) — 시트는 그동안 `inert`라 포커스를 받을 수 없다.
+    // **상세도 시트 안이다**(2026-08-21). 전체 화면 시절에는 시트가 `inert`라
+    // 포커스를 못 받아 상세 화면이 스스로 가져갔는데, 돌아오면서 받침대 하나가
+    // 뷰 셋을 전부 맡는다 — 「받는 주체가 뷰마다 다르다」가 없어졌다.
     await userEvent.click(sheetRow(/강남역/))
-    expect(sheet.contains(document.activeElement)).toBe(false)
-    expect(document.activeElement).not.toBe(document.body)
+    expect(sheet.contains(document.activeElement)).toBe(true)
 
     await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
     expect(sheet.contains(document.activeElement)).toBe(true)
@@ -1182,24 +1196,27 @@ describe('HomeScreen', () => {
     expect(screen.queryByRole('button', { name: /강남역/ })).toBeNull()
   })
 
-  // **상세가 전체 화면이 되면서 목록은 언마운트되지 않는다** — 뒤에서 `inert`로
-  // 잠긴 채 남는다(그래야 돌아올 때 즉시다). jsdom은 그 효과를 못 재므로
-  // 속성을 본다: 카테고리 줄이 잠긴 상자 안에 있는지.
-  it('상세를 열면 카테고리와 목록이 잠긴 채로 물러난다', async () => {
+  // **2026-08-21에 뒤집혔다.** 전체 화면 시절에는 목록이 뒤에서 `inert`로 잠긴
+  // 채 남았다. 상세가 시트 안으로 돌아오면서 **뷰 셋이 같은 자리를 나눠 쓰므로
+  // 목록은 실제로 빠진다** — 잠긴 것과 없는 것은 다르고, 여기서 갈리는 것이
+  // 그 차이다. 돌아오는 비용은 없다: 목록 데이터는 쿼리 캐시에 그대로다.
+  //
+  // 카테고리 줄과 목록 제목 **둘 다** 본다. 한 요소만 보면 그 요소만 우연히
+  // 빠진 구현도 통과한다.
+  it('상세를 열면 카테고리와 목록이 시트에서 빠진다', async () => {
     render(<HomeScreen />)
-    const category = screen.getByRole('button', { name: '공원' })
-    // 정렬 줄이 짝이었는데 없어져서(근거는 `useNearbyAreas`) 목록 제목으로
-    // 갈아 끼웠다. 둘을 보는 이유는 그대로다 — 한 요소만 보면 그 요소만
-    // 우연히 잠긴 구현도 통과한다.
-    //
-    // **목록 「행」을 잡으면 안 된다.** 명소를 열면 지도가 그리로 옮겨가고
-    // 목록은 보이는 띠로 좁혀지므로(`areasForList`) 다른 명소의 행은 실제로
-    // 언마운트된다 — 잠긴 게 아니라 사라진 것이라 `closest`가 null이다.
-    // `sr-only` 제목은 목록이 비어도 남는다.
-    const heading = screen.getByRole('heading', { name: '명소 목록' })
+    expect(screen.getByRole('button', { name: '공원' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '명소 목록' })).toBeInTheDocument()
+
     await userEvent.click(areaButtons(/강남역/)[0])
-    expect(category.closest('[inert]')).not.toBeNull()
-    expect(heading.closest('[inert]')).not.toBeNull()
+
+    expect(screen.queryByRole('button', { name: '공원' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: '명소 목록' })).toBeNull()
+
+    // 되돌아오면 다시 선다. 「빠졌다」가 「못 돌아온다」가 아님을 여기서 잠근다.
+    await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
+    expect(screen.getByRole('button', { name: '공원' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '명소 목록' })).toBeInTheDocument()
   })
 
   // (F) 조회가 영구 실패해도 스트립은 `혼잡도 정보를 아직 받지 못했어요.`라고

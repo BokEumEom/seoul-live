@@ -177,13 +177,26 @@ describe('AreaDetailScreen — 셸', () => {
     expect(onBack).toHaveBeenCalledTimes(1)
   })
 
-  // **포커스가 몸통(`document.body`)에 떨어지면 안 된다.** 예전에는 시트가
-  // 포커스를 받았는데(`HomeScreen`의 `requestSheetFocus`), 상세가 전체 화면
-  // 층이 되면서 시트는 뒤에서 `inert`가 되어 그 길이 막혔다. body에서 누른
-  // Tab은 문서 맨 앞부터 다시 센다.
-  it('열리면 포커스가 이 화면으로 온다', () => {
+  // **「열리면 포커스가 이 화면으로 온다」가 여기서 없어졌다**(2026-08-21).
+  // 상세가 시트 안으로 돌아오면서 포커스를 받는 것은 시트 받침대이고, 그
+  // 보호는 `HomeScreen.test.tsx`의 「뷰가 갈려도 포커스가 몸통으로 떨어지지
+  // 않는다」가 **실제로 잡고 있다** — 명소를 누른 뒤 `activeElement`가
+  // `[data-sheet-content]` 안인지 본다. 지우기 전에 저쪽 단언이 같은 것을
+  // 죽이는지 확인했다(AGENTS.md 「테스트를 지울 때」).
+  //
+  // 대신 여기서는 **시트로 돌아오며 생긴 새 계약**을 잠근다.
+  it('스크롤 상자를 스스로 만들지 않는다', () => {
     const { container } = renderDetail()
-    expect(document.activeElement).toBe(container.firstChild)
+
+    // 시트(`data-sheet-content`)가 유일한 스크롤 컨테이너다. 여기서 하나 더
+    // 만들면 시트의 「뷰를 갈아 끼울 때 scrollTop을 0으로」가 바깥 상자만
+    // 되돌려, 상세가 앞 뷰의 스크롤 자리에서 시작한다.
+    //
+    // **클래스를 보는 것이 맞는 granularity다.** jsdom에는 레이아웃이 없어
+    // 「스크롤된다」를 관측할 방법이 아예 없고(`getComputedStyle`은 0을
+    // 돌려준다), 이 계약은 실제로 클래스 한 줄이다. 우회로가 없지는 않지만
+    // (`style` 속성 등) 이 저장소에서 스크롤 상자를 만드는 길은 이 유틸리티뿐이다.
+    expect(container.querySelectorAll('.overflow-y-auto')).toHaveLength(0)
   })
 
   it('카탈로그에 없는 명소는 조회하지 않는다', () => {

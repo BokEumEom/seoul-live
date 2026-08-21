@@ -45,13 +45,17 @@ export function DetailTabs({ value, onChange }: Props) {
     // 상태에서 탭 줄이 화면 밖이면 「어느 탭에 있는지」를 확인하러 맨 위까지
     // 되돌아가야 한다.
     //
+    // **`top-12`는 `DetailAppBar`의 높이(`h-12`)다.** 상세가 시트로 돌아오면서
+    // 상단 바와 이 줄이 스크롤 상자 하나를 나눠 쓰게 됐다 — `top-0`으로 두면
+    // 이 줄이 상단 바 뒤에 숨는다. 그 바의 높이를 고치면 이 값이 따라와야 한다.
+    //
     // `-mx-*`를 쓰지 않고 컨테이너가 폭 전체다 — 배경이 있어야 sticky로 떠
     // 있을 때 아래 내용이 비쳐 보이지 않는다.
     <div
       ref={listRef}
       role="tablist"
       aria-label={t('명소 정보 분류')}
-      className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-outline-variant bg-surface-container-lowest px-2 scrollbar-none"
+      className="sticky top-12 z-10 flex gap-1 overflow-x-auto border-b border-outline-variant bg-surface-container-lowest px-2 scrollbar-none"
     >
       {DETAIL_TABS.map((tab) => {
         const selected = tab.id === value

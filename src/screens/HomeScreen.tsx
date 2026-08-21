@@ -6,7 +6,7 @@ import {
   Map,
   type MapCameraChangedEvent,
 } from '@vis.gl/react-google-maps'
-import { AnimatePresence, m } from 'framer-motion'
+import { m } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from '../app/locationContext'
 import { MotionProvider } from '../app/MotionProvider'
@@ -412,10 +412,10 @@ export function HomeScreen() {
     // 펼쳐 둔 CCTV는 상세가 통째로 새로 마운트되면서 저절로 접힌다
     // (`AreaDetailScreen`에 명소 이름이 `key`로 붙어 있다).
     moveMapTo(name)
-    // **여기서는 시트에 포커스를 주지 않는다.** 상세가 전체 화면 층으로
-    // 나가면서 시트는 그 뒤에서 `inert`가 된다 — inert 요소는 포커스를 못
-    // 받으므로 요청해 봐야 포커스가 `document.body`에 남는다. 포커스를
-    // 가져가는 것은 상세 화면 자신이다(`AreaDetailScreen`의 마운트 effect).
+    // 상세가 시트 안으로 돌아오면서 포커스도 시트 받침대로 돌아왔다
+    // (2026-08-21). 전체 화면 시절에는 시트가 `inert`라 이 길이 막혀 상세가
+    // 스스로 포커스를 가져갔다 — 이제 뷰 셋이 같은 상자를 나눠 쓴다.
+    requestSheetFocus()
   }
 
   function openArea(name: string): void {
@@ -478,15 +478,11 @@ export function HomeScreen() {
         ? { kind: 'today' }
         : LIST_ROUTE
 
-  /**
-   * 상세가 열려 있나. **지도·오버레이·FAB·시트가 전부 이 값을 본다.**
-   *
-   * 전체 화면 상세는 뒤의 모든 것을 덮는데, 덮인 것들은 **눈에만** 안 보인다 —
-   * 탭 키는 그대로 통과하고 스크린리더도 읽는다. `inert`로 통째로 잠근다.
-   * 언마운트하지 않는 이유는 지도가 살아 있어야 뒤로가기가 즉시이고,
-   * 「지도에서 보기」가 그 지도를 옮길 수 있어서다.
-   */
-  const detailOpen = route.kind === 'area'
+  // **`detailOpen`이 없어졌다**(2026-08-21). 전체 화면 시절에는 이 파생값이
+  // 지도·검색 열·FAB·시트의 `inert` 넷을 몰았는데, 상세가 시트 안으로
+  // 돌아오면서 잠글 것이 하나도 남지 않았다. 시트가 어느 뷰인지는
+  // `sheetContent`가 `route`에서 직접 읽는다 — 파생값을 하나 더 두면
+  // 「누가 진실인가」가 둘이 된다.
 
   // **뒤로/앞으로 가기.** 주소가 유일한 진실이라 `history.state`를 안 본다.
   //
@@ -666,10 +662,10 @@ export function HomeScreen() {
   // (근거는 `MapFabStack`의 산식).
   const recenterDetent: RecenterDetent | null =
     wide || sheetDetent === 'full' ? null : sheetDetent
-  // 상세가 열려 있으면 지도가 가려지므로 「내 주변」도 물러난다 — **넓은
-  // 화면은 예외다.** 거기서는 상세가 왼쪽 패널 자리에만 서고 지도가 그대로
-  // 보이므로 버튼도 그대로 쓸 수 있어야 한다.
-  const showRecenter = wide || (!detailOpen && sheetDetent !== 'full')
+  // **상세가 열려 있어도 그대로 있다.** 상세가 시트 안으로 돌아오면서 지도가
+  // 가려지지 않으므로 물러날 이유가 없어졌다(2026-08-21). 규칙은 다시 하나다 —
+  // 좁은 화면의 `full`에서만 자리가 없어 안 그린다.
+  const showRecenter = wide || sheetDetent !== 'full'
 
   // **시트가 움직이면 지도도 움직인다.** 시트가 커지면 보이는 띠가 위로 줄어드는데
   // 지도가 가만히 있으면 보고 있던 곳이 시트 뒤로 밀려 들어간다 — 「목록에서
@@ -999,14 +995,27 @@ export function HomeScreen() {
     </div>
   )
 
-  // **시트 내용은 이제 둘 중 하나다.** 상세는 시트를 떠나 전체 화면 층이 됐다
-  // (아래 `detailOpen`) — 근거는 `AreaDetailScreen`의 주석.
+  // **시트 내용은 셋 중 하나다** — 목록 · 명소 상세 · 오늘의 서울.
+  // 상세가 2026-08-21에 전체 화면 층에서 여기로 돌아왔다(근거는
+  // `AreaDetailScreen`의 주석).
   //
   // **어느 것인지는 `route`가 정한다** — 여기서 상태를 다시 읽어 판단하면
   // 주소와 시트가 서로 다른 답을 낼 수 있다.
+  //
+  // `key`가 명소 이름인 것이 중요하다. 「근처 쾌적한 장소」로 갈아타면
+  // 컴포넌트가 새로 만들어져 탭이 요약으로 돌아가고 CCTV가 접힌다 — effect로
+  // 되돌리면 한 프레임 동안 앞 명소의 탭이 새 명소의 데이터로 그려진다.
   const sheetContent =
     route.kind === 'today' ? (
       <TodayScreen onSelectArea={openArea} onBack={showList} />
+    ) : route.kind === 'area' ? (
+      <AreaDetailScreen
+        key={route.name}
+        areaName={route.name}
+        onBack={showList}
+        onSelectArea={openArea}
+        onShowOnMap={showFacilityOnMap}
+      />
     ) : (
       listPane
     )
@@ -1023,10 +1032,10 @@ export function HomeScreen() {
             크기로 깔린다」는 것은 지도가 어느 레이어에 속하는지로만 확인되는데,
             jsdom에는 레이아웃이 없어 위치로는 못 잡는다. 마커를 목록 행과
             구별해 집는 데도 이 표식을 쓴다. */}
-        {/* **넓은 화면에서는 상세가 지도를 안 덮으므로 잠그지 않는다.** 상세는
-            왼쪽 패널 자리에만 서고 지도는 그 오른쪽에 그대로 보인다 — 그때
-            지도를 잠그면 보이는 것을 조작할 수 없게 된다. */}
-        <div data-map-layer inert={detailOpen && !wide} className="absolute inset-0">
+        {/* **잠그지 않는다.** 상세가 시트 안으로 돌아오면서 지도가 어느
+            화면 크기에서도 안 덮인다(2026-08-21) — 보이는 것을 조작할 수
+            있어야 한다. 전체 화면 시절에는 좁은 화면에서만 `inert`였다. */}
+        <div data-map-layer className="absolute inset-0">
           {mapPane}
         </div>
 
@@ -1069,11 +1078,11 @@ export function HomeScreen() {
             1440px에서 검색창이 1,358px로 늘어나 한 줄 입력이 화면을 가로질렀고,
             칩은 왼쪽에 몰리고 오른쪽이 텅 비었다(실측). 패널 안으로 들이면
             폭이 400px로 묶이고, 지도 위가 깨끗해져 「지도가 주인공」이 산다. */}
-        {/* **상세가 열려 있으면 이 열도 물러난다.** 전체 화면 상세가 지도를
-            통째로 덮으므로 그 위에 뜬 검색 바는 보이지도 않고, `z-20`이라
-            상세 층(`z-30`)에 가리기만 한다. 조건부 렌더인 것은 아래 FAB과 같은
-            이유다 — 포인터 이벤트와 접근성 트리가 함께 정리된다. */}
-        {!detailOpen && !wide && sheetDetent !== 'full' && (
+        {/* **상세가 열려 있어도 남는다**(2026-08-21). 전체 화면 시절에는 상세가
+            지도를 통째로 덮어 이 열이 보이지도 않았지만, 시트 안으로 돌아온
+            지금은 지도가 살아 있으므로 그 위의 검색·필터도 살아 있어야 한다 —
+            상세를 보다 다른 곳을 찾는 데 뒤로 한 번이 덜 든다. */}
+        {!wide && sheetDetent !== 'full' && (
           <>
             <div
               // `data-overlay`도 테스트 손잡이다. 검색 바가 **지도 위에 떠 있다**는
@@ -1146,72 +1155,13 @@ export function HomeScreen() {
           />
         )}
 
-        {/* **명소 상세는 지도 위를 통째로 덮는 층이다.**
-
-            `key`가 명소 이름인 것이 중요하다. 「근처 쾌적한 장소」로 갈아타면
-            컴포넌트가 새로 만들어져 탭이 요약으로 돌아가고 스크롤이 맨 위에서
-            시작한다 — effect로 되돌리면 한 프레임 동안 앞 명소의 탭이 새 명소의
-            데이터로 그려진다.
-
-            `z-30`은 검색 오버레이(`z-20`)보다 위다. 그 열은 상세가 열리면 아예
-            안 그려지지만(위 `!detailOpen`), 층 번호로도 관계가 읽혀야 한다. */}
-        {/* 오른쪽에서 밀려 들어오고 오른쪽으로 밀려 나간다 — 웹·iOS·안드로이드가
-            공통으로 쓰는 「한 단계 안으로 들어간다」의 문법이다. 방향이 계층을
-            말하므로 **뒤로 가는 길이 손에 남는다**: 위에서 올라오는 모달은
-            「덮었다」만 말하고 무엇 위에 덮였는지는 말하지 않는다.
-
-            `AnimatePresence`가 필요한 이유는 **나가는 쪽** 때문이다. 조건부
-            렌더만으로는 뒤로 누르는 순간 화면이 그냥 사라져, 들어올 때만
-            부드럽고 나갈 때는 끊긴다.
-
-            `x: '100%'`는 폭에 비례하므로 좁은 화면이든 400px 패널이든 「제 폭만큼」
-            이다. 지속시간 0.22초는 Material의 화면 전환 권장 구간(0.2~0.3초)
-            안이고, 이 저장소의 시트 높이 전환(0.2초)과도 어긋나지 않는다.
-
-            **위치 변화는 `prefers-reduced-motion`에서 저절로 꺼진다** —
-            `MotionProvider`의 `reducedMotion="user"`가 x를 끄고 페이드만 남긴다.
-            `index.css`의 CSS 처방은 JS 애니메이션에 닿지 않으므로 그 줄이 짝이다. */}
-        <AnimatePresence initial={false}>
-          {detailOpen && route.kind === 'area' && (
-          <m.div
-            key="detail"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            // **넓은 화면에서는 전체를 안 덮는다.** 좁은 화면에서 전체 화면인
-            // 이유는 세로가 모자라서인데(시트 안에서는 5,395px을 줄일 방법이
-            // 없었다) 넓은 화면에는 그 문제가 없다 — 시트가 왼쪽 400px 패널이라
-            // 세로를 하나도 안 가리기 때문이다. 1440px에서 상세를 통째로 펴면
-            // 카드 두 칸이 700px씩 되고 지도가 이유 없이 사라진다.
-            //
-            // 패널과 **같은 자리·같은 폭**이라 그 자리를 갈아 끼우는 것처럼
-            // 보인다. `w-100`(400px)이 `PANEL_WIDTH_PX`와 갈리면 안 된다 —
-            // `useWideScreen.ts`가 정본이고 여기 클래스는 그 값을 Tailwind
-            // 눈금으로 옮긴 것이다(400 ÷ 4 = 100).
-            className={
-              wide
-                ? 'absolute inset-y-0 left-0 z-30 w-100 border-r border-outline-variant shadow-floating'
-                : 'absolute inset-0 z-30'
-            }
-          >
-            <AreaDetailScreen
-              key={route.name}
-              areaName={route.name}
-              onBack={showList}
-              onSelectArea={openArea}
-              onShowOnMap={showFacilityOnMap}
-            />
-          </m.div>
-          )}
-        </AnimatePresence>
-
+        {/* `inert`가 없어졌다 — 상세가 시트 안으로 돌아오면서 시트를 잠글
+            이유가 사라졌다(2026-08-21). */}
         <BottomSheet
           wide={wide}
           detent={sheetDetent}
           onDetentChange={setDetent}
           onDragRatioChange={setDragRatio}
-          inert={detailOpen}
         >
           {/* 여백을 걸지 않는다 — 시트의 규칙이 아니라 뷰의 몫이다(BottomSheet
               주석 참조). 이 상자는 오직 포커스를 받기 위한 것이다.
@@ -1233,9 +1183,33 @@ export function HomeScreen() {
               포커스가 왔을 때 스크린리더가 실제로 무엇을 읽는지는 실기기로만
               확인된다 — STATE.md의 미해결 항목. */}
           <div ref={viewRef} tabIndex={-1}>
-            {sheetContent}
+            {/* **뷰가 갈리면 오른쪽에서 밀려 들어온다.** 목록 → 상세는 「한
+                단계 안으로」이고, 방향이 계층을 말하므로 뒤로 가는 길이 손에
+                남는다.
+
+                **`AnimatePresence`를 쓰지 않았다** — 탭 패널과 같은 이유다
+                (`AreaDetailScreen`의 주석). 나가는 애니메이션을 넣으면
+                언마운트가 비동기가 되어 「목록으로 돌아오면 목록이 보인다」류
+                테스트가 전부 `waitFor`를 달아야 한다. 들어오는 쪽만으로도
+                방향은 읽힌다.
+
+                **`key`가 뷰의 정체다.** 명소끼리 갈아탈 때도 새 마운트가
+                되어야 애니메이션이 다시 돈다 — 「근처 쾌적한 장소」로 옮기는
+                것도 한 단계 이동이다.
+
+                거리가 24px인 것은 탭 패널(12px)보다 큰 이동이라서다. 뷰 전체가
+                갈리는 것과 패널 하나가 갈리는 것은 다른 크기로 읽혀야 한다.
+                `prefers-reduced-motion`에서는 x가 꺼지고 페이드만 남는다. */}
+            <m.div
+              key={route.kind === 'area' ? `area:${route.name}` : route.kind}
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+            >
+              {sheetContent}
+            </m.div>
           </div>
-          </BottomSheet>
+        </BottomSheet>
       </div>
     </MotionProvider>
   )
