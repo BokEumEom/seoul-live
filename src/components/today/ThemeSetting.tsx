@@ -3,7 +3,7 @@ import type { ThemeSetting as Setting } from '../../domain/theme'
 import { setTheme, useThemeSetting } from '../../hooks/themeStore'
 
 // 리터럴 배열로 둔다. Tailwind v4는 정적 추출이라 클래스를 조합하지 않는다.
-// **상수가 아니라 함수인 이유**는 `SortSegmented`에 한 벌 있다 — 모듈 최상위의
+// **상수가 아니라 함수인 이유**는 `i18n/t.ts`에 한 벌 있다 — 모듈 최상위의
 // `t()`는 import 시점의 언어로 굳는다.
 function options(): readonly { readonly value: Setting; readonly label: string }[] {
   return [
@@ -28,8 +28,8 @@ export function ThemeSetting() {
   return (
     <section className="mt-6 px-4">
       <h3 className="text-label-md font-semibold text-on-surface-variant">{t('화면 테마')}</h3>
-      {/* 탭이 아니라 버튼 묶음인 근거는 `SortSegmented`·`FilterChips`에 한 벌
-          있다. 이름을 함께 붙여야 보조기술이 무엇을 고르는 줄인지 말한다. */}
+      {/* 탭이 아니라 버튼 묶음인 근거는 `FilterChips`에 한 벌 있다. 이름을
+          함께 붙여야 보조기술이 무엇을 고르는 줄인지 말한다. */}
       <div
         role="group"
         aria-label={t("화면 테마")}

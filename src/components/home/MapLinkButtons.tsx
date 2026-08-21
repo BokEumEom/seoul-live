@@ -95,7 +95,7 @@ interface MapLink {
 // 63(네이버)·53(티맵)px. 셋 다 같은 top이고 높이가 48px 그대로라 줄바꿈이 없다.
 // **라벨을 늘릴 때는 다시 재라** — 320px의 여유가 12px뿐이다.
 //
-// **상수 배열이 아니라 함수인 이유**는 `SortSegmented`에 한 벌 있다 — 모듈
+// **상수 배열이 아니라 함수인 이유**는 `i18n/t.ts`에 한 벌 있다 — 모듈
 // 최상위의 `t()`는 import 시점의 언어로 굳는다. 이 셋은 사전에 항목이 있는데도
 // (KakaoMap·Naver·TMAP) 영어 화면에서 한국어로 남아 있었다.
 function mapLinks(): readonly MapLink[] {

@@ -158,7 +158,7 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 - **못 읽은 0을 사실로 말하지 마라.** `rate()`가 칸마다 따로 0을 떨어뜨리므로 0은 「실제로 0%」일 수도 「못 읽음」일 수도 있다. `domain/composition.ts`의 `residentLabel`·`hasGenderSplit`이 그 규칙을 지키는 예다 — 한쪽만 읽힌 성별을 「남 100% · 여 0%」로 적으면 안 된다.
 - **앱 셸은 `<main className="h-dvh">` 하나다.** 여기에 헤더·탭바를 다시 얹지 마라. 세로 공간은 시트의 것이고, 토스가 미니앱에 자체 네이티브 헤더를 준다. 지도 위 검색 바가 이미 상단바 층을 쓰고 있어 상단바를 두면 같은 자리가 세 겹이 된다. **`h-dvh`도 빼지 마라** — `HomeScreen` 루트가 `size-full`(= `height: 100%`)이라 높이가 auto인 부모를 만나면 지도가 0px로 접힌다. 근거는 설계 §2.2와 `App.tsx`의 주석.
 
-- **화면은 하나다.** `HomeScreen`이 지도 전체 + 오버레이 시트를 들고, 시트 안에서 목록·상세·오늘의 서울이 갈린다. 즐겨찾기는 「★ 내 장소」 필터 칩이고 오늘의 서울은 시트 안 뷰다. 「내 주변」·「혼잡예보」·즐겨찾기·더보기를 탭으로 되살리지 마라 — 전부 갈 곳이 아니라 지도에 대고 하는 일이라서 버튼·정렬 기준·칩·시트 뷰로 녹였다. 라우터 라이브러리는 없다(**주소는 쓴다** — 바로 아래 조항). 근거는 `docs/superpowers/specs/2026-08-07-gmaps-style-shell-design.md` §2.2.
+- **화면은 하나다.** `HomeScreen`이 지도 전체 + 오버레이 시트를 들고, **시트 안에서는 목록과 오늘의 서울이 갈린다.** 명소 상세는 시트 밖 전체 화면 층이다(2026-08-20). 즐겨찾기는 지도 우하단 FAB(`MapFabStack`)이고(2026-08-21, 그전에는 「★ 내 장소」 필터 칩이었다) 오늘의 서울은 시트 안 뷰다. 「내 주변」·「혼잡예보」·즐겨찾기·더보기를 탭으로 되살리지 마라 — 전부 갈 곳이 아니라 지도에 대고 하는 일이라서 버튼·칩·FAB·시트 뷰로 녹였다. 라우터 라이브러리는 없다(**주소는 쓴다** — 바로 아래 조항). 근거는 `docs/superpowers/specs/2026-08-07-gmaps-style-shell-design.md` §2.2.
 
 - **시트가 보고 있는 것은 주소에 실린다 — `src/domain/route.ts`.** 셋뿐이다: 목록(쿼리 없음) / `?area=강남역` / `?view=today`. 이걸 넣기 전에는 셋이 다 깨져 있었다 — 공유 버튼이 **주소 없는 문장만** 보내 받은 사람이 아무 데도 못 갔고, 상세에서 뒤로 가기를 누르면 **앱이 통째로 닫혔고**, 새로고침하면 보던 명소가 사라졌다.
 
@@ -180,7 +180,9 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 
 - **카테고리는 서울시 공식 5종이다.** `AREA_CATEGORIES`(관광특구·고궁·문화유산·인구밀집지역·발달상권·공원)가 데이터 값이고 화면 표시는 `CATEGORY_LABEL`을 거친다. 「인구밀집지역」·「발달상권」은 행정 용어라 그대로 노출하지 않는다. 프리셋은 카테고리가 아니라 `purposes` 태그로 거른다 — 광장(전통)시장과 청담동 명품거리가 같은 발달상권인데 데이트 적합성은 정반대라서다.
 
-- **필터 칩 이름의 정본은 `src/domain/presets.ts`다.** 칩 줄과 빈 목록 문구가 모두 `filterLabel()`을 통해 읽는다. 이름을 화면 쪽에 복사하지 마라 — 고칠 때 한쪽만 옛 이름으로 남는다. 「내 장소」는 `PRESETS`가 아니라 같은 파일의 `NON_PRESET_LABEL`에 있고, 그 타입(`Record<Exclude<FilterKey, PresetKey>, string>`)이 새 비프리셋 키를 빠뜨리면 컴파일을 막는다.
+- **필터 이름의 정본은 `src/domain/presets.ts`다.** 칩 줄과 빈 목록 문구가 모두 `filterLabel()`을 통해 읽는다. 이름을 화면 쪽에 복사하지 마라 — 고칠 때 한쪽만 옛 이름으로 남는다. 「내 장소」는 `PRESETS`가 아니라 같은 파일의 `NON_PRESET_LABEL`에 있고(칩 줄에서 FAB으로 옮겨 간 뒤에도 그렇다 — **켜지는 슬롯은 여전히 하나이고 배타적이다**), 그 타입(`Record<Exclude<FilterKey, PresetKey>, string>`)이 새 비프리셋 키를 빠뜨리면 컴파일을 막는다.
+
+- **혼잡도 칩 넷은 `CONGESTION_LEVELS`에서 파생시킨다.** `PRESETS`에 손으로 적지 마라 — 등급이 하나 늘면 칩도 저절로 늘어야 하고, 손으로 적으면 등급은 다섯인데 칩은 넷인 화면이 조용히 만들어진다. 키는 등급(한국어)이 아니라 `CongestionTone`이다: 주소·저장소에 실릴 수 있는 값이고, 톤을 재사용하면 칩과 마커 색이 어긋날 자리 자체가 없다.
 
 - **칩 개수는 걸러지기 전 목록으로 센다.** `filterCounts`가 `filterAreas`를 그대로 부르는 것이 핵심이다 — 개수와 목록이 같은 술어를 써야 칩에 "3"을 써놓고 마커가 5개 뜨는 일이 없다. 「내 장소」를 `favorites.length`로 따로 세지 마라: 카테고리로 좁혔거나 카탈로그에서 이름이 바뀐 곳까지 세어 칩과 목록이 갈린다.
 
@@ -262,7 +264,13 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 - **색을 정할 때는 대비를 재라.** 같은 파일이 배지·히트맵·길찾기 버튼의 대비를 계산해 잠근다. 여기 걸리는 값은 눈으로 고르지 말고 숫자를 맞춘다 — 「선명한 색이 보기 좋다」로 고른 배지 글자색 넷이 전부 4.5:1에 못 미쳤다.
 - **글자 크기는 토큰으로 쓴다** — `text-sm`·`text-lg` 같은 Tailwind 기본값 대신 `text-label-md`·`text-headline-sm`처럼 시안 스케일을 쓴다. 기본값을 섞으면 시안에 없는 크기가 화면마다 늘어난다.
 - **반경도 마찬가지다.** 쓰는 이름은 `rounded-sm`·`rounded-card`·`rounded-action`·`rounded-full` 넷뿐이고 전부 `--radius-*` 토큰에서 나온다. **`rounded-lg`·`rounded-2xl` 같은 Tailwind 기본 이름을 쓰지 마라** — 값이 우연히 맞을 뿐이고 시안의 `rounded` 스케일과 **이름이 어긋난다**(시안의 `lg`는 1rem인데 Tailwind의 `rounded-lg`는 0.5rem이다).
-- **접근성 role은 실제 동작에 맞춰라.** 필터·정렬·카테고리 줄은 탭이 아니라 `role="group"` + `aria-pressed` 토글 버튼이다. `role="tab"`은 `tabpanel`·`aria-controls`·화살표 이동·roving tabindex가 함께 와야 하는 패턴이라, 그것들 없이 쓰면 보조기술에 못 지킬 약속을 한다. `role` 없는 `<div>`에 `aria-label`을 얹지 마라 — `generic`은 이름을 받을 수 없어 조용히 버려진다.
+- **접근성 role은 실제 동작에 맞춰라.** 필터·카테고리 줄은 탭이 아니라 `role="group"` + `aria-pressed` 토글 버튼이다. `role="tab"`은 `tabpanel`·`aria-controls`·화살표 이동·roving tabindex가 함께 와야 하는 패턴이라, 그것들 없이 쓰면 보조기술에 못 지킬 약속을 한다. `role` 없는 `<div>`에 `aria-label`을 얹지 마라 — `generic`은 이름을 받을 수 없어 조용히 버려진다.
+- **애니메이션은 framer-motion이고 `m.*`만 쓴다.** `motion.*`를 쓰면 **던진다** — `LazyMotion`에 `strict`를 걸어 뒀다. 막는 것은 번들이다: `motion.*`를 한 번만 써도 트리 셰이킹이 풀려 34KB(gz) 전부가 들어오는데 **번들 크기는 테스트가 안 잡아** 회귀가 조용히 지나간다. 실측(2026-08-21): `m`+`domAnimation` 192,030B 대 `motion` 205,036B.
+
+  **`m.*`를 쓰는 화면은 `MotionProvider`를 스스로 감싼다.** 앱 루트에 한 벌만 두지 마라 — `LazyMotion` 없이 렌더된 `m.*`는 기능이 하나도 안 실려 `initial` 스타일에 얼어붙고(`opacity: 0`이면 **내용이 통째로 안 보인다**), 그 화면을 따로 렌더하는 곳(테스트)에서 조용히 빈 화면이 된다. 중첩은 무해하다. 근거와 실측은 `src/app/MotionProvider.tsx`.
+
+  **`prefers-reduced-motion`을 CSS로만 처방하지 마라.** framer는 JS로 매 프레임 스타일을 써서 그 미디어 쿼리가 안 닿는다. `MotionConfig reducedMotion="user"`가 짝이다.
+
 - 아이콘은 `src/components/common/Icon.tsx`에 필요한 것만 둔다. 쓰이지 않게 된 아이콘은 지운다.
 - **다크 모드는 지원이지 기본이 아니다.** 기본은 밝게(`domain/theme.ts`의 `DEFAULT_THEME`)이고 사용자가 밝게/어둡게/기기 설정 중에 고른다. **CSS에 `@media (prefers-color-scheme: dark)`를 쓰지 마라** — 그러면 폰이 어두운 사용자에게 다크가 기본이 되고, 「시스템을 골랐을 때만 기기를 본다」를 표현할 수 없어 다크 블록이 두 벌이 된다. 기기를 읽는 일은 `hooks/themeStore.ts`가 하고 CSS는 `:root[data-theme='dark']`만 본다.
 - **새 색을 쓰기 시작하면 다크 값도 함께 넣어라.** `tokens.test.ts`가 `src`를 훑어 「화면에서 쓰는데 다크 블록에 없는 토큰」을 찾아 죽는다. 예외는 브랜드 색과 그 위의 글자(`brand-*`)뿐이다 — 남의 자산이라 밤이라고 바꿀 수 없다.

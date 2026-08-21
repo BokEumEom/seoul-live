@@ -9,7 +9,7 @@ interface Props {
 // 거부와 그 외 실패를 다르게 안내한다. 전자는 사용자가 풀 수 있고 후자는 아니라서
 // 같은 문구를 쓰면 한쪽은 헛수고를 하게 된다.
 //
-// **상수 표가 아니라 함수인 이유**는 `SortSegmented`에 한 벌 있다 — 모듈
+// **상수 표가 아니라 함수인 이유**는 `i18n/t.ts`에 한 벌 있다 — 모듈
 // 최상위의 `t()`는 import 시점의 언어로 굳는다.
 function notices(): Partial<
   Record<LocationStatus, { readonly message: string; readonly action: string }>

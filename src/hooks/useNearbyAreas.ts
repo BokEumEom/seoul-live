@@ -66,7 +66,9 @@ export function buildNearbyList(input: BuildInput): readonly NearbyArea[] {
   // **순서가 하나다: 가까운 순, 좌표가 없으면 여유로운 순.**
   //
   // 예전에는 사용자가 「거리순 / 여유한 순 / 붐비는 순」을 고르는 줄이 시트
-  // 안에 있었다(`SortSegmented`, 48px). 혼잡도 칩이 네 등급으로 갈리면서
+  // 안에 있었다(`SortSegmented`, 48px — **2026-08-21에 지웠다.** 되살릴 일이
+  // 생기면 `git log -- src/components/list/SortSegmented.tsx`).
+  // 혼잡도 칩이 네 등급으로 갈리면서
   // (2026-08-20, 시안 stitch_ui_ux/_1 상단) **그 줄의 뒤 둘이 칩과 같은 말을
   // 하게 됐다.** 겹치는 쪽을 지웠고, 남긴 것은 칩으로는 못 하는 일 — 「가까운
   // 곳부터」 — 이라서 고르게 할 이유가 없다. 「여유」 칩을 켜면 여유로운

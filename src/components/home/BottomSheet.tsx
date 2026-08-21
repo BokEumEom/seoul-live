@@ -79,7 +79,7 @@ const DETENT_LABEL: Readonly<Record<Detent, string>> = {
 //
 // 놓을 때는 가장 가까운 단계로 붙는다(Google Maps의 시트와 같은 규칙 —
 // 설계 §2.2가 그 화면을 참조한다). 임의 높이로 눌러앉게 하려면 `detent` 하나인
-// 이 인터페이스를 비율까지 나르도록 넓혀야 하고, `RecenterButton`의 위치가
+// 이 인터페이스를 비율까지 나르도록 넓혀야 하고, `MapFabStack`의 위치가
 // `SHEET_RATIO[detent]`에서 파생되므로 그쪽도 함께 가야 한다.
 //
 // 토스 웹뷰에서 이 드래그와 지도 팬 제스처가 충돌하는지는 실기기로만 확인된다

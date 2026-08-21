@@ -23,7 +23,7 @@ export type MapUnavailableReason = 'no-key' | 'load-failed' | 'offline'
 // 그건 마지막 기억이라 시각을 함께 말해야 오해가 없다 — 그 시각은 각 명소 카드의
 // 「마지막 업데이트」가 이미 들고 있다.
 //
-// **상수 표가 아니라 함수인 이유**는 `SortSegmented`에 한 벌 있다 — 모듈
+// **상수 표가 아니라 함수인 이유**는 `i18n/t.ts`에 한 벌 있다 — 모듈
 // 최상위의 `t()`는 import 시점의 언어로 굳는다.
 function message(reason: MapUnavailableReason): string {
   const text: Readonly<Record<MapUnavailableReason, string>> = {

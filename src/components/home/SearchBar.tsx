@@ -6,7 +6,7 @@ interface Props {
   readonly onChange: (next: string) => void
 }
 
-// 검색만 한다. 「내 주변」은 지도 위 FAB(`RecenterButton`)이 흡수했다 —
+// 검색만 한다. 「내 주변」은 지도 위 FAB(`MapFabStack`)이 흡수했다 —
 // 지도가 화면 전체가 되면서 그것은 검색 줄에 얹을 일이 아니라 지도에 대고
 // 하는 동작이 됐고, 지도 위에 떠 있어야 무엇에 대한 동작인지가 보인다.
 export function SearchBar({ value, onChange }: Props) {
@@ -50,7 +50,7 @@ export function SearchBar({ value, onChange }: Props) {
             //
             // 48px이 아니라 40px인 이유: 필드가 48px이라 48px 상자는 위아래로
             // 딱 맞아 여유가 없고, 아래 칩 줄과 겹칠 여지가 생긴다. 40px은 이
-            // 저장소가 이미 쓰는 급이고(FilterChips·SortSegmented의 `min-h-10`)
+            // 저장소가 이미 쓰는 급이고(`FilterChips`의 `min-h-10`)
             // WCAG 2.5.8은 통과한다.
             className="-mr-3 grid size-10 shrink-0 place-items-center text-on-surface-variant"
           >

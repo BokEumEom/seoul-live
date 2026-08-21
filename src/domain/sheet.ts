@@ -21,7 +21,7 @@ export const SHEET_RATIO: Readonly<Record<Detent, number>> = {
    * 4.7행이 된다. 지도는 54%→44%로 줄지만 `peek`(16%)이 지도를 보는 단계로
    * 따로 있고, 화면 위 112px은 어차피 검색 바·칩 열이 덮고 있다.
    *
-   * 이 값을 고치면 `RecenterButton`의 `BOTTOM_CLASS`가 따라와야 한다
+   * 이 값을 고치면 `MapFabStack`의 `BOTTOM_CLASS`가 따라와야 한다
    * (언제나 `SHEET_RATIO[detent] + 0.02`). 안 따라오면 그 파일의 파생 규칙
    * 테스트가 죽는다 — 실제로 여기서 죽여서 확인했다.
    */

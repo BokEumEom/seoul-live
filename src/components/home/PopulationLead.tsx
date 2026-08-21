@@ -32,7 +32,7 @@ interface Props {
 // 화면이 쓰는 말. 도메인은 delta만 주고 문구는 여기서 고른다 — 같은 판정을
 // 다른 화면에서 다르게 부를 수 있어야 한다.
 //
-// **상수 표가 아니라 함수인 이유**는 `SortSegmented`에 한 벌 있다 — 모듈
+// **상수 표가 아니라 함수인 이유**는 `i18n/t.ts`에 한 벌 있다 — 모듈
 // 최상위의 `t()`는 import 시점의 언어로 굳는다.
 function usualText(delta: UsualDelta): string {
   const text: Readonly<Record<UsualDelta, string>> = {

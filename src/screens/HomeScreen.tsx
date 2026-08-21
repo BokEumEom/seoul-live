@@ -663,7 +663,7 @@ export function HomeScreen() {
 
   // FAB의 자리. 넓은 화면에서는 시트를 피할 이유가 없어 `null`(지도 우하단)이고,
   // 좁은 화면의 `full`에서는 48px가 들어갈 자리가 없어 아예 안 그린다
-  // (근거는 `RecenterButton`의 산식).
+  // (근거는 `MapFabStack`의 산식).
   const recenterDetent: RecenterDetent | null =
     wide || sheetDetent === 'full' ? null : sheetDetent
   // 상세가 열려 있으면 지도가 가려지므로 「내 주변」도 물러난다 — **넓은
@@ -1046,7 +1046,7 @@ export function HomeScreen() {
             곧 뷰포트가 됐으므로(`100dvh`) 이 조건은 「뷰포트 800px 이상」이 됐고,
             세로가 긴 기기에서는 닿을 수 있다. 그래도 화면 크기로 갈라 그리지
             않는다 — 규칙이 둘이 되고 작은 기기에서는 여전히 잘린다.
-            자세한 산식은 `RecenterButton`에 있다.
+            자세한 산식은 `MapFabStack`에 있다.
 
             `opacity-0`이 아니라 조건부 렌더다. 그래야 포인터 이벤트와 접근성
             트리가 함께 정리되고, 사라졌다는 사실을 테스트로 잠글 수 있다.

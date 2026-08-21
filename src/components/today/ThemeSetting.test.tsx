@@ -58,7 +58,7 @@ describe('ThemeSetting', () => {
 
   it('무엇을 고르는 줄인지 이름을 붙인다', () => {
     // 이름 없는 `group`은 보조기술이 「그룹」이라고만 알리고 무엇을 고르는
-    // 줄인지 말하지 못한다 — `SortSegmented`와 같은 이유다.
+    // 줄인지 말하지 못한다 — `FilterChips`와 같은 이유다.
     render(<ThemeSetting />)
 
     expect(screen.getByRole('group', { name: '화면 테마' })).toBeInTheDocument()

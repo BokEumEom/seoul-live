@@ -23,7 +23,7 @@ describe('SearchBar', () => {
     expect(screen.queryByRole('button', { name: '검색어 지우기' })).toBeNull()
   })
 
-  // 「내 주변」은 FAB(RecenterButton)이 흡수했다. 검색 바가 검색만 하는지
+  // 「내 주변」은 FAB(`MapFabStack`)이 흡수했다. 검색 바가 검색만 하는지
   // 여기서 잠근다 — 지도에 대고 하는 동작이 검색 줄에 다시 붙지 않게.
   it('검색 말고 다른 버튼은 두지 않는다', () => {
     render(<SearchBar value="성수" onChange={() => {}} />)
