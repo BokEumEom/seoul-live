@@ -45,18 +45,22 @@ export const EN: Readonly<Record<string, string>> = {
   인구밀집지역: 'Busy areas',
 
   // ── 필터 프리셋 ──
+  //
+  // 혼잡도 칩 넷의 이름은 위 「혼잡도 4단계」를 그대로 쓴다 — 칩·배지·마커가
+  // 한 낱말이어야 사용자가 둘을 다른 것으로 읽지 않는다.
+  //
+  // (「한적」이 여기 있었다. 여유+보통을 묶어 부르던 이름인데, 칩이 네 등급으로
+  // 갈리면서 부를 것이 없어졌다. 「정렬·거리순·여유한 순·붐비는 순」도 함께
+  // 없어졌다 — 정렬 줄이 통째로 빠졌고 근거는 `useNearbyAreas`에 있다.)
   전체: 'All',
   '내 장소': 'Saved',
+  '내 장소 {개수}': 'Saved {개수}',
+  '내 장소 {개수} 보는 중': 'Showing saved {개수}',
   '아이와 나들이': 'With kids',
   데이트: 'Date spots',
-  한적: 'Quiet',
   카테고리: 'Category',
   필터: 'Filter',
   '필터 해제': 'Clear filter',
-  정렬: 'Sort',
-  거리순: 'Nearest',
-  '여유한 순': 'Least crowded',
-  '붐비는 순': 'Most crowded',
 
   // ── 지도·시트 조작 ──
   '명소 검색': 'Search places',
@@ -90,6 +94,15 @@ export const EN: Readonly<Record<string, string>> = {
   // Live」로 나가므로 같은 이름이어야 한다.
   '서울 라이브': 'Seoul Live',
   '{시설} 지도에서 보기': 'Show {시설} on map',
+
+  // ── 지도 FAB ──
+  //
+  // 「내 주변」은 아래 「지도·시트 조작」 절에 있다.
+  '지도 조작': 'Map controls',
+  '앱 공유하기': 'Share this app',
+  '서울 라이브 - 서울 명소 실시간 혼잡도':
+    'Seoul Live — live crowd levels for places around Seoul',
+
 
   // ── 상세: 혼잡도 ──
   '지금 얼마나 붐비나': 'How crowded is it now',

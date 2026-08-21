@@ -7,7 +7,7 @@ import { AreaHero } from '../components/home/AreaHero'
 import { PopulationCard } from '../components/home/PopulationCard'
 import { AreaListItem } from '../components/list/AreaListItem'
 import { LocationNotice } from '../components/list/LocationNotice'
-import { SortSegmented } from '../components/list/SortSegmented'
+import { FilterChips } from '../components/home/FilterChips'
 import { ThemeSetting } from '../components/today/ThemeSetting'
 import { AREA_CATALOG } from '../data/areas'
 import { reset, setLanguage } from '../hooks/languageStore'
@@ -39,13 +39,22 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
     reset()
   })
 
-  it('정렬 줄이 영어로 바뀐다', () => {
+  // 정렬 줄이 있던 자리다. 그 줄이 없어지면서 같은 함정(모듈 최상위 `t()`가
+  // import 시점의 언어로 굳는다)을 가진 칩 줄로 갈아 끼웠다 — 이 검사가 잡는
+  // 것은 자리가 아니라 함정이라 단언의 뜻은 그대로다.
+  it('필터 칩 줄이 영어로 바뀐다', () => {
     setLanguage('en')
     render(
-      <SortSegmented value="calm" canSortByDistance onChange={() => undefined} />,
+      <FilterChips
+        counts={{ fav: 0, calm: 1, normal: 2, busy: 3, crowded: 4, kids: 5, date: 6 }}
+        total={7}
+        value={null}
+        onChange={() => undefined}
+      />,
     )
 
-    expect(screen.getByRole('button', { name: 'Nearest' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'All 7' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'With kids 5' })).toBeInTheDocument()
   })
 
   it('화면 테마 줄이 영어로 바뀐다', () => {

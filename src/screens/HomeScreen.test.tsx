@@ -440,7 +440,11 @@ describe('HomeScreen', () => {
     // **상세가 닫히는 것이 핵심이다.** 예전에는 시트를 half로 내리기만 했는데
     // 그때는 지도가 시트 뒤에 반쯤 보였다. 전체 화면 상세를 안 닫으면 지도가
     // 옮겨간 것을 **볼 수가 없다** — 누른 보람이 화면에 하나도 안 나타난다.
-    expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
+    // 상세 층이 오른쪽으로 밀려 나가는 동안(0.22초) DOM에 남는다 — 자세한
+    // 이유는 아래 「상세에서 뒤로 가기를 하면 목록으로 돌아온다」에 한 벌 있다.
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
+    })
     expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
 
     const map = screen.getByRole('region', { name: '지도' })
@@ -555,22 +559,23 @@ describe('HomeScreen', () => {
   // 「내 주변」이 검색 줄에서 FAB으로 넘어오며 **하던 일도 함께 왔다**는 것이
   // 이 태스크의 서사인데, 콜백이 불린다는 것만 옮겨지고 콜백이 **무엇을 하는지**는
   // 안 옮겨져 있었다. SearchBar.test.tsx에서 지운 테스트가 잡던 자리다.
-  it('내 주변을 누르면 목록이 거리순이 되고 시트가 내려간다', async () => {
+  //
+  // **정렬을 되돌리는 부분이 여기 있었다.** 그 줄이 없어지면서(혼잡도 칩이
+  // 네 등급으로 갈리자 「여유한 순·붐비는 순」이 칩과 같은 말이 됐다) 되돌릴
+  // 것도 없어졌다 — 목록은 좌표가 생기는 즉시 가까운 순이다. 남은 것은
+  // 「옮긴 지도를 시트가 덮고 있으면 옮긴 보람이 없다」 쪽이다.
+  it('내 주변을 누르면 시트가 내려가 옮긴 지도가 보인다', async () => {
     useLocation.mockReturnValue({
       coords: { lat: 37.5, lng: 127 },
       status: 'granted',
       retry: vi.fn(),
     })
     render(<HomeScreen />)
-    await userEvent.click(screen.getByRole('button', { name: '붐비는 순' }))
+    expect(sheetHandle()).toHaveAccessibleName(/현재 절반/)
 
     await userEvent.click(screen.getByRole('button', { name: '내 주변' }))
 
     expect(sheetHandle()).toHaveAccessibleName(/현재 살짝 열림/)
-    expect(screen.getByRole('button', { name: '거리순' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
   })
 
   it('내 주변을 누르면 지도가 내 위치로 옮겨간다', async () => {
@@ -1180,12 +1185,21 @@ describe('HomeScreen', () => {
   // **상세가 전체 화면이 되면서 목록은 언마운트되지 않는다** — 뒤에서 `inert`로
   // 잠긴 채 남는다(그래야 돌아올 때 즉시다). jsdom은 그 효과를 못 재므로
   // 속성을 본다: 카테고리 줄이 잠긴 상자 안에 있는지.
-  it('상세를 열면 카테고리와 정렬이 잠긴 채로 물러난다', async () => {
+  it('상세를 열면 카테고리와 목록이 잠긴 채로 물러난다', async () => {
     render(<HomeScreen />)
     const category = screen.getByRole('button', { name: '공원' })
+    // 정렬 줄이 짝이었는데 없어져서(근거는 `useNearbyAreas`) 목록 제목으로
+    // 갈아 끼웠다. 둘을 보는 이유는 그대로다 — 한 요소만 보면 그 요소만
+    // 우연히 잠긴 구현도 통과한다.
+    //
+    // **목록 「행」을 잡으면 안 된다.** 명소를 열면 지도가 그리로 옮겨가고
+    // 목록은 보이는 띠로 좁혀지므로(`areasForList`) 다른 명소의 행은 실제로
+    // 언마운트된다 — 잠긴 게 아니라 사라진 것이라 `closest`가 null이다.
+    // `sr-only` 제목은 목록이 비어도 남는다.
+    const heading = screen.getByRole('heading', { name: '명소 목록' })
     await userEvent.click(areaButtons(/강남역/)[0])
     expect(category.closest('[inert]')).not.toBeNull()
-    expect(screen.getByRole('button', { name: '여유한 순' }).closest('[inert]')).not.toBeNull()
+    expect(heading.closest('[inert]')).not.toBeNull()
   })
 
   // (F) 조회가 영구 실패해도 스트립은 `혼잡도 정보를 아직 받지 못했어요.`라고
@@ -1489,7 +1503,13 @@ describe('HomeScreen 주소', () => {
 
     await goBack()
 
-    expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
+    // **`waitFor`인 것이 이 파일에서 유일한 예외다.** 상세 층이 오른쪽으로
+    // 밀려 나가는 동안(0.22초) DOM에 남아 있다 — `AnimatePresence`가 나가는
+    // 애니메이션을 끝내고서야 언마운트한다. 화면에서 사라지는 것과 트리에서
+    // 사라지는 것이 더는 같은 순간이 아니다.
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
+    })
     expect(window.location.search).toBe('')
   })
 
@@ -1591,7 +1611,9 @@ describe('HomeScreen 주소', () => {
       screen.getByRole('button', { name: '광화문역 5번출구 지도에서 보기' }),
     )
 
-    expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
+    })
     expect(window.location.search).toBe('')
   })
 

@@ -47,8 +47,6 @@ export function TodayScreen({ onSelectArea, onBack }: Props) {
         snapshots: snapshots.data ?? [],
         coords: location.coords,
         category: '전체',
-        // 추천은 항상 가까운 순으로 뽑는다 — 섹션 이름이 곧 정렬 기준이다.
-        sort: 'distance',
       }),
     [snapshots.data, location.coords],
   )

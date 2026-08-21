@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'vitest'
+import { congestionTone } from './congestion'
 import {
   filterAreas,
   filterByPreset,
   filterCounts,
   filterLabel,
+  isLevelKey,
   PRESETS,
 } from './presets'
-import type {
-  AreaCategory,
-  AreaSnapshot,
-  CongestionLevel,
-  NearbyArea,
-  Purpose,
+import {
+  CONGESTION_LEVELS,
+  type AreaCategory,
+  type AreaSnapshot,
+  type CongestionLevel,
+  type NearbyArea,
+  type Purpose,
 } from './types'
 
 function area(
@@ -45,16 +48,43 @@ function area(
 }
 
 describe('PRESETS', () => {
-  it('넷이고 키가 겹치지 않는다', () => {
-    expect(PRESETS).toHaveLength(4)
-    expect(new Set(PRESETS.map((p) => p.key)).size).toBe(4)
+  it('여섯이고 키가 겹치지 않는다', () => {
+    expect(PRESETS).toHaveLength(6)
+    expect(new Set(PRESETS.map((p) => p.key)).size).toBe(6)
   })
 
-  // **상태 칩이 목적 칩보다 앞이다.** 목적 태그는 121곳 중 19곳에만 붙어
-  // 있고 상태는 전부에 있다 — 더 많이 걸리는 것이 앞에 와야 칩 줄을 훑는
+  // **혼잡도 칩이 목적 칩보다 앞이다.** 목적 태그는 121곳 중 19곳에만 붙어
+  // 있고 등급은 전부에 있다 — 더 많이 걸리는 것이 앞에 와야 칩 줄을 훑는
   // 사람이 빈손으로 돌아가지 않는다.
-  it('상태 둘이 목적 둘보다 앞에 온다', () => {
-    expect(PRESETS.map((p) => p.key)).toEqual(['calm', 'crowded', 'kids', 'date'])
+  it('혼잡도 넷이 목적 둘보다 앞에 온다', () => {
+    expect(PRESETS.map((p) => p.key)).toEqual([
+      'calm',
+      'normal',
+      'busy',
+      'crowded',
+      'kids',
+      'date',
+    ])
+  })
+
+  // **혼잡도 칩은 `CONGESTION_LEVELS`에서 파생된다.** 손으로 적으면 등급이
+  // 다섯으로 늘어도 칩은 넷인 화면이 조용히 만들어진다.
+  it('혼잡도 칩의 이름이 등급 그 자체다', () => {
+    expect(PRESETS.slice(0, CONGESTION_LEVELS.length).map((p) => p.label)).toEqual([
+      ...CONGESTION_LEVELS,
+    ])
+  })
+
+  // 톤 이름을 키로 쓰는 것이 우연이 아니다. 어긋나면 칩 줄이 「약간 붐빔」에
+  // 「붐빔」 색점을 찍는다.
+  it('혼잡도 칩의 키가 그 등급의 톤이다', () => {
+    for (const level of CONGESTION_LEVELS) {
+      const preset = PRESETS.find((p) => p.label === level)
+      expect(preset?.key).toBe(congestionTone(level))
+      expect(isLevelKey(preset!.key)).toBe(true)
+    }
+    expect(isLevelKey('kids')).toBe(false)
+    expect(isLevelKey('fav')).toBe(false)
   })
 })
 
@@ -130,10 +160,11 @@ describe('데이트', () => {
   })
 })
 
-// **예전 「지금 핫플」이 있던 자리다.** 그쪽은 `붐빔` 하나만 봤는데, 상태 축의
-// 두 칩으로 갈리면서 「한적」의 여집합이 됐다 — 둘을 합치면 혼잡도를 아는 곳
-// 전부가 되어야 짝이 맞는다.
-describe('한적·붐빔', () => {
+// **네 칩이 등급 하나씩을 정확히 맡는다.** 예전에는 「한적」(여유+보통)과
+// 「붐빔」(나머지) 둘로 접어 뒀는데, 칩은 「한적」이라 말하고 바로 아래 목록의
+// 배지는 「여유」라 말했다 — 같은 것을 두 낱말로 부르면 사용자는 그 둘이 다른
+// 것이라고 읽는다(2026-08-21, 시안 stitch_ui_ux/_1 상단).
+describe('혼잡도 칩 넷', () => {
   const AREAS = [
     area('여유한곳', '공원', '여유'),
     area('보통인곳', '공원', '보통'),
@@ -141,32 +172,27 @@ describe('한적·붐빔', () => {
     area('붐빔인곳', '인구밀집지역', '붐빔'),
   ]
 
-  it('한적은 여유와 보통을 함께 본다', () => {
-    // 「거기 가도 좋다」를 뜻하는 자리라 여유만으로 좁히지 않는다.
-    expect(filterByPreset(AREAS, 'calm').map((a) => a.entry.name)).toEqual([
-      '여유한곳',
-      '보통인곳',
-    ])
+  it.each([
+    ['calm', '여유한곳'],
+    ['normal', '보통인곳'],
+    ['busy', '약간붐빔인곳'],
+    ['crowded', '붐빔인곳'],
+  ] as const)('%s는 그 등급 하나만 남긴다', (key, expected) => {
+    expect(filterByPreset(AREAS, key).map((a) => a.entry.name)).toEqual([expected])
   })
 
-  it('붐빔은 약간 붐빔부터 본다', () => {
-    expect(filterByPreset(AREAS, 'crowded').map((a) => a.entry.name)).toEqual([
-      '약간붐빔인곳',
-      '붐빔인곳',
-    ])
-  })
-
-  // 둘을 합치면 아는 곳 전부가 된다. 한쪽 경계만 옮기면 여기서 죽는다 —
-  // 그 상태에서는 어느 칩에도 안 걸리는 등급이 생긴다.
-  it('둘을 합치면 혼잡도를 아는 곳 전부다', () => {
-    expect(
-      filterByPreset(AREAS, 'calm').length + filterByPreset(AREAS, 'crowded').length,
-    ).toBe(AREAS.length)
+  // 넷을 합치면 아는 곳 전부가 된다. 한 등급이라도 어느 칩에도 안 걸리면
+  // 「전체」와 칩 합계가 갈려 사용자가 못 찾는 명소가 생긴다.
+  it('넷을 합치면 혼잡도를 아는 곳 전부다', () => {
+    const sum = (['calm', 'normal', 'busy', 'crowded'] as const)
+      .map((key) => filterByPreset(AREAS, key).length)
+      .reduce((a, b) => a + b, 0)
+    expect(sum).toBe(AREAS.length)
   })
 
   it('카테고리도 태그도 가리지 않는다', () => {
-    // **이게 상태 칩을 세운 이유다.** 목적 칩은 태그가 붙은 19곳에만 걸리는데
-    // 상태 칩은 혼잡도가 오는 121곳 전부에 걸린다.
+    // **이게 혼잡도 칩을 세운 이유다.** 목적 칩은 태그가 붙은 19곳에만 걸리는데
+    // 혼잡도 칩은 등급이 오는 121곳 전부에 걸린다.
     const areas = [
       area('강남역', '인구밀집지역', '붐빔'),
       area('남산공원', '공원', '붐빔', ['kids', 'date']),
@@ -185,6 +211,7 @@ describe('목적 태그가 없는 명소', () => {
     expect(filterByPreset([untagged], 'kids')).toHaveLength(0)
     expect(filterByPreset([untagged], 'date')).toHaveLength(0)
     expect(filterByPreset([untagged], 'crowded')).toHaveLength(1)
+    expect(filterByPreset([untagged], 'calm')).toHaveLength(0)
   })
 })
 
@@ -198,8 +225,8 @@ describe('스냅샷이 없는 명소', () => {
       area('강남역', '인구밀집지역', null),
     ]
 
-    for (const key of ['kids', 'date', 'calm', 'crowded'] as const) {
-      expect(filterByPreset(areas, key)).toHaveLength(0)
+    for (const preset of PRESETS) {
+      expect(filterByPreset(areas, preset.key)).toHaveLength(0)
     }
   })
 })
@@ -250,8 +277,10 @@ describe('filterAreas', () => {
 
   it('프리셋 키는 filterByPreset과 같은 결과를 준다', () => {
     // 즐겨찾기를 끼워 넣으면서 프리셋 쪽 술어가 갈라지지 않았는지 본다.
-    for (const key of ['kids', 'date', 'calm', 'crowded'] as const) {
-      expect(filterAreas(areas, key, [])).toEqual(filterByPreset(areas, key))
+    for (const preset of PRESETS) {
+      expect(filterAreas(areas, preset.key, [])).toEqual(
+        filterByPreset(areas, preset.key),
+      )
     }
   })
 
@@ -261,7 +290,7 @@ describe('filterAreas', () => {
 })
 
 describe('filterCounts', () => {
-  it('칩 다섯의 개수를 센다', () => {
+  it('칩 일곱의 개수를 센다', () => {
     const areas = [
       area('남산공원', '공원', '여유', ['kids', 'date']),
       area('서울숲공원', '공원', '보통', ['kids', 'date']),
@@ -271,7 +300,9 @@ describe('filterCounts', () => {
 
     expect(filterCounts(areas, ['강남역'])).toEqual({
       fav: 1,
-      calm: 2,
+      calm: 1,
+      normal: 1,
+      busy: 0,
       crowded: 2,
       kids: 2,
       date: 2,
@@ -282,6 +313,8 @@ describe('filterCounts', () => {
     expect(filterCounts([area('강남역', '인구밀집지역', '붐빔')], [])).toEqual({
       fav: 0,
       calm: 0,
+      normal: 0,
+      busy: 0,
       crowded: 1,
       kids: 0,
       date: 0,
@@ -302,7 +335,15 @@ describe('filterCounts', () => {
     const favorites = ['남산공원', '인사동', '사라진곳']
 
     const counts = filterCounts(areas, favorites)
-    for (const key of ['fav', 'calm', 'crowded', 'kids', 'date'] as const) {
+    for (const key of [
+      'fav',
+      'calm',
+      'normal',
+      'busy',
+      'crowded',
+      'kids',
+      'date',
+    ] as const) {
       expect(filterAreas(areas, key, favorites)).toHaveLength(counts[key])
     }
     expect(counts.fav).toBe(2)
@@ -326,8 +367,10 @@ describe('filterLabel', () => {
     // 위 반복문은 PRESETS에 든 것만 훑는다. 프리셋 하나가 PRESETS에서 빠지면
     // 그 키는 폴백으로 떨어져 「내 장소」라고 답하는데, 반복문은 그 키를
     // 아예 돌지 않아 조용히 통과한다. 빈 목록 문구가 엉뚱한 필터를 지목하게
-    // 되는 자리라 키 다섯을 직접 센다.
-    const labels = (['fav', 'calm', 'crowded', 'kids', 'date'] as const).map(filterLabel)
+    // 되는 자리라 키 일곱을 직접 센다.
+    const labels = (
+      ['fav', 'calm', 'normal', 'busy', 'crowded', 'kids', 'date'] as const
+    ).map(filterLabel)
     expect(new Set(labels).size).toBe(labels.length)
   })
 })

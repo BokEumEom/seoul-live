@@ -6,8 +6,10 @@ import {
   Map,
   type MapCameraChangedEvent,
 } from '@vis.gl/react-google-maps'
+import { AnimatePresence, m } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from '../app/locationContext'
+import { MotionProvider } from '../app/MotionProvider'
 import { ErrorState } from '../components/common/ErrorState'
 import { SkeletonRows } from '../components/common/SkeletonCard'
 import { AlertBanner } from '../components/home/AlertBanner'
@@ -23,7 +25,6 @@ import { AreaList } from '../components/list/AreaList'
 import { AreaListItem } from '../components/list/AreaListItem'
 import { CategoryFilter } from '../components/list/CategoryFilter'
 import { LocationNotice } from '../components/list/LocationNotice'
-import { SortSegmented } from '../components/list/SortSegmented'
 import { CongestionMarker } from '../components/map/CongestionMarker'
 import { FacilityMarker } from '../components/map/FacilityMarker'
 import {
@@ -31,9 +32,9 @@ import {
   type MapUnavailableReason,
 } from '../components/map/MapUnavailableNotice'
 import {
-  RecenterButton,
+  MapFabStack,
   type RecenterDetent,
-} from '../components/map/RecenterButton'
+} from '../components/map/MapFabStack'
 import { AREA_CATALOG, AREA_NAMES, findAreaByName } from '../data/areas'
 import { useAreaCongestion } from '../data/queries'
 import { useResolvedTheme } from '../hooks/themeStore'
@@ -204,7 +205,7 @@ export function HomeScreen() {
     initialRoute.kind === 'today' ? 'today' : 'list',
   )
 
-  const { setSelectedName, setSort } = filters
+  const { setSelectedName } = filters
 
   // 뷰가 갈리면 방금 누른 버튼이 언마운트되면서 포커스가 `document.body`로
   // 떨어진다. body에서 누른 Tab은 문서 맨 앞부터 다시 세는데, 시트 앞에는
@@ -602,9 +603,8 @@ export function HomeScreen() {
         snapshots: snapshots.data ?? [],
         coords: location.coords,
         category: filters.category,
-        sort: filters.sort,
       }),
-    [snapshots.data, location.coords, filters.category, filters.sort],
+    [snapshots.data, location.coords, filters.category],
   )
 
   const list = useMemo(() => {
@@ -616,17 +616,10 @@ export function HomeScreen() {
     const scoped = areasForList(all, mapViewport)
     // 좌표가 있으면 `buildNearbyList`가 이미 내 위치 기준으로 정렬해 뒀다.
     // 화면 기준 정렬은 **그게 불가능할 때만** 대신 들어간다.
-    return filters.sort === 'distance' && location.coords === null
+    return location.coords === null
       ? sortByDistanceFromView(scoped, mapViewport)
       : scoped
-  }, [
-    all,
-    mapViewport,
-    filters.query,
-    filters.filter,
-    filters.sort,
-    location.coords,
-  ])
+  }, [all, mapViewport, filters.query, filters.filter, location.coords])
 
   // 개수는 걸러지기 전 목록으로 센다. 걸러진 목록으로 세면 칩 하나를 고르는
   // 순간 나머지 셋이 0이 되어 비활성으로 굳고, 다른 목적으로 갈아탈 방법이
@@ -742,14 +735,15 @@ export function HomeScreen() {
     }
   }
 
-  // 검색 줄에 있던 「내 주변」을 흡수했다. 지도를 내 위치로 옮기고 목록을
-  // 거리순으로 바꾼 뒤 시트를 내린다 — 옮긴 지도를 시트가 덮고 있으면
-  // 옮긴 보람이 없다.
+  // 검색 줄에 있던 「내 주변」을 흡수했다. 지도를 내 위치로 옮기고 시트를
+  // 내린다 — 옮긴 지도를 시트가 덮고 있으면 옮긴 보람이 없다.
+  //
+  // (예전에는 여기서 정렬도 거리순으로 되돌렸다. 정렬 축이 하나가 되면서
+  // 되돌릴 것이 없어졌다 — 목록은 좌표가 생기는 즉시 가까운 순이다.)
   function handleRecenter(): void {
     if (location.coords === null) return
     // 명소를 열 때와 같은 통로다. 내 위치도 시트 뒤가 아니라 보이는 띠에 와야 한다.
     focusMapOn(location.coords, RECENTER_ZOOM)
-    setSort('distance')
     setDetent('peek')
   }
 
@@ -892,6 +886,7 @@ export function HomeScreen() {
           </div>
           <FilterChips
             counts={counts}
+            total={list.length}
             value={filters.filter}
             onChange={handleFilterChange}
           />
@@ -928,13 +923,9 @@ export function HomeScreen() {
 
       <CategoryFilter value={filters.category} onChange={filters.setCategory} />
 
-      <div className="px-4">
-        <SortSegmented
-          value={filters.sort}
-          canSortByDistance={location.coords !== null}
-          onChange={setSort}
-        />
-      </div>
+      {/* (여기 정렬 줄이 있었다. 「거리순 / 여유한 순 / 붐비는 순」 48px짜리
+          세그먼트였는데, 칩 줄이 혼잡도 네 등급으로 갈리면서 뒤 둘이 칩과
+          같은 말을 하게 됐다 — 근거와 남은 규칙은 `useNearbyAreas`에 있다.) */}
 
       {/* 카드가 아니라 행이다 — 이 자리에 올 것이 `AreaList`이기 때문이다.
           `SkeletonList`(카드)를 쓰면 데이터가 오는 순간 레이아웃이 통째로
@@ -1020,199 +1011,232 @@ export function HomeScreen() {
       listPane
     )
 
+  // 애니메이션 프로바이더가 앱 루트가 아니라 화면마다 있는 이유는
+  // `app/MotionProvider.tsx`에 한 벌 있다.
   return (
-    <div className="relative size-full clip-strict">
-      {/* 지도가 뷰포트를 꽉 채우고 시트가 그 위를 덮는다. 공간을 나눠 갖지
-          않으므로 상세를 열어도 지도는 뒤에서 온전한 크기로 살아 있다.
+    <MotionProvider>
+      <div className="relative size-full clip-strict">
+        {/* 지도가 뷰포트를 꽉 채우고 시트가 그 위를 덮는다. 공간을 나눠 갖지
+            않으므로 상세를 열어도 지도는 뒤에서 온전한 크기로 살아 있다.
 
-          `data-map-layer`는 테스트 손잡이다. 「지도가 시트 **뒤에** 전체
-          크기로 깔린다」는 것은 지도가 어느 레이어에 속하는지로만 확인되는데,
-          jsdom에는 레이아웃이 없어 위치로는 못 잡는다. 마커를 목록 행과
-          구별해 집는 데도 이 표식을 쓴다. */}
-      {/* **넓은 화면에서는 상세가 지도를 안 덮으므로 잠그지 않는다.** 상세는
-          왼쪽 패널 자리에만 서고 지도는 그 오른쪽에 그대로 보인다 — 그때
-          지도를 잠그면 보이는 것을 조작할 수 없게 된다. */}
-      <div data-map-layer inert={detailOpen && !wide} className="absolute inset-0">
-        {mapPane}
-      </div>
+            `data-map-layer`는 테스트 손잡이다. 「지도가 시트 **뒤에** 전체
+            크기로 깔린다」는 것은 지도가 어느 레이어에 속하는지로만 확인되는데,
+            jsdom에는 레이아웃이 없어 위치로는 못 잡는다. 마커를 목록 행과
+            구별해 집는 데도 이 표식을 쓴다. */}
+        {/* **넓은 화면에서는 상세가 지도를 안 덮으므로 잠그지 않는다.** 상세는
+            왼쪽 패널 자리에만 서고 지도는 그 오른쪽에 그대로 보인다 — 그때
+            지도를 잠그면 보이는 것을 조작할 수 없게 된다. */}
+        <div data-map-layer inert={detailOpen && !wide} className="absolute inset-0">
+          {mapPane}
+        </div>
 
-      {/* **전체로 펼치면 지도 위 조작부가 통째로 물러난다.** 이유가 조작부마다
-          다르지만 결론이 같아서 한 조건으로 묶었다.
+        {/* **전체로 펼치면 지도 위 조작부가 통째로 물러난다.** 이유가 조작부마다
+            다르지만 결론이 같아서 한 조건으로 묶었다.
 
-          검색 바 + 칩 열: 800px 기준 full(92%)의 시트 상단이 64px이고 손잡이
-          히트 영역이 44~88px인데 이 열이 **0~112px**을 덮는다(검색 바 64px +
-          간격 4px + 칩 줄 44px. Task 10에서 헤드리스 크롬으로 실측했다 —
-          Task 9는 88px로 적었는데 틀린 값이었고, 결론은 오히려 강해졌다).
-          컨테이너 높이와 무관한 고정 높이라 어느 기기에서도 같다. 둘 다
-          `pointer-events-auto`이고 폭이 화면 전체라 손잡이를 **통째로** 가려
-          full에서는 시트를 잡을 수가 없다.
+            검색 바 + 칩 열: 800px 기준 full(92%)의 시트 상단이 64px이고 손잡이
+            히트 영역이 44~88px인데 이 열이 **0~112px**을 덮는다(검색 바 64px +
+            간격 4px + 칩 줄 44px. Task 10에서 헤드리스 크롬으로 실측했다 —
+            Task 9는 88px로 적었는데 틀린 값이었고, 결론은 오히려 강해졌다).
+            컨테이너 높이와 무관한 고정 높이라 어느 기기에서도 같다. 둘 다
+            `pointer-events-auto`이고 폭이 화면 전체라 손잡이를 **통째로** 가려
+            full에서는 시트를 잡을 수가 없다.
 
-          FAB: full에서는 48px가 들어갈 자리가 사실상 없다 — 버튼 몫이 `0.06H`라
-          `H ≥ 800px`이라야 안 잘린다. Task 10에서 상단바·탭바가 빠져 컨테이너가
-          곧 뷰포트가 됐으므로(`100dvh`) 이 조건은 「뷰포트 800px 이상」이 됐고,
-          세로가 긴 기기에서는 닿을 수 있다. 그래도 화면 크기로 갈라 그리지
-          않는다 — 규칙이 둘이 되고 작은 기기에서는 여전히 잘린다.
-          자세한 산식은 `RecenterButton`에 있다.
+            FAB: full에서는 48px가 들어갈 자리가 사실상 없다 — 버튼 몫이 `0.06H`라
+            `H ≥ 800px`이라야 안 잘린다. Task 10에서 상단바·탭바가 빠져 컨테이너가
+            곧 뷰포트가 됐으므로(`100dvh`) 이 조건은 「뷰포트 800px 이상」이 됐고,
+            세로가 긴 기기에서는 닿을 수 있다. 그래도 화면 크기로 갈라 그리지
+            않는다 — 규칙이 둘이 되고 작은 기기에서는 여전히 잘린다.
+            자세한 산식은 `RecenterButton`에 있다.
 
-          `opacity-0`이 아니라 조건부 렌더다. 그래야 포인터 이벤트와 접근성
-          트리가 함께 정리되고, 사라졌다는 사실을 테스트로 잠글 수 있다.
+            `opacity-0`이 아니라 조건부 렌더다. 그래야 포인터 이벤트와 접근성
+            트리가 함께 정리되고, 사라졌다는 사실을 테스트로 잠글 수 있다.
 
-          `sheetDetent`가 여기서 `RecenterDetent`로 좁혀지므로 「FAB은 full에
-          설 자리가 없다」는 불변식을 컴파일러가 지킨다 — 좁혀지지 않은 값을
-          넘기면 `TS2322`가 난다(확인했다).
+            `sheetDetent`가 여기서 `RecenterDetent`로 좁혀지므로 「FAB은 full에
+            설 자리가 없다」는 불변식을 컴파일러가 지킨다 — 좁혀지지 않은 값을
+            넘기면 `TS2322`가 난다(확인했다).
 
-          **파생 불리언(`const show = sheetDetent !== 'full'`)으로 감싸도 좁혀진다.**
-          TS 4.4의 aliased conditions and discriminants가 처리하고, 이 저장소는
-          TS ~6.0.2다 — 실제로 바꿔 `tsc -b --force`를 돌려 에러 0을 확인했다.
-          여기서 직접 비교하는 것은 타입 때문이 아니라, 조건과 그 조건이 지배하는
-          JSX가 한눈에 붙어 있는 편이 읽기 쉬워서다. 쪼개도 타입 안전은 안 깨지니
-          필요하면 쪼개도 된다.
+            **파생 불리언(`const show = sheetDetent !== 'full'`)으로 감싸도 좁혀진다.**
+            TS 4.4의 aliased conditions and discriminants가 처리하고, 이 저장소는
+            TS ~6.0.2다 — 실제로 바꿔 `tsc -b --force`를 돌려 에러 0을 확인했다.
+            여기서 직접 비교하는 것은 타입 때문이 아니라, 조건과 그 조건이 지배하는
+            JSX가 한눈에 붙어 있는 편이 읽기 쉬워서다. 쪼개도 타입 안전은 안 깨지니
+            필요하면 쪼개도 된다.
 
-          되돌아올 길은 막히지 않는다: 「목록으로」가 half로 내리고, 손잡이를
-          누르면 full→peek으로 굴러간다. 키가 없어 half에 묶인 경우에는 계속
-          보인다 — 지도가 죽었을 때 검색은 유일하게 남은 길이라 닫으면 안 된다. */}
-      {/* **넓은 화면에서는 이 열이 지도 위가 아니라 패널 안에 있다.**
-          1440px에서 검색창이 1,358px로 늘어나 한 줄 입력이 화면을 가로질렀고,
-          칩은 왼쪽에 몰리고 오른쪽이 텅 비었다(실측). 패널 안으로 들이면
-          폭이 400px로 묶이고, 지도 위가 깨끗해져 「지도가 주인공」이 산다. */}
-      {/* **상세가 열려 있으면 이 열도 물러난다.** 전체 화면 상세가 지도를
-          통째로 덮으므로 그 위에 뜬 검색 바는 보이지도 않고, `z-20`이라
-          상세 층(`z-30`)에 가리기만 한다. 조건부 렌더인 것은 아래 FAB과 같은
-          이유다 — 포인터 이벤트와 접근성 트리가 함께 정리된다. */}
-      {!detailOpen && !wide && sheetDetent !== 'full' && (
-        <>
-          <div
-            // `data-overlay`도 테스트 손잡이다. 검색 바가 **지도 위에 떠 있다**는
-            // 것은 어느 컨테이너에 속하는지로만 확인된다 — 시트 안으로
-            // 옮겨져도 `getByRole('searchbox')`는 그대로 찾아내기 때문이다.
-            data-overlay
-            // 컨테이너는 이벤트를 통과시킨다. 칩 줄과 검색 바 사이의 빈 곳에서
-            // 지도를 끌 수 있어야 한다 — 되살리는 것은 자식 쪽이다.
-            // **`pt-safe`가 노치를 피하는 자리다.** 지도는 화면 끝까지 가고
-            // (`data-map-layer`는 `inset-0` 그대로) 비켜서는 것은 읽고 눌러야
-            // 하는 이 열뿐이다. 안 붙이면 검색창이 상태 표시줄 시계 밑으로
-            // 들어간다. `viewport-fit=cover`가 없으면 값이 0이라 아무 일도
-            // 안 일어난다 — `index.html`의 그 줄이 짝이다.
-            className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1 pt-safe"
-          >
-            {/* 검색과 테마 토글이 한 줄이다 — 위 패널 쪽과 같은 배치다.
-                토글을 새 줄에 두면 지도가 44px 더 가려진다. */}
-            <div className="pointer-events-auto flex items-center gap-2 pr-4">
-              <div className="min-w-0 flex-1">
-                <SearchBar value={filters.query} onChange={filters.setQuery} />
+            되돌아올 길은 막히지 않는다: 「목록으로」가 half로 내리고, 손잡이를
+            누르면 full→peek으로 굴러간다. 키가 없어 half에 묶인 경우에는 계속
+            보인다 — 지도가 죽었을 때 검색은 유일하게 남은 길이라 닫으면 안 된다. */}
+        {/* **넓은 화면에서는 이 열이 지도 위가 아니라 패널 안에 있다.**
+            1440px에서 검색창이 1,358px로 늘어나 한 줄 입력이 화면을 가로질렀고,
+            칩은 왼쪽에 몰리고 오른쪽이 텅 비었다(실측). 패널 안으로 들이면
+            폭이 400px로 묶이고, 지도 위가 깨끗해져 「지도가 주인공」이 산다. */}
+        {/* **상세가 열려 있으면 이 열도 물러난다.** 전체 화면 상세가 지도를
+            통째로 덮으므로 그 위에 뜬 검색 바는 보이지도 않고, `z-20`이라
+            상세 층(`z-30`)에 가리기만 한다. 조건부 렌더인 것은 아래 FAB과 같은
+            이유다 — 포인터 이벤트와 접근성 트리가 함께 정리된다. */}
+        {!detailOpen && !wide && sheetDetent !== 'full' && (
+          <>
+            <div
+              // `data-overlay`도 테스트 손잡이다. 검색 바가 **지도 위에 떠 있다**는
+              // 것은 어느 컨테이너에 속하는지로만 확인된다 — 시트 안으로
+              // 옮겨져도 `getByRole('searchbox')`는 그대로 찾아내기 때문이다.
+              data-overlay
+              // 컨테이너는 이벤트를 통과시킨다. 칩 줄과 검색 바 사이의 빈 곳에서
+              // 지도를 끌 수 있어야 한다 — 되살리는 것은 자식 쪽이다.
+              // **`pt-safe`가 노치를 피하는 자리다.** 지도는 화면 끝까지 가고
+              // (`data-map-layer`는 `inset-0` 그대로) 비켜서는 것은 읽고 눌러야
+              // 하는 이 열뿐이다. 안 붙이면 검색창이 상태 표시줄 시계 밑으로
+              // 들어간다. `viewport-fit=cover`가 없으면 값이 0이라 아무 일도
+              // 안 일어난다 — `index.html`의 그 줄이 짝이다.
+              className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1 pt-safe"
+            >
+              {/* 검색과 테마 토글이 한 줄이다 — 위 패널 쪽과 같은 배치다.
+                  토글을 새 줄에 두면 지도가 44px 더 가려진다. */}
+              <div className="pointer-events-auto flex items-center gap-2 pr-4">
+                <div className="min-w-0 flex-1">
+                  <SearchBar value={filters.query} onChange={filters.setQuery} />
+                </div>
+                <LanguageToggle />
+              <ThemeToggle />
               </div>
-              <LanguageToggle />
-            <ThemeToggle />
+              <FilterChips
+                counts={counts}
+                total={list.length}
+                value={filters.filter}
+                onChange={handleFilterChange}
+              />
+
+              {/* **지도를 대신하는 안내라 지도 위가 아니라 이 열의 마지막 칸이다.**
+                  지도 레이어에 두면 이 오버레이가 통째로 덮는다: 오버레이는 `z-20`
+                  으로 화면 위 0~112px을 차지하는데(검색 바 64 + 간격 4 + 칩 줄 44,
+                  Task 10 실측) `ErrorState`의 `py-10` 때문에 안내 문구는 y≈64px에서
+                  시작한다. 390px 헤드리스 크롬으로 찍어 보니 칩 사이 틈으로 글자
+                  조각만 새어 나오고, 사용자에게는 아무 설명 없는 빈 화면이었다.
+
+                  흐름대로 칩 아래에 놓이므로 오버레이 높이가 바뀌면 따라온다 —
+                  112px을 여기에 다시 적어 두지 않아도 되는 것이 이 자리의 값이다.
+                  가운데 정렬로 피하는 길도 있었지만 그건 뷰포트가 작아질수록
+                  오버레이 쪽으로 밀려 올라가 640px 아래에서 다시 겹친다(계산).
+
+                  `pointer-events-auto`가 필요하다. 이 컨테이너는 칩 줄과 검색 바
+                  사이의 빈 곳에서 지도를 끌 수 있게 `pointer-events-none`이라,
+                  되살리지 않으면 안내 글자를 고를 수도 없다. */}
+              {mapUnavailableReason !== null && (
+                <div className="pointer-events-auto">
+                  <MapUnavailableNotice reason={mapUnavailableReason} />
+                </div>
+              )}
             </div>
-            <FilterChips
-              counts={counts}
-              value={filters.filter}
-              onChange={handleFilterChange}
-            />
+          </>
+        )}
 
-            {/* **지도를 대신하는 안내라 지도 위가 아니라 이 열의 마지막 칸이다.**
-                지도 레이어에 두면 이 오버레이가 통째로 덮는다: 오버레이는 `z-20`
-                으로 화면 위 0~112px을 차지하는데(검색 바 64 + 간격 4 + 칩 줄 44,
-                Task 10 실측) `ErrorState`의 `py-10` 때문에 안내 문구는 y≈64px에서
-                시작한다. 390px 헤드리스 크롬으로 찍어 보니 칩 사이 틈으로 글자
-                조각만 새어 나오고, 사용자에게는 아무 설명 없는 빈 화면이었다.
-
-                흐름대로 칩 아래에 놓이므로 오버레이 높이가 바뀌면 따라온다 —
-                112px을 여기에 다시 적어 두지 않아도 되는 것이 이 자리의 값이다.
-                가운데 정렬로 피하는 길도 있었지만 그건 뷰포트가 작아질수록
-                오버레이 쪽으로 밀려 올라가 640px 아래에서 다시 겹친다(계산).
-
-                `pointer-events-auto`가 필요하다. 이 컨테이너는 칩 줄과 검색 바
-                사이의 빈 곳에서 지도를 끌 수 있게 `pointer-events-none`이라,
-                되살리지 않으면 안내 글자를 고를 수도 없다. */}
-            {mapUnavailableReason !== null && (
-              <div className="pointer-events-auto">
-                <MapUnavailableNotice reason={mapUnavailableReason} />
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* **FAB은 오버레이와 조건이 다르다.** 검색·칩 열은 넓은 화면에서 패널
-          안으로 들어가 지도 위에서 사라지지만, 「내 주변」은 지도를 움직이는
-          버튼이라 지도 위에 남아야 한다. 넓은 화면에서는 패널이 세로를 하나도
-          안 가리므로 단계와 무관하게 늘 그린다. */}
-      {showRecenter && (
-        <RecenterButton
-          disabled={location.coords === null}
-          detent={recenterDetent}
-          onClick={handleRecenter}
-        />
-      )}
-
-      {/* **명소 상세는 지도 위를 통째로 덮는 층이다.**
-
-          `key`가 명소 이름인 것이 중요하다. 「근처 쾌적한 장소」로 갈아타면
-          컴포넌트가 새로 만들어져 탭이 요약으로 돌아가고 스크롤이 맨 위에서
-          시작한다 — effect로 되돌리면 한 프레임 동안 앞 명소의 탭이 새 명소의
-          데이터로 그려진다.
-
-          `z-30`은 검색 오버레이(`z-20`)보다 위다. 그 열은 상세가 열리면 아예
-          안 그려지지만(위 `!detailOpen`), 층 번호로도 관계가 읽혀야 한다. */}
-      {detailOpen && route.kind === 'area' && (
-        <div
-          // **넓은 화면에서는 전체를 안 덮는다.** 좁은 화면에서 전체 화면인
-          // 이유는 세로가 모자라서인데(시트 안에서는 5,395px을 줄일 방법이
-          // 없었다) 넓은 화면에는 그 문제가 없다 — 시트가 왼쪽 400px 패널이라
-          // 세로를 하나도 안 가리기 때문이다. 1440px에서 상세를 통째로 펴면
-          // 카드 두 칸이 700px씩 되고 지도가 이유 없이 사라진다.
-          //
-          // 패널과 **같은 자리·같은 폭**이라 그 자리를 갈아 끼우는 것처럼
-          // 보인다. `w-100`(400px)이 `PANEL_WIDTH_PX`와 갈리면 안 된다 —
-          // `useWideScreen.ts`가 정본이고 여기 클래스는 그 값을 Tailwind
-          // 눈금으로 옮긴 것이다(400 ÷ 4 = 100).
-          className={
-            wide
-              ? 'absolute inset-y-0 left-0 z-30 w-100 border-r border-outline-variant shadow-floating'
-              : 'absolute inset-0 z-30'
-          }
-        >
-          <AreaDetailScreen
-            key={route.name}
-            areaName={route.name}
-            onBack={showList}
-            onSelectArea={openArea}
-            onShowOnMap={showFacilityOnMap}
+        {/* **FAB은 오버레이와 조건이 다르다.** 검색·칩 열은 넓은 화면에서 패널
+            안으로 들어가 지도 위에서 사라지지만, 「내 주변」은 지도를 움직이는
+            버튼이라 지도 위에 남아야 한다. 넓은 화면에서는 패널이 세로를 하나도
+            안 가리므로 단계와 무관하게 늘 그린다. */}
+        {showRecenter && (
+          <MapFabStack
+            favoritesOn={filters.filter === 'fav'}
+            favoritesCount={counts.fav}
+            onToggleFavorites={() =>
+              handleFilterChange(filters.filter === 'fav' ? null : 'fav')
+            }
+            recenterDisabled={location.coords === null}
+            detent={recenterDetent}
+            onRecenter={handleRecenter}
           />
-        </div>
-      )}
+        )}
 
-      <BottomSheet
-        wide={wide}
-        detent={sheetDetent}
-        onDetentChange={setDetent}
-        onDragRatioChange={setDragRatio}
-        inert={detailOpen}
-      >
-        {/* 여백을 걸지 않는다 — 시트의 규칙이 아니라 뷰의 몫이다(BottomSheet
-            주석 참조). 이 상자는 오직 포커스를 받기 위한 것이다.
+        {/* **명소 상세는 지도 위를 통째로 덮는 층이다.**
 
-            **각 뷰의 맨 위 버튼이 아니라 감싸는 상자에 준다.** 목록의 맨 위인
-            요약 스트립은 조회가 실패하면 아예 안 그려져서(위 `snapshots.isError`
-            분기) 「맨 위 요소」가 뷰마다 있다고 말할 수가 없다. 상자는 뷰가
-            셋 중 무엇으로 갈리든 언제나 있고 언마운트되지 않는다 — 「포커스를
-            옮긴 뒤 그 요소가 사라지면?」이 표현 불가능한 상태가 된다.
+            `key`가 명소 이름인 것이 중요하다. 「근처 쾌적한 장소」로 갈아타면
+            컴포넌트가 새로 만들어져 탭이 요약으로 돌아가고 스크롤이 맨 위에서
+            시작한다 — effect로 되돌리면 한 프레임 동안 앞 명소의 탭이 새 명소의
+            데이터로 그려진다.
 
-            **이름을 주지 않은 것은 고른 것이다.** `tabindex="-1"`인 div는
-            암묵 role이 `generic`이고 `generic`은 **이름 부여가 금지된**
-            role이라, 나중에 `aria-label`만 얹으면 조용히 무시된다. 이름을
-            주려면 `role="group"`(또는 `region`)이 함께 와야 한다. 지금 이름을
-            안 주는 쪽을 고른 이유는 이 상자가 뷰의 경계가 아니라 포커스
-            받침대일 뿐이어서 — 뷰의 정체는 그 안 첫 요소(「목록으로」,
-            요약 스트립)가 이미 말한다.
+            `z-30`은 검색 오버레이(`z-20`)보다 위다. 그 열은 상세가 열리면 아예
+            안 그려지지만(위 `!detailOpen`), 층 번호로도 관계가 읽혀야 한다. */}
+        {/* 오른쪽에서 밀려 들어오고 오른쪽으로 밀려 나간다 — 웹·iOS·안드로이드가
+            공통으로 쓰는 「한 단계 안으로 들어간다」의 문법이다. 방향이 계층을
+            말하므로 **뒤로 가는 길이 손에 남는다**: 위에서 올라오는 모달은
+            「덮었다」만 말하고 무엇 위에 덮였는지는 말하지 않는다.
 
-            포커스가 왔을 때 스크린리더가 실제로 무엇을 읽는지는 실기기로만
-            확인된다 — STATE.md의 미해결 항목. */}
-        <div ref={viewRef} tabIndex={-1}>
-          {sheetContent}
-        </div>
-      </BottomSheet>
-    </div>
+            `AnimatePresence`가 필요한 이유는 **나가는 쪽** 때문이다. 조건부
+            렌더만으로는 뒤로 누르는 순간 화면이 그냥 사라져, 들어올 때만
+            부드럽고 나갈 때는 끊긴다.
+
+            `x: '100%'`는 폭에 비례하므로 좁은 화면이든 400px 패널이든 「제 폭만큼」
+            이다. 지속시간 0.22초는 Material의 화면 전환 권장 구간(0.2~0.3초)
+            안이고, 이 저장소의 시트 높이 전환(0.2초)과도 어긋나지 않는다.
+
+            **위치 변화는 `prefers-reduced-motion`에서 저절로 꺼진다** —
+            `MotionProvider`의 `reducedMotion="user"`가 x를 끄고 페이드만 남긴다.
+            `index.css`의 CSS 처방은 JS 애니메이션에 닿지 않으므로 그 줄이 짝이다. */}
+        <AnimatePresence initial={false}>
+          {detailOpen && route.kind === 'area' && (
+          <m.div
+            key="detail"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+            // **넓은 화면에서는 전체를 안 덮는다.** 좁은 화면에서 전체 화면인
+            // 이유는 세로가 모자라서인데(시트 안에서는 5,395px을 줄일 방법이
+            // 없었다) 넓은 화면에는 그 문제가 없다 — 시트가 왼쪽 400px 패널이라
+            // 세로를 하나도 안 가리기 때문이다. 1440px에서 상세를 통째로 펴면
+            // 카드 두 칸이 700px씩 되고 지도가 이유 없이 사라진다.
+            //
+            // 패널과 **같은 자리·같은 폭**이라 그 자리를 갈아 끼우는 것처럼
+            // 보인다. `w-100`(400px)이 `PANEL_WIDTH_PX`와 갈리면 안 된다 —
+            // `useWideScreen.ts`가 정본이고 여기 클래스는 그 값을 Tailwind
+            // 눈금으로 옮긴 것이다(400 ÷ 4 = 100).
+            className={
+              wide
+                ? 'absolute inset-y-0 left-0 z-30 w-100 border-r border-outline-variant shadow-floating'
+                : 'absolute inset-0 z-30'
+            }
+          >
+            <AreaDetailScreen
+              key={route.name}
+              areaName={route.name}
+              onBack={showList}
+              onSelectArea={openArea}
+              onShowOnMap={showFacilityOnMap}
+            />
+          </m.div>
+          )}
+        </AnimatePresence>
+
+        <BottomSheet
+          wide={wide}
+          detent={sheetDetent}
+          onDetentChange={setDetent}
+          onDragRatioChange={setDragRatio}
+          inert={detailOpen}
+        >
+          {/* 여백을 걸지 않는다 — 시트의 규칙이 아니라 뷰의 몫이다(BottomSheet
+              주석 참조). 이 상자는 오직 포커스를 받기 위한 것이다.
+
+              **각 뷰의 맨 위 버튼이 아니라 감싸는 상자에 준다.** 목록의 맨 위인
+              요약 스트립은 조회가 실패하면 아예 안 그려져서(위 `snapshots.isError`
+              분기) 「맨 위 요소」가 뷰마다 있다고 말할 수가 없다. 상자는 뷰가
+              셋 중 무엇으로 갈리든 언제나 있고 언마운트되지 않는다 — 「포커스를
+              옮긴 뒤 그 요소가 사라지면?」이 표현 불가능한 상태가 된다.
+
+              **이름을 주지 않은 것은 고른 것이다.** `tabindex="-1"`인 div는
+              암묵 role이 `generic`이고 `generic`은 **이름 부여가 금지된**
+              role이라, 나중에 `aria-label`만 얹으면 조용히 무시된다. 이름을
+              주려면 `role="group"`(또는 `region`)이 함께 와야 한다. 지금 이름을
+              안 주는 쪽을 고른 이유는 이 상자가 뷰의 경계가 아니라 포커스
+              받침대일 뿐이어서 — 뷰의 정체는 그 안 첫 요소(「목록으로」,
+              요약 스트립)가 이미 말한다.
+
+              포커스가 왔을 때 스크린리더가 실제로 무엇을 읽는지는 실기기로만
+              확인된다 — STATE.md의 미해결 항목. */}
+          <div ref={viewRef} tabIndex={-1}>
+            {sheetContent}
+          </div>
+          </BottomSheet>
+      </div>
+    </MotionProvider>
   )
 }

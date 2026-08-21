@@ -1,11 +1,14 @@
+import { m } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { t } from '../../i18n/t'
 import { useLocation } from '../../app/locationContext'
+import { MotionProvider } from '../../app/MotionProvider'
 import { findAreaByName } from '../../data/areas'
 import { useAreaSnapshot } from '../../data/queries'
 import type { FacilityLocation } from '../../domain/cityInfo'
 import {
   detailTabButtonId,
+  detailTabIndex,
   detailTabPanelId,
   type DetailTabId,
 } from '../../domain/detailTabs'
@@ -70,7 +73,22 @@ export function AreaDetailScreen({
   // 명소 이름을 `key`로 주므로 상태가 통째로 새로 만들어진다 — 여기서
   // effect로 되돌리지 않는 이유가 그것이다. effect로 하면 한 프레임 동안
   // 앞 명소의 탭이 새 명소의 데이터로 그려진다.
-  const [tab, setTab] = useState<DetailTabId>('summary')
+  const [tab, setTabId] = useState<DetailTabId>('summary')
+
+  /**
+   * 마지막 탭 이동이 오른쪽(`1`)이었나 왼쪽(`-1`)이었나. 패널이 어느 쪽에서
+   * 밀려 들어올지를 정한다.
+   *
+   * **렌더 중에 파생할 수 없다.** 지금 탭만 봐서는 어디서 왔는지 알 수 없고,
+   * 이전 값을 ref로 들면 같은 탭을 두 번 눌렀을 때(방향 0) 애매해진다.
+   * 바꾸는 순간에 함께 정하는 편이 상태가 하나 더 느는 대신 읽기 쉽다.
+   */
+  const [direction, setDirection] = useState(1)
+
+  function setTab(next: DetailTabId): void {
+    setDirection(detailTabIndex(next) >= detailTabIndex(tab) ? 1 : -1)
+    setTabId(next)
+  }
 
   /**
    * 지금 펼쳐 둔 CCTV의 스트림 주소.
@@ -125,7 +143,11 @@ export function AreaDetailScreen({
   // 받침대와 같다: `generic` role에는 이름을 못 붙이고, 이 화면의 정체는 바로
   // 아래 상단 바의 제목이 이미 말한다.
   return (
-    <div ref={rootRef} tabIndex={-1} className="flex size-full flex-col bg-surface">
+    // 위 「못 찾음」 갈래는 `m.*`를 안 쓰므로 감싸지 않는다. 근거는
+    // `app/MotionProvider.tsx` — 이 화면이 혼자 렌더돼도 탭 패널이
+    // `initial`(opacity 0)에 얼어붙지 않게 하려는 것이다.
+    <MotionProvider>
+      <div ref={rootRef} tabIndex={-1} className="flex size-full flex-col bg-surface">
       <DetailAppBar
         entry={entry}
         onBack={onBack}
@@ -151,12 +173,34 @@ export function AreaDetailScreen({
 
         {/* `tabIndex={0}`은 WAI-ARIA 탭 규약이다 — 패널 안에 초점 받을 것이
             하나도 없는 탭(빈 상태 한 줄)에서도 키보드 사용자가 내용을 읽을 수
-            있어야 한다. */}
-        <div
+            있어야 한다.
+
+            **`key={tab}`이 전환 애니메이션의 전부다.** 키가 바뀌면 React가 앞
+            패널을 버리고 새것을 마운트하므로, 새것의 `initial`부터 `animate`로
+            가는 길이 곧 「들어오는 동작」이 된다.
+
+            **`AnimatePresence`를 쓰지 않았다.** 나가는 애니메이션까지 넣으려면
+            앞 패널이 다 사라질 때까지 새 패널이 기다려야 하는데(`mode="wait"`),
+            탭은 페이지 이동과 달리 **같은 화면 안에서 내용만 갈리는 조작**이라
+            그 기다림이 그대로 지연으로 읽힌다. 게다가 언마운트가 비동기가 되어
+            「탭을 누르면 그 내용이 보인다」는 테스트가 전부 `waitFor`를 달아야
+            한다 — 값에 비해 치르는 것이 크다.
+
+            거리가 12px인 것은 **방향만 읽히면 충분**해서다. 그 이상은 글자가
+            실제로 흐르는 것처럼 보여 읽던 자리를 놓친다. `prefers-reduced-motion`
+            에서는 x가 꺼지고 페이드만 남는다(`MotionProvider`).
+
+            `role`·`id`·`aria-*`는 그대로다 — 애니메이션 상자를 따로 두면 패널의
+            정체가 한 겹 안으로 밀려 `aria-controls`가 빈 상자를 가리킨다. */}
+        <m.div
+          key={tab}
           id={detailTabPanelId(tab)}
           role="tabpanel"
           aria-labelledby={detailTabButtonId(tab)}
           tabIndex={0}
+          initial={{ opacity: 0, x: direction * 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
           className="py-4"
         >
           {tab === 'summary' && (
@@ -206,13 +250,14 @@ export function AreaDetailScreen({
           {tab === 'weather' && <WeatherPanel areaName={areaName} />}
           {tab === 'events' && <EventsPanel areaName={areaName} />}
           {tab === 'safety' && <SafetyPanel areaName={areaName} />}
-        </div>
+        </m.div>
 
         {/* **길찾기는 탭 밖이다.** 어느 탭에 있든 「그래서 갈까」는 같은
             질문이라, 요약에만 두면 날씨를 보다 가기로 마음먹은 사용자가
             탭을 되돌아가야 한다. */}
         <MapLinkButtons entry={entry} />
       </div>
-    </div>
+      </div>
+    </MotionProvider>
   )
 }

@@ -154,7 +154,11 @@ describe('App', () => {
     expect(screen.getByRole('region', { name: '지도' })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
-    expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
+    // 상세 층이 오른쪽으로 밀려 나가는 동안(0.22초) DOM에 남는다 —
+    // `AnimatePresence`가 나가는 애니메이션을 끝내고서야 언마운트한다.
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull(),
+    )
   })
 
   it('오늘의 서울은 탭이 아니라 시트 안 뷰다', async () => {
@@ -232,7 +236,14 @@ describe('App', () => {
     ).toBeGreaterThan(0)
   })
 
-  it('위치를 거부하면 여유한 순으로 내려가고 허용 안내가 뜬다', async () => {
+  // **정렬 줄이 사라졌다**(2026-08-21). 「거리순 / 여유한 순 / 붐비는 순」에서
+  // 뒤 둘이 혼잡도 칩과 같은 말을 하게 됐고(칩이 네 등급으로 갈렸다), 남은
+  // 「가까운 순」은 고를 것이 없어 기본이 됐다 — 근거는 `useNearbyAreas`.
+  //
+  // 그래서 여기서 재는 것도 「무엇이 눌려 있나」가 아니라 **「위치가 화면을
+  // 어떻게 바꾸나」**로 옮겼다. 좌표가 없으면 안내가 뜨고 「내 주변」이 잠기며,
+  // 허용하면 둘 다 풀린다.
+  it('위치를 거부하면 안내가 뜨고 내 주변이 잠긴다', async () => {
     render(<App />)
     await waitFor(() =>
       expect(
@@ -243,34 +254,39 @@ describe('App', () => {
     expect(
       screen.getByText('위치를 허용하면 가까운 곳부터 볼 수 있어요.'),
     ).toBeInTheDocument()
-    // 좌표가 없으면 거리순을 고를 수 없다.
-    expect(screen.getByRole('button', { name: '거리순' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '내 주변' })).toBeDisabled()
+    // 목록은 그래도 선다 — 쓸 수 있는 유일한 축인 혼잡도로 세운다.
+    expect(screen.getByRole('button', { name: /^전체 \d+$/ })).toBeEnabled()
   })
 
-  it('위치를 허용하면 거리순이 열리고 내 주변을 누를 수 있다', async () => {
+  it('위치를 허용하면 안내가 사라지고 내 주변을 누를 수 있다', async () => {
     grantLocation()
     render(<App />)
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: '거리순' })).toBeEnabled(),
+      expect(screen.getByRole('button', { name: '내 주변' })).toBeEnabled(),
     )
-    expect(screen.getByRole('button', { name: '내 주변' })).toBeEnabled()
     expect(screen.queryByText(/위치를 허용하면/)).not.toBeInTheDocument()
   })
 
-  it('정렬 기준을 바꾸면 선택된 기준이 옮겨간다', async () => {
+  // 정렬 줄이 있던 자리다. 목록을 좁히는 조작은 이제 칩 줄 하나이므로 그쪽이
+  // 실제로 배선돼 있는지를 앱 전체 렌더로 확인한다.
+  it('혼잡도 칩을 고르면 그 칩만 눌린 상태가 된다', async () => {
     grantLocation()
     render(<App />)
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: '거리순' })).toBeEnabled(),
+      expect(screen.getByRole('button', { name: /^전체 \d+$/ })).toBeEnabled(),
     )
 
-    await userEvent.click(screen.getByRole('button', { name: '붐비는 순' }))
+    await userEvent.click(screen.getByRole('button', { name: /^붐빔 \d+$/ }))
 
-    expect(screen.getByRole('button', { name: '붐비는 순' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /^붐빔 \d+$/ })).toHaveAttribute(
       'aria-pressed',
       'true',
+    )
+    expect(screen.getByRole('button', { name: /^전체 \d+$/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
     )
   })
 

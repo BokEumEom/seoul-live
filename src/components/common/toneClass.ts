@@ -49,6 +49,25 @@ export const TONE_DOT_CLASS: Readonly<Record<CongestionTone, string>> = {
 }
 
 /**
+ * 같은 점을 **primary로 채워진 칩 위**에 찍을 때. 고른 혼잡도 칩이 유일한
+ * 사용처다.
+ *
+ * 위 선명한 톤(`--color-calm` 등)을 그대로 쓸 수 없다. 그쪽은 밝은 지도
+ * 타일에서 튀라고 고른 값이라 `--color-primary`(#005bbf) 위에서는 어두운
+ * 색끼리 겹친다 — `bg-calm`(#006d37)은 1.2:1로 사실상 안 보인다.
+ *
+ * `-container` 쪽은 넷 다 아주 밝아(L≈0.8) 파랑 위에서 5.5:1 언저리다.
+ * 넷이 서로 비슷해 보이는 것은 문제가 되지 않는다 — **한 번에 하나만
+ * 고를 수 있어** 이웃과 견줄 일이 없고, 등급 이름은 바로 옆에 글자로 있다.
+ */
+export const TONE_DOT_ON_PRIMARY_CLASS: Readonly<Record<CongestionTone, string>> = {
+  calm: 'bg-calm-container',
+  normal: 'bg-normal-container',
+  busy: 'bg-busy-container',
+  crowded: 'bg-crowded-container',
+}
+
+/**
  * 히트맵 칸처럼 **글자 없이 색만으로** 값을 말하는 자리.
  *
  * 전용 토큰(`--color-heat-*`)을 쓴다. 예전에는 `-container` 둘 + 진한 색 둘을

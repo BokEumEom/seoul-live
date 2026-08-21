@@ -8,7 +8,6 @@ describe('useHomeFilters', () => {
     expect(result.current.query).toBe('')
     expect(result.current.category).toBe('전체')
     expect(result.current.filter).toBeNull()
-    expect(result.current.sort).toBe('distance')
     expect(result.current.selectedName).toBeNull()
   })
 
@@ -53,14 +52,6 @@ describe('useHomeFilters', () => {
     act(() => result.current.setSelectedName('강남역'))
     act(() => result.current.setQuery('공원'))
     expect(result.current.selectedName).toBeNull()
-  })
-
-  it('정렬을 바꾸면 선택은 유지된다', () => {
-    // 정렬은 목록에서 빼지 않는다. 순서만 바뀌므로 선택을 지울 이유가 없다.
-    const { result } = renderHook(() => useHomeFilters())
-    act(() => result.current.setSelectedName('강남역'))
-    act(() => result.current.setSort('busy'))
-    expect(result.current.selectedName).toBe('강남역')
   })
 
   it('바꾼 값이 실제로 남는다', () => {

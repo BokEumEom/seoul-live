@@ -1,13 +1,15 @@
-import { isUncrowded } from './congestion'
-import type { NearbyArea, Purpose } from './types'
+import { congestionTone, isUncrowded, type CongestionTone } from './congestion'
+import { CONGESTION_LEVELS, type NearbyArea, type Purpose } from './types'
 
-export type PresetKey = 'calm' | 'crowded' | 'kids' | 'date'
+export type PresetKey = CongestionTone | 'kids' | 'date'
 
-/** 필터 칩 한 줄의 값. 즐겨찾기는 프리셋이 아니지만 같은 줄에서 배타적으로
- * 동작한다.
+/** 필터 하나의 값. 「내 장소」는 프리셋이 아니지만 같은 자리를 배타적으로
+ * 나눠 쓴다 — 칩 줄에서 빠져 지도 FAB으로 옮겨 갔어도(2026-08-20) 켜지는
+ * 슬롯은 여전히 하나다.
  *
- * 교집합(내 장소 ∩ 아이와 나들이)을 지원하지 않는 이유는 30곳 규모에서
- * 결과가 0이 되기 쉬워서다. */
+ * 교집합(내 장소 ∩ 아이와 나들이)을 지원하지 않는 이유는 결과가 0이 되기
+ * 쉬워서다. 목적 태그가 붙은 곳이 121곳 중 19곳뿐이라 **혼잡도 칩과 겹치면
+ * 특히 그렇다** — 「여유 ∩ 데이트」는 시간대에 따라 실제로 0이 된다. */
 export type FilterKey = 'fav' | PresetKey
 
 export interface Preset {
@@ -20,36 +22,52 @@ function hasPurpose(area: NearbyArea, purpose: Purpose): boolean {
   return area.entry.purposes?.includes(purpose) ?? false
 }
 
-// 스냅샷이 없는 명소는 어느 프리셋에도 걸리지 않는다. 혼잡도를 모르는데
-// "한산하다"고 말할 수 없다. 지도 전체 보기에서는 회색 "정보 없음" 마커로
-// 남지만 프리셋을 켜면 빠진다.
+/**
+ * 혼잡도 네 단계가 그대로 네 개의 프리셋이 된다.
+ *
+ * **표에서 파생시킨다.** `CONGESTION_LEVELS`에 단계가 하나 늘면 칩도 저절로
+ * 하나 는다 — 손으로 적으면 등급은 다섯인데 칩은 넷인 화면이 조용히 만들어진다.
+ *
+ * **라벨이 등급 그 자체다.** 예전에는 「한적」(여유+보통)·「붐빔」(나머지) 둘로
+ * 접어 뒀는데, 칩은 「한적」이라 말하고 바로 아래 목록의 배지는 「여유」라
+ * 말했다. 같은 것을 두 낱말로 부르면 사용자는 그 둘이 다른 것이라고 읽는다.
+ * 이제 칩·배지·지도 마커가 한 낱말을 쓴다.
+ *
+ * 키는 등급이 아니라 톤(`calm`/`normal`/`busy`/`crowded`)이다. 주소·저장소에
+ * 실릴 수 있는 값이라 한국어를 안 쓰고, `CongestionTone`을 재사용하면 톤과
+ * 프리셋이 어긋날 자리 자체가 없어진다.
+ *
+ * 스냅샷이 없거나 등급이 `null`인 명소는 어느 칩에도 안 걸린다. 혼잡도를
+ * 모르는데 「여유」라고 말할 수 없다 — 전체 보기에서는 회색 「정보 없음」
+ * 마커로 남지만 칩을 켜면 빠진다.
+ */
+const LEVEL_PRESETS: readonly Preset[] = CONGESTION_LEVELS.map((level) => ({
+  key: congestionTone(level),
+  label: level,
+  matches: (area: NearbyArea) => area.snapshot?.congestion === level,
+}))
+
+/**
+ * 혼잡도 칩의 키. **칩 줄이 어느 칩에 톤 점을 찍을지 이걸로 가른다.**
+ *
+ * `CongestionTone`을 그대로 좁혀 쓴다 — 목적 칩(kids·date)에는 톤이 없고,
+ * 톤이 있는 것은 등급에서 나온 넷뿐이다.
+ */
+export function isLevelKey(key: FilterKey): key is CongestionTone {
+  return LEVEL_PRESETS.some((preset) => preset.key === key)
+}
+
 export const PRESETS: readonly Preset[] = [
-  // **상태 둘이 목적 앞이다**(2026-08-20, 새 시안 stitch_ui_ux/121·_1).
+  // **혼잡도 넷이 목적 앞이다**(2026-08-20, 새 시안 stitch_ui_ux/_1 상단).
   //
   // 목적 칩(아이와 나들이·데이트)은 카탈로그의 `purposes` 태그에 기대는데,
   // 명소가 121곳으로 늘면서 **태그가 붙은 곳이 19곳뿐**이다 — 102곳은 어떤
-  // 목적 칩에도 안 걸린다. 상태 칩은 태그가 필요 없다: 혼잡도는 121곳 전부에
+  // 목적 칩에도 안 걸린다. 혼잡도 칩은 태그가 필요 없다: 등급은 121곳 전부에
   // 대해 매 5분 들어온다.
   //
   // 그리고 이게 이 앱의 첫 질문이다. 「어디가 한산한가」는 목적보다 먼저 묻는
   // 것이고, 예전 칩 줄에는 그 질문에 곧장 답하는 칩이 하나도 없었다.
-  {
-    key: 'calm',
-    label: '한적',
-    // `isUncrowded`가 여유와 보통을 함께 본다 — 「거기 가도 좋다」를 뜻하는
-    // 자리에서 쓰는 술어다. 모르는 곳은 빠진다(그 함수의 주석).
-    matches: (area) => area.snapshot !== null && isUncrowded(area.snapshot.congestion),
-  },
-  {
-    key: 'crowded',
-    label: '붐빔',
-    // **예전 「지금 핫플」이 있던 자리다.** 그쪽은 `붐빔` 하나만 봤는데,
-    // 상태 축의 반대편으로 세우려면 「한적」의 여집합이라야 짝이 맞는다 —
-    // 두 칩을 합치면 혼잡도를 아는 곳 전부가 된다.
-    //
-    // 이름이 등급과 같은 낱말인 것은 시안의 것이고, 실제로 그 뜻이다.
-    matches: (area) => area.snapshot !== null && !isUncrowded(area.snapshot.congestion),
-  },
+  ...LEVEL_PRESETS,
   {
     key: 'kids',
     label: '아이와 나들이',
@@ -138,6 +156,8 @@ export function filterCounts(
   return {
     fav: count('fav'),
     calm: count('calm'),
+    normal: count('normal'),
+    busy: count('busy'),
     crowded: count('crowded'),
     kids: count('kids'),
     date: count('date'),

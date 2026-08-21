@@ -1,17 +1,15 @@
 import { useCallback, useState } from 'react'
 import type { FilterKey } from '../domain/presets'
-import type { CategoryFilterValue, SortMode } from './useNearbyAreas'
+import type { CategoryFilterValue } from './useNearbyAreas'
 
 export interface HomeFilters {
   readonly query: string
   readonly setQuery: (next: string) => void
   readonly category: CategoryFilterValue
   readonly setCategory: (next: CategoryFilterValue) => void
-  /** 즐겨찾기와 목적 프리셋이 한 칸을 나눠 쓴다 — 칩 줄이 배타적이다. */
+  /** 혼잡도 칩·목적 칩·「내 장소」 FAB이 한 칸을 나눠 쓴다 — 전부 배타적이다. */
   readonly filter: FilterKey | null
   readonly setFilter: (next: FilterKey | null) => void
-  readonly sort: SortMode
-  readonly setSort: (next: SortMode) => void
   readonly selectedName: string | null
   readonly setSelectedName: (next: string | null) => void
 }
@@ -29,14 +27,15 @@ export function useHomeFilters(
   const [query, setQueryRaw] = useState('')
   const [category, setCategoryRaw] = useState<CategoryFilterValue>('전체')
   const [filter, setFilterRaw] = useState<FilterKey | null>(null)
-  const [sort, setSort] = useState<SortMode>('distance')
   const [selectedName, setSelectedName] = useState<string | null>(initialSelectedName)
 
   // 목록에서 빠질 수 있는 조작은 선택을 해제한다. 걸러져 사라진 명소의
-  // 상세가 남으면 목록에 없는 곳의 요약이 떠 있는 상태가 된다.
+  // 요약 카드가 남으면 목록에 없는 곳이 시트에 떠 있는 상태가 된다.
   //
-  // 정렬은 목록에서 빼지 않으므로 선택을 지우지 않는다. 시트 단계도 마찬가지라
-  // 이 훅이 들고 있지 않다 — HomeScreen의 지역 상태다.
+  // 시트 단계는 이 훅이 들고 있지 않다 — HomeScreen의 지역 상태다.
+  // (정렬도 같은 이유로 여기 있었는데 2026-08-20에 없어졌다. 혼잡도 칩이
+  // 네 등급으로 갈리면서 「여유한 순·붐비는 순」이 칩과 같은 말이 됐고,
+  // 남은 「가까운 순」은 고를 것이 없어 `buildNearbyList`의 기본이 됐다.)
   const setQuery = useCallback((next: string) => {
     setQueryRaw(next)
     setSelectedName(null)
@@ -59,8 +58,6 @@ export function useHomeFilters(
     setCategory,
     filter,
     setFilter,
-    sort,
-    setSort,
     selectedName,
     setSelectedName,
   }

@@ -54,6 +54,18 @@ export function isDetailTabId(value: string): value is DetailTabId {
 }
 
 /**
+ * 줄에서 몇 번째인가. **전환 애니메이션의 방향이 여기서 나온다** — 오른쪽
+ * 탭으로 가면 새 패널이 오른쪽에서 들어오고, 왼쪽이면 반대다. 방향이 없으면
+ * 「탭을 옮겼다」와 「같은 탭이 새로 그려졌다」가 화면에서 구별되지 않는다.
+ *
+ * 화면 쪽이 `DETAIL_TABS.findIndex`를 직접 부르지 않게 여기 둔다. 두 곳이
+ * 각자 찾으면 한쪽이 목록을 거른 뒤의 자리를 세는 실수가 생긴다.
+ */
+export function detailTabIndex(id: DetailTabId): number {
+  return DETAIL_TABS.findIndex((tab) => tab.id === id)
+}
+
+/**
  * 탭 버튼과 패널이 서로를 가리키는 id. **양쪽이 이 함수를 나눠 써야 한다** —
  * 문자열을 각자 지으면 한쪽만 고쳤을 때 `aria-controls`가 조용히 아무 데도
  * 안 가리키고, 그 상태는 눈으로는 멀쩡해 보인다.

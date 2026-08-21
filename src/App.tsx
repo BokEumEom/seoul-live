@@ -56,6 +56,10 @@ export default function App() {
   return (
     <QueryProvider>
       <LocationProvider>
+        {/* 애니메이션 프로바이더는 여기 없다. 애니메이션을 쓰는 화면이 스스로
+            들고 있다 — 근거는 `app/MotionProvider.tsx`(요약: `m.*`가
+            `LazyMotion` 없이 렌더되면 `initial` 스타일에 얼어붙어 내용이
+            통째로 안 보인다). */}
         <AppShell />
       </LocationProvider>
     </QueryProvider>
