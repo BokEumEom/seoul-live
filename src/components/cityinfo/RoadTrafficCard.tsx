@@ -1,16 +1,20 @@
 import { t } from '../../i18n/t'
-import type { RoadTraffic } from '../../domain/cityInfo'
+import { roadIndexTone, type RoadTraffic } from '../../domain/cityInfo'
+import { TONE_TEXT_CLASS } from '../common/toneClass'
 
 interface Props {
   readonly traffic: RoadTraffic
 }
 
-// **지표에 색을 붙이지 않는다.** 혼잡도와 통합대기환경등급은 값의 종류를 알기
-// 때문에 네 톤에 겹칠 수 있지만(`congestionTone`·`airGradeTone`), 도로소통
-// 지표는 공식 명세에 출력명만 있고 값 목록이 없다. 짐작으로 매핑하면 처음 보는
-// 값에서 색이 안 붙는 게 아니라 **틀린 색이 붙는다.** 근거와 확인법은
-// `domain/cityInfo.ts`의 `RoadTraffic.index` 주석에 있다.
+// **2026-08-21에 지표에 색이 붙었다.** 그전까지는 「값 목록을 모르니 짐작으로
+// 매핑하면 틀린 색이 붙는다」로 안 붙였는데, 실호출 응답에서 값을 확인하고
+// `roadIndexTone`이 **아는 값에만** 색을 준다 — 모르는 값은 `null`이라 색이
+// 없을 뿐 틀리지 않는다. 근거는 그 함수의 주석.
+//
+// 요약 카드와 같은 함수를 쓴다. 두 곳이 각자 매핑을 들면 한쪽만 고쳤을 때
+// 같은 도로가 카드에서는 초록이고 절에서는 검정인 화면이 된다.
 export function RoadTrafficCard({ traffic }: Props) {
+  const tone = roadIndexTone(traffic.index)
   return (
     <div>
       {(traffic.index !== '' || traffic.speed !== null) && (
@@ -23,7 +27,9 @@ export function RoadTrafficCard({ traffic }: Props) {
               칩과 절이 같은 말을 한다 — 근거는 `domain/cityInfoSummary.ts`.
               모르는 값이면 `t()`가 키를 그대로 돌려줘 「도로 ○○」로 뜬다. */}
           {traffic.index !== '' && (
-            <h4 className="text-headline-sm text-on-surface">
+            <h4
+              className={`text-headline-sm ${tone === null ? 'text-on-surface' : TONE_TEXT_CLASS[tone]}`}
+            >
               {t(`도로 ${traffic.index}`)}
             </h4>
           )}

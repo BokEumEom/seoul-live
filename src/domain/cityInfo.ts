@@ -122,11 +122,10 @@ export interface RoadTraffic {
    * ROAD_TRAFFIC_IDX — 전체도로소통평균현황.
    *
    * **문자열 그대로 보여주고 톤에 겹치지 않는다.** 대기등급을 혼잡도 네 톤에
-   * 얹은 것(`TONE_BY_AIR_GRADE`)과 다르게 가는 이유는 값 목록을 모르기
-   * 때문이다 — 공식 명세(`서울시+실시간+도시데이터.xls`)에 이 필드의 출력명만
-   * 있고 값의 종류가 없다. 「원활」·「서행」·「정체」로 짐작해 매핑을 넣으면
-   * 실제 값이 다를 때 **화면에 아무 톤도 안 붙는 게 아니라 틀린 톤이 붙는다.**
-   * 인증키가 나오면 실제 값을 확인하고 그때 톤을 붙일지 정한다(STATE.md).
+   * **2026-08-21에 톤이 붙었다** — `roadIndexTone`. 「인증키가 나오면 실제
+   * 값을 확인하고 그때 정한다」던 자리이고, 실호출 응답에서 `정체`·`서행`을
+   * 확인했다. 명세에 값 목록이 없는 것은 그대로라 **표에 없는 값은 색이
+   * 안 붙는다**(`?? null`) — 미룰 때 걱정한 「틀린 톤이 붙는다」를 그것이 막는다.
    */
   readonly index: string
   /** ROAD_TRAFFIC_SPD — 전체 평균 속도(km/h로 읽는다) */
@@ -242,6 +241,35 @@ const TONE_BY_AIR_GRADE: Readonly<Record<string, CongestionTone>> = {
 /** 모르는 등급은 null이다. 임의로 'normal'에 떨어뜨리면 "보통"이라고 단정하게 된다. */
 export function airGradeTone(grade: string): CongestionTone | null {
   return TONE_BY_AIR_GRADE[grade.trim()] ?? null
+}
+
+/**
+ * 도로소통 지표의 톤. **2026-08-21에 붙였다** — `RoadTraffic.index`의 주석이
+ * 「인증키가 나오면 실제 값을 확인하고 그때 톤을 붙일지 정한다」였고, 그 조건이
+ * 충족됐다.
+ *
+ * **확인한 것:** 실호출 응답(`docs/fixtures/citydata-광화문덕수궁.json`)에
+ * 전체 지표 `정체`, 구간 지표 `정체`·`서행`이 들어 있다. `원활`은 사전
+ * (`i18n/en.ts`)에 이미 있고 `i18n.test.ts`의 `ROAD_STATE_LABELS`가 셋을
+ * 붙들어 둔다.
+ *
+ * **여전히 명세에는 값 목록이 없다**(`seoul_realdata.md`의 「값 목록이 명세에
+ * 없다」 항목). 그래서 표에 없는 값은 `null`이다 — 미룰 때 걱정했던 것은
+ * 「처음 보는 값에 **틀린 색**이 붙는 것」이었는데, `?? null`이 정확히 그것을
+ * 막는다. 색이 안 붙을 뿐 틀리지는 않는다.
+ *
+ * **네 톤 중 `normal`을 안 쓴다.** 도로 지표에는 중립에 해당하는 값이 없다 —
+ * `서행`은 이미 「막히기 시작했다」라서 `normal`(보통)로 적으면 실제보다
+ * 낫게 말하게 된다. 값이 셋이므로 톤도 셋이다.
+ */
+const TONE_BY_ROAD_INDEX: Readonly<Record<string, CongestionTone>> = {
+  원활: 'calm',
+  서행: 'busy',
+  정체: 'crowded',
+}
+
+export function roadIndexTone(index: string): CongestionTone | null {
+  return TONE_BY_ROAD_INDEX[index.trim()] ?? null
 }
 
 // 여유 면수 비율의 경계. 30% 이상이면 그냥 가도 되고, 10% 미만이면 도착해서

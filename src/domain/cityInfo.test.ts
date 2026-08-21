@@ -7,6 +7,7 @@ import {
   groupSubwayArrivals,
   hasAnyCityInfo,
   parkingTone,
+  roadIndexTone,
   sortBikesByStock,
   sortParkingByAvailable,
   type BikeStation,
@@ -54,6 +55,31 @@ describe('airGradeTone', () => {
   it('모르는 등급은 null이다', () => {
     expect(airGradeTone('최악')).toBeNull()
     expect(airGradeTone('')).toBeNull()
+  })
+})
+
+describe('roadIndexTone', () => {
+  // **`normal`이 없는 것이 이 표의 성질이다.** 도로 지표에는 중립에 해당하는
+  // 값이 없다 — `서행`은 이미 「막히기 시작했다」라서 `normal`(보통)로 적으면
+  // 실제보다 낫게 말하게 된다. 셋을 한꺼번에 세는 이유는 하나만 보면 표를
+  // 통째로 지우고 그 하나만 남겨도 통과해서다.
+  it('아는 세 값을 톤으로 옮긴다', () => {
+    expect(roadIndexTone('원활')).toBe('calm')
+    expect(roadIndexTone('서행')).toBe('busy')
+    expect(roadIndexTone('정체')).toBe('crowded')
+  })
+
+  it('앞뒤 공백을 무시한다', () => {
+    expect(roadIndexTone(' 정체 ')).toBe('crowded')
+  })
+
+  // **이 단언이 색을 붙이기로 한 근거의 전부다.** 명세에 값 목록이 없다는
+  // 사실은 그대로이고(`seoul_realdata.md`), 미룰 때 걱정한 것은 「처음 보는
+  // 값에 **틀린 색**이 붙는 것」이었다. `null`이면 색이 안 붙을 뿐 틀리지
+  // 않는다 — 이 줄이 죽으면 그 걱정이 되살아난다.
+  it('모르는 값은 null이다', () => {
+    expect(roadIndexTone('일시정지')).toBeNull()
+    expect(roadIndexTone('')).toBeNull()
   })
 })
 

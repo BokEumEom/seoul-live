@@ -1,6 +1,11 @@
 import { t } from '../../i18n/t'
 import { congestionTone, type CongestionTone } from '../../domain/congestion'
-import { airGradeTone, formatTemperature, type CityInfo } from '../../domain/cityInfo'
+import {
+  airGradeTone,
+  formatTemperature,
+  roadIndexTone,
+  type CityInfo,
+} from '../../domain/cityInfo'
 import {
   parkingVacancyRate,
   subwayLineCount,
@@ -127,6 +132,10 @@ export function SummaryGrid({ snapshot, cityInfo, onOpenTab }: Props) {
             // 키로 써도 뜻이 안 겹친다. `i18n.test.ts`의 `ROAD_STATE_LABELS`가
             // 이 세 키를 사전에 붙들어 둔다.
             value: t(road.index),
+            // 시안(stitch_ui_ux/_2)의 「원활」이 초록이다. 2026-08-21에 붙였고
+            // 근거는 `roadIndexTone` — 대기질과 같은 표를 쓰므로 한 화면에서
+            // 「원활」과 「좋음」과 「여유」가 같은 초록이다. 셋 다 「가도 된다」다.
+            valueClassName: toneTextClass(roadIndexTone(road.index)),
             caption:
               road.speed === null
                 ? undefined
@@ -185,6 +194,14 @@ export function SummaryGrid({ snapshot, cityInfo, onOpenTab }: Props) {
               totalBikes(cityInfo.bikes) === null
                 ? t('{개수}곳', { 개수: cityInfo.bikes.length })
                 : t('{대수}대', { 대수: totalBikes(cityInfo.bikes) ?? 0 }),
+            // 시안이 이 값만 파랑으로 둔다. **혼잡도 톤이 아니라 primary다** —
+            // 「지금 빌릴 수 있다」는 좋고 나쁨의 눈금이 아니라 **할 수 있는
+            // 일**이라, 네 톤에 얹으면 「여유」와 같은 뜻으로 읽힌다.
+            //
+            // 대수를 못 세어 대여소 수로 떨어지면 색을 뺀다. 그 숫자는 자전거가
+            // 있는지를 말하지 않아서 강조할 것이 없다.
+            valueClassName:
+              totalBikes(cityInfo.bikes) === null ? undefined : 'text-primary',
             caption:
               totalBikes(cityInfo.bikes) === null ? t('대여소') : t('대여 가능'),
             tab: 'nearby' as DetailTabId,

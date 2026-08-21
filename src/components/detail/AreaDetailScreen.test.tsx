@@ -7,6 +7,7 @@ import { DETAIL_TABS } from '../../domain/detailTabs'
 import type { AreaCongestion, AreaSnapshot } from '../../domain/types'
 import { reset } from '../../hooks/favoritesStore'
 import { findAreaByName } from '../../data/areas'
+import { TONE_TEXT_CLASS } from '../common/toneClass'
 import { AreaDetailScreen } from './AreaDetailScreen'
 
 vi.mock('../../data/queries', () => ({
@@ -469,6 +470,53 @@ describe('AreaDetailScreen — 요약 카드', () => {
     )
     renderDetail()
     expect(within(summaryCard(/따릉이/)).getByText('18대')).toBeInTheDocument()
+  })
+
+  // 시안(stitch_ui_ux/_2)이 이 값만 파랑으로 둔다. **혼잡도 톤이 아니라
+  // primary인 것이 요점이다** — 「지금 빌릴 수 있다」는 좋고 나쁨의 눈금이
+  // 아니라 할 수 있는 일이라, 네 톤에 얹으면 「여유」와 같은 뜻으로 읽힌다.
+  it('대수를 셀 수 있으면 파랑이고, 못 세면 색이 없다', () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        bikes: [{ name: '가', coords: null, bikes: 6, racks: 21 }],
+      }),
+    )
+    const { unmount } = renderDetail()
+    expect(within(summaryCard(/따릉이/)).getByText('6대')).toHaveClass('text-primary')
+    unmount()
+
+    // 대수를 모르면 대여소 수로 떨어진다. 그 숫자는 자전거가 있는지를 말하지
+    // 않으므로 강조할 것이 없다 — 여기가 갈리지 않으면 위 단언은 「언제나
+    // 파랑」과 구별되지 않는다.
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        bikes: [{ name: '가', coords: null, bikes: null, racks: 21 }],
+      }),
+    )
+    renderDetail()
+    expect(within(summaryCard(/따릉이/)).getByText('1곳')).not.toHaveClass('text-primary')
+  })
+
+  // 요약 카드와 교통 탭의 절이 **같은 함수**를 써야 한다. 두 곳이 각자 매핑을
+  // 들면 한쪽만 고쳤을 때 같은 도로가 카드에서는 초록이고 절에서는 검정이다.
+  it('도로 카드가 지표의 톤을 입는다', () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        roadTraffic: {
+          index: '원활',
+          speed: 24,
+          message: '',
+          updatedAt: '2026-08-21 15:00',
+        },
+      }),
+    )
+    renderDetail()
+    expect(within(summaryCard(/도로/)).getByText('원활')).toHaveClass(
+      TONE_TEXT_CLASS.calm,
+    )
   })
 
   // 열차 수를 세면 「12」가 무엇의 12인지 알 수 없다.

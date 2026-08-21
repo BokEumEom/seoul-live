@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { RoadTraffic } from '../../domain/cityInfo'
+import { TONE_TEXT_CLASS } from '../common/toneClass'
 import { RoadTrafficCard } from './RoadTrafficCard'
 
 function traffic(overrides: Partial<RoadTraffic> = {}): RoadTraffic {
@@ -14,6 +15,33 @@ function traffic(overrides: Partial<RoadTraffic> = {}): RoadTraffic {
 }
 
 describe('RoadTrafficCard', () => {
+  // **2026-08-21에 색이 붙었다**(`roadIndexTone`). 세 값을 한꺼번에 세는
+  // 이유는 하나만 보면 톤 표를 통째로 지우고 그 하나만 남겨도 통과해서다.
+  //
+  // 톤 값을 여기 옮겨 적지 않고 `TONE_TEXT_CLASS`에서 읽는다 — 옮겨 적으면
+  // 색을 고칠 때 테스트도 함께 고치게 되어 아무것도 못 죽인다(`tokens.test.ts`가
+  // 같은 이유로 `index.css`를 읽는다).
+  it.each([
+    ['원활', 'calm'],
+    ['서행', 'busy'],
+    ['정체', 'crowded'],
+  ] as const)('%s는 %s 톤으로 그린다', (index, tone) => {
+    render(<RoadTrafficCard traffic={traffic({ index })} />)
+    expect(screen.getByText(`도로 ${index}`)).toHaveClass(TONE_TEXT_CLASS[tone])
+  })
+
+  // **모르는 값에는 색이 안 붙는다.** 명세에 값 목록이 없다는 사실은 그대로라
+  // (`seoul_realdata.md`), 색을 붙이기로 한 근거가 이 성질에 통째로 걸려
+  // 있다 — 처음 보는 값에 **틀린 색**이 붙으면 안 되고, 안 붙는 것은 괜찮다.
+  it('모르는 지표에는 톤을 붙이지 않는다', () => {
+    render(<RoadTrafficCard traffic={traffic({ index: '일시정지' })} />)
+    const heading = screen.getByText('도로 일시정지')
+    expect(heading).toHaveClass('text-on-surface')
+    for (const tone of Object.values(TONE_TEXT_CLASS)) {
+      expect(heading).not.toHaveClass(tone)
+    }
+  })
+
   it('지표와 평균 속도를 보여준다', () => {
     render(<RoadTrafficCard traffic={traffic()} />)
     // 「서행」이 아니라 「도로 서행」이다 — 값을 그대로 키로 쓰면 `원활`이
