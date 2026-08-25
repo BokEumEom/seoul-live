@@ -20,11 +20,60 @@ function event(overrides: Partial<CulturalEvent> = {}): CulturalEvent {
 const noop = () => undefined
 
 describe('EventList', () => {
-  it('이름·기간·장소를 한 줄로 묶어 적는다', () => {
+  // **기간과 장소가 서로 다른 줄이다**(2026-08-25, 시안 `_7`). 점으로 이어
+  // 붙이면 「2026-08-18~2026-08-28 · 광화문광장 (서울특별시 종로구 세종대로
+  // 175)」이 390px에서 접히면서 어디까지가 날짜인지가 안 보인다.
+  it('이름·기간·장소를 저마다의 줄에 적는다', () => {
     render(<EventList events={[event()]} onShowOnMap={noop} />)
 
     expect(screen.getByText('서울 야외도서관')).toBeInTheDocument()
-    expect(screen.getByText('2026-08-20~2026-08-24 · 광화문광장')).toBeInTheDocument()
+    expect(screen.getByText('2026-08-20~2026-08-24')).toBeInTheDocument()
+    expect(screen.getByText('광화문광장')).toBeInTheDocument()
+    expect(screen.queryByText('2026-08-20~2026-08-24 · 광화문광장')).toBeNull()
+  })
+
+  /**
+   * **빈 줄은 글자가 없어서 글자로는 못 잡는다.** 가드를 지워도
+   * `queryByText`로는 아무 일이 없어 보이는데(2026-08-25 변이 실험에서 실제로
+   * 살아남았다), 화면에는 **값 없는 시계 아이콘**이 덩그러니 남는다.
+   *
+   * `FacilityFact`는 `<p>` 안에 글리프를 담고 지도 버튼은 `<button>` 안에
+   * 담으므로, `p svg`를 세면 사실 줄만 세어진다.
+   */
+  it('기간이 비면 그 줄을 통째로 만들지 않는다', () => {
+    const { container } = render(
+      <EventList events={[event({ period: '' })]} onShowOnMap={noop} />,
+    )
+
+    expect(container.querySelectorAll('li p svg')).toHaveLength(1)
+    expect(screen.getByText('광화문광장')).toBeInTheDocument()
+  })
+
+  it('장소가 비면 그 줄을 통째로 만들지 않는다', () => {
+    const { container } = render(
+      <EventList events={[event({ place: '' })]} onShowOnMap={noop} />,
+    )
+
+    expect(container.querySelectorAll('li p svg')).toHaveLength(1)
+    expect(screen.getByText('2026-08-20~2026-08-24')).toBeInTheDocument()
+  })
+
+  // **한 행사가 한 카드다.** 테두리가 없으면 포스터가 있는 행사와 없는 행사가
+  // 섞였을 때 어디서 하나가 끝나고 다음이 시작하는지가 안 보인다 — 그림이
+  // 구분선 노릇을 하다가 그림 없는 항목에서 그 노릇이 사라진다.
+  it('행사마다 테두리를 두른 카드를 만든다', () => {
+    render(
+      <EventList
+        events={[event({ name: '첫째' }), event({ name: '둘째', thumbnail: '' })]}
+        onShowOnMap={noop}
+      />,
+    )
+    const cards = screen.getAllByRole('listitem')
+
+    expect(cards).toHaveLength(2)
+    for (const card of cards) {
+      expect(card.className).toMatch(/\bborder\b/)
+    }
   })
 
   // 시안 `_7`이 카드마다 그리는 그림이다. 실호출 53건 전부에 있었다.

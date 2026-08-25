@@ -35,7 +35,11 @@ export function EventThumbnail({ src }: Props) {
       }}
       // 비율을 고정한다. 안 그러면 그림이 도착하는 순간 카드 높이가 튀어
       // 아래 행사들이 손가락 밑에서 밀린다(레이아웃 시프트).
-      className="aspect-[16/9] w-full rounded-card bg-surface-container object-cover"
+      // **`rounded`가 없다.** 2026-08-25에 카드가 생기면서 그림이 카드의 위
+      // 두 모서리를 차지하게 됐고, 모서리는 카드의 `overflow-hidden`이 깎는다 —
+      // 여기서 또 깎으면 아래 두 모서리까지 둥글어져 그림이 카드 안에 떠 있는
+      // 것처럼 보인다.
+      className="aspect-[16/9] w-full bg-surface-container object-cover"
     />
   )
 }
