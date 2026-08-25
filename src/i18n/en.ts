@@ -127,12 +127,17 @@ export const EN: Readonly<Record<string, string>> = {
   '아직 비교할 기록이 부족해요.': 'Not enough history to compare yet.',
 
   // ── 상세: 인구 구성 ──
-  '지금 누가 있나': "Who's here now",
-  '남 {남}% · 여 {여}%': '{남}% male · {여}% female',
-  '비상주 {비율}%': '{비율}% visitors',
+  // 시안 `_3`의 세 카드 제목. 「거주 비율」은 시안에 없는 넷째 값이지만
+  // (`RESNT_PPLTN_RATE`) 같은 막대로 그리므로 같은 어투로 적는다.
+  '성별 비율': 'By gender',
+  '연령대별 비율': 'By age',
+  '거주 비율': 'Residents vs visitors',
+  // `남성`·`여성`은 상권 카드 쪽에 이미 있다 — 사전 키가 한국어 원문이라 한
+  // 항목이 두 자리를 함께 맡는다(`병원`과 같은 처리).
+  상주: 'Residents',
+  비상주: 'Visitors',
   '외지인이 많아요': 'Mostly visitors',
   '동네 생활권이에요': 'Mostly locals',
-  '연령대 비율: {내용}': 'Age breakdown: {내용}',
   '0~9세': 'Under 10',
   '10대': '10s',
   '20대': '20s',

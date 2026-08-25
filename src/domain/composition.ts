@@ -30,6 +30,16 @@ export interface PopulationComposition {
   readonly ageRates: readonly number[]
 }
 
+/**
+ * 성별 두 칸의 이름. **화면이 변수로 넘기므로 도메인에 둔다** — `t('남성')`처럼
+ * 리터럴로 부르는 자리가 없어서 사전 완결성 검사가 정적으로는 못 찾는다.
+ * `AGE_LABELS`·`COMMERCE_GENDER_LABELS`와 같은 규약이다.
+ */
+export const GENDER_LABELS: readonly string[] = ['남성', '여성']
+
+/** 상주·비상주 두 칸의 이름. 위와 같은 이유로 여기 있다. */
+export const RESIDENCE_SHARE_LABELS: readonly string[] = ['상주', '비상주']
+
 export const AGE_LABELS: readonly string[] = [
   '0~9세',
   '10대',

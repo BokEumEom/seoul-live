@@ -2,7 +2,6 @@ import { t } from '../../i18n/t'
 import { findQuietTime } from '../../domain/forecast'
 import type { AreaSnapshot } from '../../domain/types'
 import { Icon } from '../common/Icon'
-import { PopulationCard } from './PopulationCard'
 
 interface Props {
   readonly snapshot: AreaSnapshot
@@ -16,15 +15,18 @@ interface Props {
 // 되면서 히어로가 **탭과 무관하게 늘 위에 있으므로**, 같은 말을 인구 탭에서
 // 한 번 더 하면 한 화면에 두 번 적히는 꼴이 된다.
 //
-// 그래서 남은 것은 셋이다: **언제 비면 좋은지**(여유 예상), **이 수치를 얼마나
-// 믿을지**(대체값 주의), **지금 누가 있는지**(인구 구성). 셋 다 숫자를 읽은
-// **다음에** 궁금해지는 것들이라 이 차례가 맞다.
+// 그래서 남은 것은 둘이다: **언제 비면 좋은지**(여유 예상)와 **이 수치를 얼마나
+// 믿을지**(대체값 주의). 둘 다 숫자를 읽은 **다음에** 궁금해지는 것들이다.
+//
+// **인구 구성이 2026-08-25에 여기서 나갔다.** 시안(`_3`)이 성별·연령을 각자
+// 테두리를 가진 카드로 그리는데, 이 카드 **안**에 있으면 카드 안의 카드가 되어
+// 그 모양을 낼 수가 없다. 지금은 `PopulationPanel`이 나란히 놓는다.
 export function CongestionCard({ snapshot }: Props) {
   const quietHour = findQuietTime(snapshot.congestion, snapshot.forecasts)
 
-  // 셋이 다 없으면 제목만 남은 빈 상자가 된다 — 여백만 먹고 화면에는 아무
-  // 말도 안 한다. 실제로 생기는 상태다: 예보가 없고 구성비를 못 읽은 명소.
-  if (quietHour === null && snapshot.replaced !== true && snapshot.composition === null) {
+  // 둘 다 없으면 제목만 남은 빈 상자가 된다 — 여백만 먹고 화면에는 아무
+  // 말도 안 한다. 실제로 생기는 상태다: 예보가 없고 실측으로 온 명소.
+  if (quietHour === null && snapshot.replaced !== true) {
     return null
   }
 
@@ -56,12 +58,6 @@ export function CongestionCard({ snapshot }: Props) {
         <p className={`text-label-sm text-on-surface-variant ${quietHour === null ? '' : 'mt-4'}`}>
           {t('이 수치는 실측이 아니라 대체값이에요.')}
         </p>
-      )}
-
-      {/* 인구 구성은 이 카드 안이다. 근거(폴드 예산·PopulationCard의 여백 규약·
-          래퍼가 만드는 빈 칸)는 계획서 Task 8 Step 6의 정정 블록에 한 벌 있다. */}
-      {snapshot.composition !== null && (
-        <PopulationCard composition={snapshot.composition} />
       )}
     </section>
   )

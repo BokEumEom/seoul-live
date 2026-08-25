@@ -596,7 +596,10 @@ describe('AreaDetailScreen — 인구 탭', () => {
     // 히어로와 「평소 대비」 줄이 같은 숫자를 적는다 — 시안도 `_2`와 `_3`에
     // 둘 다 적고, 여기서는 그 되풀이가 의도임을 함께 잠근다.
     expect(screen.getAllByText(/74,000~76,000명/)).toHaveLength(2)
-    expect(screen.getByRole('heading', { name: '지금 누가 있나' })).toBeInTheDocument()
+    // 시안 `_3`의 성별·연령 카드와 우리가 하나 더 갖는 거주 카드.
+    for (const name of ['성별 비율', '연령대별 비율', '거주 비율']) {
+      expect(screen.getByRole('heading', { name })).toBeInTheDocument()
+    }
     expect(screen.getByRole('heading', { name: '시간대별 인파' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '요일×시간 패턴' })).toBeInTheDocument()
   })
@@ -604,32 +607,35 @@ describe('AreaDetailScreen — 인구 탭', () => {
   it('인구 구성이 시간대별 인파보다 위에 있다', async () => {
     renderDetail()
     await openTab('인구')
-    const who = screen.getByRole('heading', { name: '지금 누가 있나' })
+    const who = screen.getByRole('heading', { name: '성별 비율' })
     expect(before(who, screen.getByRole('heading', { name: '시간대별 인파' }))).toBe(
       true,
     )
   })
 
-  // 순서만 보면 인구 구성을 현재 상태 카드 밖으로 빼 독립 섹션으로 만드는
-  // 되돌림이 초록불로 통과한다. 그러면 테두리·패딩이 이중이 된다.
-  //
-  // `closest('section')`끼리 비교하면 안 된다 — PopulationCard 자신이 <section>이라
-  // 올바른 구현에서도 둘이 갈린다. 카드가 그것을 품고 있는지를 본다.
-  it('인구 구성이 현재 상태 카드 안에 있다', async () => {
+  // **카드 안의 카드가 아니다**(2026-08-25). 시안 `_3`이 성별·연령을 각자
+  // 테두리를 가진 카드로 그리는데, 예전처럼 「지금 얼마나 붐비나」 카드 **안**에
+  // 있으면 테두리·패딩이 이중이 되어 그 모양을 낼 수가 없다.
+  it('인구 구성 카드가 현재 상태 카드 밖에 나란히 선다', async () => {
+    useAreaSnapshot.mockReturnValue(ok({ ...SNAPSHOT, replaced: true }))
     renderDetail()
     await openTab('인구')
-    const who = screen.getByRole('heading', { name: '지금 누가 있나' })
-    const card = screen
+    const congestion = screen
       .getByRole('heading', { name: '지금 얼마나 붐비나' })
       .closest('section')
-    expect(card?.contains(who)).toBe(true)
+
+    for (const name of ['성별 비율', '연령대별 비율', '거주 비율']) {
+      expect(congestion?.contains(screen.getByRole('heading', { name }))).toBe(false)
+    }
   })
 
-  it('인구 구성이 없으면 그 절만 빠진다', async () => {
+  it('인구 구성이 없으면 그 카드들만 빠진다', async () => {
     useAreaSnapshot.mockReturnValue(ok({ ...SNAPSHOT, composition: null }))
     renderDetail()
     await openTab('인구')
-    expect(screen.queryByRole('heading', { name: '지금 누가 있나' })).toBeNull()
+    for (const name of ['성별 비율', '연령대별 비율', '거주 비율']) {
+      expect(screen.queryByRole('heading', { name })).toBeNull()
+    }
     expect(screen.getByRole('heading', { name: '시간대별 인파' })).toBeInTheDocument()
   })
 

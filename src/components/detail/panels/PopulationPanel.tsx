@@ -3,6 +3,7 @@ import type { WeekPattern } from '../../../domain/pattern'
 import type { AreaSnapshot } from '../../../domain/types'
 import { ForecastChart } from '../../forecast/ForecastChart'
 import { CongestionCard } from '../../home/CongestionCard'
+import { PopulationCard } from '../../home/PopulationCard'
 import { PopulationLead } from '../../home/PopulationLead'
 import { WeeklyPatternCard } from '../../home/WeeklyPatternCard'
 
@@ -32,6 +33,13 @@ export function PopulationPanel({ snapshot, pattern, now }: Props) {
       <PopulationLead snapshot={snapshot} pattern={pattern} />
 
       <CongestionCard snapshot={snapshot} />
+
+      {/* 시안 `_3`의 성별·연령 카드다. **`CongestionCard` 안이 아니라 옆이다** —
+          시안이 각자 테두리를 가진 카드로 그리는데 안에 있으면 카드 안의 카드가
+          된다. 차례도 시안 그대로: 지금 몇 명인가 다음이 누가 있나다. */}
+      {snapshot.composition !== null && (
+        <PopulationCard composition={snapshot.composition} />
+      )}
 
       <section className="mx-4 rounded-card border border-outline-variant bg-surface-container-lowest p-4">
         {/* 「예측」은 시스템 용어에 가깝다. Google Maps의 「인기 시간대」 자리다.

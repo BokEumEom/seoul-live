@@ -119,7 +119,7 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
   // 아무도 요청하지 않으면 그 자리만 한국어로 남는다 — 완결성 검사는
   // `dynamicKeys()`가 「쓴다」고 선언한 것을 믿을 뿐이라 이 상태를 못 잡는다.
   // 1280px 실측에서 「20대 17%」와 「동네 생활권이에요」가 영어 화면에 있었다.
-  it('연령대·거주 알약이 영어로 바뀐다', () => {
+  it('연령대·거주 카드가 영어로 바뀐다', () => {
     setLanguage('en')
     render(
       <PopulationCard
@@ -138,12 +138,20 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
     // 화면과 같은 조합이다(「58% visitors」 옆에 「동네 생활권이에요」).
     expect(screen.getByText('Mostly locals')).toBeInTheDocument()
     expect(screen.queryByText('30대')).not.toBeInTheDocument()
-    // **막대의 접근성 이름은 따로 짓는다**(`chartLabel`). 눈에 보이는 줄만
-    // 감싸면 이 자리가 조용히 한국어로 남는데 화면을 봐서는 알 수 없다 —
-    // 실제로 한 번 그렇게 만들었고 위 두 단언은 통과했다.
+    // 카드 제목 셋과 성별·거주 막대의 양 끝 이름까지 본다. 시안 `_3` 모양으로
+    // 바꾸면서 자리가 늘었고, 늘어난 자리마다 한국어가 남을 수 있다.
+    for (const name of ['By gender', 'By age', 'Residents vs visitors']) {
+      expect(screen.getByRole('heading', { name })).toBeInTheDocument()
+    }
+    for (const label of ['Male', 'Female', 'Residents', 'Visitors']) {
+      expect(screen.getByText(label)).toBeInTheDocument()
+    }
+    // **막대의 접근성 이름도 따로 있다.** 두 칸짜리 막대는 글자가 없어서
+    // 스크린리더에 아무것도 안 남는다 — 눈에 보이는 줄만 감싸면 이 자리가
+    // 조용히 한국어로 남는데 화면을 봐서는 알 수 없다.
     expect(
-      screen.getByRole('img', { name: /Age mix|20s|30s/ }),
-    ).toHaveAccessibleName(expect.stringContaining('30s'))
+      screen.getByRole('img', { name: /By gender/ }),
+    ).toHaveAccessibleName(expect.stringContaining('Male'))
   })
 
   // 사용자가 지목한 자리다 — 「인사동」이 영어 화면에 그대로 남아 있었다.

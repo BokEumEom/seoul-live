@@ -15,7 +15,11 @@ import {
   COMMERCE_LEVELS,
   COMMERCE_PAYER_LABELS,
 } from '../domain/commerce'
-import { AGE_LABELS } from '../domain/composition'
+import {
+  AGE_LABELS,
+  GENDER_LABELS,
+  RESIDENCE_SHARE_LABELS,
+} from '../domain/composition'
 import { congestionSentence } from '../domain/congestion'
 import { DETAIL_TABS } from '../domain/detailTabs'
 import { filterLabel, PRESETS } from '../domain/presets'
@@ -190,6 +194,8 @@ function dynamicKeys(): readonly string[] {
     ...PRESETS.map((preset) => filterLabel(preset.key)),
     filterLabel('fav'),
     ...AGE_LABELS,
+    ...GENDER_LABELS,
+    ...RESIDENCE_SHARE_LABELS,
     ...DAY_KEYS,
     ...DETENT_LABELS,
     ...RESIDENCE_LABELS,
