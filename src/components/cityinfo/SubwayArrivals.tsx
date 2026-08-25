@@ -5,6 +5,8 @@ import {
 } from '../../i18n/subway'
 import { t } from '../../i18n/t'
 import { groupSubwayArrivals, type SubwayArrival } from '../../domain/cityInfo'
+import { subwayLineBadge } from '../../domain/subwayLine'
+import { SubwayLineBadge } from './SubwayLineBadge'
 
 /** 한 묶음에 보여줄 열차 수. detail_page.png도 역·호선마다 셋이다. */
 const VISIBLE_LIMIT = 3
@@ -39,12 +41,18 @@ export function SubwayArrivals({ arrivals }: Props) {
 
         return (
           <div key={title}>
-            <p className="flex items-baseline gap-1.5">
+            {/* 시안 `_4`의 「⑤ 광화문역」이다. 배지가 앞이고 역 이름이 뒤다 —
+                노선색이 먼저 눈에 들어와야 어느 줄을 읽을지가 정해진다. */}
+            <p className="flex items-center gap-2">
+              <SubwayLineBadge line={group.line} />
               <span className="text-body-md font-bold text-on-surface">
                 {group.station}
               </span>
-              {/* 호선 셋이 다 비면 이 칸이 없다. 빈 자리를 남기느니 역명만 적는다. */}
-              {line !== '' && (
+              {/* **배지가 없을 때만 글자로 적는다.** 표에 없는 노선이면
+                  `subwayLineBadge`가 `null`이라 배지가 안 그려지는데, 그때까지
+                  호선을 잃으면 「강남」만 남는다. 호선 셋이 다 비면 이 칸도
+                  없다 — 빈 자리를 남기느니 역명만 적는다. */}
+              {subwayLineBadge(group.line) === null && line !== '' && (
                 <span className="text-label-sm text-on-surface-variant">
                   {line}
                 </span>
@@ -57,13 +65,15 @@ export function SubwayArrivals({ arrivals }: Props) {
             <ul
               role="list"
               aria-label={t('{역} 도착 열차', { 역: title })}
-              className="mt-1.5 flex flex-col gap-1.5"
+              className="mt-2 flex flex-col gap-1.5"
             >
               {visible.map((entry, index) => (
                 <li
                   // 같은 방향·같은 메세지가 겹칠 수 있어(성수행 셋) 순번을 함께 쓴다.
                   key={`${entry.direction}-${entry.message}-${index}`}
-                  className="flex items-baseline justify-between gap-3"
+                  // **줄마다 상자다**(시안 `_4`). 배경이 없으면 방면과 도착
+                  // 시각이 양 끝에 떨어져 있어 세 줄이 여섯 조각으로 흩어진다.
+                  className="flex items-baseline justify-between gap-3 rounded-card bg-surface-container-low px-2.5 py-1.5"
                 >
                   <span className="min-w-0 truncate text-label-md text-on-surface-variant">
                     {subwayDirectionText(
@@ -75,7 +85,10 @@ export function SubwayArrivals({ arrivals }: Props) {
                       **아는 모양이 통째로 맞을 때만** 옮기고 아니면 원문이
                       나간다(`i18n/subway.ts`). 절 머리만 영어이고 안쪽이 전부
                       한국어면 번역하지 않은 화면으로 읽힌다. */}
-                  <span className="shrink-0 text-label-md text-on-surface">
+                  {/* 시안 `_4`가 도착 시각만 primary로 띄운다. 이 줄에서
+                      사용자가 찾는 값은 「몇 분」이고 방면은 그 값을 고르는
+                      기준이다 — 색이 그 차례를 말한다. */}
+                  <span className="shrink-0 text-label-md font-bold text-primary">
                     {subwayArrivalText(entry.message)}
                   </span>
                 </li>

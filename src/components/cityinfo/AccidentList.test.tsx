@@ -29,6 +29,31 @@ describe('AccidentList', () => {
     expect(screen.getByText('세종대로 사거리 2개 차로 통제')).toBeInTheDocument()
   })
 
+  /**
+   * **줄을 가르는 것이 구분선뿐이다**(2026-08-25에 회색 상자를 걷어냈다 —
+   * 이 목록이 주황 배너와 흰 절 두 곳에 들어가는데 상자를 들고 다니면 배너
+   * 안에서 색이 세 겹이 된다).
+   *
+   * 구분선을 지워도 글자는 전부 그대로라 `getByText`류로는 아무 일이 없어
+   * 보이는데, 화면에서는 통제 두 건이 **한 덩어리 문단**이 된다 — 변이
+   * 실험에서 실제로 살아남은 자리다. 그래서 여기서만 클래스를 잰다.
+   */
+  it('둘째 줄부터 구분선을 긋는다', () => {
+    render(
+      <AccidentList
+        accidents={[
+          accident({ occurredAt: '2026-08-07 08:40' }),
+          accident({ occurredAt: '2026-08-07 09:10' }),
+        ]}
+        onShowOnMap={noop}
+      />,
+    )
+    const rows = screen.getAllByRole('listitem')
+
+    expect(rows[0].className).not.toMatch(/border-t/)
+    expect(rows[1].className).toMatch(/border-t/)
+  })
+
   it('유형과 세부유형을 한 줄로 묶는다', () => {
     render(<AccidentList accidents={[accident()]} onShowOnMap={noop} />)
     expect(screen.getByText('교통사고 · 차대차')).toBeInTheDocument()

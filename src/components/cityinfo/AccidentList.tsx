@@ -33,7 +33,7 @@ export function AccidentList({ accidents, onShowOnMap }: Props) {
   }
 
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="flex flex-col">
       {accidents.map((accident, index) => {
         const label = typeLabel(accident)
         // **지도 버튼의 이름도 옮긴다.** `aria-label`이 「{시설} 지도에서 보기」라
@@ -44,11 +44,22 @@ export function AccidentList({ accidents, onShowOnMap }: Props) {
           // 있어 시각만으로 부족해서 인덱스를 함께 쓴다(`AlertBanner`와 같다).
           <li
             key={`${accident.occurredAt}-${index}`}
-            className="rounded-card bg-surface-container-low p-3"
+            // **줄마다 배경을 깔지 않는다.** 이 목록은 두 곳에 들어가는데
+            // (교통 탭의 주황 배너, 안전 탭의 흰 절) 회색 상자를 들고 다니면
+            // 배너 안에서 색이 세 겹이 된다. 구분은 배경이 아니라 선이 한다 —
+            // 시안 `_4`의 「주요 도로 상황」이 쓰는 것과 같은 구분선이다.
+            className={
+              index === 0 ? '' : 'mt-3 border-t border-outline-variant pt-3'
+            }
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                {label !== '' && <p className="text-label-md text-busy">{label}</p>}
+                {/* 흐린 주황(`text-busy`)은 주황 배너 위에서 3.48:1이라 못 쓴다.
+                    `-container`의 짝은 흰 표면에서도 9.38:1이라 두 배경을 다
+                    감당한다 — 근거는 `toneClass.ts`의 `TONE_TEXT_CLASS`. */}
+                {label !== '' && (
+                  <p className="text-label-md text-on-busy-container">{label}</p>
+                )}
                 {/* **서울이 영어 원문을 함께 준다**(`ACDNT_ENG_INFO`, 명세에
                     없는 필드). 이 줄은 「소공로 서울광장~한국은행앞/양방향
                     하위1개차로 통제」 같은 자유 문장이라 사전으로는 못 옮긴다 —
@@ -56,8 +67,9 @@ export function AccidentList({ accidents, onShowOnMap }: Props) {
                 <p className="mt-1 text-body-md leading-6 text-on-surface">{info}</p>
                 {/* 사용자가 실제로 쓰는 값은 「언제 풀리나」다. 발생 시각보다 이쪽이
                     앞이라 종료 예정만 적는다 — 시트는 좁다. */}
+                {/* `text-outline`은 주황 배너 위에서 3.46:1이라 못 쓴다. */}
                 {accident.expectedClearAt !== '' && (
-                  <p className="mt-1 text-label-sm text-outline">
+                  <p className="mt-1 text-label-sm text-on-surface-variant">
                     {t('{시각}까지 통제', { 시각: accident.expectedClearAt })}
                   </p>
                 )}

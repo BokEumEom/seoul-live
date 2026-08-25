@@ -1,7 +1,7 @@
 import { t } from '../../../i18n/t'
 import { isBusCallFailure, type FacilityLocation } from '../../../domain/cityInfo'
 import type { Coords } from '../../../domain/types'
-import { AccidentList } from '../../cityinfo/AccidentList'
+import { AccidentBanner } from '../../cityinfo/AccidentBanner'
 import { BusStopList } from '../../cityinfo/BusStopList'
 import { freshnessNote } from '../../cityinfo/freshnessNote'
 import { InfoSection } from '../../cityinfo/InfoSection'
@@ -45,20 +45,15 @@ export function TrafficPanel({ areaName, origin, onShowOnMap }: Props) {
     >
       {(info) => (
         <div className="flex flex-col gap-3">
-          {(info.roadTraffic !== null ||
-            info.roadSegments.length > 0 ||
-            info.accidents.length > 0) && (
+          {info.roadTraffic !== null && (
             <InfoSection title={t('도로소통')} icon="road">
-              {info.roadTraffic !== null && (
-                <RoadTrafficCard traffic={info.roadTraffic} />
-              )}
-              {info.accidents.length > 0 && (
-                <div className={info.roadTraffic === null ? '' : 'mt-3'}>
-                  <AccidentList accidents={info.accidents} onShowOnMap={onShowOnMap} />
-                </div>
-              )}
+              <RoadTrafficCard traffic={info.roadTraffic} />
             </InfoSection>
           )}
+
+          {/* **통제는 절이 아니라 배너다.** 시안 `_4`가 도로 요약과 「주요 도로
+              상황」 사이에 통째로 띄운다 — 근거는 `AccidentBanner`의 주석. */}
+          <AccidentBanner accidents={info.accidents} onShowOnMap={onShowOnMap} />
 
           {/* **요약과 절을 나눈 이유.** 위 절은 「지금 차로 갈 만한가」 한 줄과
               통제 소식이고, 이쪽은 「그래서 어느 길이」다. 한 절에 넣으면 평균

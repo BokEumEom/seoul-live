@@ -28,8 +28,10 @@ export const EN: Readonly<Record<string, string>> = {
   '지금은 약간 붐벼요': "It's a little busy right now",
   '지금은 붐벼요': "It's crowded right now",
 
-  // 도로소통 값의 **접두어 없는** 키. 요약 카드가 쓴다 — 카드에는 「도로」라는
-  // 이름표가 이미 있어 접두어를 붙이면 「도로 / 도로 원활」이 된다.
+  // 도로소통 값. **접두어가 없다.** 예전에는 절이 「도로 원활」로 따로 쓰고
+  // 요약 카드만 맨 값을 썼는데, 절이 배지로 바뀌면서(2026-08-25) 절 이름
+  // 「도로소통」 바로 아래에 「도로 정체」를 적게 돼 같은 말이 두 번 나왔다.
+  // 지금은 요약 카드·도로소통 배지·구간 목록 셋이 이 한 벌을 나눠 쓴다.
   원활: 'Clear',
   서행: 'Slow',
   정체: 'Jammed',
@@ -186,6 +188,7 @@ export const EN: Readonly<Record<string, string>> = {
   // 구간 중 막히는 것부터 보여준다는 뜻이다(`sortRoadSegments`).
   '주요 도로 상황': 'Roads nearby',
   '기준 {시각}': 'as of {시각}',
+  'km/h (평균 속도)': 'km/h (avg. speed)',
   '{시각}까지 통제': 'closed until {시각}',
   // 한국어는 세는 것마다 단위가 다르고(곳·대·건) 영어는 같다. 키를 하나로
   // 합치면 한국어가 틀린 단위를 쓰게 되므로 값이 겹치더라도 나눠 둔다.
@@ -204,9 +207,6 @@ export const EN: Readonly<Record<string, string>> = {
   // **명세에 값의 종류가 없어 이 셋이 전부인지는 모른다.** 모르는 값이 오면
   // `t()`가 키를 그대로 돌려주어 「도로 ○○」로 뜬다 — 영어 화면에 한국어가
   // 남지만 자리와 뜻은 유지된다.
-  '도로 원활': 'Traffic clear',
-  '도로 서행': 'Traffic slow',
-  '도로 정체': 'Traffic jam',
   '지하철 도착': 'Subway arrivals',
   // 지하철 절의 조각들. **역 이름은 여기 없다** — 로마자 표기가 이 앱에 없는
   // 데이터라 지어내지 않는다(`i18n/subway.ts`). 그래서 영어에서도 「To 대화」·
@@ -401,6 +401,10 @@ export const EN: Readonly<Record<string, string>> = {
   '지금 이 근처에 전해진 사고·재난 소식이 없어요.':
     'No incidents or alerts reported nearby.',
   '사고·통제': 'Incidents & closures',
+  // 교통 탭의 통제 배너 제목. 안전 탭의 「사고·통제」와 이름이 다른 이유는
+  // 담는 것이 달라서가 아니라 **묻는 것이 달라서**다 — 저긴 「이 근처가 지금
+  // 안전한가」이고 여긴 「차로 갈 만한가」다.
+  '차량 통제 알림': 'Road closures',
   // 재난문자의 재해구분명(`DST_SE_NM`)·긴급단계명(`EMRG_STEP_NM`)과 사고통제의
   // 사고발생유형(`ACDNT_TYPE`)·세부유형(`ACDNT_DTYPE`).
   //

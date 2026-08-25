@@ -755,7 +755,9 @@ describe('AreaDetailScreen — 교통 탭', () => {
   })
 
   // 도로소통과 사고통제는 같은 질문의 답이다 — 「지금 차로 갈 만한가」.
-  it('사고통제만 있어도 절이 뜬다', async () => {
+  // 2026-08-25에 통제가 절 안에서 **배너로** 나왔다(시안 `_4`) — 평균 속도가
+  // 없는 명소에서도 통제는 떠야 하고, 그때 「도로소통」 절만 찾으면 안 뜬다.
+  it('사고통제만 있어도 배너가 뜬다', async () => {
     useCityInfo.mockReturnValue(
       ok({
         ...EMPTY_CITY_INFO,
@@ -772,8 +774,11 @@ describe('AreaDetailScreen — 교통 탭', () => {
     )
     renderDetail()
     await openTab('교통')
-    expect(screen.getByRole('heading', { name: '도로소통' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '차량 통제 알림' })).toBeInTheDocument()
     expect(screen.getByText('강남대로 1개 차로 통제')).toBeInTheDocument()
+    // 평균 속도가 없으므로 「도로소통」 절은 아예 없다 — 빈 절을 세우면
+    // 제목만 있고 아래가 빈 카드가 남는다.
+    expect(screen.queryByRole('heading', { name: '도로소통' })).toBeNull()
   })
 
   it('지하철 도착은 언제 기준인지 같이 적는다', async () => {

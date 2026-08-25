@@ -118,14 +118,13 @@ export function SummaryGrid({ snapshot, cityInfo, onOpenTab }: Props) {
             key: 'road',
             icon: 'road' as IconName,
             label: t('도로'),
-            // **여기서는 「도로」를 안 붙인 키를 쓴다.** 절과 칩은
-            // `t('도로 원활')`을 쓰는데(근거는 `RoadTrafficCard`의 주석 —
-            // 예전에 값 `원활`이 혼잡도 헤드라인의 같은 낱말과 다퉜다), 이
-            // 카드에는 바로 위에 「도로」라는 이름표가 이미 있어 그대로 쓰면
-            // 「도로 / 도로 원활」이 된다. 다투던 상대는 2026-08-20에
-            // 사라졌으므로(`congestionHeadline` → `congestionSentence`) 맨 값을
-            // 키로 써도 뜻이 안 겹친다. `i18n.test.ts`의 `ROAD_STATE_LABELS`가
-            // 이 세 키를 사전에 붙들어 둔다.
+            // **접두어 없는 맨 값이다.** 이 카드에는 바로 위에 「도로」라는
+            // 이름표가 있어 접두어를 붙이면 같은 말이 두 번 나온다. 접두어를
+            // 만들게 했던 충돌(값 `원활`이 혼잡도 헤드라인의 같은 낱말과
+            // 다퉜다)은 2026-08-20에 사라졌고(`congestionHeadline` →
+            // `congestionSentence`), 2026-08-25에 도로소통 절도 이 키로
+            // 옮겨 왔다 — 이제 세 화면이 한 벌을 나눠 쓴다.
+            // `i18n.test.ts`가 `ROAD_SEGMENT_INDEXES`로 붙들어 둔다.
             value: t(road.index),
             // 시안(stitch_ui_ux/_2)의 「원활」이 초록이다. 2026-08-21에 붙였고
             // 근거는 `roadIndexTone` — 대기질과 같은 표를 쓰므로 한 화면에서
