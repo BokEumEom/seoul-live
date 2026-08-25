@@ -2,6 +2,7 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { ACCIDENT_DETAIL_TYPES, ACCIDENT_TYPES } from '../domain/accident'
 import { ROAD_SEGMENT_INDEXES } from '../domain/roadSegment'
+import { SKY_STATES } from '../domain/sky'
 import {
   CHARGER_KINDS,
   CHARGER_METHODS,
@@ -193,6 +194,10 @@ function dynamicKeys(): readonly string[] {
     ...RESIDENCE_LABELS,
     ...AIR_GRADE_LABELS,
     ...ROAD_SEGMENT_INDEXES,
+    // 시간대별 예보의 하늘상태. 눈에는 그림만 보이고 이 낱말은 소리 채널로
+    // 나간다(`HourlyWeather`) — 안 옮기면 영어 화면의 스크린리더에서만
+    // 한국어가 남는다.
+    ...SKY_STATES,
     ...ALERT_LABELS,
     // **도메인에서 뽑는다** — 손으로 적은 목록이었고, 실호출에서 값이 둘 늘었을
     // 때(`집회및행사`·`행사`) 여기가 낡아 있었다. 충전소·16방위와 같은 규칙이다.

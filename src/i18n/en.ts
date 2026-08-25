@@ -189,6 +189,11 @@ export const EN: Readonly<Record<string, string>> = {
   '주요 도로 상황': 'Roads nearby',
   '기준 {시각}': 'as of {시각}',
   'km/h (평균 속도)': 'km/h (avg. speed)',
+  // 하늘상태(`SKY_STTS`). 시간대별 예보 타일에서 눈에는 그림만 보이고 이
+  // 낱말은 `sr-only`로 나간다 — 그림만으로 말하지 않으려는 자리다.
+  맑음: 'Clear',
+  구름많음: 'Mostly cloudy',
+  흐림: 'Cloudy',
   '{시각}까지 통제': 'closed until {시각}',
   // 한국어는 세는 것마다 단위가 다르고(곳·대·건) 영어는 같다. 키를 하나로
   // 합치면 한국어가 틀린 단위를 쓰게 되므로 값이 겹치더라도 나눠 둔다.

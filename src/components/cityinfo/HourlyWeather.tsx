@@ -4,6 +4,8 @@ import {
   forecastHour,
   type HourlyForecast,
 } from '../../domain/cityInfo'
+import { Icon } from '../common/Icon'
+import { skyIcon } from './skyIcon'
 
 interface Props {
   readonly hourly: readonly HourlyForecast[]
@@ -41,39 +43,55 @@ export function HourlyWeather({ hourly }: Props) {
       {/* role="list"를 명시하는 이유: preflight의 list-style:none이 WebKit에서
           목록 시맨틱을 지운다. 토스 iOS 웹뷰가 WebKit이다(PopulationCard와 같다). */}
       <ul role="list" className="flex gap-2">
-        {hourly.map((entry) => (
-          <li
-            key={entry.time}
-            className="flex w-14 shrink-0 flex-col items-center gap-1 rounded-card bg-surface-container-low py-2"
-          >
-            <span className="text-label-sm text-on-surface-variant">
-              {hourLabel(entry.time)}
-            </span>
-            <span className="text-label-md font-bold text-on-surface">
-              {formatForecastTemperature(entry.temperature)}
-            </span>
-            {/* 모르는 값은 줄을 통째로 뺀다. 「—%」는 0%로 오독된다.
-                0은 실제로 확인된 값이라 남긴다 — 「비 안 온다」는 정보다. */}
-            {entry.rainChance !== null && (
-              <span className="text-label-sm text-primary">
-                <span className="sr-only">{t('강수확률')} </span>
-                {entry.rainChance}%
-              </span>
-            )}
-            {/* **확률과 다른 값이다** — 「70%」는 올지 말지이고 이건 오면 얼마나
-                오는지다. 우산이냐 우비냐가 여기서 갈린다.
-
-                0보다 클 때만 적는다. 실호출 840칸 중 값이 있던 것은 75칸뿐이라
-                (나머지는 `-`) 항상 그리면 타일 스물넉 장 중 스물한 장이 「0mm」로
-                채워진다. 56px 타일에 그만한 자리가 없다. */}
-            {entry.precipitation !== null && entry.precipitation > 0 && (
+        {hourly.map((entry) => {
+          const icon = skyIcon(entry.sky)
+          return (
+            <li
+              key={entry.time}
+              className="flex w-14 shrink-0 flex-col items-center gap-1 rounded-card bg-surface-container-low py-2"
+            >
               <span className="text-label-sm text-on-surface-variant">
-                <span className="sr-only">{t('강수량')} </span>
-                {t('{양}mm', { 양: entry.precipitation })}
+                {hourLabel(entry.time)}
               </span>
-            )}
-          </li>
-        ))}
+              {/* **시안 `_6`의 날씨 그림이다.** `SKY_STTS`는 처음부터 파서가
+                  읽고 있었는데 화면에 나온 적이 없었다 — 스물넉 장을 훑을 때
+                  「몇 시부터 흐린가」에 답하는 것이 이 칸이다.
+
+                  **그림만으로 말하지 않는다.** 색각·저시력·스크린리더 어느
+                  쪽에도 안 닿으므로 낱말을 소리 채널로 함께 내보낸다. 56px
+                  타일에 「구름많음」을 적을 자리가 없어 눈에는 그림만 남는다. */}
+              {icon !== null && (
+                <span className="flex items-center text-on-surface-variant">
+                  <span className="sr-only">{t(entry.sky)}</span>
+                  <Icon name={icon} className="size-5" />
+                </span>
+              )}
+              <span className="text-label-md font-bold text-on-surface">
+                {formatForecastTemperature(entry.temperature)}
+              </span>
+              {/* 모르는 값은 줄을 통째로 뺀다. 「—%」는 0%로 오독된다.
+                  0은 실제로 확인된 값이라 남긴다 — 「비 안 온다」는 정보다. */}
+              {entry.rainChance !== null && (
+                <span className="text-label-sm text-primary">
+                  <span className="sr-only">{t('강수확률')} </span>
+                  {entry.rainChance}%
+                </span>
+              )}
+              {/* **확률과 다른 값이다** — 「70%」는 올지 말지이고 이건 오면 얼마나
+                  오는지다. 우산이냐 우비냐가 여기서 갈린다.
+
+                  0보다 클 때만 적는다. 실호출 840칸 중 값이 있던 것은 75칸뿐이라
+                  (나머지는 `-`) 항상 그리면 타일 스물넉 장 중 스물한 장이 「0mm」로
+                  채워진다. 56px 타일에 그만한 자리가 없다. */}
+              {entry.precipitation !== null && entry.precipitation > 0 && (
+                <span className="text-label-sm text-on-surface-variant">
+                  <span className="sr-only">{t('강수량')} </span>
+                  {t('{양}mm', { 양: entry.precipitation })}
+                </span>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

@@ -12,6 +12,65 @@ function hour(
   return makeHourlyForecast({ time, temperature, rainChance, sky: '맑음' })
 }
 
+/** 타일 안의 하늘 그림. `sr-only` 낱말과 짝으로만 존재한다. */
+function skyGlyphs(container: HTMLElement): readonly Element[] {
+  return [...container.querySelectorAll('li svg')]
+}
+
+describe('HourlyWeather — 하늘상태', () => {
+  // **`SKY_STTS`는 처음부터 파서가 읽고 있었는데 화면에 나온 적이 없었다**
+  // (2026-08-25, 시안 `_6`). 스물넉 장을 훑을 때 「몇 시부터 흐린가」에
+  // 답하는 것이 이 칸이다.
+  it('하늘상태를 그림으로 보여준다', () => {
+    const { container } = render(
+      <HourlyWeather hourly={[makeHourlyForecast({ time: '202608131400', sky: '흐림' })]} />,
+    )
+
+    expect(skyGlyphs(container)).toHaveLength(1)
+  })
+
+  // **그림만으로 말하지 않는다.** 색각·저시력·스크린리더 어느 쪽에도 그림은
+  // 안 닿는다. 56px 타일에 「구름많음」을 적을 자리가 없어 소리로만 나간다.
+  it('하늘상태 낱말을 소리 채널로 함께 내보낸다', () => {
+    render(
+      <HourlyWeather hourly={[makeHourlyForecast({ time: '202608131400', sky: '구름많음' })]} />,
+    )
+
+    expect(screen.getByText('구름많음')).toHaveClass('sr-only')
+  })
+
+  // 세 값이 서로 다른 그림이어야 한다. 표를 한 칸만 잘못 옮기면 「맑음」과
+  // 「흐림」이 같은 그림이 되는데, 하나만 보는 테스트로는 안 잡힌다.
+  it('맑음·구름많음·흐림이 서로 다른 그림이다', () => {
+    const { container } = render(
+      <HourlyWeather
+        hourly={[
+          makeHourlyForecast({ time: '202608131400', sky: '맑음' }),
+          makeHourlyForecast({ time: '202608131500', sky: '구름많음' }),
+          makeHourlyForecast({ time: '202608131600', sky: '흐림' }),
+        ]}
+      />,
+    )
+    const shapes = skyGlyphs(container).map(
+      (svg) => svg.querySelector('path')?.getAttribute('d') ?? '',
+    )
+
+    expect(new Set(shapes).size).toBe(3)
+  })
+
+  // **모르는 값에 그림을 지어내지 않는다.** 명세에 값 목록이 없어 처음 보는
+  // 하늘상태가 올 수 있다 — 그때 아무 구름이나 그리면 앱이 하지 않은 판단을
+  // 한 것이 된다(`?? null` 규칙).
+  it('모르는 하늘상태는 칸을 비운다', () => {
+    const { container } = render(
+      <HourlyWeather hourly={[makeHourlyForecast({ time: '202608131400', sky: '천둥번개' })]} />,
+    )
+
+    expect(skyGlyphs(container)).toHaveLength(0)
+    expect(screen.queryByText('천둥번개')).toBeNull()
+  })
+})
+
 describe('HourlyWeather', () => {
   it('예보 시각을 「14시」로 적는다', () => {
     render(<HourlyWeather hourly={[hour('202608131400')]} />)
