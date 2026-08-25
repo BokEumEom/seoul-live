@@ -4,9 +4,8 @@ import { describe, expect, it } from 'vitest'
 import fixture from '../../docs/fixtures/citydata-광화문덕수궁.json'
 import { parseCityInfoResponse } from './cityInfoSchema'
 
-// **실호출 응답 한 벌을 그대로 파서에 통과시킨다.** 2026-08-13에 인증키로
-// `/citydata/1/5/광화문·덕수궁`을 불러 받은 것이고, 큰 섹션만 개수를 줄였다
-// (구조는 손대지 않았다).
+// **실호출 응답 한 벌을 그대로 파서에 통과시킨다.** 2026-08-25에 인증키로
+// `/citydata/1/5/광화문·덕수궁`을 불러 받은 것이다.
 //
 // 이 파일이 있는 이유: 명세의 출력명 표만 보고 짐작했던 두 곳이 실제로 틀렸다.
 // 도로소통과 지하철이 한 겹 더 들어가 있었는데, **손으로 지어낸 목업과 손으로
@@ -18,7 +17,74 @@ const FIXTURE: unknown = fixture
 
 const AREA = '광화문·덕수궁'
 
-describe('실호출 citydata 응답 (2026-08-13)', () => {
+/**
+ * 응답이 주는 최상위 서비스 전부. **개수가 아니라 이름을 적는다.**
+ *
+ * 이 목록이 있는 이유가 있다. 2026-08-13 픽스처는 「큰 섹션만 개수를 줄였다,
+ * 구조는 손대지 않았다」고 적혀 있었지만 실제로는 **다섯 서비스가 통째로 빠져
+ * 있었다** — `LIVE_SUB_PPLTN`·`BUS_STN_STTS`·`LIVE_BUS_PPLTN`·`CHARGER_STTS`·
+ * `LIVE_CMRCL_STTS`. 빠졌다는 흔적이 아무 데도 없어서, 2026-08-25에 「이 API는
+ * 버스·충전소·상권을 안 준다」고 **결론 낼 뻔했다.** 실호출로 다시 재서 그게
+ * 틀렸음을 확인했다.
+ *
+ * 여기 이름을 박아 두면 다음 갱신에서 하나라도 사라질 때 죽는다.
+ */
+const SERVICES = [
+  'AREA_NM',
+  'AREA_CD',
+  'LIVE_PPLTN_STTS',
+  'ROAD_TRAFFIC_STTS',
+  'PRK_STTS',
+  'SUB_STTS',
+  'LIVE_SUB_PPLTN',
+  'BUS_STN_STTS',
+  'LIVE_BUS_PPLTN',
+  'ACDNT_CNTRL_STTS',
+  'SBIKE_STTS',
+  'WEATHER_STTS',
+  'CHARGER_STTS',
+  'EVENT_STTS',
+  'LIVE_CMRCL_STTS',
+  'LIVE_DST_MESSAGE',
+  'LIVE_YNA_NEWS',
+] as const
+
+/**
+ * 줄인 목록과 **원래 개수**. 줄인 사실 자체를 자료로 남긴다 — 「3곳뿐이네」로
+ * 읽고 화면을 그러게 짜면 실제 33곳에서 무너진다.
+ *
+ * `FCST24HOURS`는 **안 줄였다.** 24칸이 계약이고 아래 테스트가 그 수를 센다.
+ */
+const TRIMMED: Readonly<Record<string, number>> = {
+  PRK_STTS: 33,
+  BUS_STN_STTS: 32,
+  CHARGER_STTS: 44,
+  SBIKE_STTS: 10,
+  EVENT_STTS: 17,
+  'ROAD_TRAFFIC_STTS.ROAD_TRAFFIC_STTS': 159,
+}
+
+describe('실호출 citydata 응답 (2026-08-25)', () => {
+  const body = (FIXTURE as { readonly CITYDATA: Record<string, unknown> }).CITYDATA
+
+  it('서비스가 하나도 빠지지 않았다', () => {
+    expect(Object.keys(body)).toEqual([...SERVICES])
+  })
+
+  it('줄인 목록의 원래 개수를 자료로 남긴다', () => {
+    // 이 단언은 픽스처가 아니라 **이 파일의 기록**을 지킨다. 다음 사람이
+    // 목록을 다시 채우면서 여기를 안 지우면 걸린다.
+    for (const key of Object.keys(TRIMMED)) {
+      const actual = key.includes('.')
+        ? (body.ROAD_TRAFFIC_STTS as { ROAD_TRAFFIC_STTS: readonly unknown[] })
+            .ROAD_TRAFFIC_STTS
+        : (body[key] as readonly unknown[])
+      expect(actual.length).toBeLessThanOrEqual(TRIMMED[key])
+    }
+  })
+})
+
+describe('실호출 citydata 응답 (2026-08-25) — 파서', () => {
   const info = parseCityInfoResponse(FIXTURE, AREA)
 
   it('장소명과 코드를 읽는다', () => {
