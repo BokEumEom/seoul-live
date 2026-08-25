@@ -50,11 +50,26 @@ describe('subwayDirectionText', () => {
     expect(subwayDirectionText('')).toBe('')
   })
 
-  // **「상행」은 「상역으로 간다」가 아니다.** 거르지 않으면 「To 상」이라는
-  // 없는 말이 나온다 — 처음 짤 때 실제로 그렇게 만들었다. 옮기지 않고
-  // 한국어로 흘려보낸다(근거는 `subway.ts`의 `NOT_A_DESTINATION`).
+  // **「상행」은 「상역으로 간다」가 아니다.** `BOUND_FOR`에 맡기면 「To 상」이라는
+  // 없는 말이 나온다 — 처음 짤 때 실제로 그렇게 만들었다.
+  //
+  // 행선지 규칙에서 빼는 것과 **번역하지 않는 것은 다른 결정**이다. 2026-08-25에
+  // 뒤를 뒤집었다(근거는 `subway.ts`의 `NOT_A_DESTINATION`).
   it('방향어(상행·하행)를 행선지로 오해하지 않는다', () => {
     setLanguage('en')
+    expect(subwayDirectionText('상행')).not.toContain('To ')
+    expect(subwayDirectionText('하행')).not.toContain('To ')
+  })
+
+  // 방향어는 **고유명사가 아니라 갈래 이름**이라 옮긴다. 역 이름과 달리
+  // 로마자 표기를 지어내는 일이 아니다.
+  it('방향어를 영어로 바꾼다', () => {
+    setLanguage('en')
+    expect(subwayDirectionText('상행')).toBe('Upbound')
+    expect(subwayDirectionText('하행')).toBe('Downbound')
+  })
+
+  it('한국어에서는 방향어도 원문 그대로다', () => {
     expect(subwayDirectionText('상행')).toBe('상행')
     expect(subwayDirectionText('하행')).toBe('하행')
   })

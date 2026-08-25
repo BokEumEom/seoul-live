@@ -62,6 +62,20 @@ const ROAD_CHIP_LABELS = ['도로 원활', '도로 서행', '도로 정체'] as 
  * 목록과 `en.ts`에 함께 더하라.
  */
 const ROAD_STATE_LABELS = ['원활', '서행', '정체'] as const
+/**
+ * 재난문자의 재해구분명(`DST_SE_NM`)·긴급단계명(`EMRG_STEP_NM`)과 사고통제의
+ * 사고발생유형(`ACDNT_TYPE`)·세부유형(`ACDNT_DTYPE`), 지하철방향(`SUB_DIR`).
+ *
+ * **위 도로소통과 같은 이유로 손으로 적는다** — 명세(`docs/citydata-spec-raw.tsv`
+ * 74·134·135·242·243행)가 필드 이름만 주고 값의 종류는 비어 있어 도메인에서
+ * 뽑아 올 상수 표가 없다. 못 적은 값은 영어 화면에 한국어로 남고 죽지 않는다.
+ *
+ * 새 값을 보거든 여기와 `en.ts`에 함께 더하라.
+ */
+const ALERT_LABELS = ['호우', '주의보', '경보'] as const
+const ACCIDENT_TYPE_LABELS = ['교통사고', '차대차', '공사', '도로보수'] as const
+/** 실호출 응답(`docs/fixtures/citydata-광화문덕수궁.json`)에서 이 둘을 봤다. */
+const SUBWAY_DIRECTION_LABELS = ['상행', '하행'] as const
 /** 상세 탭의 글자. 도메인에서 뽑으므로 탭이 하나 늘면 여기서 죽는다. */
 const DETAIL_TAB_LABELS = DETAIL_TABS.map((tab) => tab.label)
 const LOCATION_ERROR_MESSAGES = [
@@ -127,6 +141,9 @@ function dynamicKeys(): readonly string[] {
     ...AIR_GRADE_LABELS,
     ...ROAD_CHIP_LABELS,
     ...ROAD_STATE_LABELS,
+    ...ALERT_LABELS,
+    ...ACCIDENT_TYPE_LABELS,
+    ...SUBWAY_DIRECTION_LABELS,
     ...DETAIL_TAB_LABELS,
     ...LOCATION_ERROR_MESSAGES,
   ]

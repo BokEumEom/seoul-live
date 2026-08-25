@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AccidentList } from '../components/cityinfo/AccidentList'
+import { AlertBanner } from '../components/cityinfo/AlertBanner'
+import { SubwayArrivals } from '../components/cityinfo/SubwayArrivals'
 import { ActionButtons } from '../components/home/ActionButtons'
 import { MapLinkButtons } from '../components/home/MapLinkButtons'
 import { AreaHero } from '../components/home/AreaHero'
@@ -165,6 +168,79 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
     expect(
       screen.getByRole('heading', { name: 'Insa-dong' }),
     ).toBeInTheDocument()
+  })
+
+  // **사용자가 지목한 자리다**(2026-08-21, 「상세 페이지 영어 지원이 완벽하게
+  // 전환되지 않는다」). 영어로 렌더해 DOM에 남은 한글을 훑어 찾았다 — 정적
+  // 검사 셋이 전부 초록이었다. 키가 **런타임 값**이라 `translatedKeys()`가 못
+  // 세고, `dynamicKeys()`는 「쓴다」고 선언만 하는 자리다.
+  //
+  // 재해구분명·긴급단계명은 **자유 문장이 아니라 갈래 이름**이다. 바로 아랫줄
+  // `message`(재난문자 본문)는 사람이 쓴 문장이라 못 옮기는데, 그 둘이 한
+  // 상자에 있어 안 옮기는 쪽에 끌려가 있었다.
+  it('재난문자의 재해구분·긴급단계가 영어로 바뀐다', () => {
+    setLanguage('en')
+    render(
+      <AlertBanner
+        alerts={[
+          {
+            category: '호우',
+            step: '주의보',
+            message: '[서울시] 호우주의보 발효.',
+            createdAt: '2026-08-21 13:00',
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Heavy rain Advisory')).toBeInTheDocument()
+    expect(screen.queryByText('호우 주의보')).not.toBeInTheDocument()
+    // **본문은 한국어로 남는 것이 옳다.** 재난문자는 서울 API의 자유 문장이라
+    // 옮길 수 없다 — 여기까지 영어를 기대하면 다음 사람이 지어내게 된다.
+    expect(screen.getByText('[서울시] 호우주의보 발효.')).toBeInTheDocument()
+  })
+
+  it('사고통제의 유형·세부유형이 영어로 바뀐다', () => {
+    setLanguage('en')
+    render(
+      <AccidentList
+        accidents={[
+          {
+            info: '세종대로 차량 2대 추돌',
+            type: '교통사고',
+            detailType: '차대차',
+            occurredAt: '2026-08-21 14:30',
+            expectedClearAt: '2026-08-21 16:00',
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Traffic accident · Vehicle collision')).toBeInTheDocument()
+    expect(screen.queryByText('교통사고 · 차대차')).not.toBeInTheDocument()
+  })
+
+  // 실호출 응답(`docs/fixtures/citydata-광화문덕수궁.json`)의 `SUB_DIR`가 이
+  // 둘이다. 역 이름은 여전히 한국어로 남는다 — 그건 결함이 아니라 규칙이다.
+  it('지하철 방향어가 영어로 바뀐다', () => {
+    setLanguage('en')
+    render(
+      <SubwayArrivals
+        arrivals={[
+          {
+            station: '광화문',
+            line: '5호선',
+            direction: '상행',
+            terminal: '방화',
+            message: '전역 출발',
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Upbound')).toBeInTheDocument()
+    expect(screen.queryByText('상행')).not.toBeInTheDocument()
+    expect(screen.getByText('광화문')).toBeInTheDocument()
   })
 
   // **저장·공유 문구는 이름을 값으로 끼워 넣는다.** 바깥은 영어인데 끼워

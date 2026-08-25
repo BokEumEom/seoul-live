@@ -203,6 +203,14 @@ export const EN: Readonly<Record<string, string>> = {
   // 없어 처음 보는 문구는 원문 그대로 나간다.
   '{번호}호선': 'Line {번호}',
   '{역}행': 'To {역}',
+  // 지하철 방향(`SUB_DIR`). **역 이름이 아니라 갈래 이름이라 옮긴다** — 로마자
+  // 표기를 지어내는 일과 다르다.
+  //
+  // 예전에는 한국어로 흘려보냈고 근거는 「실응답에서 이 값을 본 적이 없다」였다.
+  // **그 전제가 틀렸다** — `docs/fixtures/citydata-광화문덕수궁.json`(실호출)의
+  // `SUB_DIR`에 이 둘이 그대로 있다. 도로소통 톤과 같은 종류의 정정이다.
+  상행: 'Upbound',
+  하행: 'Downbound',
   '전역 출발': 'Left prev. station',
   '전역 도착': 'At prev. station',
   '{분}분 후': 'in {분} min',
@@ -255,6 +263,29 @@ export const EN: Readonly<Record<string, string>> = {
   '지금 이 근처에 전해진 사고·재난 소식이 없어요.':
     'No incidents or alerts reported nearby.',
   '사고·통제': 'Incidents & closures',
+  // 재난문자의 재해구분명(`DST_SE_NM`)·긴급단계명(`EMRG_STEP_NM`)과 사고통제의
+  // 사고발생유형(`ACDNT_TYPE`)·세부유형(`ACDNT_DTYPE`).
+  //
+  // **자유 문장이 아니라 갈래 이름이라 옮긴다.** 같은 상자의 `MSG_CN`·
+  // `ACDNT_INFO`는 사람이 쓴 문장이라 못 옮기는데, 한 상자에 있다는 이유로
+  // 이쪽까지 한국어로 남아 있었다(2026-08-21 사용자 지적).
+  //
+  // **명세에 값 목록이 없다** — `docs/citydata-spec-raw.tsv`의 134·135·242·243행이
+  // 이름만 주고 값의 종류는 비어 있다. 도로소통 지수와 같은 자리다: 여기 없는
+  // 값이 오면 `t()`가 키를 그대로 돌려주어 한국어로 남고, **죽지는 않는다.**
+  // 새 값을 보거든 여기와 `i18n.test.ts`의 목록에 함께 더하라.
+  //
+  // 근거: `공사`·`도로보수`는 실호출 응답(`docs/fixtures/citydata-광화문덕수궁.json`),
+  // `호우`·`주의보`·`교통사고`·`차대차`는 `src/data/mockCityInfo.ts`가 그리는 값이다.
+  // `경보`는 `주의보`의 짝이라 함께 넣는다 — 특보가 올라갈 때 그 자리만 한국어로
+  // 남으면 하필 가장 급한 순간에 안 읽힌다.
+  호우: 'Heavy rain',
+  주의보: 'Advisory',
+  경보: 'Warning',
+  교통사고: 'Traffic accident',
+  차대차: 'Vehicle collision',
+  공사: 'Roadworks',
+  도로보수: 'Road repair',
   '총 {면수}면': '{면수} spaces',
   '{면수}면': '{면수} free',
   만차: 'Full',

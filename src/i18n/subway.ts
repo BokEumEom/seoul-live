@@ -30,9 +30,12 @@ const BOUND_FOR = /^(.+)행$/
  * 이걸 거르지 않으면 `BOUND_FOR`가 잡아 **「To 상」이라는 없는 말**을 만든다 —
  * 처음 짤 때 실제로 그렇게 만들었고, 테스트에 그 결과를 기대값으로 적기까지 했다.
  *
- * 옮기지 않고 **한국어로 흘려보낸다.** `Upbound`/`Downbound`가 맞는 말일
- * 가능성이 높지만 실응답에서 이 값을 본 적이 없고, 틀려도 확인할 방법이 없다.
- * 지어낸 영어보다 한국어가 낫다는 이 파일의 규칙 그대로다.
+ * **행선지 규칙에서 빼는 것과 번역하지 않는 것은 다른 결정이다.** 예전에는
+ * 둘을 한 번에 처리해 한국어로 흘려보냈고, 근거는 「실응답에서 이 값을 본 적이
+ * 없다」였다. **그 전제가 틀렸다**(2026-08-25) — `docs/fixtures/citydata-광화문덕수궁.json`의
+ * `SUB_DIR`에 `상행`·`하행`이 둘 다 있다. 그래서 이 집합은 **행선지 규칙에서만**
+ * 빼고, 번역은 사전에 맡긴다. 역 이름과 달리 방향어는 로마자 표기를 지어내는
+ * 일이 아니라 낱말을 옮기는 일이다.
  */
 const NOT_A_DESTINATION: ReadonlySet<string> = new Set(['상행', '하행'])
 
@@ -57,7 +60,7 @@ export function subwayLineText(line: string): string {
 
 export function subwayDirectionText(direction: string): string {
   if (NOT_A_DESTINATION.has(direction)) {
-    return direction
+    return t(direction)
   }
   const matched = direction.match(BOUND_FOR)
   return matched === null ? direction : t('{역}행', { 역: matched[1] })

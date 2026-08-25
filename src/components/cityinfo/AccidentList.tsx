@@ -8,8 +8,15 @@ interface Props {
 // 유형과 세부유형은 둘 중 하나만 오는 경우가 있다. 빈 값을 걸러내고 이어야
 // 「교통사고 ·」처럼 구분점만 남는 줄이 생기지 않는다 — 재난문자의
 // `category`·`step`을 잇는 방식과 같다.
+//
+// **조각마다 감싼다.** 이어 붙인 뒤에 감싸면 「교통사고 · 차대차」가 통째로
+// 키가 되어 조합마다 새 항목이 필요하다 — 유형이 늘면 곱으로 늘어난다.
+// 아래 `info`는 서울 API의 자유 문장이라 감싸지 않는 것이 맞다.
 function typeLabel(accident: AccidentControl): string {
-  return [accident.type, accident.detailType].filter((part) => part !== '').join(' · ')
+  return [accident.type, accident.detailType]
+    .filter((part) => part !== '')
+    .map((part) => t(part))
+    .join(' · ')
 }
 
 export function AccidentList({ accidents }: Props) {
