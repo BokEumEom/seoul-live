@@ -4,6 +4,7 @@ import type { ChargerStation } from './charger'
 import type { Commerce } from './commerce'
 import type { CongestionTone } from './congestion'
 import type { Freshness } from './freshness'
+import type { RoadSegment } from './roadSegment'
 import type { Coords } from './types'
 
 // 「더보기」(도시정보) 화면이 쓰는 타입과 순수 함수. 혼잡도(citydata_ppltn)와 달리
@@ -19,6 +20,15 @@ import type { Coords } from './types'
 export interface FacilityLocation {
   readonly name: string
   readonly coords: Coords
+  /**
+   * 지도에 그을 선. **도로 구간만 갖는다**(`XYLIST`).
+   *
+   * 주차장·따릉이·충전소·행사·사고는 점이라 이 자리가 비고, 도로는 길이가
+   * 있는 것이라 핀만 찍으면 「어디서 어디까지」가 빠진다. 선택 필드로 둔 이유는
+   * 「이름 붙은 자리」라는 뜻이 같아서다 — 타입을 갈라 두면 `ShowOnMapButton`과
+   * 지도 쪽 배선이 두 벌이 된다.
+   */
+  readonly path?: readonly Coords[]
 }
 
 /** 좌표가 있는 것만 지도로 보낼 수 있는 모양으로 바꾼다. */
@@ -487,6 +497,13 @@ export interface CityInfo {
   readonly areaCode: string
   readonly weather: Weather | null
   readonly roadTraffic: RoadTraffic | null
+  /**
+   * 도로 구간별 소통. 요약(`roadTraffic`)과 **같은 섹션의 한 겹 안**이다.
+   *
+   * 실호출 35곳에서 3~281개였다. 화면은 이 중 몇 개만 그린다 —
+   * 어느 것을 고르는지는 `sortRoadSegments`.
+   */
+  readonly roadSegments: readonly RoadSegment[]
   readonly accidents: readonly AccidentControl[]
   /**
    * ACDNT_TIME — 사고통제 갱신 시각. **행이 아니라 절의 값이다.**
@@ -746,6 +763,7 @@ export function hasAnyCityInfo(info: CityInfo): boolean {
   return (
     info.weather !== null ||
     info.roadTraffic !== null ||
+    info.roadSegments.length > 0 ||
     info.accidents.length > 0 ||
     info.parking.length > 0 ||
     info.bikes.length > 0 ||

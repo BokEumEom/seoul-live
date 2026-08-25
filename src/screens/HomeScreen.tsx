@@ -27,6 +27,7 @@ import { CategoryFilter } from '../components/list/CategoryFilter'
 import { LocationNotice } from '../components/list/LocationNotice'
 import { CongestionMarker } from '../components/map/CongestionMarker'
 import { FacilityMarker } from '../components/map/FacilityMarker'
+import { RoadPath } from '../components/map/RoadPath'
 import {
   MapUnavailableNotice,
   type MapUnavailableReason,
@@ -791,6 +792,13 @@ export function HomeScreen() {
           <AdvancedMarker position={focusedFacility.coords} zIndex={10}>
             <FacilityMarker name={focusedFacility.name} />
           </AdvancedMarker>
+        )}
+
+        {/* 도로 구간만 선을 갖는다(`XYLIST`). 나머지 시설은 점이라 위 핀 하나로
+            끝나고, 도로는 길이가 있는 것이라 핀만으로는 「어디서 어디까지」가
+            빠진다 — 근거는 `FacilityLocation.path`. */}
+        {focusedFacility?.path !== undefined && (
+          <RoadPath path={focusedFacility.path} />
         )}
 
         {/* **CCTV 마커 층이 여기 있었다.** 고른 명소 주변 카메라를 지도에

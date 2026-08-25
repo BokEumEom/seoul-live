@@ -1,6 +1,7 @@
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { ACCIDENT_DETAIL_TYPES, ACCIDENT_TYPES } from '../domain/accident'
+import { ROAD_SEGMENT_INDEXES } from '../domain/roadSegment'
 import {
   CHARGER_KINDS,
   CHARGER_METHODS,
@@ -75,7 +76,9 @@ const ROAD_CHIP_LABELS = ['도로 원활', '도로 서행', '도로 정체'] as 
  * 위와 같은 이유로 **이 셋이 전부라고 단언할 수 없다.** 새 값을 보거든 두
  * 목록과 `en.ts`에 함께 더하라.
  */
-const ROAD_STATE_LABELS = ['원활', '서행', '정체'] as const
+// **도메인에서 뽑는다**(2026-08-25). 손으로 적은 목록이었는데 같은 값이
+// `domain/roadSegment.ts`에도 생겼다 — 두 벌이 되면 한쪽만 고치는 날이 온다.
+// 사고통제·충전소·16방위와 같은 규칙이다.
 /**
  * 재난문자의 재해구분명(`DST_SE_NM`)·긴급단계명(`EMRG_STEP_NM`)과 사고통제의
  * 사고발생유형(`ACDNT_TYPE`)·세부유형(`ACDNT_DTYPE`), 지하철방향(`SUB_DIR`).
@@ -192,7 +195,7 @@ function dynamicKeys(): readonly string[] {
     ...RESIDENCE_LABELS,
     ...AIR_GRADE_LABELS,
     ...ROAD_CHIP_LABELS,
-    ...ROAD_STATE_LABELS,
+    ...ROAD_SEGMENT_INDEXES,
     ...ALERT_LABELS,
     // **도메인에서 뽑는다** — 손으로 적은 목록이었고, 실호출에서 값이 둘 늘었을
     // 때(`집회및행사`·`행사`) 여기가 낡아 있었다. 충전소·16방위와 같은 규칙이다.

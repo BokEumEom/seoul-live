@@ -9,6 +9,7 @@ import {
   CHARGER_TYPE_PARTS,
 } from '../domain/charger'
 import { COMMERCE_LEVELS } from '../domain/commerce'
+import { ROAD_SEGMENT_INDEXES } from '../domain/roadSegment'
 import { parseCityInfoResponse } from './cityInfoSchema'
 
 // **실호출 응답 한 벌을 그대로 파서에 통과시킨다.** 2026-08-25에 인증키로
@@ -97,6 +98,51 @@ describe('실호출 citydata 응답 (2026-08-25) — 파서', () => {
   it('장소명과 코드를 읽는다', () => {
     expect(info.areaName).toBe(AREA)
     expect(info.areaCode).toBe('POI009')
+  })
+
+  // **구간은 껍데기와 이름이 같다** — 바깥 `ROAD_TRAFFIC_STTS` 안에 같은 이름의
+  // 배열이 또 있다. 한 겹 못 들어가면 구간이 통째로 안 잡히는데, 요약은
+  // `AVG_ROAD_DATA`에서 멀쩡히 나오므로 화면은 정상으로 보인다.
+  it('도로 구간을 한 겹 안에서 꺼낸다', () => {
+    expect(info.roadSegments.length).toBeGreaterThan(0)
+    expect(info.roadSegments.every((segment) => segment.linkId !== '')).toBe(true)
+    expect(info.roadSegments.every((segment) => segment.roadName !== '')).toBe(true)
+    // `DIST`는 문자열, `SPD`는 숫자로 온다 — 같은 행에서 형이 갈린다.
+    expect(info.roadSegments.every((segment) => segment.meters !== null)).toBe(true)
+    expect(info.roadSegments.every((segment) => segment.speed !== null)).toBe(true)
+  })
+
+  // **밑줄 앞이 경도다.** 키 이름이 없어 순서가 유일한 단서라, 뒤집으면 위도
+  // 127이 되고 가드가 통째로 버린다 — 그러면 선도 지도 버튼도 사라진다.
+  it('구간 좌표를 서울 안쪽으로 읽는다', () => {
+    for (const segment of info.roadSegments) {
+      for (const point of [segment.startCoords, segment.endCoords, ...segment.path]) {
+        expect(point?.lat).toBeGreaterThan(37)
+        expect(point?.lat).toBeLessThan(38)
+        expect(point?.lng).toBeGreaterThan(126)
+        expect(point?.lng).toBeLessThan(128)
+      }
+    }
+  })
+
+  // **`XYLIST`는 끝에서 시작으로 간다.** 실호출 1,893건 전부에서 첫 점이
+  // `END_ND_XY`와, 마지막 점이 `START_ND_XY`와 정확히 같았다 — 이름의 순서와
+  // 반대다. 선을 긋는 데에는 상관없지만, 그 사실이 여기 기록으로 남는다.
+  it('보간점이 끝에서 시작으로 간다', () => {
+    expect(info.roadSegments.length).toBeGreaterThan(0)
+    for (const segment of info.roadSegments) {
+      expect(segment.path.length).toBeGreaterThanOrEqual(2)
+      expect(segment.path[0]).toEqual(segment.endCoords)
+      expect(segment.path[segment.path.length - 1]).toEqual(segment.startCoords)
+    }
+  })
+
+  // 지표는 요약(`ROAD_TRAFFIC_IDX`)과 같은 어휘다. 새 값이 오면 여기서 죽는다 —
+  // 그때 `ROAD_SEGMENT_INDEXES`와 사전에 함께 더한다.
+  it('구간 지표가 아는 셋 안이다', () => {
+    for (const segment of info.roadSegments) {
+      expect(ROAD_SEGMENT_INDEXES).toContain(segment.index)
+    }
   })
 
   it('도로소통을 읽는다', () => {

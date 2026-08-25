@@ -46,6 +46,8 @@ vi.mock('@vis.gl/react-google-maps', () => ({
       {children}
     </button>
   ),
+  // 선은 `RoadPath.test.tsx`가 잰다. 여기서는 훅이 있기만 하면 된다.
+  useMap: () => null,
 }))
 
 const framework = await import('@apps-in-toss/web-framework')

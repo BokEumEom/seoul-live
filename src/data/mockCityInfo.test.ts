@@ -187,4 +187,44 @@ describe('buildMockCityInfo', () => {
     expect(amounts.some((amount) => amount !== null && amount > 0)).toBe(true)
     expect(amounts.some((amount) => amount === null)).toBe(true)
   })
+
+  // **명세에 없는 한 겹 안이다** — 바깥 `ROAD_TRAFFIC_STTS` 안에 같은 이름의
+  // 배열이 또 있다. 목업이 평평하게 두면 파서가 그 겹을 안 타도 통과한다.
+  it('도로 구간이 요약과 함께 나온다', () => {
+    const info = infoFor('광화문·덕수궁')
+
+    expect(info.roadTraffic).not.toBeNull()
+    expect(info.roadSegments.length).toBeGreaterThan(0)
+  })
+
+  // `VISIBLE_LIMIT`가 5다. 목업이 그보다 적게 내면 「외 N곳」 줄을 개발 중에
+  // 한 번도 못 본다 — 실호출은 3~281개다.
+  it('구간을 다섯 개보다 많이 낸다', () => {
+    for (const name of AREA_NAMES) {
+      expect(infoFor(name).roadSegments.length).toBeGreaterThan(5)
+    }
+  })
+
+  // **밑줄 앞이 경도, 점 사이는 파이프다.** 예전 목업은 이 둘이 반대였는데
+  // (`'126.977,37.570_126.978,37.571'`) 아무도 `XYLIST`를 안 읽어서 몰랐다.
+  it('보간점을 선이 될 만큼 읽어낸다', () => {
+    for (const segment of infoFor('광화문·덕수궁').roadSegments) {
+      expect(segment.path.length).toBeGreaterThanOrEqual(2)
+      expect(segment.startCoords).not.toBeNull()
+      expect(segment.endCoords).not.toBeNull()
+    }
+  })
+
+  // **지표와 속도를 따로 굴린다.** 실호출에서 둘의 범위가 크게 겹쳤고 화면이
+  // 그 사실 위에 서 있다 — 속도로 지표를 지어내는 목업을 두면 화면 규칙이
+  // 목업에서만 성립한다.
+  it('세 지표가 모두 나오고 속도와 묶여 있지 않다', () => {
+    const segments = AREA_NAMES.flatMap((name) => infoFor(name).roadSegments)
+    const indexes = new Set(segments.map((segment) => segment.index))
+
+    expect([...indexes].sort()).toEqual(['서행', '원활', '정체'])
+    // 같은 지표 안에서 속도가 한 값으로 굳어 있지 않다.
+    const jammed = segments.filter((segment) => segment.index === '정체')
+    expect(new Set(jammed.map((segment) => segment.speed)).size).toBeGreaterThan(1)
+  })
 })

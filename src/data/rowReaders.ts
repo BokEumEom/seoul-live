@@ -54,6 +54,12 @@ export function numberOrNull(row: Row, key: string): number | null {
 export function coordsOrNull(row: Row, latKey: string, lngKey: string): Coords | null {
   const lat = numberOrNull(row, latKey)
   const lng = numberOrNull(row, lngKey)
+  return validCoords(lat, lng)
+}
+
+/** 축·범위 가드의 본체. 위 함수와 아래 `packedCoords`가 나눠 쓴다 — 가드가
+ *  두 벌이 되면 한쪽만 고치는 날이 온다. */
+function validCoords(lat: number | null, lng: number | null): Coords | null {
   if (lat === null || lng === null) {
     return null
   }
@@ -66,4 +72,29 @@ export function coordsOrNull(row: Row, latKey: string, lngKey: string): Coords |
     return null
   }
   return { lat, lng }
+}
+
+// 한 칸에 뭉쳐 온 좌표. 도로 구간이 이렇게 준다(명세 110·113·117행) —
+// `"127.0309432021188627_37.4933967723260864"`.
+//
+// **밑줄 앞이 경도다.** 따릉이·버스의 `X`/`Y`와 같은 규칙인데, 여기는 키 이름이
+// 아예 없어서 순서가 유일한 단서다. 뒤집으면 위도 127이 되고 아래 가드가 버린다.
+const PACKED_PAIR = /^(-?\d+(?:\.\d+)?)_(-?\d+(?:\.\d+)?)$/
+
+/** `"경도_위도"` 한 쌍을 읽는다. 모양이 다르면 `null`이다. */
+export function packedCoords(raw: string): Coords | null {
+  const matched = raw.trim().match(PACKED_PAIR)
+  if (matched === null) {
+    return null
+  }
+  return validCoords(Number(matched[2]), Number(matched[1]))
+}
+
+/** `"경도_위도|경도_위도|…"` 목록을 읽는다. 못 읽는 점은 버리고 나머지를 남긴다 —
+ *  한 점이 깨졌다고 선을 통째로 잃을 이유가 없다. */
+export function packedCoordsList(raw: string): readonly Coords[] {
+  return raw
+    .split('|')
+    .map(packedCoords)
+    .filter((point): point is Coords => point !== null)
 }

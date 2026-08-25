@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { makeBikeStation, makeCityInfo } from '../test/cityInfo'
+import { makeBikeStation, makeCityInfo, makeRoadSegment } from '../test/cityInfo'
 import type { CityInfo } from '../domain/cityInfo'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { reset } from '../hooks/favoritesStore'
@@ -91,7 +91,31 @@ vi.mock('@vis.gl/react-google-maps', () => ({
       {children}
     </button>
   ),
+  // `RoadPath`가 지도 객체를 받아 선을 직접 만든다(`@vis.gl`에 선 컴포넌트가
+  // 없다). 가짜 지도를 돌려줘야 그 층이 실제로 도는데, 그래야 **화면이 언제
+  // 그 층을 얹는가**를 여기서 잴 수 있다. 선의 옵션 자체는 `RoadPath.test.tsx`가 잰다.
+  useMap: () => FAKE_MAP,
 }))
+
+const FAKE_MAP = { id: 'map' }
+
+/** `RoadPath`가 만든 선들. 각 테스트 앞에서 비운다. */
+const drawnLines: { path: unknown }[] = []
+
+// `google`은 스크립트가 붙은 뒤에만 있는 전역이라 jsdom에 없다. 선 층이
+// 실제로 도는지 보려면 생성자가 있어야 한다.
+Object.assign(globalThis, {
+  google: {
+    maps: {
+      Polyline: class {
+        setMap = () => undefined
+        constructor(options: { path: unknown }) {
+          drawnLines.push({ path: options.path })
+        }
+      },
+    },
+  },
+})
 
 // 즐겨찾기 저장소를 고정한다. 브리지가 없는 환경을 흉내 내 localStorage
 // 폴백을 타게 한다 — 실제 SDK에 기대면 결과가 SDK 동작에 묶인다.
@@ -156,6 +180,7 @@ function snapshotFor(
 
 beforeEach(async () => {
   reset()
+  drawnLines.length = 0
   localStorage.clear()
   // 오프라인 테스트가 `navigator.onLine`을 인스턴스에 심는다. 지우지 않으면
   // **그 뒤 파일 전체가 오프라인 상태로 돈다** — 안내가 지도를 대신하므로
@@ -471,6 +496,82 @@ describe('HomeScreen', () => {
     // 중심은 좌표 그대로가 아니다 — 시트가 덮은 만큼 위로 비켜 잡는다.
     // 그래서 위도만 확인하고 경도는 그대로여야 한다.
     expect(map.getAttribute('data-center')).toMatch(/,126.9775$/)
+  })
+
+  // **도로만 선이 된다.** 다른 시설은 점이라 핀 하나로 끝나는데, 도로는
+  // 길이가 있는 것이라 핀만 찍으면 「어디서 어디까지 막히나」가 빠진다.
+  // 잎(`RoadPath`)이 초록이어도 화면이 그 층을 안 얹으면 지도에 아무것도
+  // 안 나오므로, 여기서 통로 전체를 한 번 지난다.
+  it('도로 구간을 지도에서 보면 선이 그려진다', async () => {
+    useCityInfo.mockReturnValue({
+      data: makeCityInfo({
+        areaName: '강남역',
+        areaCode: 'POI014',
+        roadSegments: [
+          makeRoadSegment({
+            linkId: '1220019401',
+            roadName: '역삼로',
+            index: '정체',
+            speed: 9,
+            path: [
+              { lat: 37.4936, lng: 127.0316 },
+              { lat: 37.4933, lng: 127.0309 },
+            ],
+            startCoords: { lat: 37.4933, lng: 127.0309 },
+            endCoords: { lat: 37.4936, lng: 127.0316 },
+          }),
+        ],
+      }),
+      isPending: false,
+      isError: false,
+    } as UseQueryResult<CityInfo>)
+
+    render(<HomeScreen />)
+    await userEvent.click(areaButtons(/강남역/)[0])
+    await userEvent.click(screen.getByRole('tab', { name: '교통' }))
+    await userEvent.click(screen.getByRole('button', { name: '역삼로 지도에서 보기' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
+    })
+    expect(drawnLines).toHaveLength(1)
+    expect(drawnLines[0].path).toEqual([
+      { lat: 37.4936, lng: 127.0316 },
+      { lat: 37.4933, lng: 127.0309 },
+    ])
+  })
+
+  // 점으로 찍는 시설에는 선이 안 생긴다. 이게 없으면 「언제나 선을 그린다」와
+  // 위 단언이 구별되지 않는다.
+  it('따릉이를 지도에서 봐도 선은 안 그린다', async () => {
+    useCityInfo.mockReturnValue({
+      data: makeCityInfo({
+        areaName: '강남역',
+        areaCode: 'POI014',
+        bikes: [
+          makeBikeStation({
+            name: '광화문역 5번출구',
+            coords: { lat: 37.5698, lng: 126.9775 },
+            bikes: 6,
+            racks: 21,
+          }),
+        ],
+      }),
+      isPending: false,
+      isError: false,
+    } as UseQueryResult<CityInfo>)
+
+    render(<HomeScreen />)
+    await userEvent.click(areaButtons(/강남역/)[0])
+    await userEvent.click(screen.getByRole('tab', { name: '주변' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: '광화문역 5번출구 지도에서 보기' }),
+    )
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '뒤로' })).toBeNull()
+    })
+    expect(drawnLines).toHaveLength(0)
   })
 
   // **이 테스트가 「의정부 버그」를 잠근다.** 위 두 곳의

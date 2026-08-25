@@ -1,5 +1,6 @@
 import type { AccidentControl } from '../domain/accident'
 import type { BikeStation } from '../domain/bike'
+import type { RoadSegment } from '../domain/roadSegment'
 import type {
   CityInfo,
   CulturalEvent,
@@ -124,6 +125,22 @@ export function makeAccident(overrides: Partial<AccidentControl> = {}): Accident
   }
 }
 
+export function makeRoadSegment(overrides: Partial<RoadSegment> = {}): RoadSegment {
+  return {
+    linkId: '',
+    roadName: '',
+    startName: '',
+    endName: '',
+    meters: null,
+    speed: null,
+    index: '',
+    path: [],
+    startCoords: null,
+    endCoords: null,
+    ...overrides,
+  }
+}
+
 export function makeCityInfo(overrides: Partial<CityInfo> = {}): CityInfo {
   return {
     areaName: '',
@@ -131,6 +148,7 @@ export function makeCityInfo(overrides: Partial<CityInfo> = {}): CityInfo {
     freshness: null,
     weather: null,
     roadTraffic: null,
+    roadSegments: [],
     accidents: [],
     accidentsUpdatedAt: '',
     parking: [],

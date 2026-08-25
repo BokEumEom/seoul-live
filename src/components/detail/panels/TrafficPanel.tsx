@@ -6,6 +6,7 @@ import { BusStopList } from '../../cityinfo/BusStopList'
 import { freshnessNote } from '../../cityinfo/freshnessNote'
 import { InfoSection } from '../../cityinfo/InfoSection'
 import { RidershipSummary } from '../../cityinfo/RidershipSummary'
+import { RoadSegmentList } from '../../cityinfo/RoadSegmentList'
 import { RoadTrafficCard } from '../../cityinfo/RoadTrafficCard'
 import { SubwayArrivals } from '../../cityinfo/SubwayArrivals'
 import { CityInfoBoundary } from '../CityInfoBoundary'
@@ -31,6 +32,7 @@ export function TrafficPanel({ areaName, origin, onShowOnMap }: Props) {
       areaName={areaName}
       has={(info) =>
         info.roadTraffic !== null ||
+        info.roadSegments.length > 0 ||
         info.accidents.length > 0 ||
         info.subway.length > 0 ||
         // 승하차와 정류소도 이 탭의 내용이다. 안 세면 도착 정보가 없는 명소에서
@@ -43,7 +45,9 @@ export function TrafficPanel({ areaName, origin, onShowOnMap }: Props) {
     >
       {(info) => (
         <div className="flex flex-col gap-3">
-          {(info.roadTraffic !== null || info.accidents.length > 0) && (
+          {(info.roadTraffic !== null ||
+            info.roadSegments.length > 0 ||
+            info.accidents.length > 0) && (
             <InfoSection title={t('도로소통')} icon="road">
               {info.roadTraffic !== null && (
                 <RoadTrafficCard traffic={info.roadTraffic} />
@@ -53,6 +57,23 @@ export function TrafficPanel({ areaName, origin, onShowOnMap }: Props) {
                   <AccidentList accidents={info.accidents} onShowOnMap={onShowOnMap} />
                 </div>
               )}
+            </InfoSection>
+          )}
+
+          {/* **요약과 절을 나눈 이유.** 위 절은 「지금 차로 갈 만한가」 한 줄과
+              통제 소식이고, 이쪽은 「그래서 어느 길이」다. 한 절에 넣으면 평균
+              속도 바로 아래에 구간별 속도가 붙어 두 숫자가 서로 다투는데,
+              실제로 둘은 다른 질문의 답이다. */}
+          {info.roadSegments.length > 0 && (
+            <InfoSection
+              title={t('주요 도로 상황')}
+              icon="road"
+              count={info.roadSegments.length}
+            >
+              <RoadSegmentList
+                segments={info.roadSegments}
+                onShowOnMap={onShowOnMap}
+              />
             </InfoSection>
           )}
 

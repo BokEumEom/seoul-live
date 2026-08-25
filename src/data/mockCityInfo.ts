@@ -594,7 +594,7 @@ function buildAlerts(seed: number, now: Date): readonly unknown[] {
 //
 // 평균속도는 **문자열이 아니라 number**로 온다. 구간 배열은 파서가 일부러
 // 읽지 않지만(XYLIST 좌표 덩어리다) 모양은 남겨 둔다.
-function buildRoadTraffic(seed: number, now: Date): unknown {
+function buildRoadTraffic(areaName: string, seed: number, now: Date): unknown {
   const mixed = mixSeed(seed, ROAD_SALT)
   const index = ROAD_INDEXES[mixed % ROAD_INDEXES.length]
   const speed = 12 + (mixed % 28)
@@ -605,15 +605,64 @@ function buildRoadTraffic(seed: number, now: Date): unknown {
       ROAD_MSG: `주변 도로 평균 속도는 ${String(speed)}km/h, 소통 상태는 ${index}입니다.`,
       ROAD_TRAFFIC_TIME: formatSeoulTime(now),
     },
-    ROAD_TRAFFIC_STTS: [
-      {
-        LINK_ID: `116${String(mixed % 10000)}`,
-        ROAD_NM: '세종대로',
-        SPD: speed,
-        XYLIST: '126.977,37.570_126.978,37.571',
-      },
-    ],
+    ROAD_TRAFFIC_STTS: buildRoadSegments(areaName, seed),
   }
+}
+
+/** 실호출에서 자주 본 도로명들. 고유명사라 옮기지 않는 자리다. */
+const ROAD_NAMES = ['세종대로', '종로', '올림픽대로', '여의동로', '테헤란로'] as const
+
+/** 노드 이름. **실호출의 4분의 1이 번지꼴이라** 그쪽도 섞는다 — 화면이 그 값을
+ *  그대로 적기로 했으니 개발 중에 보여야 한다. */
+const NODE_NAMES = [
+  '세종대로사거리',
+  '광화문',
+  '종로1가',
+  '노량진동 118-14',
+  '수산시장입구교차로',
+  '역삼초등학교',
+] as const
+
+/**
+ * 도로 구간. **명세에 없는 한 겹 안이다** — 바깥 `ROAD_TRAFFIC_STTS` 안에 같은
+ * 이름의 배열이 또 있다(2026-08-25 실호출).
+ *
+ * 구간 수를 6~13으로 낸다. 실호출은 3~281개였는데, 목업이 `VISIBLE_LIMIT`(5)를
+ * 넘겨야 「외 N곳」 줄이 개발 중에 보인다.
+ */
+function buildRoadSegments(areaName: string, seed: number): readonly unknown[] {
+  const count = 6 + (mixSeed(seed, ROAD_SALT + 1) % 8)
+  return Array.from({ length: count }, (_, index) => {
+    const mixed = mixSeed(seed, ROAD_SALT * 100 + index)
+    const from = scatter(areaName, mixed)
+    const to = scatter(areaName, mixed + 1)
+    // **지표와 속도를 따로 굴린다.** 실호출에서 둘의 범위가 크게 겹쳤고
+    // (정체 2~28 · 원활 25~67) 화면이 그 사실 위에 서 있다 — 속도로 지표를
+    // 지어내는 목업을 두면 화면 규칙이 목업에서만 성립한다.
+    const idx = ROAD_INDEXES[mixed % ROAD_INDEXES.length]
+    return {
+      LINK_ID: `116${String(mixed % 100000)}${String(index)}`,
+      ROAD_NM: ROAD_NAMES[mixed % ROAD_NAMES.length],
+      START_ND_NM: NODE_NAMES[mixed % NODE_NAMES.length],
+      END_ND_NM: NODE_NAMES[(mixed + 1) % NODE_NAMES.length],
+      // 노드 코드는 파서가 일부러 안 읽는다(근거는 `toRoadSegments`).
+      // 실응답에 있는 값이라 모양만 남긴다.
+      START_ND_CD: `1220${String(mixed % 1000000)}`,
+      END_ND_CD: `1220${String((mixed + 7) % 1000000)}`,
+      // **문자열로 온다**(같은 행의 `SPD`는 숫자인데). 실호출 범위가 11~653m다.
+      DIST: String(11 + (mixed % 640)) + '.0',
+      SPD: 2 + (mixed % 66),
+      IDX: idx,
+      // **밑줄 앞이 경도, 점 사이는 파이프다.** 예전 목업은 이 둘이 반대였는데
+      // (`'126.977,37.570_126.978,37.571'`) 아무도 `XYLIST`를 안 읽어서 몰랐다.
+      //
+      // **끝에서 시작으로 간다.** 실호출 1,893건 전부가 그랬다 — 이름의 순서와
+      // 반대다. 목업이 바로 내면 그 사실이 개발 중에 사라진다.
+      XYLIST: `${String(to.lng)}_${String(to.lat)}|${String(from.lng)}_${String(from.lat)}`,
+      START_ND_XY: `${String(from.lng)}_${String(from.lat)}`,
+      END_ND_XY: `${String(to.lng)}_${String(to.lat)}`,
+    }
+  })
 }
 
 // 사고통제는 재난문자처럼 대부분의 명소에서 비어 있는 게 정상이다. 4곳 중 1곳쯤만
@@ -653,7 +702,7 @@ export function buildMockCityInfo(areaName: string, now: Date = new Date()): unk
       AREA_NM: areaName,
       AREA_CD: findAreaByName(areaName)?.code ?? 'POI000',
       WEATHER_STTS: [buildWeather(seed, now)],
-      ROAD_TRAFFIC_STTS: buildRoadTraffic(seed, now),
+      ROAD_TRAFFIC_STTS: buildRoadTraffic(areaName, seed, now),
       ACDNT_CNTRL_STTS: buildAccidents(areaName, seed, now),
       PRK_STTS: buildParking(areaName, seed, now),
       SBIKE_STTS: buildBikes(areaName, seed),

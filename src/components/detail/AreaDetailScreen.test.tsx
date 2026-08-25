@@ -12,6 +12,7 @@ import {
   makeCityInfo,
   makeCulturalEvent,
   makeParkingLot,
+  makeRoadSegment,
   makeWeather,
 } from '../../test/cityInfo'
 import { findAreaByName } from '../../data/areas'
@@ -667,6 +668,84 @@ describe('AreaDetailScreen — 교통 탭', () => {
     await openTab('교통')
     expect(screen.getByRole('heading', { name: '도로소통' })).toBeInTheDocument()
     expect(screen.getByText('강남대로가 서행하고 있어요.')).toBeInTheDocument()
+  })
+
+  // **잎만 테스트하면 탭에 안 걸려 있어도 초록이다.** 이 저장소에서 여러 번
+  // 겪은 자리라 배선을 함께 잠근다.
+  it('교통 탭이 도로 구간을 절로 그린다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        roadSegments: [
+          makeRoadSegment({
+            linkId: '1220019401',
+            roadName: '역삼로',
+            startName: '역삼동 858-14',
+            endName: '역삼초등학교',
+            meters: 68,
+            speed: 9,
+            index: '정체',
+          }),
+        ],
+      }),
+    )
+    renderDetail()
+    await openTab('교통')
+
+    expect(screen.getByRole('heading', { name: '주요 도로 상황' })).toBeInTheDocument()
+    expect(screen.getByText('역삼로')).toBeInTheDocument()
+    expect(screen.getByText('9km/h')).toBeInTheDocument()
+  })
+
+  // 요약(평균)과 구간은 다른 질문의 답이라 절을 나눴다. 한 절에 넣으면 평균
+  // 속도 바로 아래 구간별 속도가 붙어 두 숫자가 서로 다툰다.
+  it('도로 구간만 있어도 교통 탭이 열린다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        roadSegments: [makeRoadSegment({ linkId: 'a', roadName: '역삼로', index: '정체' })],
+      }),
+    )
+    renderDetail()
+    await openTab('교통')
+
+    expect(screen.queryByText(/교통 정보가 없어요/)).toBeNull()
+    expect(screen.getByText('역삼로')).toBeInTheDocument()
+  })
+
+  // 도로 구간의 「지도에서 보기」는 점이 아니라 **선**을 넘긴다.
+  it('도로 구간을 지도로 보낼 때 선을 함께 넘긴다', async () => {
+    const onShowOnMap = vi.fn()
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        roadSegments: [
+          makeRoadSegment({
+            linkId: 'a',
+            roadName: '역삼로',
+            index: '정체',
+            path: [
+              { lat: 37.4936, lng: 127.0316 },
+              { lat: 37.4933, lng: 127.0309 },
+            ],
+            startCoords: { lat: 37.4933, lng: 127.0309 },
+            endCoords: { lat: 37.4936, lng: 127.0316 },
+          }),
+        ],
+      }),
+    )
+    render(
+      <AreaDetailScreen
+        areaName="강남역"
+        onBack={() => undefined}
+        onSelectArea={() => undefined}
+        onShowOnMap={onShowOnMap}
+      />,
+    )
+    await openTab('교통')
+    await userEvent.click(screen.getByRole('button', { name: '역삼로 지도에서 보기' }))
+
+    expect(onShowOnMap.mock.calls[0][0].path).toHaveLength(2)
   })
 
   // 도로소통과 사고통제는 같은 질문의 답이다 — 「지금 차로 갈 만한가」.

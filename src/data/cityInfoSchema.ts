@@ -15,6 +15,7 @@ import type {
   WeatherWarning,
 } from '../domain/cityInfo'
 import type { AccidentControl } from '../domain/accident'
+import type { RoadSegment } from '../domain/roadSegment'
 import type { BikeStation } from '../domain/bike'
 import type { Charger, ChargerStation } from '../domain/charger'
 import {
@@ -23,7 +24,15 @@ import {
   type CommerceCategory,
 } from '../domain/commerce'
 import { AreaNameMismatchError, seoulApiErrorFrom } from './schema'
-import { asRow, coordsOrNull, numberOrNull, text, type Row } from './rowReaders'
+import {
+  asRow,
+  coordsOrNull,
+  numberOrNull,
+  packedCoords,
+  packedCoordsList,
+  text,
+  type Row,
+} from './rowReaders'
 
 // `citydata` 응답을 CityInfo로 옮긴다. `citydata_ppltn`을 다루는 schema.ts와 달리
 // 필드 단위 zod 스키마를 세우지 않는다. 이유는 취향이 아니라 검증 가능성이다:
@@ -176,13 +185,12 @@ function named<T>(rows: readonly Row[], key: string, build: (row: Row, name: str
   })
 }
 
-// 도로소통은 요약 한 줄이라 날씨처럼 첫 행만 읽는다.
+// 도로소통 요약은 한 줄이라 날씨처럼 첫 행만 읽는다.
 //
-// **구간 목록은 일부러 안 읽는다.** 같은 섹션에 `LINK_ID`·`ROAD_NM`·`SPD`·
-// `XYLIST`가 도로 구간마다 딸려 오는데, `XYLIST`는 보간점 좌표 덩어리이고
-// 구간 수는 명소마다 다르다. 시트는 좁고(half에서 목록이 약 5.9행) 여기서
-// 필요한 것은 「지금 이 근처가 막히는가」 한 줄이다. 구간별로 보여줄 일이
-// 생기면 그건 이 카드가 아니라 지도 위에 그릴 일이다.
+// **구간 목록은 2026-08-25에 붙었다**(`toRoadSegments`). 예전 주석은 「일부러
+// 안 읽는다 — 시트가 좁고 필요한 것은 한 줄이다」였는데, 상세가 전체 화면이
+// 되면서 그 전제가 사라졌다. 「구간별로 보여줄 일이 생기면 그건 이 카드가
+// 아니라 지도 위에 그릴 일이다」던 것도 그대로 지켰다 — `XYLIST`가 선이 된다.
 function toRoadTraffic(row: Row): RoadTraffic | null {
   const index = text(row, 'ROAD_TRAFFIC_IDX')
   const message = text(row, 'ROAD_MSG')
@@ -197,6 +205,38 @@ function toRoadTraffic(row: Row): RoadTraffic | null {
     speed: numberOrNull(row, 'ROAD_TRAFFIC_SPD'),
     updatedAt: text(row, 'ROAD_TRAFFIC_TIME'),
   }
+}
+
+/**
+ * 도로 구간. **`LINK_ID`가 본체다** — 없으면 어느 구간인지 말할 수 없다.
+ *
+ * `START_ND_CD`·`END_ND_CD`(명세 108·111행)는 **일부러 안 읽는다.** 도로망을
+ * 이어 붙이라고 있는 노드 코드인데, 2026-08-25 실호출에서 그게 이 화면에
+ * 쓸모가 없다는 것이 확인됐다: 구간이 둘 이상인 도로 318개 중 **한 줄로
+ * 이어지는 것은 2개뿐**이었고(나머지는 2~10 조각으로 흩어진다), 같은 구간의
+ * 반대 방향 쌍은 1,893건 중 **0쌍**이었다. 이을 수도, 짝지을 수도 없는 키다.
+ *
+ * 그래서 시안 `_4`의 「세종대로사거리 → 광화문」 같은 **도로 단위 시작→끝은
+ * 만들지 않는다.** 조각난 구간들의 첫 시작과 마지막 끝을 이어 적으면, 실제로는
+ * 떨어져 있는 두 지점을 한 구간처럼 말하게 된다.
+ */
+function toRoadSegments(rows: readonly Row[]): readonly RoadSegment[] {
+  return named(
+    rows,
+    'LINK_ID',
+    (row, linkId): RoadSegment => ({
+      linkId,
+      roadName: text(row, 'ROAD_NM'),
+      startName: text(row, 'START_ND_NM'),
+      endName: text(row, 'END_ND_NM'),
+      meters: numberOrNull(row, 'DIST'),
+      speed: numberOrNull(row, 'SPD'),
+      index: text(row, 'IDX'),
+      path: packedCoordsList(text(row, 'XYLIST')),
+      startCoords: packedCoords(text(row, 'START_ND_XY')),
+      endCoords: packedCoords(text(row, 'END_ND_XY')),
+    }),
+  )
 }
 
 function toAccidents(rows: readonly Row[]): readonly AccidentControl[] {
@@ -539,10 +579,18 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
   // 두 번 읽는다 — 목록과 갱신 시각이 같은 행에서 나온다.
   const accidentRows = sectionRows(container, ['ACDNT_CNTRL_STTS'])
 
-  const roadRows = sectionRows(container, ['ROAD_TRAFFIC_STTS']).flatMap((row) => {
+  const roadContainers = sectionRows(container, ['ROAD_TRAFFIC_STTS'])
+  const roadRows = roadContainers.flatMap((row) => {
     const average = sectionRows(row, ['AVG_ROAD_DATA'])
     return average.length > 0 ? average : [row]
   })
+  // **구간은 껍데기와 이름이 같다.** 바깥 `ROAD_TRAFFIC_STTS` 안에 같은 이름의
+  // 배열이 또 있다(2026-08-25 실호출). 한 겹 안으로 못 들어가면 구간이 통째로
+  // 안 잡히는데, 요약은 `AVG_ROAD_DATA`에서 멀쩡히 나오므로 화면은 정상으로
+  // 보인다 — 조용히 비는 자리라 픽스처 테스트가 개수를 잰다.
+  const segmentRows = roadContainers.flatMap((row) =>
+    sectionRows(row, ['ROAD_TRAFFIC_STTS']),
+  )
 
   return {
     // **파서는 나이를 모른다.** `Age`는 응답 본문이 아니라 HTTP 헤더에 있어
@@ -559,6 +607,7 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
     // 테스트 구멍이 아니라 **동치 변이**이니 쫓지 마라. 바로 위 `weather`와 같은
     // 모양을 유지하는 쪽을 택했다.
     roadTraffic: roadRows.length > 0 ? toRoadTraffic(roadRows[0]) : null,
+    roadSegments: toRoadSegments(segmentRows),
     accidents: toAccidents(accidentRows),
     // 첫 행에서 읽는다 — 절의 값이라는 근거는 `CityInfo.accidentsUpdatedAt`.
     accidentsUpdatedAt: accidentRows.length > 0 ? text(accidentRows[0], 'ACDNT_TIME') : '',

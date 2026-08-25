@@ -15,6 +15,7 @@ import {
   makeCulturalEvent,
   makeHourlyForecast,
   makeParkingLot,
+  makeRoadSegment,
   makeWeather,
 } from '../test/cityInfo'
 
@@ -142,6 +143,25 @@ const CITY_INFO: CityInfo = makeCityInfo({
     message: 'Two-car collision; one lane closed.',
     updatedAt: '2026-08-21 15:00',
   },
+  // 구간 이름·도로명은 고유명사라 라틴 문자로 둔다. **지표(`IDX`)는 한국어
+  // 그대로다** — 서울 API가 그렇게 주고, 그게 이 검사가 보려는 것이다.
+  roadSegments: [
+    makeRoadSegment({
+      linkId: '1220019401',
+      roadName: 'Sejong-daero',
+      startName: 'Sejong-daero Intersection',
+      endName: 'Gwanghwamun',
+      meters: 680,
+      speed: 9,
+      index: '정체',
+      path: [
+        { lat: 37.5715, lng: 126.9769 },
+        { lat: 37.5735, lng: 126.9771 },
+      ],
+      startCoords: { lat: 37.5715, lng: 126.9769 },
+      endCoords: { lat: 37.5735, lng: 126.9771 },
+    }),
+  ],
   accidents: [
     // **이 한 건만 한국어 원문이다.** 나머지 자유 문장과 달리 서울이 영어를
     // 함께 주는 자리라(`ACDNT_ENG_INFO`) 위의 「못 옮기는 자리에는 한국어를

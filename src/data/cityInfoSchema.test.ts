@@ -651,6 +651,125 @@ describe('parseCityInfoResponse — 도로소통', () => {
   })
 })
 
+describe('parseCityInfoResponse — 도로 구간', () => {
+  const SEGMENT = {
+    LINK_ID: '1220019401',
+    ROAD_NM: '역삼로',
+    START_ND_NM: '역삼동 858-14',
+    END_ND_NM: '역삼초등학교',
+    START_ND_XY: '127.0309432021188627_37.4933967723260864',
+    END_ND_XY: '127.0316663031210709_37.4936126134126368',
+    DIST: '68.0',
+    SPD: 9,
+    IDX: '정체',
+    XYLIST:
+      '127.0316663031210709_37.4936126134126368|127.0309432021188627_37.4933967723260864',
+  }
+
+  function withSegments(segments: readonly unknown[]): unknown {
+    return payload({
+      ROAD_TRAFFIC_STTS: {
+        AVG_ROAD_DATA: { ROAD_TRAFFIC_IDX: '정체', ROAD_MSG: '오래 걸려요.' },
+        ROAD_TRAFFIC_STTS: segments,
+      },
+    })
+  }
+
+  it('구간 필드를 옮긴다', () => {
+    const info = parseCityInfoResponse(withSegments([SEGMENT]), AREA)
+
+    expect(info.roadSegments).toEqual([
+      {
+        linkId: '1220019401',
+        roadName: '역삼로',
+        startName: '역삼동 858-14',
+        endName: '역삼초등학교',
+        meters: 68,
+        speed: 9,
+        index: '정체',
+        path: [
+          { lat: 37.4936126134126368, lng: 127.0316663031210709 },
+          { lat: 37.4933967723260864, lng: 127.0309432021188627 },
+        ],
+        startCoords: { lat: 37.4933967723260864, lng: 127.0309432021188627 },
+        endCoords: { lat: 37.4936126134126368, lng: 127.0316663031210709 },
+      },
+    ])
+  })
+
+  // **껍데기와 이름이 같다.** 바깥 `ROAD_TRAFFIC_STTS` 안에 같은 이름의 배열이
+  // 또 있다. 한 겹 못 들어가면 구간이 통째로 안 잡히는데, 요약은
+  // `AVG_ROAD_DATA`에서 멀쩡히 나오므로 **화면은 정상으로 보인다.**
+  it('요약과 구간을 한 응답에서 함께 읽는다', () => {
+    const info = parseCityInfoResponse(withSegments([SEGMENT]), AREA)
+
+    expect(info.roadTraffic?.index).toBe('정체')
+    expect(info.roadSegments).toHaveLength(1)
+  })
+
+  it('구간이 없어도 요약은 살아 있다', () => {
+    const info = parseCityInfoResponse(withSegments([]), AREA)
+
+    expect(info.roadTraffic?.index).toBe('정체')
+    expect(info.roadSegments).toEqual([])
+  })
+
+  // `LINK_ID`가 이 항목의 본체다 — 없으면 어느 구간인지 말할 수 없고 목록의
+  // 키도 없다. 주차장의 이름, 재난문자의 내용과 같은 규칙이다.
+  it('LINK_ID가 없는 행은 버린다', () => {
+    const info = parseCityInfoResponse(
+      withSegments([{ ...SEGMENT, LINK_ID: '' }, SEGMENT]),
+      AREA,
+    )
+
+    expect(info.roadSegments.map((entry) => entry.linkId)).toEqual(['1220019401'])
+  })
+
+  // **밑줄 앞이 경도다.** 키 이름이 아예 없어서 순서가 유일한 단서다 —
+  // 뒤집으면 위도 127이 되고 `coordsOrNull`의 가드가 통째로 버린다.
+  it('좌표는 밑줄 앞이 경도다', () => {
+    const info = parseCityInfoResponse(withSegments([SEGMENT]), AREA)
+    const [segment] = info.roadSegments
+
+    expect(segment.startCoords?.lat).toBeGreaterThan(37)
+    expect(segment.startCoords?.lat).toBeLessThan(38)
+    expect(segment.startCoords?.lng).toBeGreaterThan(126)
+    expect(segment.startCoords?.lng).toBeLessThan(128)
+  })
+
+  it('좌표 모양이 아니면 null이다', () => {
+    const info = parseCityInfoResponse(
+      withSegments([{ ...SEGMENT, START_ND_XY: '127.03,37.49', END_ND_XY: '' }]),
+      AREA,
+    )
+
+    expect(info.roadSegments[0].startCoords).toBeNull()
+    expect(info.roadSegments[0].endCoords).toBeNull()
+  })
+
+  // 한 점이 깨졌다고 선을 통째로 잃을 이유가 없다.
+  it('보간점 하나가 깨져도 나머지를 남긴다', () => {
+    const info = parseCityInfoResponse(
+      withSegments([{ ...SEGMENT, XYLIST: '127.03_37.49|엉망|127.04_37.50' }]),
+      AREA,
+    )
+
+    expect(info.roadSegments[0].path).toEqual([
+      { lat: 37.49, lng: 127.03 },
+      { lat: 37.5, lng: 127.04 },
+    ])
+  })
+
+  // **`DIST`는 문자열이고 `SPD`는 숫자다.** 같은 행에서 형이 갈린다 —
+  // 실호출 1,893건 전부 그랬다.
+  it('문자열 거리와 숫자 속도를 둘 다 읽는다', () => {
+    const info = parseCityInfoResponse(withSegments([SEGMENT]), AREA)
+
+    expect(info.roadSegments[0].meters).toBe(68)
+    expect(info.roadSegments[0].speed).toBe(9)
+  })
+})
+
 describe('parseCityInfoResponse — 사고통제', () => {
   it('통제 항목을 옮긴다', () => {
     const info = parseCityInfoResponse(
