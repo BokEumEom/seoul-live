@@ -1227,3 +1227,69 @@ describe('AreaDetailScreen — 상권 탭', () => {
     expect(screen.getByText('이 명소에는 상권 정보가 없어요.')).toBeInTheDocument()
   })
 })
+
+// 시안에 충전소 화면이 없어 「주변」 탭의 셋째 절로 넣었다. 배선을 여기서 잡는다 —
+// 잎 컴포넌트마다 테스트가 있어도 「붙였는가」는 아무도 안 본다(2026-08-25에
+// 날씨 절 둘이 그 상태였다).
+describe('AreaDetailScreen — 전기차 충전 절', () => {
+  const STATION = {
+    name: 'NIA빌딩',
+    id: 'HM110247',
+    address: '서울특별시 중구 청계천로 14',
+    coords: { lat: 37.5687892, lng: 126.9788175 },
+    useTime: '24시간 이용가능',
+    parkingPaid: true,
+    limited: false,
+    limitDetail: '',
+    kind: '기타',
+    chargers: [
+      {
+        id: '02',
+        type: 'AC완속',
+        status: '사용가능',
+        outputKw: 7,
+        method: '단독',
+        statusAt: '2026-08-25 08:56',
+        lastStartAt: '',
+        lastEndAt: '',
+        chargingSince: '',
+      },
+    ],
+  }
+
+  it('주변 탭이 충전소를 보여준다', async () => {
+    useCityInfo.mockReturnValue(ok({ ...EMPTY_CITY_INFO, chargers: [STATION] }))
+    renderDetail()
+    await openTab('주변')
+
+    expect(screen.getByText('NIA빌딩')).toBeInTheDocument()
+    expect(screen.getByText('1대 가능')).toBeInTheDocument()
+  })
+
+  // **주차장·따릉이와 다르다.** 저 둘은 「없다」는 사실 자체가 답이지만
+  // 충전소는 전기차를 모는 사람만 묻는다 — 없는 곳에 빈 절을 세우면 나머지
+  // 사용자에게는 잡음이다.
+  it('충전소가 없으면 절 자체가 안 생긴다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({ ...EMPTY_CITY_INFO, chargers: [], parking: [PARKING_LOT] }),
+    )
+    renderDetail()
+    await openTab('주변')
+
+    expect(screen.getByRole('heading', { name: '주차장' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /전기차/ })).not.toBeInTheDocument()
+  })
+
+  // 충전소만 있고 주차장·따릉이가 없는 명소가 있을 수 있다. `has`가 충전소를
+  // 안 세면 「주변 정보가 없어요」를 띄우면서 그 아래로 충전 절을 그린다.
+  it('충전소만 있어도 탭이 선다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({ ...EMPTY_CITY_INFO, chargers: [STATION], parking: [], bikes: [] }),
+    )
+    renderDetail()
+    await openTab('주변')
+
+    expect(screen.queryByText('주변 주차장·따릉이 정보가 없어요.')).not.toBeInTheDocument()
+    expect(screen.getByText('NIA빌딩')).toBeInTheDocument()
+  })
+})

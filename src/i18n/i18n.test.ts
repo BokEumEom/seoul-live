@@ -1,5 +1,11 @@
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
+import {
+  CHARGER_KINDS,
+  CHARGER_METHODS,
+  CHARGER_STATUSES,
+  CHARGER_TYPE_PARTS,
+} from '../domain/charger'
 import { WIND_DIRECTION_LABELS } from '../domain/cityInfo'
 import {
   COMMERCE_AGE_LABELS,
@@ -195,6 +201,11 @@ function dynamicKeys(): readonly string[] {
     ...COMMERCE_LEVELS,
     ...COMMERCE_AGE_LABELS,
     ...COMMERCE_CATEGORY_LABELS,
+    // 충전소는 **도메인에서 뽑는다** — 값이 늘면 여기가 낡지 않고 함께 죽는다.
+    ...CHARGER_STATUSES,
+    ...CHARGER_TYPE_PARTS,
+    ...CHARGER_METHODS,
+    ...CHARGER_KINDS,
     ...COMMERCE_GENDER_LABELS,
     ...COMMERCE_PAYER_LABELS,
     // 16방위는 **도메인에서 뽑는다.** 손으로 적으면 방위가 하나 늘 때 여기가

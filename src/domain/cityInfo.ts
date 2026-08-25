@@ -1,3 +1,4 @@
+import type { ChargerStation } from './charger'
 import type { Commerce } from './commerce'
 import type { CongestionTone } from './congestion'
 import type { Freshness } from './freshness'
@@ -494,6 +495,11 @@ export interface CityInfo {
    * 정상이고, 그때 상권 탭은 빈 상태를 그린다.
    */
   readonly commerce: Commerce | null
+  /**
+   * 전기차충전소. **명소별 편차가 크다** — 실호출에서 여의도한강공원 0곳,
+   * 홍대 35곳, 광화문·덕수궁 44곳이었다(2026-08-25).
+   */
+  readonly chargers: readonly ChargerStation[]
   /**
    * 이 응답이 얼마나 묵었나. **모르면 `null`이고, 그때 화면은 모른다고 말한다.**
    *

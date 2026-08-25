@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { makeCityInfo } from '../test/cityInfo'
 import type { CityInfo } from '../domain/cityInfo'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { reset } from '../hooks/favoritesStore'
@@ -416,7 +417,7 @@ describe('HomeScreen', () => {
   // 그 자리로 간다. 이름만으로는 「1번 대여소」가 어느 쪽인지 알 수 없다.
   it('따릉이 대여소를 누르면 상세가 닫히고 지도가 그 자리로 간다', async () => {
     useCityInfo.mockReturnValue({
-      data: {
+      data: makeCityInfo({
         areaName: '강남역',
         areaCode: 'POI014',
         weather: null,
@@ -434,14 +435,15 @@ describe('HomeScreen', () => {
         events: [],
         alerts: [],
         subway: [],
-        // **`as unknown as`가 이 자리를 안 지켜준다.** 캐스트가 타입 검사를
-        // 통째로 건너뛰어서, 빠뜨리면 컴파일은 통과하고 화면이 `undefined`를
-        // 받아 터진다(실제로 그랬다). 캐스트를 쓰는 픽스처는 손으로 맞춰야 한다.
-        freshness: null,
-      },
+        // **예전에는 `as unknown as`로 캐스트해서 이 자리가 안 지켜졌다.**
+        // 캐스트가 타입 검사를 통째로 건너뛰어 빠뜨린 필드가 컴파일을 통과하고
+        // 화면이 `undefined`를 받아 터졌다 — 2026-08-25에 전기차 충전 절을
+        // 붙이며 **또 그랬다.** 지금은 `makeCityInfo()`가 빈 값을 채우고
+        // `satisfies`가 검사를 되살려서, 필드가 늘어도 여기가 안 낡는다.
+      }),
       isPending: false,
       isError: false,
-    } as unknown as UseQueryResult<CityInfo>)
+    } as UseQueryResult<CityInfo>)
     render(<HomeScreen />)
     await userEvent.click(areaButtons(/강남역/)[0])
     // 따릉이는 「주변」 탭이다. 상세가 전체 화면 + 탭이 되면서 시트를 올리는
@@ -1411,10 +1413,10 @@ describe('HomeScreen', () => {
   // 아무 명소도 안 눌렀으면 경보가 걸려 있어도 홈에 아무것도 안 떴다.
   it('상세를 안 열어도 재난문자 본문이 홈에 뜬다', () => {
     useCityInfo.mockReturnValue({
-      data: { alerts: [alertFor('[서울특별시] 폭염경보 발효')] },
+      data: makeCityInfo({ alerts: [alertFor('[서울특별시] 폭염경보 발효')] }),
       isPending: false,
       isError: false,
-    } as unknown as UseQueryResult<CityInfo>)
+    } as UseQueryResult<CityInfo>)
     render(<HomeScreen />)
 
     expect(screen.getByText(/폭염경보 발효/)).toBeInTheDocument()
@@ -1433,10 +1435,10 @@ describe('HomeScreen', () => {
   // 건수만 말하던 요약 줄과 같은 말을 두 번 하지 않는다.
   it('요약 줄은 재난문자를 말하지 않는다', () => {
     useCityInfo.mockReturnValue({
-      data: { alerts: [alertFor('폭염경보')] },
+      data: makeCityInfo({ alerts: [alertFor('폭염경보')] }),
       isPending: false,
       isError: false,
-    } as unknown as UseQueryResult<CityInfo>)
+    } as UseQueryResult<CityInfo>)
     render(<HomeScreen />)
 
     expect(screen.queryByText(/재난문자 \d건 ·/)).toBeNull()
@@ -1598,7 +1600,7 @@ describe('HomeScreen 주소', () => {
   // 그 버튼은 상세를 닫고 지도로 나오는데, 주소를 직접 안 고친다.
   it('지도에서 보기로 상세가 닫히면 주소도 따라 지워진다', async () => {
     useCityInfo.mockReturnValue({
-      data: {
+      data: makeCityInfo({
         events: [],
         alerts: [],
         subway: [],
@@ -1615,10 +1617,10 @@ describe('HomeScreen 주소', () => {
           },
         ],
         freshness: null,
-      },
+      }),
       isPending: false,
       isError: false,
-    } as unknown as UseQueryResult<CityInfo>)
+    } as UseQueryResult<CityInfo>)
     render(<HomeScreen />)
     await userEvent.click(sheetRow(/경복궁/))
     expect(window.location.search).not.toBe('')

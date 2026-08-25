@@ -355,6 +355,70 @@ function buildCommerce(seed: number, now: Date): Record<string, unknown> | undef
   }
 }
 
+const CHARGER_SALT = 12
+
+/** 실호출 1,725대 표본에서 본 값들. 도메인의 목록과 같아야 한다. */
+const CHARGER_KIND_VALUES = ['사업장(사옥)', '아파트', '공영주차장', '백화점', '공원'] as const
+const CHARGER_TYPE_VALUES = ['AC완속', 'DC콤보', 'DC차데모+AC3상+DC콤보'] as const
+const CHARGER_STATUS_VALUES = [
+  '사용가능',
+  '충전중',
+  '상태미확인',
+  '통신이상',
+  '점검중',
+] as const
+
+/**
+ * 전기차충전소. **명소별 편차가 크다** — 실호출에서 0곳부터 44곳까지 봤다.
+ * 목업이 언제나 몇 곳씩 내면 「충전소가 없는 명소」의 빈 절을 확인할 수 없다.
+ *
+ * **이용 제한을 반드시 섞는다.** 실호출에서 1,725대 중 464대(27%)가 제한
+ * 있음이었고, 화면이 그런 곳을 뒤로 미는지가 목업으로 확인돼야 한다.
+ */
+function buildChargers(areaName: string, seed: number, now: Date): readonly unknown[] {
+  const count = mixSeed(seed, CHARGER_SALT) % 6
+  return Array.from({ length: count }, (_, index) => {
+    const mixed = mixSeed(seed, CHARGER_SALT * 10 + index)
+    const at = scatter(areaName, mixed)
+    const limited = mixed % 4 === 0
+    const kind = CHARGER_KIND_VALUES[mixed % CHARGER_KIND_VALUES.length]
+    const plugs = 1 + (mixed % 4)
+
+    return {
+      STAT_NM: `${areaName} ${kind}`,
+      STAT_ID: `MOCK${String(mixed % 100000).padStart(5, '0')}`,
+      STAT_ADDR: `서울특별시 ${areaName} ${100 + (mixed % 300)}`,
+      // X가 경도, Y가 위도다.
+      STAT_X: String(at.lng),
+      STAT_Y: String(at.lat),
+      STAT_USETIME: mixed % 3 === 0 ? '09:00~18:00' : '24시간 이용가능',
+      STAT_PARKPAY: mixed % 2 === 0 ? 'Y' : 'N',
+      STAT_LIMITYN: limited ? 'Y' : 'N',
+      // 자유 문장이다. 제한이 없으면 빈 값으로 온다.
+      STAT_LIMITDETAIL: limited ? '해당 시설 정책에 따라 이용이 불가할 수 있습니다' : '',
+      STAT_KINDDETAIL: kind,
+      CHARGER_DETAILS: Array.from({ length: plugs }, (_, plug) => {
+        const inner = mixSeed(seed, CHARGER_SALT * 100 + index * 10 + plug)
+        const type = CHARGER_TYPE_VALUES[inner % CHARGER_TYPE_VALUES.length]
+        const status = CHARGER_STATUS_VALUES[inner % CHARGER_STATUS_VALUES.length]
+        return {
+          CHARGER_ID: String(plug + 1).padStart(2, '0'),
+          CHARGER_TYPE: type,
+          CHARGER_STAT: status,
+          STATUPDDT: formatSeoulTime(now),
+          LASTTSDT: formatSeoulTime(new Date(now.getTime() - 5 * 60 * 60 * 1000)),
+          LASTTEDT: formatSeoulTime(new Date(now.getTime() - 3 * 60 * 60 * 1000)),
+          // 충전 중일 때만 온다. 아니면 빈 값이다.
+          NOWTSDT: status === '충전중' ? formatSeoulTime(new Date(now.getTime() - 1800_000)) : '',
+          // 완속은 7kW, 급속은 50~100kW가 실데이터의 모양이다.
+          OUTPUT: type === 'AC완속' ? '7' : String([50, 100, 200][inner % 3]),
+          METHOD: inner % 5 === 0 ? '동시' : '단독',
+        }
+      }),
+    }
+  })
+}
+
 const PARKING_KINDS = ['공영주차장', '노외주차장', '민영주차장'] as const
 
 /**
@@ -570,6 +634,7 @@ export function buildMockCityInfo(areaName: string, now: Date = new Date()): unk
       LIVE_BUS_PPLTN: buildRidership(seed, 'BUS', RIDERSHIP_SALT + 5, 6_000, now),
       BUS_STN_STTS: buildBusStops(areaName, seed),
       LIVE_CMRCL_STTS: buildCommerce(seed, now),
+      CHARGER_STTS: buildChargers(areaName, seed, now),
     },
   }
 }

@@ -16,6 +16,7 @@ import type {
   Weather,
   WeatherWarning,
 } from '../domain/cityInfo'
+import type { Charger, ChargerStation } from '../domain/charger'
 import {
   hasReadableCommerce,
   type Commerce,
@@ -337,6 +338,50 @@ function toCommerce(rows: readonly Row[]): Commerce | null {
   return hasReadableCommerce(commerce) ? commerce : null
 }
 
+/**
+ * 전기차충전소. **`CHARGER_DETAILS`가 명세에 없다** — 명세 151~159행은 충전기
+ * 필드를 충전소와 같은 층에 펼쳐 적었지만 실제로는 배열로 한 겹 더 들어가 있다
+ * (상권의 `CMRCL_RSB`와 같은 함정이다).
+ */
+function toChargers(rows: readonly Row[]): readonly Charger[] {
+  return named(
+    rows,
+    'CHARGER_ID',
+    (row, id): Charger => ({
+      id,
+      type: text(row, 'CHARGER_TYPE'),
+      status: text(row, 'CHARGER_STAT'),
+      outputKw: numberOrNull(row, 'OUTPUT'),
+      method: text(row, 'METHOD'),
+      statusAt: text(row, 'STATUPDDT'),
+      lastStartAt: text(row, 'LASTTSDT'),
+      lastEndAt: text(row, 'LASTTEDT'),
+      chargingSince: text(row, 'NOWTSDT'),
+    }),
+  )
+}
+
+function toChargerStations(rows: readonly Row[]): readonly ChargerStation[] {
+  return named(
+    rows,
+    'STAT_NM',
+    (row, name): ChargerStation => ({
+      name,
+      id: text(row, 'STAT_ID'),
+      address: text(row, 'STAT_ADDR'),
+      // X가 경도, Y가 위도다 — 따릉이·버스와 같은 규칙이다.
+      coords: coordsOrNull(row, 'STAT_Y', 'STAT_X'),
+      useTime: text(row, 'STAT_USETIME'),
+      parkingPaid: paidFlag(row, 'STAT_PARKPAY'),
+      // `LIMITYN`은 「제한이 있나」다 — `paidFlag`의 Y/N 어휘를 그대로 쓴다.
+      limited: paidFlag(row, 'STAT_LIMITYN'),
+      limitDetail: text(row, 'STAT_LIMITDETAIL'),
+      kind: text(row, 'STAT_KINDDETAIL'),
+      chargers: toChargers(sectionRows(row, ['CHARGER_DETAILS'])),
+    }),
+  )
+}
+
 function toBusStops(rows: readonly Row[]): readonly BusStop[] {
   return named(
     rows,
@@ -506,5 +551,6 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
     // 정류소 목록의 첫 줄이 이고 온다. 줄마다 같은 값이라 하나만 읽는다.
     busResultMessage: text(sectionRows(container, ['BUS_STN_STTS'])[0] ?? {}, 'BUS_RESULT_MSG'),
     commerce: toCommerce(sectionRows(container, ['LIVE_CMRCL_STTS'])),
+    chargers: toChargerStations(sectionRows(container, ['CHARGER_STTS'])),
   }
 }

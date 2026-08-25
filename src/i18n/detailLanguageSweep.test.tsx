@@ -210,6 +210,34 @@ const CITY_INFO: CityInfo = makeCityInfo({
   // 자유 문장이라 옮기지 않는 자리다. 실패 갈래를 태워 두면 그 문장이 영어
   // 화면에 한국어로 뜨는 것이 **결함이 아님**을 스윕이 헷갈리지 않는다.
   busResultMessage: 'Service under maintenance.',
+  // 충전소: 이름·주소·제한 사유는 고유명사와 자유 문장이라 라틴 문자로 둔다.
+  // 상태·타입·시설 종류는 **한국어 그대로** — 옮겨야 하는 갈래 값이다.
+  chargers: [
+    {
+      name: 'NIA Building',
+      id: 'HM110247',
+      address: '14 Cheonggyecheon-ro, Jung-gu',
+      coords: { lat: 37.5687892, lng: 126.9788175 },
+      useTime: 'Open 24 hours',
+      parkingPaid: true,
+      limited: true,
+      limitDetail: 'Residents only.',
+      kind: '아파트',
+      chargers: [
+        {
+          id: '02',
+          type: 'DC차데모+AC3상+DC콤보',
+          status: '사용가능',
+          outputKw: 100,
+          method: '단독',
+          statusAt: '2026-08-25 08:56',
+          lastStartAt: '',
+          lastEndAt: '',
+          chargingSince: '',
+        },
+      ],
+    },
+  ],
   // 상권 갈래 값은 **한국어 그대로** 둔다 — 옮겨야 하는 값이라 스윕이 잡아야 한다.
   commerce: {
     level: '바쁜',

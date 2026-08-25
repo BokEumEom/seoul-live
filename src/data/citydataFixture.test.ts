@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest'
 // 아니라 http:라 `readFileSync(new URL(...))`가 죽는다.
 import fixture from '../../docs/fixtures/citydata-광화문덕수궁.json'
 import { isBusCallFailure, parkingBaseFee } from '../domain/cityInfo'
+import {
+  chargerTypeParts,
+  CHARGER_STATUSES,
+  CHARGER_TYPE_PARTS,
+} from '../domain/charger'
 import { COMMERCE_LEVELS } from '../domain/commerce'
 import { parseCityInfoResponse } from './cityInfoSchema'
 
@@ -259,6 +264,57 @@ describe('실호출 citydata 응답 (2026-08-25) — 파서', () => {
     // 이름 없는 칸이 조용히 생긴다.
     expect(info.commerce?.ageRates).toHaveLength(6)
     expect(info.commerce?.ageRates.some((rate) => rate > 0)).toBe(true)
+  })
+
+  // **`CHARGER_DETAILS`가 명세에 없다.** 명세 151~159행은 충전기 필드를
+  // 충전소와 같은 층에 펼쳐 적었지만 실제로는 배열로 한 겹 더 들어가 있다 —
+  // 상권의 `CMRCL_RSB`와 같은 함정이고, 평평하게 읽으면 충전기가 통째로 빈다.
+  it('충전소를 읽고 충전기는 한 겹 안에서 꺼낸다', () => {
+    expect(info.chargers.length).toBeGreaterThan(0)
+    expect(info.chargers.every((station) => station.id !== '')).toBe(true)
+    expect(info.chargers.every((station) => station.address !== '')).toBe(true)
+    expect(info.chargers.some((station) => station.chargers.length > 0)).toBe(true)
+    const charger = info.chargers.flatMap((station) => station.chargers)[0]
+    expect(charger.type).not.toBe('')
+    expect(charger.status).not.toBe('')
+    expect(charger.outputKw).not.toBeNull()
+  })
+
+  // **좌표 축과 제한 여부는 화면 테스트가 못 잡는다** — 저쪽은 목업으로 값을
+  // 넣으므로 파서가 뒤집어 읽거나 안 읽어도 통과한다(2026-08-25 변이 실험에서
+  // 둘 다 살아남았다).
+  it('충전소 좌표를 서울 안쪽으로 읽는다', () => {
+    const located = info.chargers.filter((station) => station.coords !== null)
+    expect(located.length).toBeGreaterThan(0)
+    for (const station of located) {
+      // X가 경도·Y가 위도다. 뒤집으면 위도 126이 되는데 지구에 없는 값이라
+      // `coordsOrNull`이 null로 떨군다 — 그래서 「좌표가 있는 곳이 있다」가
+      // 곧 축이 맞다는 증거다. 범위도 함께 못 박는다.
+      expect(station.coords?.lat).toBeGreaterThan(37)
+      expect(station.coords?.lat).toBeLessThan(38)
+      expect(station.coords?.lng).toBeGreaterThan(126)
+      expect(station.coords?.lng).toBeLessThan(128)
+    }
+  })
+
+  it('이용 제한 여부를 읽는다', () => {
+    // 실호출 1,725대 중 464대가 제한 있음이었다. 목록의 차례가 이 값에
+    // 걸려 있어서, 안 읽히면 못 들어가는 충전소가 맨 위로 온다.
+    expect(info.chargers.every((station) => station.limited !== null)).toBe(true)
+    expect(info.chargers.every((station) => station.useTime !== '')).toBe(true)
+    expect(info.chargers.every((station) => station.kind !== '')).toBe(true)
+  })
+
+  it('충전기 상태와 방식이 아는 값 안이다', () => {
+    // 새 값이 오면 여기서 죽는다 — 그때 도메인 목록과 사전에 함께 더한다.
+    for (const station of info.chargers) {
+      for (const charger of station.chargers) {
+        expect(CHARGER_STATUSES).toContain(charger.status)
+        for (const part of chargerTypeParts(charger.type)) {
+          expect(CHARGER_TYPE_PARTS).toContain(part)
+        }
+      }
+    }
   })
 
   it('어느 섹션이든 내용이 있다', () => {

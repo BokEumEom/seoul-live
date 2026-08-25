@@ -83,6 +83,7 @@ export function makeCityInfo(overrides: Partial<CityInfo> = {}): CityInfo {
     busRidership: null,
     busResultMessage: '',
     commerce: null,
+    chargers: [],
     ...overrides,
   }
 }

@@ -236,6 +236,59 @@ export const EN: Readonly<Record<string, string>> = {
   '사람이 모이는 중이에요': 'People are arriving',
   '사람이 빠지는 중이에요': 'People are leaving',
 
+  // ── 상세: 전기차 충전(2026-08-25) ──
+  // `CHARGER_STTS`. 시안에 화면이 없어 「주변」 탭의 셋째 절로 넣었다.
+  '전기차 충전': 'EV charging',
+  '충전기 상태는 최대 3시간 전 기준이에요': 'Charger status can be up to 3 hours old',
+  '{대수}대 가능': '{대수} free',
+  // 「0대」가 아니라 「사용 불가」다 — 0은 「충전기가 없다」로도 읽힌다.
+  '사용 불가': 'None free',
+  '이용 제한 있음': 'Restricted access',
+  급속: 'Fast',
+  완속: 'Slow',
+  '{종류} {출력}kW': '{종류} {출력}kW',
+  // 충전 방식. **복합값(`DC차데모+AC3상+DC콤보`)은 조각으로 갈라 감싼다** —
+  // 통째로 옮기면 조합마다 사전 항목이 필요하다.
+  AC완속: 'AC slow',
+  DC콤보: 'DC combo',
+  DC차데모: 'CHAdeMO',
+  AC3상: 'AC 3-phase',
+  단독: 'Single',
+  동시: 'Simultaneous',
+  // 충전기 상태 여섯. 실호출 1,725대 표본에서 이 여섯만 봤다.
+  사용가능: 'Available',
+  충전중: 'In use',
+  상태미확인: 'Unknown',
+  통신이상: 'Offline',
+  점검중: 'Under repair',
+  운영중지: 'Out of service',
+  // 시설 종류 스물여섯. 같은 표본에서 나온 것이 전부다 — 명세에 목록이 없어
+  // 단언할 수 없고, 없는 값은 `t()`가 키를 그대로 돌려준다.
+  '사업장(사옥)': 'Office building',
+  아파트: 'Apartment',
+  기타: 'Other',
+  오피스텔: 'Officetel',
+  백화점: 'Department store',
+  일반주차장: 'Parking lot',
+  '마트(쇼핑몰)': 'Mart / mall',
+  공공기관: 'Public agency',
+  공영주차장: 'Public parking',
+  관광지: 'Tourist site',
+  금융기관: 'Bank',
+  숙박시설: 'Hotel',
+  종교시설: 'Religious site',
+  관공서: 'Government office',
+  빌라: 'Low-rise flat',
+  주유소: 'Gas station',
+  박물관: 'Museum',
+  카페: 'Café',
+  영화관: 'Cinema',
+  공연장: 'Concert hall',
+  음식점: 'Restaurant',
+  학교: 'School',
+  주민센터: 'Community centre',
+  지자체시설: 'Municipal facility',
+
   // ── 상세: 상권 탭(2026-08-25) ──
   // `LIVE_CMRCL_STTS`. 시안 `_8`이 배정한 여덟째 탭이고, 같은 `citydata`
   // 응답 안이라 추가 호출이 0이다.
@@ -285,7 +338,11 @@ export const EN: Readonly<Record<string, string>> = {
   '할인점/슈퍼마켓': 'Supermarkets',
   '의복/의류': 'Clothing',
   '패션/잡화': 'Accessories',
-  병원: 'Clinics',
+  // **`공원`·`병원`은 다른 절과 키를 나눠 쓴다.** 사전 키가 한국어 원문이라
+  // 같은 낱말은 한 칸을 두고 다투는데, 이 둘은 뜻이 같아서 가를 이유가 없다 —
+  // 상권 중분류(결제가 일어나는 병원)와 충전소 시설 종류(건물로서의 병원),
+  // 명소 카테고리의 `공원`과 충전소의 `공원`이 그렇다.
+  병원: 'Hospital',
   약국: 'Pharmacies',
   '스포츠/문화/레저': 'Sports & culture',
   // 세 절(지하철·주차장·따릉이)의 「이 값이 언제 기준인가」. 아래 「최대 3시간」
