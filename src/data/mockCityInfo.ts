@@ -55,6 +55,19 @@ const AIR_MESSAGES: Readonly<Record<string, string>> = {
   매우나쁨: '실외활동을 줄이고 외출 시 마스크를 챙기세요.',
 }
 
+/**
+ * 통합대기환경지수(`AIR_IDX_MVL`)의 대표값. 등급 구간 안쪽의 한 점이다.
+ *
+ * 환경부 CAI 구간: 0~50 좋음 / 51~100 보통 / 101~250 나쁨 / 251~ 매우나쁨.
+ * 실응답에서 `좋음 / 33.0`을 봤다(2026-08-25) — 등급과 수치가 어긋나지 않는다.
+ */
+const AIR_INDEX_VALUES: Readonly<Record<string, number>> = {
+  좋음: 33,
+  보통: 78,
+  나쁨: 160,
+  매우나쁨: 290,
+}
+
 /** 예보 칸 수. 명세의 이름이 FCST24HOURS라 24를 그대로 쓴다. */
 const FORECAST_HOURS = 24
 
@@ -91,6 +104,68 @@ function buildHourlyForecast(
   })
 }
 
+// **`WEATHER_SALT + 10 + index`가 24칸 예보에 쓰인다**(위 `buildHourlyForecast`).
+// 그래서 15~38이 이미 임자가 있고, 여기 더하는 값들은 그 뒤에서 시작해야 한다 —
+// 겹치면 습도와 예보 강수확률이 같은 수에서 나와 함께 움직인다.
+const WEATHER_EXTRA_SALT = WEATHER_SALT + 40
+
+/** 16방위. 도메인의 `WIND_DIRECTION_NAMES`가 아는 약자여야 한다. */
+const WIND_DIRECTIONS = [
+  'N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+  'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW',
+] as const
+
+// 기상청 자외선지수 단계 경계. 0~2 낮음 / 3~5 보통 / 6~7 높음 / 8~10 매우높음 / 11+ 위험.
+function uvGrade(index: number): string {
+  if (index <= 2) return '낮음'
+  if (index <= 5) return '보통'
+  if (index <= 7) return '높음'
+  return index <= 10 ? '매우높음' : '위험'
+}
+
+const UV_MESSAGES: Readonly<Record<string, string>> = {
+  낮음: '햇볕에 민감한 분들은 자외선 차단제를 발라주세요.',
+  보통: '2~3시간 이상 야외활동 시 모자와 선글라스를 쓰세요.',
+  높음: '한낮에는 그늘에 머무르고 자외선 차단제를 덧발라주세요.',
+  매우높음: '오전 10시~오후 3시 야외활동을 피해주세요.',
+  위험: '가능한 실내에 머물러주세요. 짧은 노출로도 피부가 상합니다.',
+}
+
+/**
+ * 기상특보(NEWS_LIST). **드물게 뜬다** — 5분의 1이다.
+ *
+ * 재난문자(`buildAlerts`)와 다른 소금을 쓴다. 같은 seed에서 둘이 함께 뜨거나
+ * 함께 비면 「둘이 서로 다른 출처」라는 것을 목업으로 확인할 수 없다.
+ */
+function buildWeatherWarnings(seed: number, now: Date): readonly Record<string, string>[] {
+  if (mixSeed(seed, WEATHER_EXTRA_SALT + 5) % 5 !== 0) {
+    return []
+  }
+  const kinds = [
+    ['폭염', '야외활동은 최대한 자제해주세요. 외출 시 물병을 휴대해주세요.'],
+    ['호우', '하천변·지하차도 접근을 피하고 배수구를 점검해주세요.'],
+    ['강풍', '간판·창문 등 시설물 파손에 주의해주세요.'],
+  ] as const
+  // **비트 시프트를 쓰지 마라.** 한 번의 `mixSeed`에서 여러 갈래를 뽑으려고
+  // `roll >> 3`을 썼다가 죽었다 — JS의 비트 연산은 32비트 **부호 있는** 값이라
+  // 큰 수에서 음수가 나오고, 그게 그대로 음수 인덱스가 된다. 이 파일의 관용대로
+  // 갈래마다 소금을 따로 쓴다.
+  const [kind, message] = kinds[mixSeed(seed, WEATHER_EXTRA_SALT + 6) % kinds.length]
+
+  return [
+    {
+      WARN_VAL: kind,
+      WARN_STRESS: mixSeed(seed, WEATHER_EXTRA_SALT + 7) % 4 === 0 ? '경보' : '주의보',
+      // 특보는 며칠 전에 발효돼 계속 유효한 경우가 흔하다. 「방금」으로 두면
+      // 화면이 늘 갓 나온 특보만 그리게 된다.
+      ANNOUNCE_TIME: formatSeoulTime(new Date(now.getTime() - 41 * 60 * 60 * 1000)),
+      COMMAND: '발표',
+      CANCEL_YN: '정상',
+      WARN_MSG: message,
+    },
+  ]
+}
+
 function buildWeather(seed: number, now: Date): Record<string, unknown> {
   const temperature = 18 + (mixSeed(seed, WEATHER_SALT) % 15) + 0.4
   const pm10 = 10 + (mixSeed(seed, WEATHER_SALT + 1) % 140)
@@ -99,21 +174,40 @@ function buildWeather(seed: number, now: Date): Record<string, unknown> {
   const pm25Grade = pmGrade(pm25, [15, 35, 75])
   const airGrade = worseGrade(pm10Grade, pm25Grade)
   const rainy = mixSeed(seed, WEATHER_SALT + 3) % 4 === 0
+  const uvIndex = mixSeed(seed, WEATHER_EXTRA_SALT + 3) % 12
 
   return {
     TEMP: temperature.toFixed(1),
     MAX_TEMP: (temperature + 3.1).toFixed(1),
     MIN_TEMP: (temperature - 4.2).toFixed(1),
+    HUMIDITY: String(35 + (mixSeed(seed, WEATHER_EXTRA_SALT) % 55)),
+    WIND_DIRCT: WIND_DIRECTIONS[mixSeed(seed, WEATHER_EXTRA_SALT + 1) % WIND_DIRECTIONS.length],
+    // 0.3~4.7 m/s. 소수 한 자리로 오는 것을 실응답에서 봤다(`2.8`).
+    WIND_SPD: ((3 + (mixSeed(seed, WEATHER_EXTRA_SALT + 2) % 45)) / 10).toFixed(1),
+    // 실응답은 `-`로 온다 — 「0」이 아니라 「잴 것이 없다」다. 숫자가 아닌 값을
+    // 목업이 한 번도 안 내면 파서의 그 갈래가 죽어 있는지 알 수 없다.
+    PRECIPITATION: rainy ? '1.5' : '-',
     PRECPT_TYPE: rainy ? '비' : '없음',
     PCP_MSG: rainy ? '곧 비가 내려요. 우산을 챙기세요.' : '비 소식은 없어요.',
+    SUNRISE: '05:43',
+    SUNSET: '19:31',
+    UV_INDEX: String(uvIndex),
+    UV_INDEX_LVL: uvGrade(uvIndex),
+    UV_MSG: UV_MESSAGES[uvGrade(uvIndex)],
     PM10: String(pm10),
     PM10_INDEX: pm10Grade,
     PM25: String(pm25),
     PM25_INDEX: pm25Grade,
     AIR_IDX: airGrade,
+    // 통합대기환경지수의 수치. 등급과 어긋나지 않게 등급에서 되짚어 만든다 —
+    // 따로 굴리면 「좋음 / 180」 같은 화면이 나온다.
+    AIR_IDX_MVL: String(AIR_INDEX_VALUES[airGrade]),
+    // 실응답에서 빈 문자열로도 온다. 좋을 때는 결정물질이랄 것이 없다.
+    AIR_IDX_MAIN: airGrade === '좋음' ? '' : pm10Grade === airGrade ? '미세먼지' : '초미세먼지',
     AIR_MSG: AIR_MESSAGES[airGrade],
     WEATHER_TIME: formatSeoulTime(now),
     FCST24HOURS: buildHourlyForecast(seed, now, temperature),
+    NEWS_LIST: buildWeatherWarnings(seed, now),
   }
 }
 

@@ -39,10 +39,84 @@ export interface HourlyForecast {
   readonly precipitationType: string
 }
 
+/**
+ * NEWS_LIST의 한 줄 — 기상특보 하나. 명세 193~199행.
+ *
+ * **재난문자(`CityAlert`)와 다른 것이다.** 저쪽은 행정안전부 긴급재난문자이고
+ * 이쪽은 기상청 특보라 출처도 갱신 주기도 다르다. 같은 화면에 함께 뜰 수 있다.
+ */
+export interface WeatherWarning {
+  /** WARN_VAL — 기상특보종류. 실응답에서 `폭염`을 봤다(2026-08-25) */
+  readonly kind: string
+  /** WARN_STRESS — 기상특보강도. 실응답에서 `주의보`를 봤다 */
+  readonly level: string
+  /** ANNOUNCE_TIME 원문. 형식을 강제하지 않는다 — 표시에만 쓴다 */
+  readonly announcedAt: string
+  /**
+   * COMMAND — 발표/해제. 실응답에서 `발표`만 봤다.
+   *
+   * **모르는 값을 「해제」로 읽지 않는다.** 아래 `isActiveWarning` 참고.
+   */
+  readonly command: string
+  /** CANCEL_YN — 정상/취소. 실응답에서 `정상`만 봤다 */
+  readonly cancelState: string
+  /** WARN_MSG — 행동강령. 서울 API의 자유 문장이라 옮기지 않는다 */
+  readonly message: string
+}
+
+/**
+ * 지금 유효한 특보인가. **모르면 유효한 쪽으로 읽는다.**
+ *
+ * 이 저장소의 기본은 반대다 — 아는 모양이 통째로 맞을 때만 옮기고 아니면
+ * 원문을 흘려보낸다(`i18n/subway.ts`). 여기서 뒤집는 이유는 **틀렸을 때의
+ * 대가가 비대칭**이라서다. 해제된 특보를 띄우면 사용자가 한 번 헛걸음하지만,
+ * 살아 있는 폭염경보를 숨기면 그 사람은 그것을 **어디서도 못 본다.**
+ *
+ * 그래서 「해제」·「취소」라고 **명시된 것만** 걷어낸다. 실응답에서 본 값은
+ * `발표`·`정상`뿐이라 나머지 어휘는 확인된 것이 아니다 — 다른 말로 오면 그건
+ * 그대로 배너에 남고, 그 편이 안전하다.
+ */
+const CLEARED_COMMANDS: ReadonlySet<string> = new Set(['해제'])
+const CANCELLED_STATES: ReadonlySet<string> = new Set(['취소'])
+
+export function isActiveWarning(warning: WeatherWarning): boolean {
+  return (
+    !CLEARED_COMMANDS.has(warning.command.trim()) &&
+    !CANCELLED_STATES.has(warning.cancelState.trim())
+  )
+}
+
 export interface Weather {
   readonly temperature: number | null
   readonly maxTemperature: number | null
   readonly minTemperature: number | null
+  /** HUMIDITY — 습도(%) */
+  readonly humidity: number | null
+  /**
+   * WIND_DIRCT — 풍향. **16방위 영문 약자로 온다**(실응답 2026-08-25: `SSE`).
+   *
+   * 원문 그대로 담고 한국어 이름은 `windDirectionLabel`이 고른다 — 도메인이
+   * 완성된 글자를 지으면 영어 화면에서 그대로 남는다(`forecastHour`와 같은 규칙).
+   */
+  readonly windDirection: string
+  /** WIND_SPD — 풍속(m/s) */
+  readonly windSpeed: number | null
+  /** SUNRISE — `05:43` 꼴. 형식을 강제하지 않는다 */
+  readonly sunrise: string
+  /** SUNSET — `19:31` 꼴 */
+  readonly sunset: string
+  /** UV_INDEX — 자외선지수. 실응답에서 `1`을 봤다 */
+  readonly uvIndex: number | null
+  /** UV_INDEX_LVL — 자외선지수 단계. 실응답에서 `낮음`을 봤다 */
+  readonly uvGrade: string
+  /** UV_MSG — 서울 API의 자유 문장이라 옮기지 않는다 */
+  readonly uvMessage: string
+  /** AIR_IDX_MVL — 통합대기환경지수의 **수치**. 등급(`airGrade`)과 짝이다 */
+  readonly airIndexValue: number | null
+  /** AIR_IDX_MAIN — 지수를 결정한 물질. 실응답에서 빈 문자열로도 온다 */
+  readonly airIndexMain: string
+  /** NEWS_LIST — 기상특보. 없으면 빈 배열이다 */
+  readonly warnings: readonly WeatherWarning[]
   /**
    * FCST24HOURS — 시간대별 예보. 없으면 빈 배열이다.
    *
@@ -271,6 +345,66 @@ const TONE_BY_ROAD_INDEX: Readonly<Record<string, CongestionTone>> = {
 export function roadIndexTone(index: string): CongestionTone | null {
   return TONE_BY_ROAD_INDEX[index.trim()] ?? null
 }
+
+/**
+ * 자외선지수 단계의 톤. 기상청 5단계(`낮음`·`보통`·`높음`·`매우높음`·`위험`)다.
+ *
+ * **네 톤에 다섯 단계를 얹는다.** `매우높음`과 `위험`이 같은 `crowded`로
+ * 접히는데, 톤을 하나 늘리는 것보다 낫다고 봤다 — 둘 다 「지금 나가면 안 된다」
+ * 쪽이고, 실제로 갈라야 하는 정보는 **단계 이름 자체**가 옆에 그대로 적힌다.
+ *
+ * 실응답에서 본 값은 `낮음`뿐이다(2026-08-25). 나머지 넷은 기상청이 공표하는
+ * 닫힌 목록이라 함께 적었다 — 도로 지표처럼 목록이 없는 자리와 다르다.
+ * 모르는 값은 `?? null`이라 색이 안 붙을 뿐 틀리지 않는다.
+ */
+const TONE_BY_UV_GRADE: Readonly<Record<string, CongestionTone>> = {
+  낮음: 'calm',
+  보통: 'normal',
+  높음: 'busy',
+  매우높음: 'crowded',
+  위험: 'crowded',
+}
+
+export function uvGradeTone(grade: string): CongestionTone | null {
+  return TONE_BY_UV_GRADE[grade.trim()] ?? null
+}
+
+/**
+ * 풍향 약자를 한국어 이름으로. `SSE` → `남남동`.
+ *
+ * **완성된 글자를 돌려주지 않는다** — 키를 돌려주고 화면이 `t()`로 감싼다
+ * (`forecastHour`와 같은 규칙). 모르는 약자는 `null`이고, 그때 화면은 원문을
+ * 그대로 적는다: 지어낸 방위보다 `SSE`가 낫다.
+ *
+ * 16방위는 기상 자료의 표준 어휘라 목록이 닫혀 있다. 실응답에서는 `SSE`를
+ * 봤다(2026-08-25).
+ */
+const WIND_DIRECTION_NAMES: Readonly<Record<string, string>> = {
+  N: '북',
+  NNE: '북북동',
+  NE: '북동',
+  ENE: '동북동',
+  E: '동',
+  ESE: '동남동',
+  SE: '남동',
+  SSE: '남남동',
+  S: '남',
+  SSW: '남남서',
+  SW: '남서',
+  WSW: '서남서',
+  W: '서',
+  WNW: '서북서',
+  NW: '북서',
+  NNW: '북북서',
+}
+
+export function windDirectionLabel(raw: string): string | null {
+  return WIND_DIRECTION_NAMES[raw.trim().toUpperCase()] ?? null
+}
+
+/** 사전과 검사가 같은 목록을 보게 한다. 방위가 하나 늘면 양쪽이 함께 죽는다. */
+export const WIND_DIRECTION_LABELS: readonly string[] =
+  Object.values(WIND_DIRECTION_NAMES)
 
 // 여유 면수 비율의 경계. 30% 이상이면 그냥 가도 되고, 10% 미만이면 도착해서
 // 못 댈 가능성이 실제로 있다.

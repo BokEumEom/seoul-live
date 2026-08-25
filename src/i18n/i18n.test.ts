@@ -1,5 +1,6 @@
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
+import { WIND_DIRECTION_LABELS } from '../domain/cityInfo'
 import { AGE_LABELS } from '../domain/composition'
 import { congestionSentence } from '../domain/congestion'
 import { DETAIL_TABS } from '../domain/detailTabs'
@@ -74,6 +75,18 @@ const ROAD_STATE_LABELS = ['원활', '서행', '정체'] as const
  */
 const ALERT_LABELS = ['호우', '주의보', '경보'] as const
 const ACCIDENT_TYPE_LABELS = ['교통사고', '차대차', '공사', '도로보수'] as const
+/**
+ * 기상특보 종류(`WARN_VAL`)와 자외선지수 단계(`UV_INDEX_LVL`).
+ *
+ * 특보 종류는 위 재난 갈래와 같은 처지다 — 명세 194행이 이름만 준다. 실응답에서
+ * `폭염`을 봤고(2026-08-25) 나머지는 목업이 그리는 값이다. `호우`는 재난문자
+ * 쪽 목록에 이미 있어 여기 또 적지 않는다.
+ *
+ * 자외선 단계는 다르다. 기상청이 공표하는 **닫힌 5단계**라 목록을 단정할 수
+ * 있고, `보통`은 이미 대기등급 쪽에 있다.
+ */
+const WEATHER_WARNING_LABELS = ['폭염', '대설', '강풍'] as const
+const UV_GRADE_LABELS = ['낮음', '높음', '매우높음', '위험'] as const
 /** 실호출 응답(`docs/fixtures/citydata-광화문덕수궁.json`)에서 이 둘을 봤다. */
 const SUBWAY_DIRECTION_LABELS = ['상행', '하행'] as const
 /** 상세 탭의 글자. 도메인에서 뽑으므로 탭이 하나 늘면 여기서 죽는다. */
@@ -144,6 +157,14 @@ function dynamicKeys(): readonly string[] {
     ...ALERT_LABELS,
     ...ACCIDENT_TYPE_LABELS,
     ...SUBWAY_DIRECTION_LABELS,
+    ...WEATHER_WARNING_LABELS,
+    ...UV_GRADE_LABELS,
+    // 16방위는 **도메인에서 뽑는다.** 손으로 적으면 방위가 하나 늘 때 여기가
+    // 낡는데, 이렇게 두면 그때 「사전에 없다」로 죽는다.
+    ...WIND_DIRECTION_LABELS,
+    // 대기지수 결정물질(`AIR_IDX_MAIN`). 화면이 값을 그대로 감싼다.
+    '미세먼지',
+    '초미세먼지',
     ...DETAIL_TAB_LABELS,
     ...LOCATION_ERROR_MESSAGES,
   ]

@@ -58,11 +58,24 @@ describe('parseCityInfoResponse — 날씨', () => {
 
   it('배열로 온 날씨의 첫 항목을 읽는다', () => {
     const info = parseCityInfoResponse(payload({ WEATHER_STTS: [weather] }), AREA)
+    // **빌더가 아니라 리터럴을 그대로 둔다.** `makeWeather()`로 채우면 이 단언이
+    // 「파서와 빌더가 같은 기본값을 쓴다」가 되어, 파서가 필드를 통째로 빠뜨려도
+    // 통과한다. 여기는 **파서가 무엇을 만드는지**를 재는 자리다.
+    //
+    // 이 목업에는 FCST24HOURS·NEWS_LIST와 확장 필드가 없다. 없는 것이 정상이고,
+    // 그때 무엇이 되는지(`null`·`''`·`[]`)를 함께 잠근다.
     expect(info.weather).toEqual({
       temperature: 28.4,
       maxTemperature: 31,
       minTemperature: 24.2,
-      // 이 목업에는 FCST24HOURS가 없다. 예보가 없는 것은 정상이라 빈 배열이다.
+      humidity: null,
+      windDirection: '',
+      windSpeed: null,
+      sunrise: '',
+      sunset: '',
+      uvIndex: null,
+      uvGrade: '',
+      uvMessage: '',
       hourly: [],
       precipitationMessage: '비 소식은 없어요.',
       pm10: 35,
@@ -70,7 +83,10 @@ describe('parseCityInfoResponse — 날씨', () => {
       pm25: 18,
       pm25Grade: '좋음',
       airGrade: '보통',
+      airIndexValue: null,
+      airIndexMain: '',
       airMessage: '외출 시 특별한 주의가 필요하지 않아요.',
+      warnings: [],
       updatedAt: '2026-08-07 10:00',
     })
   })

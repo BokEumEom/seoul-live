@@ -2,6 +2,7 @@ import { t } from '../../i18n/t'
 import { airGradeTone, formatTemperature, type Weather } from '../../domain/cityInfo'
 import { ToneBadge } from '../common/ToneBadge'
 import { HourlyWeather } from './HourlyWeather'
+import { WeatherStats } from './WeatherStats'
 
 interface DustProps {
   readonly label: string
@@ -68,9 +69,29 @@ export function WeatherCard({ weather }: Props) {
         <DustTile label={t("초미세먼지")} value={weather.pm25} grade={weather.pm25Grade} />
       </div>
 
+      {/* 통합대기환경지수의 **수치**. 등급 배지는 위에 이미 있어 여기서는
+          숫자와 결정물질만 보탠다 — 시안 `_6`의 「통합대기지수 (CAI)」 줄이다.
+          결정물질은 실응답에서 빈 문자열로도 오므로 따로 빠진다. */}
+      {weather.airIndexValue !== null && (
+        <p className="mt-3 text-label-md text-on-surface-variant">
+          {t('통합대기지수 {값}', { 값: weather.airIndexValue })}
+          {weather.airIndexMain !== '' && ` · ${t(weather.airIndexMain)}`}
+        </p>
+      )}
+
       {weather.airMessage !== '' && (
         <p className="mt-3 text-label-md leading-5 text-on-surface-variant">
           {weather.airMessage}
+        </p>
+      )}
+
+      <WeatherStats weather={weather} />
+
+      {/* 자외선 안내는 기상청의 자유 문장이라 옮기지 않는다. 격자 바로 아래에
+          두는 이유는 그 문장이 자외선 칸을 풀어 쓴 것이기 때문이다. */}
+      {weather.uvMessage !== '' && (
+        <p className="mt-3 text-label-md leading-5 text-on-surface-variant">
+          {weather.uvMessage}
         </p>
       )}
 

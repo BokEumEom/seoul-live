@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { makeWeather } from '../test/cityInfo'
 import {
   airGradeTone,
   formatForecastTemperature,
@@ -6,10 +7,14 @@ import {
   forecastHour,
   groupSubwayArrivals,
   hasAnyCityInfo,
+  isActiveWarning,
   parkingTone,
   roadIndexTone,
   sortBikesByStock,
   sortParkingByAvailable,
+  uvGradeTone,
+  WIND_DIRECTION_LABELS,
+  windDirectionLabel,
   type BikeStation,
   type CityInfo,
   type SubwayArrival,
@@ -232,20 +237,7 @@ describe('hasAnyCityInfo', () => {
     expect(
       hasAnyCityInfo({
         ...EMPTY,
-        weather: {
-          temperature: 23,
-          maxTemperature: null,
-          minTemperature: null,
-          hourly: [],
-          precipitationMessage: '',
-          pm10: null,
-          pm10Grade: '',
-          pm25: null,
-          pm25Grade: '',
-          airGrade: '',
-          airMessage: '',
-          updatedAt: '',
-        },
+        weather: makeWeather({ temperature: 23 }),
       }),
     ).toBe(true)
   })
@@ -414,5 +406,86 @@ describe('hasAnyCityInfo — 지하철', () => {
         ],
       }),
     ).toBe(true)
+  })
+})
+
+describe('uvGradeTone', () => {
+  // 기상청 5단계를 네 톤에 얹는다. 다섯을 한꺼번에 세는 이유는 `roadIndexTone`과
+  // 같다 — 하나만 보면 표를 통째로 지우고 그 하나만 남겨도 통과한다.
+  it('다섯 단계를 톤으로 옮긴다', () => {
+    expect(uvGradeTone('낮음')).toBe('calm')
+    expect(uvGradeTone('보통')).toBe('normal')
+    expect(uvGradeTone('높음')).toBe('busy')
+    expect(uvGradeTone('매우높음')).toBe('crowded')
+    expect(uvGradeTone('위험')).toBe('crowded')
+  })
+
+  it('앞뒤 공백을 무시한다', () => {
+    expect(uvGradeTone(' 높음 ')).toBe('busy')
+  })
+
+  it('모르는 단계는 null이다', () => {
+    expect(uvGradeTone('아주높음')).toBeNull()
+    expect(uvGradeTone('')).toBeNull()
+  })
+})
+
+describe('windDirectionLabel', () => {
+  it('16방위 약자를 한국어 이름으로 옮긴다', () => {
+    expect(windDirectionLabel('SSE')).toBe('남남동')
+    expect(windDirectionLabel('N')).toBe('북')
+    expect(windDirectionLabel('WNW')).toBe('서북서')
+  })
+
+  it('소문자와 공백을 받아준다', () => {
+    expect(windDirectionLabel(' sse ')).toBe('남남동')
+  })
+
+  // **지어내지 않는다.** 모르는 약자에 아무 방위나 붙이면 화면이 틀린 방향을
+  // 단정하는데, 그건 테스트로 못 잡는다. 원문을 그대로 쓰게 null을 준다.
+  it('모르는 약자는 null이다', () => {
+    expect(windDirectionLabel('SSSE')).toBeNull()
+    expect(windDirectionLabel('')).toBeNull()
+  })
+
+  it('사전이 보는 목록과 표가 같다', () => {
+    // `i18n.test.ts`가 이 배열로 사전 완결성을 센다. 표에서 뽑히지 않고 손으로
+    // 적히면 방위가 하나 늘 때 조용히 낡는다.
+    expect(WIND_DIRECTION_LABELS).toHaveLength(16)
+    expect(WIND_DIRECTION_LABELS).toContain('남남동')
+  })
+})
+
+describe('isActiveWarning', () => {
+  const warning = {
+    kind: '폭염',
+    level: '주의보',
+    announcedAt: '202608231100',
+    command: '발표',
+    cancelState: '정상',
+    message: '',
+  }
+
+  it('발효 중인 특보는 유효하다', () => {
+    expect(isActiveWarning(warning)).toBe(true)
+  })
+
+  it('해제·취소된 특보는 걷어낸다', () => {
+    expect(isActiveWarning({ ...warning, command: '해제' })).toBe(false)
+    expect(isActiveWarning({ ...warning, cancelState: '취소' })).toBe(false)
+  })
+
+  // **이 저장소의 기본과 반대 방향이라 따로 잠근다.** 다른 자리들은 아는 모양이
+  // 맞을 때만 옮기고 아니면 흘려보내는데(`i18n/subway.ts`), 여기서는 모르는
+  // 값을 **유효한 쪽**으로 읽는다 — 살아 있는 폭염경보를 숨기는 대가가
+  // 해제된 특보를 띄우는 대가보다 훨씬 크기 때문이다.
+  it('처음 보는 값은 유효한 쪽으로 읽는다', () => {
+    expect(isActiveWarning({ ...warning, command: '연장' })).toBe(true)
+    expect(isActiveWarning({ ...warning, cancelState: '' })).toBe(true)
+    expect(isActiveWarning({ ...warning, command: '', cancelState: '대체' })).toBe(true)
+  })
+
+  it('앞뒤 공백이 붙어 와도 해제를 알아본다', () => {
+    expect(isActiveWarning({ ...warning, command: ' 해제 ' })).toBe(false)
   })
 })

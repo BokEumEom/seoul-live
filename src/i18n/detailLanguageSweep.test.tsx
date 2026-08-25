@@ -8,6 +8,7 @@ import { DETAIL_TABS } from '../domain/detailTabs'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { reset as resetFavorites } from '../hooks/favoritesStore'
 import { reset as resetLanguage, setLanguage } from '../hooks/languageStore'
+import { makeWeather } from '../test/cityInfo'
 
 // **왜 별도 파일인가.** 상세 화면을 세우려면 조회 훅 넷과 저장소 둘을 목업해야
 // 하는데, `vi.mock`은 파일 단위라 `languageSwitch.test.tsx`에 넣으면 거기서
@@ -80,10 +81,19 @@ const CITY_INFO: CityInfo = {
   areaName: '광화문·덕수궁',
   areaCode: 'POI001',
   freshness: { ageSeconds: 180, receivedAt: 1_755_000_000_000 },
-  weather: {
+  weather: makeWeather({
     temperature: 29,
     maxTemperature: 32,
     minTemperature: 24,
+    humidity: 70,
+    // 갈래 값이라 옮겨야 하는 것들이다. 자유 문장(`uvMessage`)만 라틴 문자다.
+    windDirection: 'SSE',
+    windSpeed: 2.8,
+    sunrise: '05:43',
+    sunset: '19:31',
+    uvIndex: 1,
+    uvGrade: '낮음',
+    uvMessage: 'Wear sunscreen if you are sensitive to sunlight.',
     hourly: [
       {
         time: '202608211600',
@@ -99,9 +109,21 @@ const CITY_INFO: CityInfo = {
     pm10Grade: '보통',
     pm25Grade: '좋음',
     airGrade: '보통',
+    airIndexValue: 33,
+    airIndexMain: '',
     airMessage: 'No special precautions needed.',
+    warnings: [
+      {
+        kind: '폭염',
+        level: '주의보',
+        announcedAt: '202608231100',
+        command: '발표',
+        cancelState: '정상',
+        message: 'Stay indoors during the hottest hours.',
+      },
+    ],
     updatedAt: '2026-08-21 15:00',
-  },
+  }),
   roadTraffic: {
     index: '정체',
     speed: 12,

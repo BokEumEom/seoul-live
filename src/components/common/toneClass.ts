@@ -37,6 +37,18 @@ export const TONE_TEXT_CLASS: Readonly<Record<CongestionTone, string>> = {
 }
 
 /**
+ * 톤을 모르면 본문 색이다. `undefined`를 돌려주므로 부르는 쪽이 제 기본값을 쓴다.
+ *
+ * `SummaryGrid` 안에 사유화돼 있던 것을 2026-08-25에 여기로 올렸다 —
+ * `WeatherStats`가 같은 것을 필요로 했고, **이 파일의 존재 이유가 「표를 두 벌
+ * 두지 않는다」**이기 때문이다. 표만 공유하고 표를 읽는 방법을 각자 두면 같은
+ * 자리가 한쪽에서는 색이 없고 한쪽에서는 검정으로 갈린다.
+ */
+export function toneTextClass(tone: CongestionTone | null): string | undefined {
+  return tone === null ? undefined : TONE_TEXT_CLASS[tone]
+}
+
+/**
  * 「지금」을 뜻하는 작은 점. 글자가 아니라 **도형**이라 선명한 쪽을 쓴다 —
  * 12px 원은 대비 4.5:1이 아니라 3:1(WCAG 1.4.11) 기준이고, 옆에 같은 뜻을
  * 적은 문장이 있어 색이 정보를 혼자 나르지도 않는다.

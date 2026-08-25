@@ -10,6 +10,7 @@ import type {
   RoadTraffic,
   SubwayArrival,
   Weather,
+  WeatherWarning,
 } from '../domain/cityInfo'
 import { AreaNameMismatchError, seoulApiErrorFrom } from './schema'
 import { asRow, coordsOrNull, numberOrNull, text, type Row } from './rowReaders'
@@ -102,19 +103,52 @@ function toHourly(rows: readonly Row[]): readonly HourlyForecast[] {
   )
 }
 
+// NEWS_LIST는 WEATHER_STTS 안의 중첩 배열이다(명세 193~199행). 기상청 특보라
+// 재난문자(LIVE_DST_MESSAGE)와 출처가 다르고, 화면에서도 자리가 다르다.
+//
+// **종류 없는 줄은 버린다.** `WARN_VAL`이 이 항목의 본체다 — 강도만 있고 종류가
+// 없으면 「주의보」라고만 뜨는데 무엇의 주의보인지 알려주지 못한다.
+function toWarnings(rows: readonly Row[]): readonly WeatherWarning[] {
+  return named(
+    rows,
+    'WARN_VAL',
+    (row, kind): WeatherWarning => ({
+      kind,
+      level: text(row, 'WARN_STRESS'),
+      announcedAt: text(row, 'ANNOUNCE_TIME'),
+      command: text(row, 'COMMAND'),
+      cancelState: text(row, 'CANCEL_YN'),
+      message: text(row, 'WARN_MSG'),
+    }),
+  )
+}
+
 function toWeather(row: Row): Weather {
   return {
     temperature: numberOrNull(row, 'TEMP'),
     hourly: toHourly(sectionRows(row, ['FCST24HOURS'])),
     maxTemperature: numberOrNull(row, 'MAX_TEMP'),
     minTemperature: numberOrNull(row, 'MIN_TEMP'),
+    humidity: numberOrNull(row, 'HUMIDITY'),
+    windDirection: text(row, 'WIND_DIRCT'),
+    windSpeed: numberOrNull(row, 'WIND_SPD'),
+    sunrise: text(row, 'SUNRISE'),
+    sunset: text(row, 'SUNSET'),
+    uvIndex: numberOrNull(row, 'UV_INDEX'),
+    uvGrade: text(row, 'UV_INDEX_LVL'),
+    uvMessage: text(row, 'UV_MSG'),
     precipitationMessage: text(row, 'PCP_MSG'),
     pm10: numberOrNull(row, 'PM10'),
     pm10Grade: text(row, 'PM10_INDEX'),
     pm25: numberOrNull(row, 'PM25'),
     pm25Grade: text(row, 'PM25_INDEX'),
     airGrade: text(row, 'AIR_IDX'),
+    airIndexValue: numberOrNull(row, 'AIR_IDX_MVL'),
+    airIndexMain: text(row, 'AIR_IDX_MAIN'),
     airMessage: text(row, 'AIR_MSG'),
+    // 특보는 **날씨 행 안**에 있다. 재난문자처럼 최상위에 있을 것 같지만
+    // 아니다 — 실응답에서 `WEATHER_STTS[0].NEWS_LIST`로 확인했다(2026-08-25).
+    warnings: toWarnings(sectionRows(row, ['NEWS_LIST'])),
     updatedAt: text(row, 'WEATHER_TIME'),
   }
 }

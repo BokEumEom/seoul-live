@@ -6,6 +6,7 @@ import type { CityInfo } from '../../domain/cityInfo'
 import { DETAIL_TABS } from '../../domain/detailTabs'
 import type { AreaCongestion, AreaSnapshot } from '../../domain/types'
 import { reset } from '../../hooks/favoritesStore'
+import { makeWeather } from '../../test/cityInfo'
 import { findAreaByName } from '../../data/areas'
 import { TONE_TEXT_CLASS } from '../common/toneClass'
 import { AreaDetailScreen } from './AreaDetailScreen'
@@ -809,26 +810,111 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
     useCityInfo.mockReturnValue(
       ok({
         ...EMPTY_CITY_INFO,
-        weather: {
+        weather: makeWeather({
           temperature: 27,
           maxTemperature: 30,
           minTemperature: 23,
-          hourly: [],
           precipitationMessage: '비 소식은 없어요.',
           pm10: 42,
           pm10Grade: '보통',
           pm25: 18,
           pm25Grade: '좋음',
           airGrade: '좋음',
-          airMessage: '',
-          updatedAt: '',
-        },
+        }),
       }),
     )
     renderDetail()
     await openTab('날씨')
     expect(screen.getByText('27.0°')).toBeInTheDocument()
     expect(screen.getByText('비 소식은 없어요.')).toBeInTheDocument()
+  })
+
+  // **배선을 여기서 잡는다.** `WeatherStats`·`WeatherWarningBanner`는 각자
+  // 테스트가 있는데, 2026-08-25 변이 실험에서 **둘을 탭에서 통째로 떼어 내도
+  // 스위트가 통과했다** — 잎만 시험하고 붙였는지는 아무도 안 봤다.
+  it('날씨 탭이 습도·바람·자외선 격자를 함께 보여준다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        weather: makeWeather({
+          temperature: 27,
+          humidity: 70,
+          windDirection: 'SSE',
+          windSpeed: 2.8,
+          uvIndex: 7,
+          uvGrade: '높음',
+          sunrise: '05:43',
+          sunset: '19:31',
+          airIndexValue: 33,
+        }),
+      }),
+    )
+    renderDetail()
+    await openTab('날씨')
+    expect(screen.getByText('70%')).toBeInTheDocument()
+    expect(screen.getByText('2.8m/s')).toBeInTheDocument()
+    expect(screen.getByText('05:43 · 19:31')).toBeInTheDocument()
+    expect(screen.getByText('통합대기지수 33')).toBeInTheDocument()
+  })
+
+  it('날씨 탭이 기상특보를 배너로 이고 있다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        weather: makeWeather({
+          temperature: 33,
+          warnings: [
+            {
+              kind: '폭염',
+              level: '주의보',
+              announcedAt: '2026-08-23 11:00',
+              command: '발표',
+              cancelState: '정상',
+              message: '야외활동은 최대한 자제해주세요.',
+            },
+          ],
+        }),
+      }),
+    )
+    renderDetail()
+    await openTab('날씨')
+    expect(screen.getByRole('alert')).toHaveTextContent('폭염 주의보')
+  })
+
+  // 기상특보(기상청)와 재난문자(행정안전부)는 **다른 출처이고 다른 탭**이다.
+  // 특보가 안전 탭으로 새거나 재난문자가 날씨 탭에 뜨면 사용자는 둘을 같은
+  // 것으로 읽고, 하나가 비었을 때 「알림이 없다」고 잘못 판단한다.
+  it('기상특보는 날씨 탭에만 있고 재난문자는 안전 탭에만 있다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        weather: makeWeather({
+          temperature: 33,
+          warnings: [
+            {
+              kind: '폭염',
+              level: '주의보',
+              announcedAt: '',
+              command: '발표',
+              cancelState: '정상',
+              message: '',
+            },
+          ],
+        }),
+        alerts: [
+          { category: '호우', step: '경보', message: '하천 접근 금지', createdAt: '' },
+        ],
+      }),
+    )
+    renderDetail()
+
+    await openTab('날씨')
+    expect(screen.getByText('폭염 주의보')).toBeInTheDocument()
+    expect(screen.queryByText('호우 경보')).not.toBeInTheDocument()
+
+    await openTab('안전')
+    expect(screen.getByText('호우 경보')).toBeInTheDocument()
+    expect(screen.queryByText('폭염 주의보')).not.toBeInTheDocument()
   })
 
   it('행사 탭이 문화행사를 보여준다', async () => {

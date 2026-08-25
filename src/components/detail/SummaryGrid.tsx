@@ -1,5 +1,5 @@
 import { t } from '../../i18n/t'
-import { congestionTone, type CongestionTone } from '../../domain/congestion'
+import { congestionTone } from '../../domain/congestion'
 import {
   airGradeTone,
   formatTemperature,
@@ -13,7 +13,7 @@ import {
 } from '../../domain/cityInfoSummary'
 import { DETAIL_TABS, type DetailTabId } from '../../domain/detailTabs'
 import type { AreaSnapshot } from '../../domain/types'
-import { TONE_DOT_CLASS, TONE_TEXT_CLASS } from '../common/toneClass'
+import { TONE_DOT_CLASS, TONE_TEXT_CLASS, toneTextClass } from '../common/toneClass'
 import type { IconName } from '../common/Icon'
 import { SummaryCard } from './SummaryCard'
 
@@ -33,11 +33,6 @@ interface Card {
   readonly valueClassName?: string
   readonly dotClassName?: string
   readonly tab: DetailTabId
-}
-
-/** 톤을 모르면 본문 색이다. `undefined`를 넘기면 카드가 제 기본값을 쓴다. */
-function toneTextClass(tone: CongestionTone | null): string | undefined {
-  return tone === null ? undefined : TONE_TEXT_CLASS[tone]
 }
 
 function tabLabel(id: DetailTabId): string {

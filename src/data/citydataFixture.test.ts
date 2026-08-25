@@ -119,6 +119,37 @@ describe('실호출 citydata 응답 (2026-08-25) — 파서', () => {
     expect(info.weather?.airGrade).not.toBe('')
   })
 
+  // **여기가 「명세에 있는데 안 읽던 것」을 지키는 자리다.** 2026-08-25까지
+  // 이 여덟은 응답에 있는데 파서가 그냥 흘려보냈다 — `WeatherPanel` 주석이
+  // 「시안에 있지만 우리 파서가 아직 안 읽는다」였다.
+  it('습도·바람·일출일몰·자외선을 읽는다', () => {
+    expect(info.weather?.humidity).not.toBeNull()
+    expect(info.weather?.windSpeed).not.toBeNull()
+    // 16방위 약자로 온다. 화면이 `windDirectionLabel`로 한국어를 고른다.
+    expect(info.weather?.windDirection).toMatch(/^[NSEW]{1,3}$/)
+    expect(info.weather?.sunrise).toMatch(/^\d{2}:\d{2}$/)
+    expect(info.weather?.sunset).toMatch(/^\d{2}:\d{2}$/)
+    expect(info.weather?.uvIndex).not.toBeNull()
+    expect(info.weather?.uvGrade).not.toBe('')
+  })
+
+  it('통합대기환경지수의 수치를 등급과 함께 읽는다', () => {
+    // 등급(`AIR_IDX`)만 읽던 자리다. 수치가 있어야 「좋음」이 얼마나 좋은지가
+    // 나온다 — 실호출은 `좋음 / 33.0`이었다.
+    expect(info.weather?.airIndexValue).not.toBeNull()
+  })
+
+  it('기상특보를 날씨 행 안에서 읽는다', () => {
+    // **재난문자와 다른 자리다.** 최상위 `LIVE_DST_MESSAGE`가 아니라
+    // `WEATHER_STTS[0].NEWS_LIST`에 있다 — 이 픽스처를 뜬 날 실제로 서울 전역에
+    // 폭염주의보가 발효 중이었다(2026-08-25).
+    expect(info.weather?.warnings.length).toBeGreaterThan(0)
+    expect(info.weather?.warnings[0].kind).not.toBe('')
+    expect(info.weather?.warnings[0].level).not.toBe('')
+    // 재난문자 쪽은 이 날 비어 있었다. 둘이 서로 다른 출처임을 여기서 못 박는다.
+    expect(info.alerts).toEqual([])
+  })
+
   it('주차장·따릉이·행사를 읽는다', () => {
     expect(info.parking.length).toBeGreaterThan(0)
     expect(info.bikes.length).toBeGreaterThan(0)
