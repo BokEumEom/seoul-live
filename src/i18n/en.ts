@@ -206,9 +206,9 @@ export const EN: Readonly<Record<string, string>> = {
   // 지하철 방향(`SUB_DIR`). **역 이름이 아니라 갈래 이름이라 옮긴다** — 로마자
   // 표기를 지어내는 일과 다르다.
   //
-  // 예전에는 한국어로 흘려보냈고 근거는 「실응답에서 이 값을 본 적이 없다」였다.
-  // **그 전제가 틀렸다** — `docs/fixtures/citydata-광화문덕수궁.json`(실호출)의
-  // `SUB_DIR`에 이 둘이 그대로 있다. 도로소통 톤과 같은 종류의 정정이다.
+  // **화면에는 거의 안 나온다.** 파서가 `SUB_DIR`을 안 읽고 `SUB_TERMINAL`로
+  // 「대화행」을 만들기 때문이다. 이 둘은 종착역도 노선명도 비어 올 때를 위한
+  // 방어이고, 근거는 `i18n/subway.ts`의 `NOT_A_DESTINATION`에 있다.
   상행: 'Upbound',
   하행: 'Downbound',
   '전역 출발': 'Left prev. station',
