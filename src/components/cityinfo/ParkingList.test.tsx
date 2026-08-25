@@ -52,17 +52,56 @@ describe('ParkingList', () => {
     expect(screen.getByText('1면')).toBeInTheDocument()
   })
 
-  it('총 면수와 유무료를 함께 쓴다', () => {
-    render(<ParkingList origin={null} onShowOnMap={() => undefined} lots={[lot({ name: '유료', capacity: 1_200, paid: true })]} />)
+  // **점으로 잇지 않고 칸을 나눈다**(2026-08-25, 시안 `_5`). 예전에는
+  // 「830m · 총 28면 · 유료 · 30분 3,000원 · 이후 10분당 1,000원」을 한 문장으로
+  // 이어 붙였는데, 390px에서 두 줄로 접히면 어디까지가 요금인지가 안 보였다.
+  it('총 면수와 유무료를 서로 다른 칸에 쓴다', () => {
+    render(<ParkingList origin={null} onShowOnMap={() => undefined} lots={[lot({ name: '큰 주차장', capacity: 1_200, paid: true })]} />)
 
-    expect(screen.getByText('총 1,200면 · 유료')).toBeInTheDocument()
+    expect(screen.getByText('총 1,200면')).toBeInTheDocument()
+    expect(screen.getByText('유료')).toBeInTheDocument()
+    expect(screen.queryByText('총 1,200면 · 유료')).toBeNull()
   })
 
-  it('총 면수도 유무료도 모르면 설명 줄을 만들지 않는다', () => {
+  // 유료인 것은 아는데 요금표가 안 오는 곳이 있다. 칸을 비우면 「요금 정보가
+  // 없다」와 「공짜다」가 화면에서 같아 보인다.
+  it('요금표가 없어도 유료라는 것은 적는다', () => {
+    render(
+      <ParkingList
+        origin={null}
+        onShowOnMap={() => undefined}
+        lots={[lot({ name: '요금표 없음', paid: true, fee: null })]}
+      />,
+    )
+
+    expect(screen.getByText('유료')).toBeInTheDocument()
+  })
+
+  it('총 면수도 유무료도 모르면 그 칸을 만들지 않는다', () => {
     render(<ParkingList origin={null} onShowOnMap={() => undefined} lots={[lot({ name: '모름', capacity: null, paid: null })]} />)
 
     expect(screen.getByText('모름')).toBeInTheDocument()
     expect(screen.queryByText(/총 /)).not.toBeInTheDocument()
+    expect(screen.queryByText('유료')).toBeNull()
+    expect(screen.queryByText('무료')).toBeNull()
+  })
+
+  // **한 곳이 한 카드다**(시안 `_5`). 줄로 늘어놓으면 값 넷이 옆 주차장의
+  // 값 넷과 섞여, 「어느 쪽이 나은가」를 세로로 훑을 수가 없다.
+  it('주차장마다 테두리를 두른 카드를 만든다', () => {
+    render(
+      <ParkingList
+        origin={null}
+        onShowOnMap={() => undefined}
+        lots={[lot({ name: '첫째' }), lot({ name: '둘째' })]}
+      />,
+    )
+    const cards = screen.getAllByRole('listitem')
+
+    expect(cards).toHaveLength(2)
+    for (const card of cards) {
+      expect(card.className).toMatch(/\bborder\b/)
+    }
   })
 
   it('여유 많은 순으로 다섯 곳만 보여주고 나머지는 개수로 알린다', () => {
