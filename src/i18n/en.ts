@@ -148,6 +148,8 @@ export const EN: Readonly<Record<string, string>> = {
   지금: 'Now',
   '{시}시': '{시}:00',
   '예측 정보가 아직 없어요.': 'No forecast available yet.',
+  // 위와 다른 상태다 — 저쪽은 기다리면 오고 이쪽은 안 온다(`FCST_YN`).
+  '이 명소는 인구 예측을 제공하지 않아요.': 'No crowd forecast is offered for this place.',
   '앞으로는 {시}시에 가장 붐빌 전망이에요 ({단계})': 'Busiest around {시}:00 ({단계})',
 
   // ── 상세: 요일×시간 패턴 ──
@@ -411,6 +413,15 @@ export const EN: Readonly<Record<string, string>> = {
   차대차: 'Vehicle collision',
   공사: 'Roadworks',
   도로보수: 'Road repair',
+  // 2026-08-25 실호출에서 새로 본 짝. `ACDNT_ENG_TYPE`이 각각 `Rally/Event`·
+  // `Event`로 왔지만 **API 번역을 그대로 쓰지 않는다** — 근거는 `domain/accident.ts`.
+  집회및행사: 'Rally or event',
+  // **`행사`는 여기 없다 — 탭 이름(「행사」)과 키가 겹친다.** 사전 키가 한국어
+  // 원문이라 한 항목이 두 자리를 함께 맡는다. 그래서 탭 쪽을 `Events`에서
+  // `Event`로 낮췄다: 사고통제의 「공사 · 행사」가 `Roadworks · Events`로
+  // 읽히는 것이 어색했고, 나머지 탭이 전부 단수라(Summary·Commerce·People)
+  // 탭 쪽에도 그편이 맞았다. `병원`이 충전소와 주변 시설에서 한 항목을
+  // 나눠 쓰는 것과 같은 처리다.
   '총 {면수}면': '{면수} spaces',
   '{면수}면': '{면수} free',
   만차: 'Full',
@@ -428,10 +439,17 @@ export const EN: Readonly<Record<string, string>> = {
   무료: 'Free',
   '{대수}대': '{대수}',
   '거치대 {대수}대': '{대수} docks',
+  // **거치율이 100%를 넘는 대여소가 실호출 227곳 중 61곳이었다**(최대 450%).
+  // 자전거를 가지고 온 사람에게는 「7대 가능」이 반대 신호다.
+  '반납 자리 없음': 'No docks free',
   '대여 불가': 'None available',
   미세먼지: 'PM10',
   초미세먼지: 'PM2.5',
   강수확률: 'Rain',
+  // **확률과 다른 값이다** — 「70%」는 올지 말지이고 이건 오면 얼마나 오는지다.
+  // 예보 840칸 중 75칸에 값이 있었다(현재 날씨 쪽은 35곳 전부 `-`였다).
+  강수량: 'Rainfall',
+  '{양}mm': '{양}mm',
   // ── 날씨 확장(2026-08-25) ──
   // 시안 `_6`의 2×2 격자와 통합대기지수 줄. 전부 `WEATHER_STTS`의 같은 행에
   // 있어 추가 호출이 0이다.
@@ -491,7 +509,7 @@ export const EN: Readonly<Record<string, string>> = {
   인구: 'People',
   교통: 'Transit',
   주변: 'Nearby',
-  행사: 'Events',
+  행사: 'Event',
   안전: 'Safety',
   '명소 정보 분류': 'Place information categories',
   // 앞의 쉼표는 보이는 글자 뒤에 이어 붙는 sr-only 조각이라 그대로 둔다.

@@ -82,4 +82,34 @@ describe('WeatherStats', () => {
       expect(value).not.toHaveClass(className)
     }
   })
+
+  // **비가 올 때만 생기는 다섯째 칸이다.** 2026-08-25 표본 35곳 전부 `-`였고
+  // 그때는 칸이 없어 2×2가 그대로 유지된다.
+  it('비가 오면 강수량 칸이 생긴다', () => {
+    render(<WeatherStats weather={makeWeather({ humidity: 70, precipitation: 2.5 })} />)
+
+    expect(screen.getByText('강수량')).toBeInTheDocument()
+    expect(screen.getByText('2.5mm')).toBeInTheDocument()
+  })
+
+  it('안 오면 그 칸이 없다', () => {
+    render(<WeatherStats weather={makeWeather({ humidity: 70 })} />)
+
+    expect(screen.queryByText('강수량')).toBeNull()
+  })
+
+  // 0mm를 「비 0mm」로 적지 않는다 — 그건 「안 온다」를 굳이 숫자로 말하는
+  // 것이고, 그 말은 바로 위 `PCP_MSG`가 이미 한다.
+  it('0mm는 칸을 만들지 않는다', () => {
+    render(<WeatherStats weather={makeWeather({ humidity: 70, precipitation: 0 })} />)
+
+    expect(screen.queryByText('강수량')).toBeNull()
+  })
+
+  // 다른 값이 하나도 없고 비만 오는 경우다. 절이 통째로 빠지면 그 정보를 잃는다.
+  it('강수량만 있어도 절을 그린다', () => {
+    render(<WeatherStats weather={makeWeather({ precipitation: 2.5 })} />)
+
+    expect(screen.getByText('2.5mm')).toBeInTheDocument()
+  })
 })

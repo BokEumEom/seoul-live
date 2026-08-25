@@ -1,10 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import type { BikeStation } from '../../domain/cityInfo'
+import type { BikeStation } from '../../domain/bike'
+import { makeBikeStation } from '../../test/cityInfo'
 import { BikeList } from './BikeList'
 
 function station(name: string, bikes: number | null, racks: number | null = 10): BikeStation {
-  return { name, coords: null, bikes, racks }
+  return makeBikeStation({ name, bikes, racks })
 }
 
 describe('BikeList', () => {
@@ -46,5 +47,47 @@ describe('BikeList', () => {
     expect(screen.getByText('대여소7')).toBeInTheDocument()
     expect(screen.queryByText('대여소2')).not.toBeInTheDocument()
     expect(screen.getByText('외 3곳')).toBeInTheDocument()
+  })
+
+  // **자전거를 가지고 온 사람에게는 오른쪽 배지가 반대 신호다** — 「7대 가능」은
+  // 빌릴 사람의 값이고, 반납하러 온 사람에게 자전거가 많다는 것은 꽂을 데가
+  // 없다는 뜻이다. 실호출 227곳 중 61곳(27%)이 이 상태였다.
+  it('거치대가 차면 반납할 자리가 없다고 적는다', () => {
+    render(
+      <BikeList
+        origin={null}
+        onShowOnMap={() => undefined}
+        stations={[makeBikeStation({ name: '가득', bikes: 26, racks: 20, dockRate: 130 })]}
+      />,
+    )
+
+    expect(screen.getByText('반납 자리 없음')).toBeInTheDocument()
+  })
+
+  // 안 찬 곳까지 「반납 가능」을 적으면 줄마다 글이 하나씩 늘 뿐이다.
+  it('자리가 있으면 그 줄을 만들지 않는다', () => {
+    render(
+      <BikeList
+        origin={null}
+        onShowOnMap={() => undefined}
+        stations={[makeBikeStation({ name: '여유', bikes: 7, racks: 20, dockRate: 35 })]}
+      />,
+    )
+
+    expect(screen.queryByText('반납 자리 없음')).toBeNull()
+  })
+
+  // 거치율을 모르는 대여소가 온다. 모르는 값으로 「반납 못 함」이라고 단정하면
+  // 갈 수 있는 곳을 못 가게 막는다.
+  it('거치율을 모르면 아무 말도 안 한다', () => {
+    render(
+      <BikeList
+        origin={null}
+        onShowOnMap={() => undefined}
+        stations={[makeBikeStation({ name: '모름', bikes: 7, racks: 20 })]}
+      />,
+    )
+
+    expect(screen.queryByText('반납 자리 없음')).toBeNull()
   })
 })

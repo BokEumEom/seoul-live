@@ -304,6 +304,40 @@ describe('parseCitydataResponse — REPLACE_YN', () => {
   })
 })
 
+describe('parseCitydataResponse — FCST_YN', () => {
+  function withForecastFlag(value: unknown): unknown {
+    const [area] = VALID['SeoulRtd.citydata_ppltn']
+    return { 'SeoulRtd.citydata_ppltn': [{ ...area, FCST_YN: value }] }
+  }
+
+  // **「예보가 비는 두 이유」를 가른다** — 서울이 이 명소는 예측을 안 주는 것과,
+  // 지금 예보가 안 온 것은 사용자에게 다른 말이다. 앞쪽은 기다려도 안 온다.
+  it("'N'이면 예측을 안 주는 명소다", () => {
+    expect(parseCitydataResponse(withForecastFlag('N'), NAME).forecastProvided).toBe(false)
+  })
+
+  it("'Y'면 준다", () => {
+    expect(parseCitydataResponse(withForecastFlag('Y'), NAME).forecastProvided).toBe(true)
+  })
+
+  // `Y`가 아닌 것을 「안 준다」로 읽으면, 처음 보는 값이 왔을 때 없는 사실을
+  // 단정하게 된다. `REPLACE_YN`과 같은 규칙이라 같은 함수를 쓴다.
+  it('처음 보는 값이면 모른다', () => {
+    expect(parseCitydataResponse(withForecastFlag('예'), NAME).forecastProvided).toBeNull()
+    expect(parseCitydataResponse(withForecastFlag(1), NAME).forecastProvided).toBeNull()
+  })
+
+  it('필드가 아예 없어도 죽지 않는다', () => {
+    const [area] = VALID['SeoulRtd.citydata_ppltn']
+    const withoutFlag: Record<string, unknown> = { ...area }
+    delete withoutFlag.FCST_YN
+    expect(
+      parseCitydataResponse({ 'SeoulRtd.citydata_ppltn': [withoutFlag] }, NAME)
+        .forecastProvided,
+    ).toBeNull()
+  })
+})
+
 describe('parseBulkEnvelope', () => {
   it('이름을 키로 하는 정상 봉투를 그대로 돌려준다', () => {
     const envelope = { results: { 강남역: VALID, 경복궁: null } }

@@ -173,6 +173,71 @@ describe('실호출 citydata 응답 (2026-08-25) — 파서', () => {
     expect(info.events.length).toBeGreaterThan(0)
   })
 
+  // **거치율은 `bikes / racks`와 같은 값이다** — 실호출 227곳 전부에서 반올림까지
+  // 같았다. 그 관계를 여기서 못 박으면 거치율을 엉뚱한 키에서 읽는 실수가
+  // 잡힌다. 화면 테스트는 목업이 값을 직접 넣으니 이걸 못 본다.
+  it('따릉이 거치율이 대수와 앞뒤가 맞는다', () => {
+    const rated = info.bikes.filter(
+      (spot) => spot.dockRate !== null && spot.bikes !== null && spot.racks !== null,
+    )
+    expect(rated.length).toBeGreaterThan(0)
+    for (const spot of rated) {
+      const expected = Math.round(((spot.bikes ?? 0) / (spot.racks ?? 1)) * 100)
+      expect(Math.abs((spot.dockRate ?? 0) - expected)).toBeLessThanOrEqual(1)
+    }
+    // ID는 목록의 키다. 비면 이름으로 떨어지는데, 그건 서울이 바꿀 수 있는 값이다.
+    expect(info.bikes.every((spot) => spot.id !== '')).toBe(true)
+  })
+
+  // 시안 `_7`이 카드마다 그리는 그림이다. 실호출 53건 전부에 있었고 전부
+  // `https`였다 — `httpUrl`이 스킴을 보므로, 안 통과하면 전부 빈 문자열이 된다.
+  it('행사의 그림과 좌표를 읽는다', () => {
+    expect(info.events.every((event) => event.thumbnail.startsWith('https://'))).toBe(true)
+    const located = info.events.filter((event) => event.coords !== null)
+    expect(located.length).toBeGreaterThan(0)
+    for (const event of located) {
+      // 축이 뒤집히면 위도 126이 되어 `coordsOrNull`이 통째로 버린다.
+      expect(event.coords?.lat).toBeGreaterThan(37)
+      expect(event.coords?.lat).toBeLessThan(38)
+      expect(event.coords?.lng).toBeGreaterThan(126)
+      expect(event.coords?.lng).toBeLessThan(128)
+    }
+  })
+
+  // **명세에 없는 필드 셋이 사고통제에 있다**(`ACDNT_ENG_TYPE`·`ACDNT_ENG_DTYPE`·
+  // `ACDNT_ENG_INFO`). 그중 `info`만 읽는데, 그게 사전으로 못 옮기는 자유 문장의
+  // 유일한 영어 출처다 — 안 읽히면 영어 화면의 그 줄이 한국어로 돌아간다.
+  it('사고통제의 영어 원문·좌표·갱신시각을 읽는다', () => {
+    expect(info.accidents.length).toBeGreaterThan(0)
+    expect(info.accidents.every((entry) => entry.infoEn !== '')).toBe(true)
+    // 영어가 한국어와 다른 글자인지까지 본다. 같은 키를 두 번 읽으면 통과해 버린다.
+    expect(info.accidents.every((entry) => entry.infoEn !== entry.info)).toBe(true)
+    for (const entry of info.accidents) {
+      expect(entry.coords?.lat).toBeGreaterThan(37)
+      expect(entry.coords?.lat).toBeLessThan(38)
+      expect(entry.coords?.lng).toBeGreaterThan(126)
+      expect(entry.coords?.lng).toBeLessThan(128)
+    }
+    // 절의 값이다 — 건마다 같은 시각이 온다(그래서 첫 행에서 읽는다).
+    expect(info.accidentsUpdatedAt).not.toBe('')
+  })
+
+  // **같은 이름이 날씨(176)와 예보(203) 양쪽에 있다.** 평평하게 훑으면 바깥
+  // 값이 스물넉 칸에 복사되는데, 바깥이 `-`(=null)라 전부 null이 되어도
+  // 「읽긴 읽었다」로는 안 잡힌다. 두 자리를 따로 재야 갈린다.
+  it('강수량을 날씨와 예보에서 따로 읽는다', () => {
+    // 2026-08-25 실호출은 비가 안 오는 날이었다 — 바깥은 `-`다.
+    expect(info.weather?.precipitation).toBeNull()
+    // 예보 스물넉 칸이 통째로 사라지지 않았는지만 본다. 값의 유무는 날씨에
+    // 달렸으므로 단정하지 않는다.
+    expect(info.weather?.hourly.length).toBe(24)
+    expect(
+      info.weather?.hourly.every(
+        (hour) => hour.precipitation === null || hour.precipitation >= 0,
+      ),
+    ).toBe(true)
+  })
+
   // **지하철과 버스의 승하차가 같은 모양이다.** 접두어(`SUB_`/`BUS_`)만 다르고
   // 나머지 키 18개가 한 글자도 안 다르다 — 파서가 접두어만 받아 둘을 같은
   // 코드로 읽는 근거다. 한쪽만 읽히면 그 전제가 깨진 것이다.

@@ -1,4 +1,5 @@
-import type { BikeStation, CityInfo, ParkingLot } from './cityInfo'
+import type { BikeStation } from './bike'
+import type { CityInfo, ParkingLot } from './cityInfo'
 
 /**
  * 도시 정보 응답을 **한 값으로 접는** 함수들이 사는 자리.

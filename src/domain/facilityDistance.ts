@@ -1,4 +1,4 @@
-import type { BikeStation } from './cityInfo'
+import type { BikeStation } from './bike'
 import { haversineMeters } from './distance'
 import type { Coords } from './types'
 

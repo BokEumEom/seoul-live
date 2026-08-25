@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AccidentList } from '../components/cityinfo/AccidentList'
+import { makeAccident } from '../test/cityInfo'
 import { AlertBanner } from '../components/cityinfo/AlertBanner'
 import { SubwayArrivals } from '../components/cityinfo/SubwayArrivals'
 import { ActionButtons } from '../components/home/ActionButtons'
@@ -126,6 +127,7 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
           maleRate: 52,
           femaleRate: 48,
           nonResidentRate: 58,
+          residentRate: 42,
           ageRates: [0, 5, 17, 20, 21, 18, 12, 7],
         }}
       />,
@@ -205,14 +207,15 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
     render(
       <AccidentList
         accidents={[
-          {
+          makeAccident({
             info: '세종대로 차량 2대 추돌',
             type: '교통사고',
             detailType: '차대차',
             occurredAt: '2026-08-21 14:30',
             expectedClearAt: '2026-08-21 16:00',
-          },
+          }),
         ]}
+        onShowOnMap={() => undefined}
       />,
     )
 

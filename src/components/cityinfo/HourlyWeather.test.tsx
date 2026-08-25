@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { HourlyForecast } from '../../domain/cityInfo'
+import { makeHourlyForecast } from '../../test/cityInfo'
 import { HourlyWeather } from './HourlyWeather'
 
 function hour(
@@ -8,7 +9,7 @@ function hour(
   temperature: number | null = 31,
   rainChance: number | null = 0,
 ): HourlyForecast {
-  return { time, temperature, rainChance, sky: '맑음', precipitationType: '' }
+  return makeHourlyForecast({ time, temperature, rainChance, sky: '맑음' })
 }
 
 describe('HourlyWeather', () => {
@@ -75,5 +76,40 @@ describe('HourlyWeather', () => {
     render(<HourlyWeather hourly={[hour('예보 없음')]} />)
 
     expect(screen.getByText('예보 없음')).toBeInTheDocument()
+  })
+
+  // **확률과 다른 값이다** — 「70%」는 올지 말지이고 이건 오면 얼마나 오는지다.
+  // 우산이냐 우비냐가 여기서 갈린다.
+  it('강수량이 있으면 확률과 함께 적는다', () => {
+    render(
+      <HourlyWeather
+        hourly={[makeHourlyForecast({ time: '202608131400', rainChance: 70, precipitation: 2 })]}
+      />,
+    )
+
+    expect(screen.getByText('70%')).toBeInTheDocument()
+    expect(screen.getByText('2mm')).toBeInTheDocument()
+  })
+
+  // 실호출 840칸 중 값이 있던 것은 75칸뿐이다(나머지는 `-`). 항상 그리면
+  // 56px 타일 스물넉 장이 「0mm」로 채워진다.
+  it('안 오는 시각에는 그 줄을 만들지 않는다', () => {
+    render(
+      <HourlyWeather hourly={[makeHourlyForecast({ time: '202608131400', rainChance: 0 })]} />,
+    )
+
+    expect(screen.queryByText(/mm/)).toBeNull()
+  })
+
+  // `-`가 null이 되는 것이 파서의 일이고, 0으로 오는 경우까지 여기서 접는다 —
+  // 「0mm」는 바로 옆 「0%」가 이미 하는 말이다.
+  it('0mm도 적지 않는다', () => {
+    render(
+      <HourlyWeather
+        hourly={[makeHourlyForecast({ time: '202608131400', precipitation: 0 })]}
+      />,
+    )
+
+    expect(screen.queryByText(/mm/)).toBeNull()
   })
 })

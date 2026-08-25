@@ -87,6 +87,7 @@ describe('parseCityInfoResponse — 날씨', () => {
       airIndexMain: '',
       airMessage: '외출 시 특별한 주의가 필요하지 않아요.',
       warnings: [],
+      precipitation: null,
       updatedAt: '2026-08-07 10:00',
     })
   })
@@ -384,13 +385,42 @@ describe('parseCityInfoResponse — 따릉이', () => {
   it('대여소명과 거치 대수를 읽는다', () => {
     const info = parseCityInfoResponse(
       payload({
-        SBIKE_STTS: [{ SBIKE_SPOT_NM: '광화문역 3번출구', SBIKE_PARKING_CNT: '7', SBIKE_RACK_CNT: '15' }],
+        SBIKE_STTS: [
+          {
+            SBIKE_SPOT_NM: '광화문역 3번출구',
+            SBIKE_SPOT_ID: 'ST-126',
+            SBIKE_PARKING_CNT: '7',
+            SBIKE_RACK_CNT: '15',
+            SBIKE_SHARED: '47',
+          },
+        ],
       }),
       AREA,
     )
     expect(info.bikes).toEqual([
-      { name: '광화문역 3번출구', coords: null, bikes: 7, racks: 15 },
+      {
+        name: '광화문역 3번출구',
+        id: 'ST-126',
+        coords: null,
+        bikes: 7,
+        racks: 15,
+        dockRate: 47,
+      },
     ])
+  })
+
+  // **거치율은 100을 넘는다** — 실호출 227곳 중 61곳이 그랬고 최댓값이 450이었다.
+  // 백분율이라고 100에서 자르면 「반납 자리 없음」 판정이 통째로 사라진다.
+  it('거치율이 100을 넘어도 그대로 읽는다', () => {
+    const info = parseCityInfoResponse(
+      payload({
+        SBIKE_STTS: [
+          { SBIKE_SPOT_NM: '가득 찬 대여소', SBIKE_SHARED: '450', SBIKE_RACK_CNT: '2' },
+        ],
+      }),
+      AREA,
+    )
+    expect(info.bikes[0].dockRate).toBe(450)
   })
 
   it('X가 경도이고 Y가 위도다', () => {
@@ -452,12 +482,16 @@ describe('parseCityInfoResponse — 문화행사', () => {
         place: '세종문화회관',
         free: true,
         url: 'https://culture.seoul.go.kr/1',
+        coords: null,
+        thumbnail: '',
       },
     ])
   })
 
-  // 명세의 출력명은 CULTURALEVENTINFO지만 응답 JSON의 키가 EVENT_STTS라는
-  // 보고가 있다. 인증키가 없어 실제 응답으로 확정하지 못했으므로 둘 다 받는다.
+  // 명세의 출력명은 CULTURALEVENTINFO인데 **응답 JSON의 키는 EVENT_STTS다** —
+  // 2026-08-25 실호출 35곳 전부 후자였고 `CULTURALEVENTINFO`는 한 번도 안 왔다.
+  // 그래도 둘 다 받는 채로 둔다: 명세가 그 이름을 적고 있으니 언젠가 바뀔 수 있고,
+  // 후보를 하나 더 두는 값이 목록 하나 도는 것뿐이다.
   it('EVENT_STTS 키로 와도 읽는다', () => {
     const info = parseCityInfoResponse(payload({ EVENT_STTS: [event] }), AREA)
     expect(info.events.map((entry) => entry.name)).toEqual(['서울무용축제'])
@@ -469,6 +503,31 @@ describe('parseCityInfoResponse — 문화행사', () => {
       AREA,
     )
     expect(info.events[0].free).toBe(false)
+  })
+
+  // **그대로 `<img src>`에 들어간다.** `URL`과 같은 가드를 통과시키는 이유가
+  // 둘이다: `javascript:`가 걸러지는 것, 그리고 상대 경로가 오면 우리 도메인의
+  // 엉뚱한 자리를 가리키게 되는 것도 여기서 막힌다.
+  it('http가 아닌 그림 주소는 버린다', () => {
+    for (const bad of ['javascript:alert(1)', '/cmmn/file/1', 'data:image/png;base64,AAA']) {
+      const info = parseCityInfoResponse(
+        payload({ CULTURALEVENTINFO: [{ ...event, THUMBNAIL: bad }] }),
+        AREA,
+      )
+      expect(info.events[0].thumbnail).toBe('')
+    }
+  })
+
+  it('https 그림 주소는 그대로 읽는다', () => {
+    const info = parseCityInfoResponse(
+      payload({
+        CULTURALEVENTINFO: [
+          { ...event, THUMBNAIL: 'https://culture.seoul.go.kr/cmmn/file/1' },
+        ],
+      }),
+      AREA,
+    )
+    expect(info.events[0].thumbnail).toBe('https://culture.seoul.go.kr/cmmn/file/1')
   })
 
   it('http가 아닌 링크는 버린다', () => {
@@ -599,10 +658,15 @@ describe('parseCityInfoResponse — 사고통제', () => {
         ACDNT_CNTRL_STTS: [
           {
             ACDNT_INFO: '세종대로 사거리 2개 차로 통제',
+            // **명세에 없는 필드다** — 2026-08-25 실호출에서 확인했다.
+            ACDNT_ENG_INFO: 'Two lanes closed at Sejong-daero intersection',
             ACDNT_TYPE: '교통사고',
             ACDNT_DTYPE: '차대차',
             ACDNT_OCCR_DT: '2026-08-07 08:40',
             EXP_CLR_DT: '2026-08-07 10:00',
+            ACDNT_X: 126.9769,
+            ACDNT_Y: 37.5715,
+            ACDNT_TIME: '2026-08-07 08:45',
           },
         ],
       }),
@@ -611,12 +675,33 @@ describe('parseCityInfoResponse — 사고통제', () => {
     expect(info.accidents).toEqual([
       {
         info: '세종대로 사거리 2개 차로 통제',
+        infoEn: 'Two lanes closed at Sejong-daero intersection',
         type: '교통사고',
         detailType: '차대차',
         occurredAt: '2026-08-07 08:40',
         expectedClearAt: '2026-08-07 10:00',
+        coords: { lat: 37.5715, lng: 126.9769 },
       },
     ])
+    // 갱신 시각은 건이 아니라 절의 값이다 — 첫 행에서 읽는다.
+    expect(info.accidentsUpdatedAt).toBe('2026-08-07 08:45')
+  })
+
+  // **X가 경도이고 Y가 위도다.** 따릉이에서 이미 한 번 뒤집힌 자리라 절마다
+  // 잠근다 — 뒤집으면 위도 126이 되고 `coordsOrNull`이 통째로 버린다.
+  it('축을 뒤집어 읽지 않는다', () => {
+    const info = parseCityInfoResponse(
+      payload({
+        ACDNT_CNTRL_STTS: [{ ACDNT_INFO: '통제', ACDNT_X: 126.98, ACDNT_Y: 37.56 }],
+      }),
+      AREA,
+    )
+    expect(info.accidents[0].coords).toEqual({ lat: 37.56, lng: 126.98 })
+  })
+
+  it('통제가 없으면 갱신 시각도 비어 있다', () => {
+    const info = parseCityInfoResponse(payload({}), AREA)
+    expect(info.accidentsUpdatedAt).toBe('')
   })
 
   it('내용이 없는 항목은 버린다', () => {
@@ -655,6 +740,7 @@ describe('parseCityInfoResponse — 시간대별 예보', () => {
         rainChance: 0,
         sky: '맑음',
         precipitationType: '',
+        precipitation: null,
       },
       {
         time: '202608131500',
@@ -662,8 +748,43 @@ describe('parseCityInfoResponse — 시간대별 예보', () => {
         rainChance: 20,
         sky: '구름많음',
         precipitationType: '',
+        precipitation: null,
       },
     ])
+  })
+
+  // **같은 이름이 날씨(명세 176)와 예보(203) 양쪽에 있다.** 컨테이너를 안 타고
+  // 평평하게 훑으면 바깥 날씨의 값이 스물넉 칸에 전부 복사된다 — 이 저장소가
+  // 도로소통·지하철에서 이미 밟은 함정이라 절마다 잠근다.
+  it('강수량은 예보 칸의 것을 읽는다', () => {
+    const info = parseCityInfoResponse(
+      payload({
+        WEATHER_STTS: [
+          {
+            TEMP: '28.4',
+            // 바깥은 안 온다(실호출 35곳 전부 이 값이었다).
+            PRECIPITATION: '-',
+            FCST24HOURS: [
+              { FCST_DT: '202608131400', PRECIPITATION: '2.0' },
+              { FCST_DT: '202608131500', PRECIPITATION: '-' },
+            ],
+          },
+        ],
+      }),
+      AREA,
+    )
+    expect(info.weather?.precipitation).toBeNull()
+    expect(info.weather?.hourly.map((entry) => entry.precipitation)).toEqual([2, null])
+  })
+
+  // 비 오는 날의 바깥 값이다. **표본에서 한 번도 못 봤다** — 2026-08-25 실호출
+  // 35곳 전부 `-`였다. 형식은 예보 쪽에서 확인한 mm 단위 소수를 따른다.
+  it('지금 내리는 강수량도 읽는다', () => {
+    const info = parseCityInfoResponse(
+      payload({ WEATHER_STTS: [{ TEMP: '19.2', PRECIPITATION: '2.5' }] }),
+      AREA,
+    )
+    expect(info.weather?.precipitation).toBe(2.5)
   })
 
   it('강수형태도 읽는다', () => {

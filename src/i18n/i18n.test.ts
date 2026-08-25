@@ -1,5 +1,6 @@
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
+import { ACCIDENT_DETAIL_TYPES, ACCIDENT_TYPES } from '../domain/accident'
 import {
   CHARGER_KINDS,
   CHARGER_METHODS,
@@ -86,7 +87,6 @@ const ROAD_STATE_LABELS = ['원활', '서행', '정체'] as const
  * 새 값을 보거든 여기와 `en.ts`에 함께 더하라.
  */
 const ALERT_LABELS = ['호우', '주의보', '경보'] as const
-const ACCIDENT_TYPE_LABELS = ['교통사고', '차대차', '공사', '도로보수'] as const
 /**
  * 기상특보 종류(`WARN_VAL`)와 자외선지수 단계(`UV_INDEX_LVL`).
  *
@@ -194,7 +194,10 @@ function dynamicKeys(): readonly string[] {
     ...ROAD_CHIP_LABELS,
     ...ROAD_STATE_LABELS,
     ...ALERT_LABELS,
-    ...ACCIDENT_TYPE_LABELS,
+    // **도메인에서 뽑는다** — 손으로 적은 목록이었고, 실호출에서 값이 둘 늘었을
+    // 때(`집회및행사`·`행사`) 여기가 낡아 있었다. 충전소·16방위와 같은 규칙이다.
+    ...ACCIDENT_TYPES,
+    ...ACCIDENT_DETAIL_TYPES,
     ...SUBWAY_DIRECTION_LABELS,
     ...WEATHER_WARNING_LABELS,
     ...UV_GRADE_LABELS,

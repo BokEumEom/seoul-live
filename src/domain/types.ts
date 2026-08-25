@@ -89,6 +89,17 @@ export interface AreaSnapshot {
   /** `observedAt`에서 뽑은 "HH:MM". 화면이 원본 형식을 파싱하지 않게 하려는 것 */
   readonly observedAtLabel: string
   readonly forecasts: readonly Forecast[]
+  /**
+   * FCST_YN — 서울이 이 명소의 인구 예측을 제공하나. 모르면 `null`.
+   *
+   * **`forecasts`가 비는 두 가지 이유를 가른다.** 「서울이 이 명소는 예측을
+   * 안 준다」와 「지금 예보가 안 왔다」는 사용자에게 다른 말이다 — 앞쪽은
+   * 기다려도 안 오고 뒤쪽은 잠시 뒤 다시 보면 있다.
+   *
+   * **2026-08-25 실호출 35곳에서 전부 `Y`였다.** `false`가 그리는 화면은
+   * 실데이터로 확인한 적이 없다.
+   */
+  readonly forecastProvided: boolean | null
   /** 없을 수 있다. 이 값이 없어도 혼잡도 화면은 그대로 선다. */
   readonly composition: PopulationComposition | null
   /**

@@ -33,6 +33,7 @@ function snapshot(overrides: Partial<AreaSnapshot> = {}): AreaSnapshot {
       forecast(17, '보통', 30_000),
       forecast(18, '여유', 12_000),
     ],
+    forecastProvided: null,
     composition: null,
     replaced: null,
     ...overrides,
@@ -130,5 +131,26 @@ describe('ForecastChart', () => {
 
     expect(screen.getByText(/예측 정보가 아직 없어요/)).toBeInTheDocument()
     expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+  })
+
+  // **「아직」과 「안 준다」는 다른 말이다.** 앞쪽은 잠시 뒤 다시 보면 있고
+  // 뒤쪽은 기다려도 안 온다 — `FCST_YN`이 그걸 가른다.
+  it('서울이 예측을 안 주는 명소는 그렇게 말한다', () => {
+    render(
+      <ForecastChart snapshot={snapshot({ forecasts: [], forecastProvided: false })} />,
+    )
+
+    expect(screen.getByText(/제공하지 않아요/)).toBeInTheDocument()
+    expect(screen.queryByText(/아직 없어요/)).toBeNull()
+  })
+
+  // `FCST_YN`이 없거나 처음 보는 값이면 「모른다」다. 모르는 것을 「안 준다」로
+  // 단정하면, 잠시 비었을 뿐인 명소에 「기다려도 안 온다」고 말하게 된다.
+  it('제공 여부를 모르면 예전 문구로 떨어진다', () => {
+    render(
+      <ForecastChart snapshot={snapshot({ forecasts: [], forecastProvided: null })} />,
+    )
+
+    expect(screen.getByText(/아직 없어요/)).toBeInTheDocument()
   })
 })

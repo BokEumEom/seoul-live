@@ -1,7 +1,5 @@
 import { z } from 'zod'
 import type {
-  AccidentControl,
-  BikeStation,
   BusStop,
   CityAlert,
   CityInfo,
@@ -16,6 +14,8 @@ import type {
   Weather,
   WeatherWarning,
 } from '../domain/cityInfo'
+import type { AccidentControl } from '../domain/accident'
+import type { BikeStation } from '../domain/bike'
 import type { Charger, ChargerStation } from '../domain/charger'
 import {
   hasReadableCommerce,
@@ -109,6 +109,9 @@ function toHourly(rows: readonly Row[]): readonly HourlyForecast[] {
       rainChance: numberOrNull(row, 'RAIN_CHANCE'),
       sky: text(row, 'SKY_STTS'),
       precipitationType: text(row, 'PRECPT_TYPE'),
+      // **날씨 쪽 `PRECIPITATION`과 같은 이름이다**(명세 176 vs 203). 컨테이너를
+      // 타고 내려와 읽으므로 섞이지 않는다 — 명세를 읽을 때 걸리는 것 1번.
+      precipitation: numberOrNull(row, 'PRECIPITATION'),
     }),
   )
 }
@@ -148,6 +151,7 @@ function toWeather(row: Row): Weather {
     uvGrade: text(row, 'UV_INDEX_LVL'),
     uvMessage: text(row, 'UV_MSG'),
     precipitationMessage: text(row, 'PCP_MSG'),
+    precipitation: numberOrNull(row, 'PRECIPITATION'),
     pm10: numberOrNull(row, 'PM10'),
     pm10Grade: text(row, 'PM10_INDEX'),
     pm25: numberOrNull(row, 'PM25'),
@@ -203,10 +207,14 @@ function toAccidents(rows: readonly Row[]): readonly AccidentControl[] {
     'ACDNT_INFO',
     (row, info): AccidentControl => ({
       info,
+      // 명세에 없는 필드다 — 근거는 `domain/accident.ts`.
+      infoEn: text(row, 'ACDNT_ENG_INFO'),
       type: text(row, 'ACDNT_TYPE'),
       detailType: text(row, 'ACDNT_DTYPE'),
       occurredAt: text(row, 'ACDNT_OCCR_DT'),
       expectedClearAt: text(row, 'EXP_CLR_DT'),
+      // X가 경도, Y가 위도다. 따릉이·버스와 같은 축 규칙이라 순서를 지킨다.
+      coords: coordsOrNull(row, 'ACDNT_Y', 'ACDNT_X'),
     }),
   )
 }
@@ -402,10 +410,12 @@ function toBikes(rows: readonly Row[]): readonly BikeStation[] {
     'SBIKE_SPOT_NM',
     (row, name): BikeStation => ({
       name,
+      id: text(row, 'SBIKE_SPOT_ID'),
       // X가 경도, Y가 위도다. 이름만 보고 순서를 정하면 뒤집힌다.
       coords: coordsOrNull(row, 'SBIKE_Y', 'SBIKE_X'),
       bikes: numberOrNull(row, 'SBIKE_PARKING_CNT'),
       racks: numberOrNull(row, 'SBIKE_RACK_CNT'),
+      dockRate: numberOrNull(row, 'SBIKE_SHARED'),
     }),
   )
 }
@@ -419,6 +429,13 @@ function toEvents(rows: readonly Row[]): readonly CulturalEvent[] {
       place: text(row, 'EVENT_PLACE'),
       free: paid === null ? null : !paid,
       url: httpUrl(row, 'URL'),
+      // X가 경도, Y가 위도다.
+      coords: coordsOrNull(row, 'EVENT_Y', 'EVENT_X'),
+      // `<img src>`에 그대로 들어간다. `URL`과 같은 스킴 가드를 통과시킨다 —
+      // `javascript:`가 걸러지는 것은 물론이고, 상대 경로가 오면 우리 도메인의
+      // 엉뚱한 자리를 가리키게 되는 것도 여기서 막힌다.
+      thumbnail: httpUrl(row, 'THUMBNAIL'),
+      // **`EVENT_ETC_DETAIL`은 일부러 안 읽는다** — 근거는 `CulturalEvent`.
     }
   })
 }
@@ -519,6 +536,9 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
   // 가드에 걸려 **실데이터에서 도로소통 카드가 통째로 사라진다.**
   // 안쪽이 있으면 안쪽을, 없으면 바깥을 읽는다 — 응답이 평평해지는 날 조용히
   // 죽지 않게 두 모양을 다 받는다.
+  // 두 번 읽는다 — 목록과 갱신 시각이 같은 행에서 나온다.
+  const accidentRows = sectionRows(container, ['ACDNT_CNTRL_STTS'])
+
   const roadRows = sectionRows(container, ['ROAD_TRAFFIC_STTS']).flatMap((row) => {
     const average = sectionRows(row, ['AVG_ROAD_DATA'])
     return average.length > 0 ? average : [row]
@@ -539,7 +559,9 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
     // 테스트 구멍이 아니라 **동치 변이**이니 쫓지 마라. 바로 위 `weather`와 같은
     // 모양을 유지하는 쪽을 택했다.
     roadTraffic: roadRows.length > 0 ? toRoadTraffic(roadRows[0]) : null,
-    accidents: toAccidents(sectionRows(container, ['ACDNT_CNTRL_STTS'])),
+    accidents: toAccidents(accidentRows),
+    // 첫 행에서 읽는다 — 절의 값이라는 근거는 `CityInfo.accidentsUpdatedAt`.
+    accidentsUpdatedAt: accidentRows.length > 0 ? text(accidentRows[0], 'ACDNT_TIME') : '',
     parking: toParking(sectionRows(container, ['PRK_STTS'])),
     bikes: toBikes(sectionRows(container, ['SBIKE_STTS'])),
     events: toEvents(sectionRows(container, ['CULTURALEVENTINFO', 'EVENT_STTS'])),

@@ -246,9 +246,9 @@ export function AreaDetailScreen({
           )}
 
           {tab === 'weather' && <WeatherPanel areaName={areaName} />}
-          {tab === 'events' && <EventsPanel areaName={areaName} />}
+          {tab === 'events' && <EventsPanel areaName={areaName} onShowOnMap={onShowOnMap} />}
           {tab === 'commerce' && <CommercePanel areaName={areaName} />}
-          {tab === 'safety' && <SafetyPanel areaName={areaName} />}
+          {tab === 'safety' && <SafetyPanel areaName={areaName} onShowOnMap={onShowOnMap} />}
         </m.div>
 
         {/* **길찾기는 탭 밖이다.** 어느 탭에 있든 「그래서 갈까」는 같은

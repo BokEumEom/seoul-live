@@ -13,6 +13,7 @@ function snap(name: string, congestion: CongestionLevel): AreaSnapshot {
     observedAt: '2026-08-07 11:00',
     observedAtLabel: '11:00',
     forecasts: [],
+    forecastProvided: null,
     composition: null,
     replaced: null,
   }

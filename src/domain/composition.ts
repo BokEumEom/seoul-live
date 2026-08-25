@@ -13,6 +13,19 @@ export interface PopulationComposition {
   readonly femaleRate: number
   /** 비상주(외지인) 비율. 높으면 관광지, 낮으면 생활권이다. */
   readonly nonResidentRate: number
+  /**
+   * RESNT_PPLTN_RATE — 상주 인구 비율.
+   *
+   * **비상주의 나머지라 화면에 따로 적을 값이 아니다.** 2026-08-25 실호출
+   * 35곳에서 둘의 합이 전부 정확히 100.0이었다. 그런데도 읽는 이유는 `rate()`가
+   * 못 읽은 값을 0으로 떨어뜨리는 데서 온 오래된 손실 때문이다 — 0이 「진짜
+   * 0%」인지 「못 읽음」인지 구분이 안 됐고, 그래서 `residentLabel`이 0을
+   * 근거로는 아무 말도 못 했다.
+   *
+   * 둘을 함께 읽으면 그 구분이 생긴다: 상주 100·비상주 0은 **읽힌 0**이고,
+   * 둘 다 0이면 **못 읽은 것**이다. `hasResidenceSplit`이 그 판정이다.
+   */
+  readonly residentRate: number
   /** PPLTN_RATE_0 ~ PPLTN_RATE_70 순서대로 여덟 개. */
   readonly ageRates: readonly number[]
 }
@@ -44,9 +57,21 @@ export function hasGenderSplit(composition: PopulationComposition): boolean {
 export function hasReadableComposition(composition: PopulationComposition): boolean {
   return (
     hasGenderSplit(composition) ||
-    composition.nonResidentRate > 0 ||
+    hasResidenceSplit(composition) ||
     composition.ageRates.some((rate) => rate > 0)
   )
+}
+
+/**
+ * 거주 구성을 읽었나. **한쪽만 0인 것은 정상이다.**
+ *
+ * `hasGenderSplit`이 둘 다 양수를 요구하는 것과 다르다. 남녀는 한쪽이 0이면
+ * 「여자만 있는 장소」라는 없는 사실이 되지만, 상주 100 · 비상주 0은 실재하는
+ * 상태다 — 관광객이 한 명도 없는 주거지가 그렇다. 그 자리에서 침묵하면
+ * 「동네 생활권」이라는 가장 확실한 답을 못 하게 된다.
+ */
+export function hasResidenceSplit(composition: PopulationComposition): boolean {
+  return composition.residentRate > 0 || composition.nonResidentRate > 0
 }
 
 /** 60%를 넘어야 "외지인이 많다"고 말한다. 반반에 가까운 곳을 단정하지 않으려는 것이다. */
@@ -55,9 +80,11 @@ const NON_RESIDENT_THRESHOLD = 60
 /** 말할 근거가 없으면 `null`이다. 소비처는 JSX에 그대로 넣으면 된다 — null은 아무것도
  * 그리지 않는다. */
 export function residentLabel(composition: PopulationComposition): string | null {
-  // 0은 "비상주가 0%"가 아니라 "읽지 못함"일 수 있다. 못 읽은 값으로 단정하지 않는다 —
-  // 아래 임계값이 반반에 가까운 곳을 단정하지 않으려는 것과 같은 이유다.
-  if (composition.nonResidentRate === 0) {
+  // **2026-08-25에 판정이 바뀌었다.** 예전에는 `nonResidentRate === 0`이면
+  // 침묵했다 — 그 0이 「읽지 못함」일 수 있어서다. 이제 상주 비율을 함께 읽어
+  // (`RESNT_PPLTN_RATE`) 둘 다 0일 때만 침묵한다. 상주 100 · 비상주 0인 곳이
+  // 「동네 생활권이에요」를 되찾는다.
+  if (!hasResidenceSplit(composition)) {
     return null
   }
   return composition.nonResidentRate > NON_RESIDENT_THRESHOLD

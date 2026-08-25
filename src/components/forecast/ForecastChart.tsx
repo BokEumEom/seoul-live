@@ -48,7 +48,15 @@ export function ForecastChart({ snapshot }: Props) {
   if (snapshot.forecasts.length === 0) {
     return (
       <p className="py-8 text-center text-label-md text-on-surface-variant">
-        {t('예측 정보가 아직 없어요.')}
+        {/* **「아직」과 「안 준다」는 다른 말이다.** 앞쪽은 잠시 뒤 다시 보면
+            있고 뒤쪽은 기다려도 안 온다. `FCST_YN`이 그걸 가른다 — 그 값이
+            없거나 처음 보는 모양이면 예전 문구로 떨어진다.
+
+            **`false`가 그리는 이 화면은 실데이터로 본 적이 없다** — 2026-08-25
+            실호출 35곳이 전부 `Y`였다. 근거는 `AreaSnapshot.forecastProvided`. */}
+        {snapshot.forecastProvided === false
+          ? t('이 명소는 인구 예측을 제공하지 않아요.')
+          : t('예측 정보가 아직 없어요.')}
       </p>
     )
   }

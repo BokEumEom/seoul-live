@@ -100,6 +100,11 @@ function buildHourlyForecast(
       RAIN_CHANCE: String(Math.round(chance / 10) * 10),
       SKY_STTS: chance >= 60 ? '흐림' : chance >= 30 ? '구름많음' : '맑음',
       PRECPT_TYPE: chance >= 60 ? '비' : '없음',
+      // **여기는 실제로 숫자가 온다.** 2026-08-25 표본에서 현재 날씨는 35곳
+      // 전부 `-`였는데 예보 840칸 중 75칸에 1.0~11.0mm가 있었다. 값이 있는
+      // 칸과 없는 칸이 섞여 오므로 목업도 섞어 낸다 — `PRECPT_TYPE`이 「비」인
+      // 칸에만 붙는 것이 실호출과 같은 짝이다.
+      PRECIPITATION: chance >= 60 ? (1 + (chance % 5)).toFixed(1) : '-',
     }
   })
 }
@@ -479,6 +484,10 @@ function buildBikes(areaName: string, seed: number): readonly unknown[] {
   return Array.from({ length: count }, (_, index) => {
     const mixed = mixSeed(seed, BIKE_SALT * 10 + index)
     const racks = 8 + (mixed % 15)
+    // **거치대보다 많이 꽂힌 대여소가 있다** — 실호출 227곳 중 61곳(27%)이
+    // 그랬고 최대 450%였다. `% (racks + 1)`로 두면 그 갈래가 목업에 아예
+    // 없어서 「반납 자리 없음」 줄을 개발 중에 한 번도 못 본다.
+    const parked = mixed % Math.round(racks * 1.6)
     const at = scatter(areaName, mixed)
     return {
       SBIKE_SPOT_NM: `${areaName} ${index + 1}번 대여소`,
@@ -486,8 +495,12 @@ function buildBikes(areaName: string, seed: number): readonly unknown[] {
       SBIKE_X: at.lng,
       SBIKE_Y: at.lat,
       SBIKE_SPOT_ID: `ST-${1000 + (mixed % 900)}`,
-      SBIKE_PARKING_CNT: String(mixed % (racks + 1)),
+      SBIKE_PARKING_CNT: String(parked),
       SBIKE_RACK_CNT: String(racks),
+      // **실호출 227곳에서 `parked / racks * 100`과 반올림까지 같았다.**
+      // 목업이 딴 숫자를 내면 화면이 「7대 가능 / 거치율 3%」처럼 모순된 두
+      // 값을 그리는데, 그건 실데이터에서는 안 일어나는 모양이다.
+      SBIKE_SHARED: String(Math.round((parked / racks) * 100)),
     }
   })
 }
@@ -540,12 +553,22 @@ function buildEvents(areaName: string, seed: number): readonly unknown[] {
   const count = mixSeed(seed, EVENT_SALT) % 3
   return Array.from({ length: count }, (_, index) => {
     const mixed = mixSeed(seed, EVENT_SALT * 10 + index)
+    const at = scatter(areaName, mixed)
     return {
       EVENT_NM: EVENT_NAMES[mixed % EVENT_NAMES.length],
       EVENT_PERIOD: '2026-08-01~2026-08-31',
       EVENT_PLACE: areaName,
       PAY_YN: mixed % 2 === 0 ? '무료' : '유료',
       URL: `https://culture.seoul.go.kr/culture/mock/${mixed % 1000}`,
+      // X가 경도, Y가 위도다(따릉이와 같은 규칙).
+      EVENT_X: at.lng,
+      EVENT_Y: at.lat,
+      // **셋 중 하나는 그림이 없다.** 실호출 53건은 전부 있었지만 「끝난 행사의
+      // 파일이 내려간 경우」를 개발 중에 봐야 `EventThumbnail`의 빈 자리 처리가
+      // 눈에 띈다.
+      THUMBNAIL:
+        mixed % 3 === 0 ? '' : `https://culture.seoul.go.kr/cmmn/file/mock/${mixed % 1000}`,
+      // `EVENT_ETC_DETAIL`은 안 만든다 — 파서가 일부러 안 읽는다.
     }
   })
 }
@@ -595,11 +618,12 @@ function buildRoadTraffic(seed: number, now: Date): unknown {
 
 // 사고통제는 재난문자처럼 대부분의 명소에서 비어 있는 게 정상이다. 4곳 중 1곳쯤만
 // 채워야 "없을 때의 화면"이 개발 중에도 기본으로 보인다.
-function buildAccidents(seed: number, now: Date): readonly unknown[] {
+function buildAccidents(areaName: string, seed: number, now: Date): readonly unknown[] {
   if (mixSeed(seed, ACCIDENT_SALT) % 4 !== 0) {
     return []
   }
   const clearAt = new Date(now.getTime() + 90 * 60 * 1000)
+  const center = scatter(areaName, mixSeed(seed, ACCIDENT_SALT))
   return [
     {
       ACDNT_OCCR_DT: formatSeoulTime(now),
@@ -607,6 +631,15 @@ function buildAccidents(seed: number, now: Date): readonly unknown[] {
       ACDNT_TYPE: '교통사고',
       ACDNT_DTYPE: '차대차',
       ACDNT_INFO: '차량 2대 추돌로 1개 차로가 통제되고 있어요. 우회를 권합니다.',
+      // **명세에 없는 필드다.** 2026-08-25 실호출에서 확인했다 — 서울이 통제
+      // 내용의 영어 원문을 함께 준다. 목업이 이걸 안 내면 영어 화면의 이 줄이
+      // 개발 중에는 한국어로 보이고, 실데이터에서만 영어가 된다.
+      ACDNT_ENG_INFO:
+        'One lane is closed due to a two-vehicle collision. Detour recommended.',
+      ACDNT_X: center.lng,
+      ACDNT_Y: center.lat,
+      // 건별이 아니라 절의 값이다 — 실호출에서 같은 명소의 두 건이 같은 시각이었다.
+      ACDNT_TIME: formatSeoulTime(now),
     },
   ]
 }
@@ -621,10 +654,13 @@ export function buildMockCityInfo(areaName: string, now: Date = new Date()): unk
       AREA_CD: findAreaByName(areaName)?.code ?? 'POI000',
       WEATHER_STTS: [buildWeather(seed, now)],
       ROAD_TRAFFIC_STTS: buildRoadTraffic(seed, now),
-      ACDNT_CNTRL_STTS: buildAccidents(seed, now),
+      ACDNT_CNTRL_STTS: buildAccidents(areaName, seed, now),
       PRK_STTS: buildParking(areaName, seed, now),
       SBIKE_STTS: buildBikes(areaName, seed),
-      CULTURALEVENTINFO: buildEvents(areaName, seed),
+      // **명세는 `CULTURALEVENTINFO`, 응답은 `EVENT_STTS`다.** 2026-08-25
+      // 실호출 35곳 전부 후자였다 — 목업은 실제로 오는 모양을 낸다. 파서는
+      // 둘 다 받고, 명세 쪽 이름은 `cityInfoSchema.test.ts`가 잠근다.
+      EVENT_STTS: buildEvents(areaName, seed),
       LIVE_DST_MESSAGE: buildAlerts(seed, now),
       SUB_STTS: buildSubway(seed),
       // 지하철이 버스보다 규모가 크다 — 실호출에서 광화문 지하철 승차 누적

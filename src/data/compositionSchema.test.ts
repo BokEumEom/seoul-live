@@ -10,6 +10,7 @@ const FULL = {
   MALE_PPLTN_RATE: '48.2',
   FEMALE_PPLTN_RATE: '51.8',
   NON_RESNT_PPLTN_RATE: '71.4',
+  RESNT_PPLTN_RATE: '28.6',
   PPLTN_RATE_0: '3.1',
   PPLTN_RATE_10: '8.0',
   PPLTN_RATE_20: '31.2',
@@ -27,7 +28,26 @@ describe('parseComposition', () => {
     expect(c?.maleRate).toBe(48.2)
     expect(c?.femaleRate).toBe(51.8)
     expect(c?.nonResidentRate).toBe(71.4)
+    expect(c?.residentRate).toBe(28.6)
     expect(c?.ageRates).toEqual([3.1, 8, 31.2, 22.5, 14, 11.2, 6, 4])
+  })
+
+  // **상주 비율을 함께 읽는 이유는 0의 뜻을 가르기 위해서다.** `rate()`가 못
+  // 읽은 값을 0으로 떨어뜨리는데, 비상주만 보면 「진짜 0%」와 「못 읽음」이
+  // 같은 값이 된다. 둘을 함께 읽으면 갈린다 — `hasResidenceSplit`이 그 판정이다.
+  it('상주 100 · 비상주 0은 읽힌 값이다', () => {
+    const c = parseComposition(
+      payload({ ...FULL, RESNT_PPLTN_RATE: '100', NON_RESNT_PPLTN_RATE: '0' }),
+      '강남역',
+    )
+    expect(c?.residentRate).toBe(100)
+    expect(c?.nonResidentRate).toBe(0)
+  })
+
+  it('상주만 이상하면 상주만 버리고 나머지는 산다', () => {
+    const c = parseComposition(payload({ ...FULL, RESNT_PPLTN_RATE: '250' }), '강남역')
+    expect(c?.residentRate).toBe(0)
+    expect(c?.nonResidentRate).toBe(71.4)
   })
 
   it('필드가 통째로 없으면 null이다', () => {

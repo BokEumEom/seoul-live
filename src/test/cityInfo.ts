@@ -1,5 +1,9 @@
+import type { AccidentControl } from '../domain/accident'
+import type { BikeStation } from '../domain/bike'
 import type {
   CityInfo,
+  CulturalEvent,
+  HourlyForecast,
   ParkingLot,
   Ridership,
   RidershipWindow,
@@ -44,7 +48,24 @@ export function makeWeather(overrides: Partial<Weather> = {}): Weather {
     airIndexMain: '',
     airMessage: '',
     warnings: [],
+    precipitation: null,
     updatedAt: '',
+    ...overrides,
+  }
+}
+
+/** 예보 한 칸. 시각도 기본은 빈 값이다 — 시각이 이 항목의 본체라 안 채운
+ *  테스트가 그 사실을 함께 확인하게 둔다. */
+export function makeHourlyForecast(
+  overrides: Partial<HourlyForecast> = {},
+): HourlyForecast {
+  return {
+    time: '',
+    temperature: null,
+    rainChance: null,
+    sky: '',
+    precipitationType: '',
+    precipitation: null,
     ...overrides,
   }
 }
@@ -65,6 +86,44 @@ export function makeParkingLot(overrides: Partial<ParkingLot> = {}): ParkingLot 
   }
 }
 
+export function makeBikeStation(overrides: Partial<BikeStation> = {}): BikeStation {
+  return {
+    name: '',
+    id: '',
+    coords: null,
+    bikes: null,
+    racks: null,
+    dockRate: null,
+    ...overrides,
+  }
+}
+
+export function makeCulturalEvent(overrides: Partial<CulturalEvent> = {}): CulturalEvent {
+  return {
+    name: '',
+    period: '',
+    place: '',
+    free: null,
+    url: '',
+    coords: null,
+    thumbnail: '',
+    ...overrides,
+  }
+}
+
+export function makeAccident(overrides: Partial<AccidentControl> = {}): AccidentControl {
+  return {
+    info: '',
+    infoEn: '',
+    type: '',
+    detailType: '',
+    occurredAt: '',
+    expectedClearAt: '',
+    coords: null,
+    ...overrides,
+  }
+}
+
 export function makeCityInfo(overrides: Partial<CityInfo> = {}): CityInfo {
   return {
     areaName: '',
@@ -73,6 +132,7 @@ export function makeCityInfo(overrides: Partial<CityInfo> = {}): CityInfo {
     weather: null,
     roadTraffic: null,
     accidents: [],
+    accidentsUpdatedAt: '',
     parking: [],
     bikes: [],
     events: [],

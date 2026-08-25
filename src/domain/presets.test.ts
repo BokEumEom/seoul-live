@@ -36,6 +36,7 @@ function area(
           observedAt: '2026-08-06 14:00',
           observedAtLabel: '14:00',
           forecasts: [],
+          forecastProvided: null,
           composition: null,
           replaced: null,
         }

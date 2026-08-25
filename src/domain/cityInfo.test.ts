@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { makeCityInfo, makeParkingLot, makeWeather } from '../test/cityInfo'
+import {
+  makeAccident,
+  makeBikeStation,
+  makeCityInfo,
+  makeCulturalEvent,
+  makeParkingLot,
+  makeWeather,
+} from '../test/cityInfo'
 import {
   airGradeTone,
   formatForecastTemperature,
@@ -14,12 +21,10 @@ import {
   parkingTone,
   ridershipFlow,
   roadIndexTone,
-  sortBikesByStock,
   sortParkingByAvailable,
   uvGradeTone,
   WIND_DIRECTION_LABELS,
   windDirectionLabel,
-  type BikeStation,
   type CityInfo,
   type SubwayArrival,
   type ParkingLot,
@@ -29,8 +34,8 @@ function lot(name: string, available: number | null, capacity: number | null): P
   return makeParkingLot({ name, available, capacity, liveAvailable: true })
 }
 
-function station(name: string, bikes: number | null): BikeStation {
-  return { name, coords: null, bikes, racks: 10 }
+function station(name: string, bikes: number | null) {
+  return makeBikeStation({ name, bikes, racks: 10 })
 }
 
 const EMPTY: CityInfo = makeCityInfo({
@@ -158,36 +163,6 @@ describe('sortParkingByAvailable', () => {
   })
 })
 
-describe('sortBikesByStock', () => {
-  it('남은 자전거가 많은 순으로 내려준다', () => {
-    const sorted = sortBikesByStock([station('A', 2), station('B', 7), station('C', 5)])
-    expect(sorted.map((entry) => entry.name)).toEqual(['B', 'C', 'A'])
-  })
-
-  it('대수를 모르는 대여소는 0대인 곳보다도 뒤로 보낸다', () => {
-    const sorted = sortBikesByStock([
-      station('모름1', null),
-      station('셋', 3),
-      station('모름2', null),
-      station('영', 0),
-      station('여덟', 8),
-    ])
-    expect(sorted.map((entry) => entry.name)).toEqual([
-      '여덟',
-      '셋',
-      '영',
-      '모름1',
-      '모름2',
-    ])
-  })
-
-  it('입력 배열을 제자리에서 정렬하지 않는다', () => {
-    const input = [station('A', 1), station('B', 9)]
-    sortBikesByStock(input)
-    expect(input.map((entry) => entry.name)).toEqual(['A', 'B'])
-  })
-})
-
 describe('formatTemperature', () => {
   it('소수 한 자리까지 붙여 섭씨로 쓴다', () => {
     expect(formatTemperature(23)).toBe('23.0°')
@@ -211,7 +186,7 @@ describe('hasAnyCityInfo', () => {
     expect(
       hasAnyCityInfo({
         ...EMPTY,
-        events: [{ name: '전시', period: '', place: '', free: null, url: '' }],
+        events: [makeCulturalEvent({ name: '전시' })],
       }),
     ).toBe(true)
     expect(
@@ -230,7 +205,7 @@ describe('hasAnyCityInfo', () => {
       hasAnyCityInfo({
         ...EMPTY,
         accidents: [
-          { info: '차로 통제', type: '', detailType: '', occurredAt: '', expectedClearAt: '' },
+          makeAccident({ info: '차로 통제' }),
         ],
       }),
     ).toBe(true)

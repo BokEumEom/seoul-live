@@ -11,6 +11,7 @@ function composition(
     maleRate: 48,
     femaleRate: 52,
     nonResidentRate: 71,
+    residentRate: 29,
     ageRates: [3, 8, 31, 22, 14, 11, 6, 4],
     ...overrides,
   }
@@ -55,15 +56,27 @@ describe('PopulationCard', () => {
     expect(screen.getByText('동네 생활권이에요')).toBeInTheDocument()
   })
 
-  it('비상주가 0이면 아무 말도 하지 않는다', () => {
+  it('거주 구성을 둘 다 못 읽으면 아무 말도 하지 않는다', () => {
     // rate()가 못 읽은 값을 0으로 떨어뜨린다. 못 읽은 0으로 장소를 단정하지
     // 않는다 — residentLabel이 null을 주고 JSX는 아무것도 그리지 않는다.
-    render(<PopulationCard composition={composition({ nonResidentRate: 0 })} />)
+    //
+    // **둘 다 0이어야 「못 읽음」이다**(2026-08-25). 비상주 하나만 0인 것은
+    // 상주 100%라는 뜻이라 실재하는 상태이고, 그때는 말을 한다 — 바로 아래.
+    render(
+      <PopulationCard composition={composition({ nonResidentRate: 0, residentRate: 0 })} />,
+    )
     expect(screen.queryByText('동네 생활권이에요')).toBeNull()
     expect(screen.queryByText('외지인이 많아요')).toBeNull()
     // 칸 수까지 센다. 위 두 단언만으로는 null을 알약 안에 그대로 넣는 구현도
     // 통과하는데, 그러면 글자 없는 빈 알약이 남는다. 남는 건 남녀 칩 하나뿐이다.
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
+  })
+
+  it('상주만 읽힌 곳은 동네 생활권이라고 말한다', () => {
+    render(
+      <PopulationCard composition={composition({ nonResidentRate: 0, residentRate: 100 })} />,
+    )
+    expect(screen.getByText('동네 생활권이에요')).toBeInTheDocument()
   })
 
   // 임계값을 경계에서 잠근다. 이게 없으면 >= 를 > 로 바꿔도, 10을 5로 바꿔도
@@ -110,7 +123,11 @@ describe('PopulationCard', () => {
         composition={composition({
           maleRate: 0,
           femaleRate: 0,
+          // **둘 다 0이어야 「못 읽음」이다**(2026-08-25). 상주 비율을 함께
+          // 읽게 되면서 비상주 0 하나로는 판정이 안 선다 — 상주 100·비상주 0인
+          // 곳은 실재하는 「동네 생활권」이라 이제 말을 한다.
           nonResidentRate: 0,
+          residentRate: 0,
           ageRates: NO_AGES,
         })}
       />,
@@ -126,6 +143,7 @@ describe('PopulationCard', () => {
         composition={composition({
           femaleRate: 0,
           nonResidentRate: 0,
+          residentRate: 0,
           ageRates: NO_AGES,
         })}
       />,
@@ -137,7 +155,12 @@ describe('PopulationCard', () => {
   it('칩이 하나도 없으면 빈 목록을 남기지 않는다', () => {
     render(
       <PopulationCard
-        composition={composition({ maleRate: 0, femaleRate: 0, nonResidentRate: 0 })}
+        composition={composition({
+          maleRate: 0,
+          femaleRate: 0,
+          nonResidentRate: 0,
+          residentRate: 0,
+        })}
       />,
     )
     expect(screen.queryByRole('list')).toBeNull()

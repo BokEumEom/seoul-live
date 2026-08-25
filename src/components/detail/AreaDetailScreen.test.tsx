@@ -6,7 +6,14 @@ import type { CityInfo } from '../../domain/cityInfo'
 import { DETAIL_TABS } from '../../domain/detailTabs'
 import type { AreaCongestion, AreaSnapshot } from '../../domain/types'
 import { reset } from '../../hooks/favoritesStore'
-import { makeCityInfo, makeParkingLot, makeWeather } from '../../test/cityInfo'
+import {
+  makeAccident,
+  makeBikeStation,
+  makeCityInfo,
+  makeCulturalEvent,
+  makeParkingLot,
+  makeWeather,
+} from '../../test/cityInfo'
 import { findAreaByName } from '../../data/areas'
 import { TONE_TEXT_CLASS } from '../common/toneClass'
 import { AreaDetailScreen } from './AreaDetailScreen'
@@ -55,10 +62,12 @@ const SNAPSHOT: AreaSnapshot = {
   observedAt: '2026-08-07 11:00',
   observedAtLabel: '11:00',
   forecasts: [],
+  forecastProvided: null,
   composition: {
     maleRate: 48,
     femaleRate: 52,
     nonResidentRate: 71,
+    residentRate: 29,
     ageRates: [3, 8, 31, 22, 14, 11, 6, 4],
   },
   replaced: null,
@@ -429,7 +438,7 @@ describe('AreaDetailScreen — 요약 카드', () => {
       ok({
         ...EMPTY_CITY_INFO,
         parking: [PARKING_LOT],
-        events: [{ name: '행사', period: '', place: '', free: null, url: '' }],
+        events: [makeCulturalEvent({ name: '행사', period: '', place: '', free: null, url: '' })],
       }),
     )
     renderDetail()
@@ -462,8 +471,8 @@ describe('AreaDetailScreen — 요약 카드', () => {
       ok({
         ...EMPTY_CITY_INFO,
         bikes: [
-          { name: '가', coords: null, bikes: 6, racks: 21 },
-          { name: '나', coords: null, bikes: 12, racks: 20 },
+          makeBikeStation({ name: '가', coords: null, bikes: 6, racks: 21 }),
+          makeBikeStation({ name: '나', coords: null, bikes: 12, racks: 20 }),
         ],
       }),
     )
@@ -478,7 +487,7 @@ describe('AreaDetailScreen — 요약 카드', () => {
     useCityInfo.mockReturnValue(
       ok({
         ...EMPTY_CITY_INFO,
-        bikes: [{ name: '가', coords: null, bikes: 6, racks: 21 }],
+        bikes: [makeBikeStation({ name: '가', coords: null, bikes: 6, racks: 21 })],
       }),
     )
     const { unmount } = renderDetail()
@@ -491,7 +500,7 @@ describe('AreaDetailScreen — 요약 카드', () => {
     useCityInfo.mockReturnValue(
       ok({
         ...EMPTY_CITY_INFO,
-        bikes: [{ name: '가', coords: null, bikes: null, racks: 21 }],
+        bikes: [makeBikeStation({ name: '가', coords: null, bikes: null, racks: 21 })],
       }),
     )
     renderDetail()
@@ -666,13 +675,13 @@ describe('AreaDetailScreen — 교통 탭', () => {
       ok({
         ...EMPTY_CITY_INFO,
         accidents: [
-          {
-            info: '강남대로 1개 차로 통제',
-            type: '교통사고',
-            detailType: '',
-            occurredAt: '2026-08-07 08:40',
-            expectedClearAt: '2026-08-07 10:00',
-          },
+          makeAccident({
+              info: '강남대로 1개 차로 통제',
+              type: '교통사고',
+              detailType: '',
+              occurredAt: '2026-08-07 08:40',
+              expectedClearAt: '2026-08-07 10:00',
+            }),
         ],
       }),
     )
@@ -729,12 +738,7 @@ describe('AreaDetailScreen — 주변 탭', () => {
       ok({
         ...EMPTY_CITY_INFO,
         bikes: [
-          {
-            name: '광화문역 5번출구',
-            coords: { lat: 37.5698, lng: 126.9775 },
-            bikes: 6,
-            racks: 21,
-          },
+          makeBikeStation({ name: '광화문역 5번출구', coords: { lat: 37.5698, lng: 126.9775 }, bikes: 6, racks: 21 }),
         ],
       }),
     )
@@ -782,12 +786,7 @@ describe('AreaDetailScreen — 주변 탭', () => {
       ok({
         ...EMPTY_CITY_INFO,
         bikes: [
-          {
-            name: '가까운 대여소',
-            coords: { lat: GANGNAM.lat + 0.00198, lng: GANGNAM.lng },
-            bikes: 6,
-            racks: 21,
-          },
+          makeBikeStation({ name: '가까운 대여소', coords: { lat: GANGNAM.lat + 0.00198, lng: GANGNAM.lng }, bikes: 6, racks: 21 }),
         ],
       }),
     )
@@ -920,13 +919,62 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
       ok({
         ...EMPTY_CITY_INFO,
         events: [
-          { name: '서울 야외도서관', period: '8.20~8.24', place: '광화문광장', free: true, url: '' },
+          makeCulturalEvent({
+            name: '서울 야외도서관',
+            period: '8.20~8.24',
+            place: '광화문광장',
+            free: true,
+            url: '',
+            thumbnail: 'https://culture.seoul.go.kr/cmmn/file/1',
+            coords: { lat: 37.5715, lng: 126.9769 },
+          }),
         ],
       }),
     )
-    renderDetail()
+    const { container } = renderDetail()
     await openTab('행사')
     expect(screen.getByText('서울 야외도서관')).toBeInTheDocument()
+    // **잎만 테스트하면 탭에 안 걸려 있어도 초록이다.** 이 저장소에서 세 번
+    // 겪은 자리라 배선을 함께 잠근다 — 그림과 지도 버튼이 탭 안에 있어야 한다.
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://culture.seoul.go.kr/cmmn/file/1',
+    )
+    expect(screen.getByRole('button', { name: /지도에서 보기/ })).toBeInTheDocument()
+  })
+
+  // **탭 안의 버튼이 화면 밖의 지도로 이어지는지까지 본다.** 잎 테스트는
+  // 콜백이 불리는 것만 보므로, 패널이 콜백을 안 넘겨도 초록이다.
+  it('행사 탭의 지도 버튼이 지도를 그 자리로 옮긴다', async () => {
+    const onShowOnMap = vi.fn()
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        events: [
+          makeCulturalEvent({
+            name: '서울 야외도서관',
+            coords: { lat: 37.5715, lng: 126.9769 },
+          }),
+        ],
+      }),
+    )
+    render(
+      <AreaDetailScreen
+        areaName="강남역"
+        onBack={() => undefined}
+        onSelectArea={() => undefined}
+        onShowOnMap={onShowOnMap}
+      />,
+    )
+    await openTab('행사')
+    await userEvent.click(
+      screen.getByRole('button', { name: '서울 야외도서관 지도에서 보기' }),
+    )
+
+    expect(onShowOnMap).toHaveBeenCalledWith({
+      name: '서울 야외도서관',
+      coords: { lat: 37.5715, lng: 126.9769 },
+    })
   })
 
   it('안전 탭이 재난문자와 사고통제를 함께 놓는다', async () => {
@@ -942,13 +990,13 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
           },
         ],
         accidents: [
-          {
-            info: '강남대로 1개 차로 통제',
-            type: '교통사고',
-            detailType: '',
-            occurredAt: '2026-08-07 08:40',
-            expectedClearAt: '2026-08-07 10:00',
-          },
+          makeAccident({
+              info: '강남대로 1개 차로 통제',
+              type: '교통사고',
+              detailType: '',
+              occurredAt: '2026-08-07 08:40',
+              expectedClearAt: '2026-08-07 10:00',
+            }),
         ],
       }),
     )
@@ -956,6 +1004,72 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
     await openTab('안전')
     expect(screen.getByRole('alert')).toHaveTextContent('침수 위험')
     expect(screen.getByRole('heading', { name: '사고·통제' })).toBeInTheDocument()
+  })
+
+  // **`ACDNT_TIME`은 건이 아니라 절의 값이다** — 실호출에서 같은 명소의 두 건이
+  // 같은 시각이었다. 줄마다 적으면 같은 시각이 목록 길이만큼 반복된다.
+  it('사고·통제 절이 언제 기준인지 한 번만 적는다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        accidents: [
+          makeAccident({ info: '강남대로 1개 차로 통제' }),
+          makeAccident({ info: '테헤란로 갓길 통제' }),
+        ],
+        accidentsUpdatedAt: '2026-08-07 11:01',
+      }),
+    )
+    renderDetail()
+    await openTab('안전')
+
+    expect(screen.getAllByText('기준 2026-08-07 11:01')).toHaveLength(1)
+  })
+
+  it('갱신 시각이 없으면 그 줄을 만들지 않는다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        accidents: [makeAccident({ info: '강남대로 1개 차로 통제' })],
+      }),
+    )
+    renderDetail()
+    await openTab('안전')
+
+    expect(screen.queryByText(/^기준 /)).toBeNull()
+  })
+
+  // 안전 탭의 사고통제도 지도로 이어져야 한다. 교통 탭과 배선이 따로라
+  // 한쪽만 넘기는 실수가 난다.
+  it('안전 탭의 사고통제도 지도로 보낸다', async () => {
+    const onShowOnMap = vi.fn()
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        accidents: [
+          makeAccident({
+            info: '강남대로 1개 차로 통제',
+            coords: { lat: 37.4979, lng: 127.0276 },
+          }),
+        ],
+      }),
+    )
+    render(
+      <AreaDetailScreen
+        areaName="강남역"
+        onBack={() => undefined}
+        onSelectArea={() => undefined}
+        onShowOnMap={onShowOnMap}
+      />,
+    )
+    await openTab('안전')
+    await userEvent.click(
+      screen.getByRole('button', { name: '강남대로 1개 차로 통제 지도에서 보기' }),
+    )
+
+    expect(onShowOnMap).toHaveBeenCalledWith({
+      name: '강남대로 1개 차로 통제',
+      coords: { lat: 37.4979, lng: 127.0276 },
+    })
   })
 
   it('전할 소식이 없으면 안전 탭이 그렇게 말한다', async () => {

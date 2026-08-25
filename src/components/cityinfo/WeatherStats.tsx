@@ -41,7 +41,13 @@ export function WeatherStats({ weather }: Props) {
   const hasSun = weather.sunrise !== '' || weather.sunset !== ''
   const hasUv = weather.uvIndex !== null || weather.uvGrade !== ''
 
-  if (weather.humidity === null && !hasWind && !hasSun && !hasUv) {
+  // **비가 올 때만 생기는 다섯째 칸이다.** 2026-08-25 표본 35곳 전부 `-`였고
+  // (`Weather.precipitation`) 그때는 칸이 아예 없어 2×2가 그대로 유지된다.
+  // 0mm를 「비 0mm」로 적지 않는 이유는 그게 「안 온다」를 굳이 숫자로 말하는
+  // 것이고, 그 말은 바로 위 `PCP_MSG`가 이미 하기 때문이다.
+  const hasRain = weather.precipitation !== null && weather.precipitation > 0
+
+  if (weather.humidity === null && !hasWind && !hasSun && !hasUv && !hasRain) {
     return null
   }
 
@@ -62,6 +68,10 @@ export function WeatherStats({ weather }: Props) {
           // 모르는 약자는 원문을 그대로 적는다 — 지어낸 방위보다 `SSE`가 낫다.
           caption={direction === null ? weather.windDirection : t(direction)}
         />
+      )}
+
+      {hasRain && (
+        <StatTile label={t('강수량')} value={t('{양}mm', { 양: weather.precipitation ?? 0 })} />
       )}
 
       {hasUv && (

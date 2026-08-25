@@ -1,9 +1,6 @@
 import { t } from '../../i18n/t'
-import {
-  toFacilityLocation,
-  type BikeStation,
-  type FacilityLocation,
-} from '../../domain/cityInfo'
+import { isDockFull, type BikeStation } from '../../domain/bike'
+import { toFacilityLocation, type FacilityLocation } from '../../domain/cityInfo'
 import { formatDistance } from '../../domain/distance'
 import { sortBikesForWalking } from '../../domain/facilityDistance'
 import type { Coords } from '../../domain/types'
@@ -47,7 +44,12 @@ export function BikeList({ stations, origin, onShowOnMap }: Props) {
     <>
       <ul className="flex flex-col gap-3">
         {visible.map((station) => (
-          <li key={station.name} className="flex items-center justify-between gap-3">
+          // 대여소 ID가 키다. 이름은 서울 쪽에서 바뀔 수 있는 표시용 값이라
+          // 바뀌는 순간 React가 같은 줄을 지웠다 새로 만든다.
+          <li
+            key={station.id || station.name}
+            className="flex items-center justify-between gap-3"
+          >
             <div className="min-w-0">
               <p className="truncate text-body-md text-on-surface">{station.name}</p>
               {/* 샘플(서울 인파레이더)의 「120m · 19대」 자리다. 거리를 앞에
@@ -61,6 +63,14 @@ export function BikeList({ stations, origin, onShowOnMap }: Props) {
                   .filter(Boolean)
                   .join(' · ')}
               </p>
+              {/* **자전거를 가지고 온 사람에게는 오른쪽 배지가 반대 신호다** —
+                  「7대 가능」은 빌릴 사람의 값이고, 반납하러 온 사람에게 자전거가
+                  많다는 것은 꽂을 데가 없다는 뜻이다. 실호출 227곳 중 61곳이
+                  이 상태였다(거치율 최대 450%). 찼을 때만 적는다 — 안 찬 곳까지
+                  「반납 가능」을 적으면 줄마다 글이 하나씩 늘 뿐이다. */}
+              {isDockFull(station) === true && (
+                <p className="mt-0.5 text-label-sm text-busy">{t('반납 자리 없음')}</p>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-1">
               <ToneBadge tone={stockTone(station.bikes)} label={stockLabel(station.bikes)} />

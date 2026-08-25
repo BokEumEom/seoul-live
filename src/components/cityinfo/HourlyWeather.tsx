@@ -60,6 +60,18 @@ export function HourlyWeather({ hourly }: Props) {
                 {entry.rainChance}%
               </span>
             )}
+            {/* **확률과 다른 값이다** — 「70%」는 올지 말지이고 이건 오면 얼마나
+                오는지다. 우산이냐 우비냐가 여기서 갈린다.
+
+                0보다 클 때만 적는다. 실호출 840칸 중 값이 있던 것은 75칸뿐이라
+                (나머지는 `-`) 항상 그리면 타일 스물넉 장 중 스물한 장이 「0mm」로
+                채워진다. 56px 타일에 그만한 자리가 없다. */}
+            {entry.precipitation !== null && entry.precipitation > 0 && (
+              <span className="text-label-sm text-on-surface-variant">
+                <span className="sr-only">{t('강수량')} </span>
+                {t('{양}mm', { 양: entry.precipitation })}
+              </span>
+            )}
           </li>
         ))}
       </ul>

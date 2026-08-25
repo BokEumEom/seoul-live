@@ -1,4 +1,5 @@
 import { t } from '../../../i18n/t'
+import type { FacilityLocation } from '../../../domain/cityInfo'
 import { AccidentList } from '../../cityinfo/AccidentList'
 import { AlertBanner } from '../../cityinfo/AlertBanner'
 import { InfoSection } from '../../cityinfo/InfoSection'
@@ -6,6 +7,7 @@ import { CityInfoBoundary } from '../CityInfoBoundary'
 
 interface Props {
   readonly areaName: string
+  readonly onShowOnMap: (place: FacilityLocation) => void
 }
 
 /**
@@ -22,7 +24,7 @@ interface Props {
  * 통제에도 없다. 짐작해서 「심각도 높음」을 붙이면 앱이 하지 않은 판단을 한
  * 것으로 읽힌다.
  */
-export function SafetyPanel({ areaName }: Props) {
+export function SafetyPanel({ areaName, onShowOnMap }: Props) {
   return (
     <CityInfoBoundary
       areaName={areaName}
@@ -38,8 +40,16 @@ export function SafetyPanel({ areaName }: Props) {
               title={t('사고·통제')}
               icon="warning"
               count={info.accidents.length}
+              // **`ACDNT_TIME`은 절의 값이다** — 실호출에서 같은 명소의 두 건이
+              // 같은 시각이었다(근거는 `CityInfo.accidentsUpdatedAt`). 줄마다
+              // 적으면 같은 시각이 목록 길이만큼 반복된다.
+              note={
+                info.accidentsUpdatedAt === ''
+                  ? undefined
+                  : t('기준 {시각}', { 시각: info.accidentsUpdatedAt })
+              }
             >
-              <AccidentList accidents={info.accidents} />
+              <AccidentList accidents={info.accidents} onShowOnMap={onShowOnMap} />
             </InfoSection>
           )}
         </div>

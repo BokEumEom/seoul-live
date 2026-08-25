@@ -119,6 +119,7 @@ const areaSchema = z
     AREA_PPLTN_MAX: numericSchema,
     PPLTN_TIME: timeSchema,
     REPLACE_YN: z.unknown().optional(),
+    FCST_YN: z.unknown().optional(),
     FCST_PPLTN: z.array(forecastSchema).nullish(),
   })
   .refine((value) => value.AREA_PPLTN_MIN <= value.AREA_PPLTN_MAX, {
@@ -206,6 +207,14 @@ export function parseCitydataResponse(payload: unknown, expectedName: string): A
     observedAt: area.PPLTN_TIME.raw,
     observedAtLabel: area.PPLTN_TIME.label,
     forecasts: (area.FCST_PPLTN ?? []).map(toForecast),
+    // **`Y`가 아닌 것이 아니라 `N`인 것만 「안 준다」로 읽는다.** 필드가 없거나
+    // 처음 보는 값이면 「모른다」이고, 그때는 예보가 비어도 「아직 없다」로
+    // 두는 쪽이 맞다 — 없는 사실을 단정하지 않는다(`replacedFlag`와 같은 규칙).
+    // `FCST_YN`. **`Y`가 아닌 것이 아니라 `N`인 것만 「안 준다」로 읽는다** —
+    // 필드가 없거나 처음 보는 값이면 「모른다」다. `replacedFlag`와 같은 규칙이라
+    // 같은 함수를 쓴다(둘 다 Y/N 메모다). 뜻이 반대라 뒤집는다: 「예측 제공 =
+    // Y」이므로 `replacedFlag`가 주는 true가 곧 제공이다.
+    forecastProvided: replacedFlag(area.FCST_YN),
     replaced: replacedFlag(area.REPLACE_YN),
     // 원본 payload에서 따로 읽는다. 실패해도 null일 뿐 위 값들은 그대로다.
     composition: parseComposition(payload, expectedName),

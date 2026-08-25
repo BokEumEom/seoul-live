@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { makeCityInfo, makeParkingLot } from '../test/cityInfo'
-import type { BikeStation, CityInfo, ParkingLot } from './cityInfo'
+import { makeBikeStation } from '../test/cityInfo'
+import type { BikeStation } from './bike'
+import type { CityInfo, ParkingLot } from './cityInfo'
 import { parkingVacancyRate, subwayLineCount, totalBikes } from './cityInfoSummary'
 
 function info(overrides: Partial<CityInfo> = {}): CityInfo {
@@ -12,7 +14,7 @@ function lot(capacity: number | null, available: number | null): ParkingLot {
 }
 
 function station(bikes: number | null): BikeStation {
-  return { name: '대여소', coords: null, bikes, racks: 10 }
+  return makeBikeStation({ name: '대여소', bikes, racks: 10 })
 }
 
 describe('parkingVacancyRate', () => {

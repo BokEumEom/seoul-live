@@ -27,6 +27,7 @@ function snapshot(overrides: Partial<AreaSnapshot> = {}): AreaSnapshot {
     observedAt: OBSERVED_AT,
     observedAtLabel: '14:35',
     forecasts: [],
+    forecastProvided: null,
     composition: null,
     replaced: null,
     ...overrides,

@@ -60,6 +60,7 @@ const COMPOSITION_KEYS: readonly string[] = [
   'MALE_PPLTN_RATE',
   'FEMALE_PPLTN_RATE',
   'NON_RESNT_PPLTN_RATE',
+  'RESNT_PPLTN_RATE',
   ...AGE_KEYS,
 ]
 
@@ -89,6 +90,7 @@ export function parseComposition(
     maleRate: rate(area.MALE_PPLTN_RATE),
     femaleRate: rate(area.FEMALE_PPLTN_RATE),
     nonResidentRate: rate(area.NON_RESNT_PPLTN_RATE),
+    residentRate: rate(area.RESNT_PPLTN_RATE),
     ageRates: AGE_KEYS.map((key) => rate(area[key])),
   }
 }

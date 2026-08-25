@@ -8,7 +8,15 @@ import { DETAIL_TABS } from '../domain/detailTabs'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { reset as resetFavorites } from '../hooks/favoritesStore'
 import { reset as resetLanguage, setLanguage } from '../hooks/languageStore'
-import { makeCityInfo, makeParkingLot, makeWeather } from '../test/cityInfo'
+import {
+  makeAccident,
+  makeBikeStation,
+  makeCityInfo,
+  makeCulturalEvent,
+  makeHourlyForecast,
+  makeParkingLot,
+  makeWeather,
+} from '../test/cityInfo'
 
 // **왜 별도 파일인가.** 상세 화면을 세우려면 조회 훅 넷과 저장소 둘을 목업해야
 // 하는데, `vi.mock`은 파일 단위라 `languageSwitch.test.tsx`에 넣으면 거기서
@@ -68,10 +76,12 @@ const SNAPSHOT: AreaSnapshot = {
       populationMax: 42_000,
     },
   ],
+  forecastProvided: null,
   composition: {
     maleRate: 48,
     femaleRate: 52,
     nonResidentRate: 71,
+    residentRate: 29,
     ageRates: [3, 8, 31, 22, 14, 11, 6, 4],
   },
   replaced: null,
@@ -95,13 +105,15 @@ const CITY_INFO: CityInfo = makeCityInfo({
     uvGrade: '낮음',
     uvMessage: 'Wear sunscreen if you are sensitive to sunlight.',
     hourly: [
-      {
+      makeHourlyForecast({
         time: '202608211600',
         temperature: 30,
         rainChance: 20,
         sky: 'Cloudy',
         precipitationType: 'None',
-      },
+        // 강수량은 숫자다 — 옮길 것이 없지만 채워야 그 자리가 렌더된다.
+        precipitation: 2,
+      }),
     ],
     precipitationMessage: 'Rain is coming. Bring an umbrella.',
     pm10: 31,
@@ -131,22 +143,31 @@ const CITY_INFO: CityInfo = makeCityInfo({
     updatedAt: '2026-08-21 15:00',
   },
   accidents: [
-    {
-      info: 'Two-car collision on Sejong-daero',
+    // **이 한 건만 한국어 원문이다.** 나머지 자유 문장과 달리 서울이 영어를
+    // 함께 주는 자리라(`ACDNT_ENG_INFO`) 위의 「못 옮기는 자리에는 한국어를
+    // 안 넣는다」가 뒤집힌다 — 여기에 한국어를 **넣어야** 영어가 실제로
+    // 골라지는지가 검사된다. `apiText`가 죽으면 이 줄이 한글로 남아 스윕이
+    // 잡는다.
+    makeAccident({
+      info: '세종대로 사거리 2개 차로 통제',
+      infoEn: 'Two lanes closed at Sejong-daero intersection',
       type: '교통사고',
       detailType: '차대차',
       occurredAt: '2026-08-21 14:30',
       expectedClearAt: '2026-08-21 16:00',
-    },
+      coords: { lat: 37.5715, lng: 126.9769 },
+    }),
     // 실호출 응답에서 본 조합. 목업이 그리는 것과 다른 값이라 함께 넣는다.
-    {
+    // **이쪽은 영어가 안 온 경우다** — 원문으로 떨어지므로 라틴 문자여야 한다.
+    makeAccident({
       info: 'Road repair in progress',
       type: '공사',
       detailType: '도로보수',
       occurredAt: '2026-08-21 09:00',
       expectedClearAt: '2026-08-21 18:00',
-    },
+    }),
   ],
+  accidentsUpdatedAt: '2026-08-21 15:00',
   parking: [
     makeParkingLot({
       name: 'Gwanghwamun Public Parking',
@@ -163,21 +184,29 @@ const CITY_INFO: CityInfo = makeCityInfo({
     }),
   ],
   bikes: [
-    {
+    makeBikeStation({
       name: 'Gwanghwamun Stn. Exit 3',
+      id: 'ST-126',
       coords: { lat: 37.571, lng: 126.976 },
       bikes: 7,
       racks: 20,
-    },
+      // 거치대보다 자전거가 많은 곳. 「반납 자리 없음」 줄을 렌더시켜
+      // 그 문구가 옮겨졌는지 함께 본다.
+      dockRate: 130,
+    }),
   ],
   events: [
-    {
+    makeCulturalEvent({
       name: 'Seoul Biennale of Architecture',
       period: '2026-08-01~2026-10-31',
       place: 'Songhyeon Green Plaza',
       free: true,
       url: 'https://example.com',
-    },
+      coords: { lat: 37.5772, lng: 126.9807 },
+      // 그림에는 옮길 글자가 없다. 채우는 이유는 `alt`와 지도 버튼이 함께
+      // 렌더되는 모양을 스윕에 태우기 위해서다.
+      thumbnail: 'https://example.com/poster.jpg',
+    }),
   ],
   alerts: [
     {

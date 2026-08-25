@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { makeParkingLot } from '../test/cityInfo'
-import type { BikeStation, ParkingLot } from './cityInfo'
+import { makeBikeStation } from '../test/cityInfo'
+import type { BikeStation } from './bike'
+import type { ParkingLot } from './cityInfo'
 import { sortBikesForWalking, withDistanceFrom } from './facilityDistance'
 import type { Coords } from './types'
 
@@ -13,7 +15,7 @@ function north(meters: number): Coords {
 }
 
 function station(name: string, bikes: number | null, coords: Coords | null): BikeStation {
-  return { name, coords, bikes, racks: 20 }
+  return makeBikeStation({ name, coords, bikes, racks: 20 })
 }
 
 function lot(name: string, coords: Coords | null): ParkingLot {

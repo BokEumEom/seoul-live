@@ -50,7 +50,7 @@ export function TrafficPanel({ areaName, origin, onShowOnMap }: Props) {
               )}
               {info.accidents.length > 0 && (
                 <div className={info.roadTraffic === null ? '' : 'mt-3'}>
-                  <AccidentList accidents={info.accidents} />
+                  <AccidentList accidents={info.accidents} onShowOnMap={onShowOnMap} />
                 </div>
               )}
             </InfoSection>

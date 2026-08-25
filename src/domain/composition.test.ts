@@ -7,6 +7,7 @@ function make(nonResidentRate: number): PopulationComposition {
     maleRate: 50,
     femaleRate: 50,
     nonResidentRate,
+    residentRate: 100 - nonResidentRate,
     ageRates: [5, 10, 30, 20, 15, 10, 7, 3],
   }
 }
@@ -15,6 +16,7 @@ const NOTHING: PopulationComposition = {
   maleRate: 0,
   femaleRate: 0,
   nonResidentRate: 0,
+  residentRate: 0,
   ageRates: [0, 0, 0, 0, 0, 0, 0, 0],
 }
 
@@ -35,10 +37,18 @@ describe('residentLabel', () => {
     expect(residentLabel(make(60))).toBe('동네 생활권이에요')
   })
 
-  it('비상주가 0이면 아무 말도 하지 않는다', () => {
-    // 0은 "실제로 0%"가 아니라 "읽지 못함"일 수 있다(compositionSchema.ts의 rate()).
+  // **2026-08-25에 판정이 바뀌었다.** 예전에는 비상주 0 하나로 침묵했는데,
+  // 그 0이 「읽지 못함」일 수 있어서였다. 이제 상주 비율을 함께 읽어
+  // (`RESNT_PPLTN_RATE`) 그 구분이 선다.
+  it('둘 다 0이면 아무 말도 하지 않는다', () => {
     // 못 읽은 값을 근거로 "동네 생활권"이라고 단정하면 안 된다.
-    expect(residentLabel(make(0))).toBeNull()
+    expect(residentLabel({ ...make(0), residentRate: 0 })).toBeNull()
+  })
+
+  it('상주 100 · 비상주 0은 읽힌 값이라 말을 한다', () => {
+    // 관광객이 거의 없는 주거지가 이렇게 온다. 예전에는 이 자리에서 침묵해
+    // 가장 확실한 답을 못 했다 — 그것이 이 필드를 읽는 이유다.
+    expect(residentLabel(make(0))).toBe('동네 생활권이에요')
   })
 })
 

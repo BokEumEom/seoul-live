@@ -126,4 +126,65 @@ describe('buildMockCityInfo', () => {
     expect(messages.some((message) => message.includes('분 후'))).toBe(true)
     expect(messages.some((message) => message.startsWith('전역'))).toBe(true)
   })
+
+  // **목업이 한 갈래를 아예 안 내면 그 갈래는 개발 중에 한 번도 안 보인다.**
+  // 실호출 227곳 중 61곳이 거치대보다 자전거가 많았는데, `% (racks + 1)`로
+  // 두던 예전 목업에서는 그런 대여소가 나올 수 없었다.
+  it('거치대가 찬 대여소와 여유 있는 대여소가 둘 다 나온다', () => {
+    const rates = AREA_NAMES.flatMap((name) =>
+      infoFor(name).bikes.flatMap((spot) => (spot.dockRate === null ? [] : [spot.dockRate])),
+    )
+    expect(rates.some((rate) => rate >= 100)).toBe(true)
+    expect(rates.some((rate) => rate < 100)).toBe(true)
+  })
+
+  // 거치율이 대수와 어긋나면 화면이 「7대 가능 / 반납 자리 없음」처럼 모순된
+  // 두 값을 그린다 — 실호출에서는 안 일어나는 모양이다.
+  it('거치율이 대수와 앞뒤가 맞는다', () => {
+    for (const name of AREA_NAMES) {
+      for (const spot of infoFor(name).bikes) {
+        if (spot.dockRate === null || spot.bikes === null || spot.racks === null) {
+          continue
+        }
+        const expected = Math.round((spot.bikes / spot.racks) * 100)
+        expect(Math.abs(spot.dockRate - expected)).toBeLessThanOrEqual(1)
+      }
+    }
+  })
+
+  // 끝난 행사의 파일이 내려간 경우다. 그림이 늘 있으면 `EventThumbnail`의
+  // 빈 자리 처리를 개발 중에 못 본다.
+  it('그림이 있는 행사와 없는 행사가 둘 다 나온다', () => {
+    const thumbnails = AREA_NAMES.flatMap((name) =>
+      infoFor(name).events.map((event) => event.thumbnail),
+    )
+    expect(thumbnails.some((url) => url !== '')).toBe(true)
+    expect(thumbnails.some((url) => url === '')).toBe(true)
+  })
+
+  // **명세에 없는 필드다**(`ACDNT_ENG_INFO`). 목업이 이걸 안 내면 영어 화면의
+  // 통제 내용이 개발 중에는 한국어로 보이고 실데이터에서만 영어가 된다.
+  it('사고통제에 영어 원문과 좌표와 갱신시각이 있다', () => {
+    const withAccidents = AREA_NAMES.map(infoFor).filter(
+      (info) => info.accidents.length > 0,
+    )
+    expect(withAccidents.length).toBeGreaterThan(0)
+    for (const info of withAccidents) {
+      expect(info.accidentsUpdatedAt).not.toBe('')
+      for (const accident of info.accidents) {
+        expect(accident.infoEn).not.toBe('')
+        expect(accident.coords).not.toBeNull()
+      }
+    }
+  })
+
+  // 실호출 840칸 중 75칸에만 값이 있었다. 목업이 한쪽만 내면 화면의 분기
+  // 하나가 죽은 채로 남는다.
+  it('강수량이 있는 예보 칸과 없는 칸이 둘 다 나온다', () => {
+    const amounts = AREA_NAMES.flatMap((name) =>
+      (infoFor(name).weather?.hourly ?? []).map((hour) => hour.precipitation),
+    )
+    expect(amounts.some((amount) => amount !== null && amount > 0)).toBe(true)
+    expect(amounts.some((amount) => amount === null)).toBe(true)
+  })
 })

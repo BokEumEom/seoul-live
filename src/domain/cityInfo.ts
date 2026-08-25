@@ -1,3 +1,5 @@
+import type { AccidentControl } from './accident'
+import type { BikeStation } from './bike'
 import type { ChargerStation } from './charger'
 import type { Commerce } from './commerce'
 import type { CongestionTone } from './congestion'
@@ -39,6 +41,18 @@ export interface HourlyForecast {
   readonly sky: string
   /** PRECPT_TYPE — 강수형태 */
   readonly precipitationType: string
+  /**
+   * PRECIPITATION — 이 시각의 강수량(mm). 안 오면 `null`이다.
+   *
+   * **여기가 이 필드의 쓸모 있는 자리다.** 같은 이름이 현재 날씨(명세 176행)
+   * 에도 있는데 그쪽은 2026-08-25 표본 35곳 전부가 `-`였고, 예보 840칸에서는
+   * 75칸에 실제 값이 있었다(2.0~11.0mm). 지금 안 오는 비를 알려 주는 값이
+   * 아니라 **몇 시에 얼마나 오는지**를 말하는 값이다.
+   *
+   * `-`는 `numberOrNull`의 정규식이 걸러 `null`이 된다 — 그 대시를 숫자로
+   * 읽으면 0mm가 되어 「비가 안 온다」와 「모른다」가 같은 값이 된다.
+   */
+  readonly precipitation: number | null
 }
 
 /**
@@ -128,6 +142,14 @@ export interface Weather {
   readonly hourly: readonly HourlyForecast[]
   /** PCP_MSG — "비 소식이 없어요" 같은 서울 API 원문 */
   readonly precipitationMessage: string
+  /**
+   * PRECIPITATION — 지금 내리는 강수량(mm). 안 오면 `null`이다.
+   *
+   * **표본에서 한 번도 값을 못 봤다.** 2026-08-25 실호출 35곳 전부 `-`였다.
+   * 비 오는 날 확인할 자리로 남겨 둔다 — 예보 쪽(`HourlyForecast`)은 같은
+   * 이름으로 실제 숫자가 오므로 형식은 그쪽에서 확인했다(mm 단위 소수).
+   */
+  readonly precipitation: number | null
   readonly pm10: number | null
   /** PM10_INDEX — 좋음/보통/나쁨/매우나쁨 */
   readonly pm10Grade: string
@@ -230,29 +252,38 @@ export interface ParkingLot {
   readonly paid: boolean | null
 }
 
-export interface BikeStation {
-  readonly name: string
-  /**
-   * `SBIKE_Y`(위도)와 `SBIKE_X`(경도).
-   *
-   * **축 이름이 위경도와 반대다.** X가 경도, Y가 위도다 — 실응답에서
-   * `SBIKE_X: 126.977`, `SBIKE_Y: 37.569`로 확인했다(광화문·덕수궁).
-   * 뒤집으면 지도가 서울이 아니라 중국 어딘가로 간다.
-   */
-  readonly coords: Coords | null
-  /** SBIKE_PARKING_CNT — 거치된 자전거 수(= 지금 빌릴 수 있는 대수) */
-  readonly bikes: number | null
-  /** SBIKE_RACK_CNT — 거치대 수 */
-  readonly racks: number | null
-}
-
 export interface CulturalEvent {
   readonly name: string
   readonly period: string
   readonly place: string
-  /** PAY_YN을 뒤집은 값. 모르면 null */
+  /**
+   * PAY_YN을 뒤집은 값. 모르면 null.
+   *
+   * **대부분 모른다.** 2026-08-25 실호출 53건 중 45건이 `null`이었고 값이 온
+   * 여덟 건은 전부 `N`(무료)이었다 — `Y`는 한 번도 못 봤다. 시안(`_7`)의
+   * 「유료」 배지가 실제로 뜨는 것을 본 적이 없다는 뜻이다.
+   */
   readonly free: boolean | null
   readonly url: string
+  /**
+   * `EVENT_Y`(위도)와 `EVENT_X`(경도). 따릉이와 같은 축 규칙이다.
+   *
+   * 실호출 53건 전부에 있었다. `EVENT_PLACE`가 「더 갤러리 호수」처럼 아는
+   * 사람만 아는 이름으로 오는 자리라 지도가 그걸 대신한다.
+   */
+  readonly coords: Coords | null
+  /**
+   * THUMBNAIL — 대표 이미지 URL. 시안 `_7`이 카드마다 그리는 그림이다.
+   *
+   * 실호출 53건 전부에 있었고 전부 `https://culture.seoul.go.kr`이었다.
+   * `httpUrl`을 통과시켜 스킴을 확인한다 — 그대로 `<img src>`에 들어간다.
+   *
+   * **`EVENT_ETC_DETAIL`은 일부러 안 읽는다.** 53건 중 한 건만 값이 있었고
+   * 그 한 건이 「기존 DDP 건축투어(…) 삭제해주시고， 새로 업로드 부탁드립니다」
+   * 였다 — 사용자가 아니라 **담당자에게 쓴 메모**다. 「기타 세부정보」라는
+   * 이름만 보고 화면에 얹으면 그런 문장이 행사 설명 자리에 뜬다.
+   */
+  readonly thumbnail: string
 }
 
 export interface CityAlert {
@@ -281,19 +312,6 @@ export interface RoadTraffic {
   readonly message: string
   /** ROAD_TRAFFIC_TIME 원문. 날씨와 같이 형식을 강제하지 않는다 */
   readonly updatedAt: string
-}
-
-export interface AccidentControl {
-  /** ACDNT_INFO — 통제 내용. 재난문자의 `message`처럼 이 항목의 본체다 */
-  readonly info: string
-  /** ACDNT_TYPE — 사고발생유형 */
-  readonly type: string
-  /** ACDNT_DTYPE — 사고발생세부유형 */
-  readonly detailType: string
-  /** ACDNT_OCCR_DT — 사고발생일시 원문 */
-  readonly occurredAt: string
-  /** EXP_CLR_DT — 통제종료예정일시 원문 */
-  readonly expectedClearAt: string
 }
 
 /** SUB_STTS의 한 줄 — 곧 도착하는 열차 하나. 명세 62~78행. */
@@ -470,6 +488,18 @@ export interface CityInfo {
   readonly weather: Weather | null
   readonly roadTraffic: RoadTraffic | null
   readonly accidents: readonly AccidentControl[]
+  /**
+   * ACDNT_TIME — 사고통제 갱신 시각. **행이 아니라 절의 값이다.**
+   *
+   * 명세는 이걸 통제 건마다 딸린 필드로 적었지만, 2026-08-25 실호출에서 같은
+   * 명소의 두 건이 **같은 시각**(`2026-08-25 11:01`)이었다. 건별 발생 시각은
+   * `occurredAt`이 따로 갖고 있으니 이쪽은 「이 목록이 언제 기준인가」다 —
+   * `RoadTraffic.updatedAt`과 같은 값이다.
+   *
+   * 줄마다 적으면 같은 시각이 목록 길이만큼 반복된다. 첫 행에서 읽어 절의
+   * 머리에 한 번 적는다.
+   */
+  readonly accidentsUpdatedAt: string
   readonly parking: readonly ParkingLot[]
   readonly bikes: readonly BikeStation[]
   readonly events: readonly CulturalEvent[]
@@ -658,16 +688,6 @@ export function sortParkingByAvailable(
 ): readonly ParkingLot[] {
   return limited(
     descendingByCount(lots, (entry) => entry.available),
-    limit,
-  )
-}
-
-export function sortBikesByStock(
-  stations: readonly BikeStation[],
-  limit?: number,
-): readonly BikeStation[] {
-  return limited(
-    descendingByCount(stations, (entry) => entry.bikes),
     limit,
   )
 }

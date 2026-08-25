@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { makeCityInfo } from '../test/cityInfo'
+import { makeBikeStation, makeCityInfo } from '../test/cityInfo'
 import type { CityInfo } from '../domain/cityInfo'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { reset } from '../hooks/favoritesStore'
@@ -148,6 +148,7 @@ function snapshotFor(
     observedAt: '2026-08-07 11:00',
     observedAtLabel: '11:00',
     forecasts: [],
+    forecastProvided: null,
     composition: null,
     replaced: null,
   }
@@ -425,12 +426,12 @@ describe('HomeScreen', () => {
         accidents: [],
         parking: [],
         bikes: [
-          {
-            name: '광화문역 5번출구',
-            coords: { lat: 37.5698, lng: 126.9775 },
-            bikes: 6,
-            racks: 21,
-          },
+          makeBikeStation({
+              name: '광화문역 5번출구',
+              coords: { lat: 37.5698, lng: 126.9775 },
+              bikes: 6,
+              racks: 21,
+            }),
         ],
         events: [],
         alerts: [],
@@ -1609,12 +1610,12 @@ describe('HomeScreen 주소', () => {
         accidents: [],
         parking: [],
         bikes: [
-          {
-            name: '광화문역 5번출구',
-            coords: { lat: 37.5698, lng: 126.9775 },
-            bikes: 6,
-            racks: 21,
-          },
+          makeBikeStation({
+              name: '광화문역 5번출구',
+              coords: { lat: 37.5698, lng: 126.9775 },
+              bikes: 6,
+              racks: 21,
+            }),
         ],
         freshness: null,
       }),
