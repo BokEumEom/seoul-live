@@ -8,7 +8,7 @@ import { DETAIL_TABS } from '../domain/detailTabs'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { reset as resetFavorites } from '../hooks/favoritesStore'
 import { reset as resetLanguage, setLanguage } from '../hooks/languageStore'
-import { makeParkingLot, makeWeather } from '../test/cityInfo'
+import { makeCityInfo, makeParkingLot, makeWeather } from '../test/cityInfo'
 
 // **왜 별도 파일인가.** 상세 화면을 세우려면 조회 훅 넷과 저장소 둘을 목업해야
 // 하는데, `vi.mock`은 파일 단위라 `languageSwitch.test.tsx`에 넣으면 거기서
@@ -77,7 +77,7 @@ const SNAPSHOT: AreaSnapshot = {
   replaced: null,
 }
 
-const CITY_INFO: CityInfo = {
+const CITY_INFO: CityInfo = makeCityInfo({
   areaName: '광화문·덕수궁',
   areaCode: 'POI001',
   freshness: { ageSeconds: 180, receivedAt: 1_755_000_000_000 },
@@ -187,6 +187,29 @@ const CITY_INFO: CityInfo = {
       createdAt: '2026-08-21 13:00',
     },
   ],
+  // 승하차·정류소도 스윕에 태운다. 정류소 이름은 고유명사라 라틴 문자로 둔다.
+  subwayRidership: {
+    total: { boardingMin: 10400, boardingMax: 10500, alightingMin: 87100, alightingMax: 87200 },
+    last30Minutes: { boardingMin: null, boardingMax: null, alightingMin: null, alightingMax: null },
+    last10Minutes: { boardingMin: 550, boardingMax: 600, alightingMin: 900, alightingMax: 950 },
+    last5Minutes: { boardingMin: null, boardingMax: null, alightingMin: null, alightingMax: null },
+    stopCount: 4,
+    stopCountAt: '20260825',
+  },
+  busStops: [
+    { name: 'Gwanghwamun Stn.', arsId: '1009', id: 'B1', coords: { lat: 37.57, lng: 126.977 } },
+  ],
+  busRidership: {
+    total: { boardingMin: 6000, boardingMax: 6100, alightingMin: 13300, alightingMax: 13400 },
+    last30Minutes: { boardingMin: null, boardingMax: null, alightingMin: null, alightingMax: null },
+    last10Minutes: { boardingMin: 150, boardingMax: 200, alightingMin: 200, alightingMax: 250 },
+    last5Minutes: { boardingMin: null, boardingMax: null, alightingMin: null, alightingMax: null },
+    stopCount: 41,
+    stopCountAt: '20260825',
+  },
+  // 자유 문장이라 옮기지 않는 자리다. 실패 갈래를 태워 두면 그 문장이 영어
+  // 화면에 한국어로 뜨는 것이 **결함이 아님**을 스윕이 헷갈리지 않는다.
+  busResultMessage: 'Service under maintenance.',
   subway: [
     {
       station: 'Gwanghwamun',
@@ -203,7 +226,7 @@ const CITY_INFO: CityInfo = {
       message: '4분 30초 후 (Euljiro 1-ga)',
     },
   ],
-}
+})
 
 function ok<T>(data: T): UseQueryResult<T> {
   return { data, isPending: false, isError: false } as UseQueryResult<T>

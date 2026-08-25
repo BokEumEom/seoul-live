@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 // JSON을 import로 읽는다. jsdom 환경에서는 `import.meta.url`이 file: 스킴이
 // 아니라 http:라 `readFileSync(new URL(...))`가 죽는다.
 import fixture from '../../docs/fixtures/citydata-광화문덕수궁.json'
-import { parkingBaseFee } from '../domain/cityInfo'
+import { isBusCallFailure, parkingBaseFee } from '../domain/cityInfo'
 import { parseCityInfoResponse } from './cityInfoSchema'
 
 // **실호출 응답 한 벌을 그대로 파서에 통과시킨다.** 2026-08-25에 인증키로
@@ -165,6 +165,57 @@ describe('실호출 citydata 응답 (2026-08-25) — 파서', () => {
     expect(info.bikes.length).toBeGreaterThan(0)
     // 명세는 CULTURALEVENTINFO라고 적었지만 실제 키는 EVENT_STTS다.
     expect(info.events.length).toBeGreaterThan(0)
+  })
+
+  // **지하철과 버스의 승하차가 같은 모양이다.** 접두어(`SUB_`/`BUS_`)만 다르고
+  // 나머지 키 18개가 한 글자도 안 다르다 — 파서가 접두어만 받아 둘을 같은
+  // 코드로 읽는 근거다. 한쪽만 읽히면 그 전제가 깨진 것이다.
+  it('지하철·버스 승하차를 같은 모양으로 읽는다', () => {
+    for (const ridership of [info.subwayRidership, info.busRidership]) {
+      expect(ridership).not.toBeNull()
+      expect(ridership?.total.boardingMin).not.toBeNull()
+      expect(ridership?.last10Minutes.alightingMax).not.toBeNull()
+      expect(ridership?.stopCount).not.toBeNull()
+    }
+  })
+
+  // **네 시간창이 서로 다른 키에서 온다.** 「있나 없나」만 보면 10분 자리에
+  // 30분 값을 읽어도 통과한다(2026-08-25 변이 실험에서 실제로 살아남았다).
+  //
+  // 짧은 창은 긴 창에 통째로 들어 있으므로 **인원이 더 많을 수 없다.** 이건
+  // 이 명소의 값이 아니라 시간창의 정의라, 데이터가 바뀌어도 참이다.
+  it('짧은 시간창이 긴 시간창보다 크지 않다', () => {
+    for (const ridership of [info.subwayRidership, info.busRidership]) {
+      const spans = [
+        ridership?.last5Minutes,
+        ridership?.last10Minutes,
+        ridership?.last30Minutes,
+        ridership?.total,
+      ]
+      for (const [shorter, longer] of spans.slice(0, -1).map((s, i) => [s, spans[i + 1]])) {
+        expect(shorter?.boardingMin ?? 0).toBeLessThanOrEqual(longer?.boardingMin ?? 0)
+        expect(shorter?.alightingMin ?? 0).toBeLessThanOrEqual(longer?.alightingMin ?? 0)
+      }
+      // 위가 전부 같은 값이어도 통과하는 것을 막는다 — 실호출의 5분과 누적은
+      // 자릿수가 다르다(300 대 10,400).
+      expect(ridership?.last5Minutes.boardingMin ?? 0).toBeLessThan(
+        ridership?.total.boardingMin ?? 0,
+      )
+    }
+  })
+
+  it('버스정류소를 읽는다', () => {
+    expect(info.busStops.length).toBeGreaterThan(0)
+    // 정류소 번호는 실호출에서 네 자리로 온다(`1009`).
+    expect(info.busStops.every((stop) => stop.arsId !== '')).toBe(true)
+    expect(info.busStops.every((stop) => stop.id !== '')).toBe(true)
+    // X가 경도·Y가 위도다. 뒤집히면 `coordsOrNull`의 범위 가드가 null로 떨군다.
+    expect(info.busStops.some((stop) => stop.coords !== null)).toBe(true)
+  })
+
+  it('버스 호출 메시지를 읽고 성공으로 판정한다', () => {
+    expect(info.busResultMessage).not.toBe('')
+    expect(isBusCallFailure(info.busResultMessage)).toBe(false)
   })
 
   it('어느 섹션이든 내용이 있다', () => {

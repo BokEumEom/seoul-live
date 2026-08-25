@@ -38,7 +38,27 @@ for (const l of lines) {
   if (m) fields.push({ no: +m[1], name: m[2], desc: m[3].trim() })
 }
 
-const used = (name) => new RegExp(`\\b${name}\\b`).test(CODE)
+// **이름을 조립해서 읽는 자리가 있다.** 승하차 인원(`LIVE_SUB_PPLTN`·
+// `LIVE_BUS_PPLTN`)은 접두어만 다르고 키 18개가 똑같아서, 파서가
+// `` `${prefix}_${span}_GTON_PPLTN_MIN` ``으로 한 벌만 짜 두었다. 그래서 전체
+// 이름이 소스에 한 번도 안 나오고 위 정규식이 36개를 통째로 못 센다.
+//
+// **여기 적는 것으로 때우면 낡는다.** 파서가 그 자리를 안 읽게 바뀌어도 이
+// 목록은 남는다. 그래서 `cityInfoSchema.test.ts`의 「조립해 읽는 키 서른여섯
+// 개가 제자리에 담긴다」가 **같은 조합을 실제로 파서에 통과시켜** 지킨다 —
+// 저기가 죽으면 여기도 틀린 것이다.
+const INTERPOLATED = ['SUB', 'BUS'].flatMap((prefix) => [
+  ...['ACML', '30WTHN', '10WTHN', '5WTHN'].flatMap((span) =>
+    ['GTON', 'GTOFF'].flatMap((side) =>
+      ['MIN', 'MAX'].map((bound) => `${prefix}_${span}_${side}_PPLTN_${bound}`),
+    ),
+  ),
+  `${prefix}_STN_CNT`,
+  `${prefix}_STN_TIME`,
+])
+
+const used = (name) =>
+  INTERPOLATED.includes(name) || new RegExp(`\\b${name}\\b`).test(CODE)
 
 // 순번 구간으로 절을 나눈다. 경계는 명세의 컨테이너 필드(LIVE_PPLTN_STTS 같은
 // 것)가 시작하는 자리다.

@@ -2,7 +2,7 @@
 
 서울 열린데이터광장 공식 명세를 옮긴 것이다. **원문은 탭 구분 텍스트였고 표만 마크다운으로 바꿨다 — 값은 한 글자도 고치지 않았다.**
 
-> **이 문서는 참조이자 구현 트래커다.** 「구현」 열은 짐작이 아니라 `src/`·`api/`에서 그 필드 이름을 실제로 읽는지 기계로 센 것이다(테스트·목업 파일은 제외). 지금 **111/250**이다. 대부분을 구현하는 것이 목표이므로 안 쓰는 필드도 전부 남겼다.
+> **이 문서는 참조이자 구현 트래커다.** 「구현」 열은 짐작이 아니라 `src/`·`api/`에서 그 필드 이름을 실제로 읽는지 기계로 센 것이다(테스트·목업 파일은 제외). 지금 **156/250**이다. 대부분을 구현하는 것이 목표이므로 안 쓰는 필드도 전부 남겼다.
 >
 > **주석은 세지 않는다.** 이 저장소는 「이 필드는 일부러 안 읽는다」를 주석으로 적어 두는데, 그것까지 세면 트래커가 정확히 반대로 말한다.
 >
@@ -142,7 +142,7 @@
 
 ### 지하철 실시간 도착 현황 — `SUB_STTS`
 
-구현 7/43
+구현 26/43
 
 | 순번 | 출력명 | 설명 | 구현 |
 | ---: | --- | --- | :---: |
@@ -170,58 +170,58 @@
 | 83 | `INSTL_PSTN` | 설치위치 | — |
 | 84 | `USE_YN` | 운행상태 | — |
 | 85 | `ELVTR_SE` | 승강기구분 | — |
-| 86 | `LIVE_SUB_PPLTN` | 실시간 지하철 승하차 인원 | — |
-| 87 | `SUB_ACML_GTON_PPLTN_MIN` | 첫차이후(당일) 누적 승차 인원 최소값 | — |
-| 88 | `SUB_ACML_GTON_PPLTN_MAX` | 첫차이후(당일) 누적 승차 인원 최대값 | — |
-| 89 | `SUB_ACML_GTOFF_PPLTN_MIN` | 첫차이후(당일) 누적 하차 인원 최소값 | — |
-| 90 | `SUB_ACML_GTOFF_PPLTN_MAX` | 첫차이후(당일) 누적 하차 인원 최대값 | — |
-| 91 | `SUB_30WTHN_GTON_PPLTN_MIN` | 30분 이내 승차 인원 최소값 | — |
-| 92 | `SUB_30WTHN_GTON_PPLTN_MAX` | 30분 이내 승차 인원 최대값 | — |
-| 93 | `SUB_30WTHN_GTOFF_PPLTN_MIN` | 30분 이내 하차 인원 최소값 | — |
-| 94 | `SUB_30WTHN_GTOFF_PPLTN_MAX` | 30분 이내 하차 인원 최대값 | — |
-| 95 | `SUB_10WTHN_GTON_PPLTN_MIN` | 10분 이내 승차 인원 최소값 | — |
-| 96 | `SUB_10WTHN_GTON_PPLTN_MAX` | 10분 이내 승차 인원 최대값 | — |
-| 97 | `SUB_10WTHN_GTOFF_PPLTN_MIN` | 10분 이내 하차 인원 최소값 | — |
-| 98 | `SUB_10WTHN_GTOFF_PPLTN_MAX` | 10분 이내 하차 인원 최대값 | — |
-| 99 | `SUB_5WTHN_GTON_PPLTN_MIN` | 5분 이내 승차 인원 최소값 | — |
-| 100 | `SUB_5WTHN_GTON_PPLTN_MAX` | 5분 이내 승차 인원 최대값 | — |
-| 101 | `SUB_5WTHN_GTOFF_PPLTN_MIN` | 5분 이내 하차 인원 최소값 | — |
-| 102 | `SUB_5WTHN_GTOFF_PPLTN_MAX` | 5분 이내 하차 인원 최대값 | — |
-| 103 | `SUB_STN_CNT` | 장소 내 지하철역 개수 | — |
-| 104 | `SUB_STN_TIME` | 지하철역 개수 기준년월 | — |
+| 86 | `LIVE_SUB_PPLTN` | 실시간 지하철 승하차 인원 | ✅ |
+| 87 | `SUB_ACML_GTON_PPLTN_MIN` | 첫차이후(당일) 누적 승차 인원 최소값 | ✅ |
+| 88 | `SUB_ACML_GTON_PPLTN_MAX` | 첫차이후(당일) 누적 승차 인원 최대값 | ✅ |
+| 89 | `SUB_ACML_GTOFF_PPLTN_MIN` | 첫차이후(당일) 누적 하차 인원 최소값 | ✅ |
+| 90 | `SUB_ACML_GTOFF_PPLTN_MAX` | 첫차이후(당일) 누적 하차 인원 최대값 | ✅ |
+| 91 | `SUB_30WTHN_GTON_PPLTN_MIN` | 30분 이내 승차 인원 최소값 | ✅ |
+| 92 | `SUB_30WTHN_GTON_PPLTN_MAX` | 30분 이내 승차 인원 최대값 | ✅ |
+| 93 | `SUB_30WTHN_GTOFF_PPLTN_MIN` | 30분 이내 하차 인원 최소값 | ✅ |
+| 94 | `SUB_30WTHN_GTOFF_PPLTN_MAX` | 30분 이내 하차 인원 최대값 | ✅ |
+| 95 | `SUB_10WTHN_GTON_PPLTN_MIN` | 10분 이내 승차 인원 최소값 | ✅ |
+| 96 | `SUB_10WTHN_GTON_PPLTN_MAX` | 10분 이내 승차 인원 최대값 | ✅ |
+| 97 | `SUB_10WTHN_GTOFF_PPLTN_MIN` | 10분 이내 하차 인원 최소값 | ✅ |
+| 98 | `SUB_10WTHN_GTOFF_PPLTN_MAX` | 10분 이내 하차 인원 최대값 | ✅ |
+| 99 | `SUB_5WTHN_GTON_PPLTN_MIN` | 5분 이내 승차 인원 최소값 | ✅ |
+| 100 | `SUB_5WTHN_GTON_PPLTN_MAX` | 5분 이내 승차 인원 최대값 | ✅ |
+| 101 | `SUB_5WTHN_GTOFF_PPLTN_MIN` | 5분 이내 하차 인원 최소값 | ✅ |
+| 102 | `SUB_5WTHN_GTOFF_PPLTN_MAX` | 5분 이내 하차 인원 최대값 | ✅ |
+| 103 | `SUB_STN_CNT` | 장소 내 지하철역 개수 | ✅ |
+| 104 | `SUB_STN_TIME` | 지하철역 개수 기준년월 | ✅ |
 
 ### 버스정류소 현황 — `BUS_STN_STTS`
 
-구현 0/26
+구현 26/26
 
 | 순번 | 출력명 | 설명 | 구현 |
 | ---: | --- | --- | :---: |
-| 105 | `BUS_STN_STTS` | 버스정류소 현황 | — |
-| 106 | `BUS_RESULT_MSG` | 버스데이터 호출메시지 | — |
-| 107 | `BUS_STN_ID` | 정류소ID | — |
-| 108 | `BUS_ARS_ID` | 정류소 고유번호 | — |
-| 109 | `BUS_STN_NM` | 정류소명 | — |
-| 110 | `BUS_STN_X` | 정류소 X 좌표(경도) | — |
-| 111 | `BUS_STN_Y` | 정류소 Y 좌표(위도) | — |
-| 112 | `LIVE_BUS_PPLTN` | 실시간 버스 승하차 인원 | — |
-| 113 | `BUS_ACML_GTON_PPLTN_MIN` | 첫차이후(당일) 누적 승차 인원 최소값 | — |
-| 114 | `BUS_ACML_GTON_PPLTN_MAX` | 첫차이후(당일) 누적 승차 인원 최대값 | — |
-| 115 | `BUS_ACML_GTOFF_PPLTN_MIN` | 첫차이후(당일) 누적 하차 인원 최소값 | — |
-| 116 | `BUS_ACML_GTOFF_PPLTN_MAX` | 첫차이후(당일) 누적 하차 인원 최대값 | — |
-| 117 | `BUS_30WTHN_GTON_PPLTN_MIN` | 30분 이내 승차 인원 최소값 | — |
-| 118 | `BUS_30WTHN_GTON_PPLTN_MAX` | 30분 이내 승차 인원 최대값 | — |
-| 119 | `BUS_30WTHN_GTOFF_PPLTN_MIN` | 30분 이내 하차 인원 최소값 | — |
-| 120 | `BUS_30WTHN_GTOFF_PPLTN_MAX` | 30분 이내 하차 인원 최대값 | — |
-| 121 | `BUS_10WTHN_GTON_PPLTN_MIN` | 10분 이내 승차 인원 최소값 | — |
-| 122 | `BUS_10WTHN_GTON_PPLTN_MAX` | 10분 이내 승차 인원 최대값 | — |
-| 123 | `BUS_10WTHN_GTOFF_PPLTN_MIN` | 10분 이내 하차 인원 최소값 | — |
-| 124 | `BUS_10WTHN_GTOFF_PPLTN_MAX` | 10분 이내 하차 인원 최대값 | — |
-| 125 | `BUS_5WTHN_GTON_PPLTN_MIN` | 5분 이내 승차 인원 최소값 | — |
-| 126 | `BUS_5WTHN_GTON_PPLTN_MAX` | 5분 이내 승차 인원 최대값 | — |
-| 127 | `BUS_5WTHN_GTOFF_PPLTN_MIN` | 5분 이내 하차 인원 최소값 | — |
-| 128 | `BUS_5WTHN_GTOFF_PPLTN_MAX` | 5분 이내 하차 인원 최대값 | — |
-| 129 | `BUS_STN_CNT` | 장소 내 버스정류장 개수 | — |
-| 130 | `BUS_STN_TIME` | 버스정류장 개수 기준 년월 | — |
+| 105 | `BUS_STN_STTS` | 버스정류소 현황 | ✅ |
+| 106 | `BUS_RESULT_MSG` | 버스데이터 호출메시지 | ✅ |
+| 107 | `BUS_STN_ID` | 정류소ID | ✅ |
+| 108 | `BUS_ARS_ID` | 정류소 고유번호 | ✅ |
+| 109 | `BUS_STN_NM` | 정류소명 | ✅ |
+| 110 | `BUS_STN_X` | 정류소 X 좌표(경도) | ✅ |
+| 111 | `BUS_STN_Y` | 정류소 Y 좌표(위도) | ✅ |
+| 112 | `LIVE_BUS_PPLTN` | 실시간 버스 승하차 인원 | ✅ |
+| 113 | `BUS_ACML_GTON_PPLTN_MIN` | 첫차이후(당일) 누적 승차 인원 최소값 | ✅ |
+| 114 | `BUS_ACML_GTON_PPLTN_MAX` | 첫차이후(당일) 누적 승차 인원 최대값 | ✅ |
+| 115 | `BUS_ACML_GTOFF_PPLTN_MIN` | 첫차이후(당일) 누적 하차 인원 최소값 | ✅ |
+| 116 | `BUS_ACML_GTOFF_PPLTN_MAX` | 첫차이후(당일) 누적 하차 인원 최대값 | ✅ |
+| 117 | `BUS_30WTHN_GTON_PPLTN_MIN` | 30분 이내 승차 인원 최소값 | ✅ |
+| 118 | `BUS_30WTHN_GTON_PPLTN_MAX` | 30분 이내 승차 인원 최대값 | ✅ |
+| 119 | `BUS_30WTHN_GTOFF_PPLTN_MIN` | 30분 이내 하차 인원 최소값 | ✅ |
+| 120 | `BUS_30WTHN_GTOFF_PPLTN_MAX` | 30분 이내 하차 인원 최대값 | ✅ |
+| 121 | `BUS_10WTHN_GTON_PPLTN_MIN` | 10분 이내 승차 인원 최소값 | ✅ |
+| 122 | `BUS_10WTHN_GTON_PPLTN_MAX` | 10분 이내 승차 인원 최대값 | ✅ |
+| 123 | `BUS_10WTHN_GTOFF_PPLTN_MIN` | 10분 이내 하차 인원 최소값 | ✅ |
+| 124 | `BUS_10WTHN_GTOFF_PPLTN_MAX` | 10분 이내 하차 인원 최대값 | ✅ |
+| 125 | `BUS_5WTHN_GTON_PPLTN_MIN` | 5분 이내 승차 인원 최소값 | ✅ |
+| 126 | `BUS_5WTHN_GTON_PPLTN_MAX` | 5분 이내 승차 인원 최대값 | ✅ |
+| 127 | `BUS_5WTHN_GTOFF_PPLTN_MIN` | 5분 이내 하차 인원 최소값 | ✅ |
+| 128 | `BUS_5WTHN_GTOFF_PPLTN_MAX` | 5분 이내 하차 인원 최대값 | ✅ |
+| 129 | `BUS_STN_CNT` | 장소 내 버스정류장 개수 | ✅ |
+| 130 | `BUS_STN_TIME` | 버스정류장 개수 기준 년월 | ✅ |
 
 ### 사고통제현황 — `ACDNT_CNTRL_STTS`
 

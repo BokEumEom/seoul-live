@@ -2,12 +2,15 @@ import { z } from 'zod'
 import type {
   AccidentControl,
   BikeStation,
+  BusStop,
   CityAlert,
   CityInfo,
   CulturalEvent,
   HourlyForecast,
   ParkingFee,
   ParkingLot,
+  Ridership,
+  RidershipWindow,
   RoadTraffic,
   SubwayArrival,
   Weather,
@@ -234,6 +237,62 @@ function toParking(rows: readonly Row[]): readonly ParkingLot[] {
   )
 }
 
+/**
+ * 승하차 인원. **접두어만 받아 지하철과 버스를 같은 코드로 읽는다.**
+ *
+ * 2026-08-25 실호출에서 `LIVE_SUB_PPLTN`과 `LIVE_BUS_PPLTN`의 키 18개가 접두어
+ * 빼고 한 글자도 안 다른 것을 대조했다. 두 벌로 두면 한쪽만 고치는 날이 온다.
+ */
+function toRidershipWindow(row: Row, prefix: string, span: string): RidershipWindow {
+  return {
+    boardingMin: numberOrNull(row, `${prefix}_${span}_GTON_PPLTN_MIN`),
+    boardingMax: numberOrNull(row, `${prefix}_${span}_GTON_PPLTN_MAX`),
+    alightingMin: numberOrNull(row, `${prefix}_${span}_GTOFF_PPLTN_MIN`),
+    alightingMax: numberOrNull(row, `${prefix}_${span}_GTOFF_PPLTN_MAX`),
+  }
+}
+
+function toRidership(rows: readonly Row[], prefix: string): Ridership | null {
+  const row = rows[0]
+  if (row === undefined) {
+    return null
+  }
+  const ridership: Ridership = {
+    total: toRidershipWindow(row, prefix, 'ACML'),
+    last30Minutes: toRidershipWindow(row, prefix, '30WTHN'),
+    last10Minutes: toRidershipWindow(row, prefix, '10WTHN'),
+    last5Minutes: toRidershipWindow(row, prefix, '5WTHN'),
+    stopCount: numberOrNull(row, `${prefix}_STN_CNT`),
+    stopCountAt: text(row, `${prefix}_STN_TIME`),
+  }
+  // 네 시간창이 모두 비고 개수도 없으면 섹션 자체가 없는 것으로 접는다.
+  // 빈 껍데기를 돌려주면 화면이 「승하차 정보 있음」으로 읽고 빈 절을 그린다.
+  const windows = [
+    ridership.total,
+    ridership.last30Minutes,
+    ridership.last10Minutes,
+    ridership.last5Minutes,
+  ]
+  const anyValue =
+    windows.some((window) => Object.values(window).some((value) => value !== null)) ||
+    ridership.stopCount !== null
+  return anyValue ? ridership : null
+}
+
+function toBusStops(rows: readonly Row[]): readonly BusStop[] {
+  return named(
+    rows,
+    'BUS_STN_NM',
+    (row, name): BusStop => ({
+      name,
+      arsId: text(row, 'BUS_ARS_ID'),
+      id: text(row, 'BUS_STN_ID'),
+      // X가 경도, Y가 위도다 — 따릉이(`SBIKE_X`)와 같은 규칙이다.
+      coords: coordsOrNull(row, 'BUS_STN_Y', 'BUS_STN_X'),
+    }),
+  )
+}
+
 function toBikes(rows: readonly Row[]): readonly BikeStation[] {
   return named(
     rows,
@@ -383,5 +442,10 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
     events: toEvents(sectionRows(container, ['CULTURALEVENTINFO', 'EVENT_STTS'])),
     alerts: toAlerts(sectionRows(container, ['LIVE_DST_MESSAGE'])),
     subway: toSubway(sectionRows(container, ['SUB_STTS'])),
+    subwayRidership: toRidership(sectionRows(container, ['LIVE_SUB_PPLTN']), 'SUB'),
+    busStops: toBusStops(sectionRows(container, ['BUS_STN_STTS'])),
+    busRidership: toRidership(sectionRows(container, ['LIVE_BUS_PPLTN']), 'BUS'),
+    // 정류소 목록의 첫 줄이 이고 온다. 줄마다 같은 값이라 하나만 읽는다.
+    busResultMessage: text(sectionRows(container, ['BUS_STN_STTS'])[0] ?? {}, 'BUS_RESULT_MSG'),
   }
 }

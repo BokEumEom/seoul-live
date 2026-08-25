@@ -211,6 +211,74 @@ function buildWeather(seed: number, now: Date): Record<string, unknown> {
   }
 }
 
+const RIDERSHIP_SALT = 9
+const BUS_SALT = 10
+
+/**
+ * 승하차 인원 한 벌. **접두어만 받아 지하철과 버스를 같은 코드로 만든다** —
+ * 실응답의 두 섹션이 접두어 빼고 키가 똑같다.
+ *
+ * 값은 **min/max 구간**으로 낸다. 폭 50이 실응답의 모양이고, 화면의
+ * `ridershipFlow`가 그 폭을 판단 기준으로 쓰기 때문에 목업이 구간을 안 내면
+ * 「겹치면 모른다」 갈래가 한 번도 안 밟힌다.
+ *
+ * 명소마다 **모이는 중·빠지는 중·모름** 셋이 다 나오게 굴린다. 한 방향만
+ * 나오면 나머지 두 문장을 목업으로 확인할 수 없다.
+ */
+function buildRidership(
+  seed: number,
+  prefix: string,
+  salt: number,
+  scale: number,
+  now: Date,
+): Record<string, string> {
+  const pad = (value: number) => String(Math.max(0, Math.round(value / 50) * 50))
+  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+
+  // −1(빠지는 중) · 0(모름) · 1(모이는 중)
+  const lean = (mixSeed(seed, salt) % 3) - 1
+  const row: Record<string, string> = {}
+
+  for (const [span, share] of [
+    ['ACML', 1],
+    ['30WTHN', 0.28],
+    ['10WTHN', 0.1],
+    ['5WTHN', 0.05],
+  ] as const) {
+    const base = scale * share
+    // 0이면 두 구간이 겹치게 만든다 — 그때 화면이 방향을 단정하지 않아야 한다.
+    const boarding = base * (1 - lean * 0.25)
+    const alighting = base * (1 + lean * 0.25)
+    row[`${prefix}_${span}_GTON_PPLTN_MIN`] = pad(boarding)
+    row[`${prefix}_${span}_GTON_PPLTN_MAX`] = pad(boarding + 50)
+    row[`${prefix}_${span}_GTOFF_PPLTN_MIN`] = pad(alighting)
+    row[`${prefix}_${span}_GTOFF_PPLTN_MAX`] = pad(alighting + 50)
+  }
+
+  row[`${prefix}_STN_CNT`] = String(1 + (mixSeed(seed, salt + 1) % 8))
+  row[`${prefix}_STN_TIME`] = stamp
+  return row
+}
+
+function buildBusStops(areaName: string, seed: number): readonly unknown[] {
+  const count = mixSeed(seed, BUS_SALT) % 9
+  return Array.from({ length: count }, (_, index) => {
+    const mixed = mixSeed(seed, BUS_SALT * 10 + index)
+    const at = scatter(areaName, mixed)
+    return {
+      // 줄마다 같은 값으로 온다. 화면은 첫 줄만 읽는다.
+      BUS_RESULT_MSG: '정상 호출되었습니다.',
+      BUS_STN_ID: `1000${String(mixed % 100000).padStart(5, '0')}`,
+      // 실응답은 네 자리다(`1009`). 정류소 기둥에 붙어 있는 번호다.
+      BUS_ARS_ID: String(1000 + (mixed % 9000)),
+      BUS_STN_NM: `${areaName}${index === 0 ? '' : `.${index}번출구`}`,
+      // X가 경도, Y가 위도다.
+      BUS_STN_X: String(at.lng),
+      BUS_STN_Y: String(at.lat),
+    }
+  })
+}
+
 const PARKING_KINDS = ['공영주차장', '노외주차장', '민영주차장'] as const
 
 /**
@@ -419,6 +487,12 @@ export function buildMockCityInfo(areaName: string, now: Date = new Date()): unk
       CULTURALEVENTINFO: buildEvents(areaName, seed),
       LIVE_DST_MESSAGE: buildAlerts(seed, now),
       SUB_STTS: buildSubway(seed),
+      // 지하철이 버스보다 규모가 크다 — 실호출에서 광화문 지하철 승차 누적
+      // 10,400 대 버스 6,000이었다. 둘을 같은 크기로 내면 화면에서 두 절이
+      // 구별되지 않는다.
+      LIVE_SUB_PPLTN: buildRidership(seed, 'SUB', RIDERSHIP_SALT, 12_000, now),
+      LIVE_BUS_PPLTN: buildRidership(seed, 'BUS', RIDERSHIP_SALT + 5, 6_000, now),
+      BUS_STN_STTS: buildBusStops(areaName, seed),
     },
   }
 }

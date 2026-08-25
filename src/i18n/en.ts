@@ -220,6 +220,21 @@ export const EN: Readonly<Record<string, string>> = {
   따릉이: 'Ttareungi bikes',
   문화행사: 'Events',
   '{역} 도착 열차': 'Trains at {역}',
+  // ── 승하차 인원·버스정류소(2026-08-25) ──
+  // `LIVE_SUB_PPLTN`·`LIVE_BUS_PPLTN`·`BUS_STN_STTS`. 같은 `citydata` 응답
+  // 안이라 추가 호출이 0이다.
+  '버스 정류소': 'Bus stops',
+  // **정류소 번호는 기둥에 붙어 있는 그 번호다.** 영어에서도 숫자가 본체라
+  // 「Stop 1009」로 앞에 이름표를 붙인다 — 「1009번」의 「번」이 사라지면
+  // 그냥 떠 있는 숫자가 된다.
+  '{번호}번': 'Stop {번호}',
+  '승차 {인원}명': '{인원} boarding',
+  '하차 {인원}명': '{인원} alighting',
+  '최근 10분': 'Last 10 min',
+  '오늘 첫차 이후': 'Since first train',
+  '이 명소 안 {개수}곳 기준': 'across {개수} stops here',
+  '사람이 모이는 중이에요': 'People are arriving',
+  '사람이 빠지는 중이에요': 'People are leaving',
   // 세 절(지하철·주차장·따릉이)의 「이 값이 언제 기준인가」. 아래 「최대 3시간」
   // 세 줄은 **나이를 못 읽었을 때만** 쓰인다 — `CityInfoPanel`의 `freshnessNote`.
   //

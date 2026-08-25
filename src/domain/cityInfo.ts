@@ -353,6 +353,115 @@ export function groupSubwayArrivals(
   })
 }
 
+/** 버스정류소 하나. `BUS_STN_STTS`의 한 줄(명세 107~111행). */
+export interface BusStop {
+  readonly name: string
+  /**
+   * BUS_ARS_ID — 정류소 고유번호. **화면에 적는다.**
+   *
+   * 이름보다 이게 실물이다 — 정류소 기둥에 붙어 있는 번호이고, 버스 앱에서
+   * 검색하는 것도 이 번호다. 「광화문역」이라는 이름의 정류소는 여럿이지만
+   * `1009`는 하나다.
+   */
+  readonly arsId: string
+  /** BUS_STN_ID — 내부 ID. 목록의 키로만 쓴다 */
+  readonly id: string
+  /** BUS_STN_X가 경도, BUS_STN_Y가 위도다. 따릉이와 같은 축 규칙이다 */
+  readonly coords: Coords | null
+}
+
+/**
+ * 승하차 인원 한 시간창. **min/max 쌍이다** — 서울 API가 값이 아니라 구간을 준다.
+ *
+ * 구간인 것이 중요하다. 「550~600명」의 폭 50이 이 데이터가 인정하는 불확실성
+ * 이고, 아래 `ridershipFlow`가 그 폭을 그대로 판단 기준으로 쓴다.
+ */
+export interface RidershipWindow {
+  readonly boardingMin: number | null
+  readonly boardingMax: number | null
+  readonly alightingMin: number | null
+  readonly alightingMax: number | null
+}
+
+/**
+ * 지하철·버스 승하차 인원. `LIVE_SUB_PPLTN`과 `LIVE_BUS_PPLTN`이다.
+ *
+ * **둘의 구조가 정확히 같다** — 접두어(`SUB_`/`BUS_`)만 다르고 나머지 18개
+ * 키가 한 글자도 안 다르다(2026-08-25 실호출 대조). 그래서 타입도 파서도
+ * 화면도 한 벌이다.
+ */
+export interface Ridership {
+  /** 첫차 이후 누적 */
+  readonly total: RidershipWindow
+  readonly last30Minutes: RidershipWindow
+  readonly last10Minutes: RidershipWindow
+  readonly last5Minutes: RidershipWindow
+  /** SUB_STN_CNT / BUS_STN_CNT — 이 명소 안의 역·정류장 개수 */
+  readonly stopCount: number | null
+  /** SUB_STN_TIME / BUS_STN_TIME — 개수의 기준 년월일(`20260825`) */
+  readonly stopCountAt: string
+}
+
+/**
+ * 지금 사람이 모이는 중인가 빠지는 중인가.
+ *
+ * **이 앱의 성격과 맞는 값이라 굳이 뽑는다.** 승하차 숫자 열여섯 개를 늘어놓는
+ * 것보다, 하차가 승차보다 많으면 「모이는 중」이라고 한 문장으로 말하는 편이
+ * 혼잡도 앱의 답에 가깝다.
+ *
+ * **문턱을 지어내지 않는다.** 두 구간이 겹치면 우열을 단정할 수 없으므로
+ * `null`이다 — 「20% 이상 차이」 같은 임의의 숫자를 만들지 않고, 서울 API가
+ * 스스로 인정한 불확실성(구간 폭)을 그대로 기준으로 쓴다.
+ */
+export type CrowdFlow = 'arriving' | 'leaving'
+
+export function ridershipFlow(window: RidershipWindow): CrowdFlow | null {
+  const { boardingMin, boardingMax, alightingMin, alightingMax } = window
+  if (
+    boardingMin === null ||
+    boardingMax === null ||
+    alightingMin === null ||
+    alightingMax === null
+  ) {
+    return null
+  }
+  if (alightingMin > boardingMax) {
+    return 'arriving'
+  }
+  return boardingMin > alightingMax ? 'leaving' : null
+}
+
+/**
+ * 실호출에서 본 버스 호출 성공 메시지. **이것이 아니면 뭔가 잘못된 것이다.**
+ *
+ * 이 판정이 도메인에 있는 이유: 화면 파일에 두면 `i18n.test.ts`의 「감싸지 않은
+ * 한국어」 검사가 잡는다. 그리고 그 검사가 옳다 — 이건 화면 글자가 아니라
+ * **서울 API의 어휘**라 번역 대상이 아니고, 화면이 알아야 할 것은 「실패했나」
+ * 뿐이다.
+ */
+const BUS_CALL_OK = '정상 호출되었습니다.'
+
+/**
+ * 버스 쪽 호출이 실패했나. **빈 메시지는 실패가 아니다** — 섹션 자체가 안 온
+ * 것이고, 그때 화면은 절을 아예 안 그린다.
+ *
+ * 성공 문구를 하나만 아는 상태라 「아는 것이 아니면 실패」로 읽는다. 여기서
+ * 틀리면 낯선 성공 메시지의 원문이 화면에 뜨는데, 그건 조용히 빈 목록을
+ * 보여주는 것보다 낫다 — 적어도 무슨 일이 있었는지는 읽힌다.
+ */
+export function isBusCallFailure(message: string): boolean {
+  const trimmed = message.trim()
+  return trimmed !== '' && trimmed !== BUS_CALL_OK
+}
+
+/** 구간을 화면 글자로 만들 수 있나. 한쪽만 읽힌 구간은 못 그린다. */
+export function hasRidershipRange(window: RidershipWindow): boolean {
+  return (
+    (window.boardingMin !== null && window.boardingMax !== null) ||
+    (window.alightingMin !== null && window.alightingMax !== null)
+  )
+}
+
 export interface CityInfo {
   readonly areaName: string
   readonly areaCode: string
@@ -364,6 +473,20 @@ export interface CityInfo {
   readonly events: readonly CulturalEvent[]
   readonly alerts: readonly CityAlert[]
   readonly subway: readonly SubwayArrival[]
+  /** 지하철 승하차 인원. 못 읽으면 `null` */
+  readonly subwayRidership: Ridership | null
+  readonly busStops: readonly BusStop[]
+  /** 버스 승하차 인원. 지하철 쪽과 같은 모양이다 */
+  readonly busRidership: Ridership | null
+  /**
+   * BUS_RESULT_MSG — 버스 데이터 호출 메시지.
+   *
+   * **정류소가 0곳일 때만 쓸모가 있다.** 「이 근처에 정류소가 없다」와 「버스
+   * 쪽 호출이 실패했다」는 사용자에게 다른 안내인데, 목록만 보면 구분이 안 된다.
+   * 실호출에서 본 값은 `정상 호출되었습니다.` 하나뿐이라, 그것이 아닐 때만
+   * 원문을 그대로 보여준다(자유 문장이라 옮기지 않는다).
+   */
+  readonly busResultMessage: string
   /**
    * 이 응답이 얼마나 묵었나. **모르면 `null`이고, 그때 화면은 모른다고 말한다.**
    *

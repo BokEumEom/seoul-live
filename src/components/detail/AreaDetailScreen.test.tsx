@@ -6,7 +6,7 @@ import type { CityInfo } from '../../domain/cityInfo'
 import { DETAIL_TABS } from '../../domain/detailTabs'
 import type { AreaCongestion, AreaSnapshot } from '../../domain/types'
 import { reset } from '../../hooks/favoritesStore'
-import { makeParkingLot, makeWeather } from '../../test/cityInfo'
+import { makeCityInfo, makeParkingLot, makeWeather } from '../../test/cityInfo'
 import { findAreaByName } from '../../data/areas'
 import { TONE_TEXT_CLASS } from '../common/toneClass'
 import { AreaDetailScreen } from './AreaDetailScreen'
@@ -64,7 +64,7 @@ const SNAPSHOT: AreaSnapshot = {
   replaced: null,
 }
 
-const EMPTY_CITY_INFO: CityInfo = {
+const EMPTY_CITY_INFO: CityInfo = makeCityInfo({
   areaName: '강남역',
   areaCode: 'POI014',
   freshness: null,
@@ -76,7 +76,7 @@ const EMPTY_CITY_INFO: CityInfo = {
   events: [],
   alerts: [],
   subway: [],
-}
+})
 
 const PARKING_LOT = makeParkingLot({
   name: '주차장',
@@ -1065,5 +1065,112 @@ describe('AreaDetailScreen — 요약 탭의 나머지', () => {
     expect(
       screen.getAllByRole('heading').map((node) => `${node.tagName} ${node.textContent}`),
     ).toEqual(['H2 강남역', 'H3 지금은 약간 붐벼요', 'H3 주변 CCTV'])
+  })
+})
+
+// **배선을 여기서 잡는다.** 2026-08-25에 날씨 절 둘을 탭에서 통째로 떼어 내도
+// 스위트가 통과한 일이 있었다 — 잎 컴포넌트마다 테스트가 있어도 「붙였는가」는
+// 아무도 안 본다. 승하차·정류소도 같은 모양이라 같은 그물을 친다.
+describe('AreaDetailScreen — 교통 탭의 승하차와 정류소', () => {
+  const BUSY = {
+    boardingMin: 550,
+    boardingMax: 600,
+    alightingMin: 900,
+    alightingMax: 950,
+  }
+  const EMPTY_WINDOW = {
+    boardingMin: null,
+    boardingMax: null,
+    alightingMin: null,
+    alightingMax: null,
+  }
+
+  function ridership(overrides = {}) {
+    return {
+      total: EMPTY_WINDOW,
+      last30Minutes: EMPTY_WINDOW,
+      last10Minutes: BUSY,
+      last5Minutes: EMPTY_WINDOW,
+      stopCount: 4,
+      stopCountAt: '20260825',
+      ...overrides,
+    }
+  }
+
+  it('지하철 절이 승하차 요약을 이고 있다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({ ...EMPTY_CITY_INFO, subwayRidership: ridership() }),
+    )
+    renderDetail()
+    await openTab('교통')
+
+    expect(screen.getByText('사람이 모이는 중이에요')).toBeInTheDocument()
+    expect(screen.getByText(/승차 550~600명/)).toBeInTheDocument()
+  })
+
+  it('버스 절이 정류소와 승하차를 함께 보여준다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        busRidership: ridership({ stopCount: 41 }),
+        busStops: [
+          { name: '광화문역', arsId: '1009', id: 'B1', coords: { lat: 37.57, lng: 126.977 } },
+        ],
+        busResultMessage: '정상 호출되었습니다.',
+      }),
+    )
+    renderDetail()
+    await openTab('교통')
+
+    expect(screen.getByText('광화문역')).toBeInTheDocument()
+    expect(screen.getByText(/1009번/)).toBeInTheDocument()
+    expect(screen.getByText('이 명소 안 41곳 기준')).toBeInTheDocument()
+  })
+
+  // 도착 정보가 없는 명소가 실제로 있다(공원류). 그때 승하차만으로도 탭이
+  // 서야 한다 — `has`가 승하차를 안 세면 「교통 정보가 없어요」가 뜬다.
+  it('열차 도착이 없어도 승하차만으로 탭이 선다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({ ...EMPTY_CITY_INFO, subway: [], subwayRidership: ridership() }),
+    )
+    renderDetail()
+    await openTab('교통')
+
+    expect(
+      screen.queryByText('이 명소에는 지금 제공되는 교통 정보가 없어요.'),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('사람이 모이는 중이에요')).toBeInTheDocument()
+  })
+
+  // 「이 근처에 정류소가 없다」와 「버스 쪽 호출이 실패했다」는 다른 안내인데
+  // 빈 목록만 보면 구분이 안 된다.
+  it('정류소가 비었을 때만 실패 메시지를 적는다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        busRidership: ridership(),
+        busStops: [],
+        busResultMessage: '서비스 점검 중입니다.',
+      }),
+    )
+    renderDetail()
+    await openTab('교통')
+
+    expect(screen.getByText('서비스 점검 중입니다.')).toBeInTheDocument()
+  })
+
+  it('성공 메시지는 화면에 안 나온다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        busRidership: ridership(),
+        busStops: [],
+        busResultMessage: '정상 호출되었습니다.',
+      }),
+    )
+    renderDetail()
+    await openTab('교통')
+
+    expect(screen.queryByText('정상 호출되었습니다.')).not.toBeInTheDocument()
   })
 })

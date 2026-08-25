@@ -1,4 +1,10 @@
-import type { CityInfo, ParkingLot, Weather } from '../domain/cityInfo'
+import type {
+  CityInfo,
+  ParkingLot,
+  Ridership,
+  RidershipWindow,
+  Weather,
+} from '../domain/cityInfo'
 
 // 테스트가 쓰는 `CityInfo` 조각 빌더.
 //
@@ -72,6 +78,35 @@ export function makeCityInfo(overrides: Partial<CityInfo> = {}): CityInfo {
     events: [],
     alerts: [],
     subway: [],
+    subwayRidership: null,
+    busStops: [],
+    busRidership: null,
+    busResultMessage: '',
+    ...overrides,
+  }
+}
+
+/** 승하차 한 시간창. 기본은 「하나도 못 읽음」이다. */
+export function makeRidershipWindow(
+  overrides: Partial<RidershipWindow> = {},
+): RidershipWindow {
+  return {
+    boardingMin: null,
+    boardingMax: null,
+    alightingMin: null,
+    alightingMax: null,
+    ...overrides,
+  }
+}
+
+export function makeRidership(overrides: Partial<Ridership> = {}): Ridership {
+  return {
+    total: makeRidershipWindow(),
+    last30Minutes: makeRidershipWindow(),
+    last10Minutes: makeRidershipWindow(),
+    last5Minutes: makeRidershipWindow(),
+    stopCount: null,
+    stopCountAt: '',
     ...overrides,
   }
 }

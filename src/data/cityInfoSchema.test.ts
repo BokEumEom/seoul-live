@@ -128,6 +128,103 @@ describe('parseCityInfoResponse — 날씨', () => {
   })
 })
 
+describe('parseCityInfoResponse — 승하차 인원', () => {
+  // **섹션이 없으면 `null`이지 빈 껍데기가 아니다.** 값이 하나도 없는 객체를
+  // 돌려주면 화면이 「승하차 정보 있음」으로 읽어 빈 절을 그린다 — 교통 탭의
+  // `has`가 `!== null`로 판정하기 때문이다.
+  //
+  // 2026-08-25 변이 실험에서 이 갈래를 지워도 스위트가 통과했다.
+  it('섹션이 없으면 null이다', () => {
+    const info = parseCityInfoResponse(payload({}), AREA)
+
+    expect(info.subwayRidership).toBeNull()
+    expect(info.busRidership).toBeNull()
+  })
+
+  it('값이 하나도 없는 섹션이 와도 null이다', () => {
+    const info = parseCityInfoResponse(
+      payload({ LIVE_SUB_PPLTN: { SUB_ACML_GTON_PPLTN_MIN: '' } }),
+      AREA,
+    )
+
+    expect(info.subwayRidership).toBeNull()
+  })
+
+  it('개수만 와도 섹션으로 친다', () => {
+    // 승하차를 못 셌어도 「이 명소 안 역 4곳」은 그 자체로 답이다.
+    const info = parseCityInfoResponse(payload({ LIVE_SUB_PPLTN: { SUB_STN_CNT: '4' } }), AREA)
+
+    expect(info.subwayRidership?.stopCount).toBe(4)
+  })
+
+  // **조립해 읽는 키 서른여섯 개가 제자리에 담긴다.**
+  //
+  // 파서가 `` `${prefix}_${span}_GTON_PPLTN_MIN` ``으로 이름을 짜기 때문에
+  // 전체 이름이 소스에 한 번도 안 나온다. 그래서
+  // `scripts/format-citydata-spec.mjs`의 구현 집계기가 이 서른여섯을 못 세고,
+  // 스크립트는 목록을 손으로 들고 있다 — **그 목록이 낡지 않게 지키는 것이
+  // 이 테스트다.** 여기가 죽으면 저 목록도 거짓이 된 것이다.
+  //
+  // 값을 전부 다르게 넣는 것이 요점이다. 같은 값을 쓰면 열여섯 칸이 서로
+  // 뒤바뀌어도 통과한다.
+  it('조립해 읽는 키 서른여섯 개가 제자리에 담긴다', () => {
+    const SPANS = {
+      total: 'ACML',
+      last30Minutes: '30WTHN',
+      last10Minutes: '10WTHN',
+      last5Minutes: '5WTHN',
+    } as const
+    const SIDES = { boarding: 'GTON', alighting: 'GTOFF' } as const
+    const BOUNDS = { Min: 'MIN', Max: 'MAX' } as const
+
+    let next = 1
+    const expected = new Map<string, number>()
+    const row: Record<string, string> = {}
+    for (const span of Object.values(SPANS)) {
+      for (const side of Object.values(SIDES)) {
+        for (const bound of Object.values(BOUNDS)) {
+          const key = `SUB_${span}_${side}_PPLTN_${bound}`
+          row[key] = String(next)
+          expected.set(key, next)
+          next += 1
+        }
+      }
+    }
+    row.SUB_STN_CNT = '99'
+    row.SUB_STN_TIME = '20260825'
+
+    const info = parseCityInfoResponse(payload({ LIVE_SUB_PPLTN: row }), AREA)
+    const ridership = info.subwayRidership
+
+    for (const [field, span] of Object.entries(SPANS)) {
+      for (const [prop, side] of Object.entries(SIDES)) {
+        for (const [suffix, bound] of Object.entries(BOUNDS)) {
+          const key = `SUB_${span}_${side}_PPLTN_${bound}`
+          const window = ridership?.[field as keyof typeof SPANS]
+          expect(window?.[`${prop}${suffix}` as 'boardingMin']).toBe(expected.get(key))
+        }
+      }
+    }
+    expect(ridership?.stopCount).toBe(99)
+    expect(ridership?.stopCountAt).toBe('20260825')
+  })
+
+  // 접두어만 다른 두 섹션을 같은 코드가 읽는다. 접두어를 잘못 넘기면 한쪽이
+  // 통째로 빈다 — 여기서 서로의 값을 안 훔치는지 본다.
+  it('지하철과 버스가 서로의 값을 안 읽는다', () => {
+    const info = parseCityInfoResponse(
+      payload({
+        LIVE_SUB_PPLTN: { SUB_10WTHN_GTON_PPLTN_MIN: '550' },
+        LIVE_BUS_PPLTN: { BUS_10WTHN_GTON_PPLTN_MIN: '150' },
+      }),
+      AREA,
+    )
+
+    expect(info.subwayRidership?.last10Minutes.boardingMin).toBe(550)
+    expect(info.busRidership?.last10Minutes.boardingMin).toBe(150)
+  })
+})
+
 describe('parseCityInfoResponse — 주차장', () => {
   // **도로명이 있으면 도로명이다.** 실호출 33곳 중 도로명이 있는 곳은 하나뿐이라
   // 픽스처만으로는 이 우선순위가 한 번도 안 밟힌다 — 지번만 읽게 바꿔도 통과했다

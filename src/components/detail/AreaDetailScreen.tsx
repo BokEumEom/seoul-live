@@ -225,7 +225,13 @@ export function AreaDetailScreen({
               />
             ))}
 
-          {tab === 'traffic' && <TrafficPanel areaName={areaName} />}
+          {tab === 'traffic' && (
+            <TrafficPanel
+              areaName={areaName}
+              origin={{ lat: entry.lat, lng: entry.lng }}
+              onShowOnMap={onShowOnMap}
+            />
+          )}
 
           {/* 기준점은 **명소 중심**이지 사용자 위치가 아니다. 상세는 지금 있는
               곳이 아니라 가려는 곳을 보는 화면이라, 부산에서 광화문을 열어도

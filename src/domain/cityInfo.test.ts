@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeParkingLot, makeWeather } from '../test/cityInfo'
+import { makeCityInfo, makeParkingLot, makeWeather } from '../test/cityInfo'
 import {
   airGradeTone,
   formatForecastTemperature,
@@ -8,9 +8,11 @@ import {
   groupSubwayArrivals,
   hasAnyCityInfo,
   isActiveWarning,
+  isBusCallFailure,
   parkingAddFee,
   parkingBaseFee,
   parkingTone,
+  ridershipFlow,
   roadIndexTone,
   sortBikesByStock,
   sortParkingByAvailable,
@@ -31,7 +33,7 @@ function station(name: string, bikes: number | null): BikeStation {
   return { name, coords: null, bikes, racks: 10 }
 }
 
-const EMPTY: CityInfo = {
+const EMPTY: CityInfo = makeCityInfo({
   areaName: '광화문·덕수궁',
   areaCode: 'POI009',
   freshness: null,
@@ -43,7 +45,7 @@ const EMPTY: CityInfo = {
   events: [],
   alerts: [],
   subway: [],
-}
+})
 
 describe('airGradeTone', () => {
   it('통합대기환경등급 네 단계를 혼잡도와 같은 톤으로 옮긴다', () => {
@@ -535,5 +537,64 @@ describe('parkingAddFee', () => {
     expect(parkingAddFee({ ...fee, addMinutes: 0 })).toBeNull()
     expect(parkingAddFee({ ...fee, addMinutes: null })).toBeNull()
     expect(parkingAddFee(null)).toBeNull()
+  })
+})
+
+describe('ridershipFlow', () => {
+  const span = {
+    boardingMin: 550,
+    boardingMax: 600,
+    alightingMin: 900,
+    alightingMax: 950,
+  }
+
+  it('하차 구간이 승차보다 통째로 위면 모이는 중이다', () => {
+    // 실호출 광화문 10분 창의 값이다(2026-08-25).
+    expect(ridershipFlow(span)).toBe('arriving')
+  })
+
+  it('승차 구간이 하차보다 통째로 위면 빠지는 중이다', () => {
+    expect(
+      ridershipFlow({ ...span, boardingMin: 900, boardingMax: 950, alightingMin: 550, alightingMax: 600 }),
+    ).toBe('leaving')
+  })
+
+  // **문턱을 지어내지 않는다.** 두 구간이 겹치면 서울 API 스스로가 우열을
+  // 단정하지 못한 것이라 우리도 단정하지 않는다 — 「20% 이상 차이」 같은
+  // 임의의 숫자를 만들면 그 숫자를 지킬 근거가 어디에도 없다.
+  it('구간이 겹치면 아무 말도 안 한다', () => {
+    expect(
+      ridershipFlow({ boardingMin: 550, boardingMax: 600, alightingMin: 580, alightingMax: 640 }),
+    ).toBeNull()
+  })
+
+  it('맞닿기만 해도 단정하지 않는다', () => {
+    // 승차 최대 600, 하차 최소 600. 실제 값이 둘 다 600일 수 있다.
+    expect(
+      ridershipFlow({ boardingMin: 550, boardingMax: 600, alightingMin: 600, alightingMax: 650 }),
+    ).toBeNull()
+  })
+
+  it('네 값 중 하나라도 없으면 아무 말도 안 한다', () => {
+    expect(ridershipFlow({ ...span, boardingMin: null })).toBeNull()
+    expect(ridershipFlow({ ...span, alightingMax: null })).toBeNull()
+  })
+})
+
+describe('isBusCallFailure', () => {
+  it('아는 성공 문구는 실패가 아니다', () => {
+    expect(isBusCallFailure('정상 호출되었습니다.')).toBe(false)
+    expect(isBusCallFailure('  정상 호출되었습니다.  ')).toBe(false)
+  })
+
+  // **빈 메시지는 실패가 아니다.** 섹션 자체가 안 온 것이고, 그때 화면은 절을
+  // 아예 안 그린다 — 여기서 true를 주면 빈 안내가 뜬다.
+  it('빈 메시지는 실패가 아니다', () => {
+    expect(isBusCallFailure('')).toBe(false)
+    expect(isBusCallFailure('   ')).toBe(false)
+  })
+
+  it('모르는 문구는 실패로 읽는다', () => {
+    expect(isBusCallFailure('서비스 점검 중입니다.')).toBe(true)
   })
 })

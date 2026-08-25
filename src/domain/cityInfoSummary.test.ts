@@ -1,23 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { makeParkingLot } from '../test/cityInfo'
+import { makeCityInfo, makeParkingLot } from '../test/cityInfo'
 import type { BikeStation, CityInfo, ParkingLot } from './cityInfo'
 import { parkingVacancyRate, subwayLineCount, totalBikes } from './cityInfoSummary'
 
 function info(overrides: Partial<CityInfo> = {}): CityInfo {
-  return {
-    areaName: '광화문·덕수궁',
-    areaCode: 'POI009',
-    freshness: null,
-    weather: null,
-    roadTraffic: null,
-    accidents: [],
-    parking: [],
-    bikes: [],
-    events: [],
-    alerts: [],
-    subway: [],
-    ...overrides,
-  }
+  return makeCityInfo({ areaName: '광화문·덕수궁', areaCode: 'POI009', ...overrides })
 }
 
 function lot(capacity: number | null, available: number | null): ParkingLot {
