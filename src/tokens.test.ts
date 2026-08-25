@@ -332,6 +332,86 @@ describe('다크 히트맵 램프', () => {
   })
 })
 
+/**
+ * 화면 파일 원문을 **경로와 함께** 준다(`vitest.config.ts`). 아래 배너 검사가
+ * 파일 단위로 봐야 해서 한 덩어리로 이은 `__SRC_SOURCES__`로는 안 된다.
+ */
+declare const __UI_FILES__: readonly { readonly path: string; readonly source: string }[]
+
+/**
+ * **색이 깔린 배너 안의 글자는 그 배경에서 4.5:1을 넘어야 한다.**
+ *
+ * 2026-08-25에 재 보니 재난문자와 기상특보 배너의 시각 줄이 `text-outline`
+ * (#727785)이었고 붉은 바탕(#ffdad6)에서 **3.46:1**이었다. 흰 카드에 쓰라고
+ * 고른 회색을 색 바탕에 그대로 얹은 것이다 — 눈으로는 「회색 작은 글씨」로
+ * 보여서 아무도 못 알아챘다.
+ *
+ * **배너만 본다.** 이름이 `*Banner.tsx`인 파일은 색 바탕 하나가 내용을 통째로
+ * 감싸는 모양이라 「이 파일의 글자색은 전부 저 배경 위에 놓인다」가 참이다.
+ * 보통 카드에는 그 전제가 없어서(흰 카드 안의 색 배지 등) 같은 검사를 못 건다.
+ *
+ * **자식 컴포넌트의 색은 못 본다** — `AccidentBanner` 안의 `AccidentList`가
+ * 그렇다. 여기서 잠그는 것은 배너가 직접 적은 색뿐이다.
+ */
+describe('색 배너의 글자 대비', () => {
+  /** `bg-crowded-container` 같은 색 바탕. 표면 계열(`surface-*`)은 뺀다. */
+  const TONED_BACKGROUND = /\bbg-((?:calm|normal|busy|crowded|error)(?:-container)?)\b/
+
+  /**
+   * 파일이 적은 모든 색 글자 토큰. 크기 토큰(`text-label-sm`)은 아래에서 걸러진다.
+   *
+   * **주석을 먼저 걷어낸다.** 이 저장소는 「`text-outline`은 이 바탕에서
+   * 3.46:1이라 못 쓴다」처럼 **안 쓰는 이유를 주석에 적는다** — 그대로 훑으면
+   * 고쳐 놓은 자리가 영영 실패한 채로 남는다. 트래커 생성기가 같은 이유로
+   * 같은 일을 한다(`scripts/format-citydata-spec.mjs`).
+   */
+  function textTokens(source: string): readonly string[] {
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    return [...code.matchAll(/\btext-([a-z0-9-]+)/g)].map((found) => found[1])
+  }
+
+  function isColorToken(name: string): boolean {
+    try {
+      token(name)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const banners = __UI_FILES__.filter((file) => /Banner\.tsx$/.test(file.path))
+
+  // 정규식이 깨지거나 파일이 이름을 바꾸면 이 검사가 빈 배열을 훑으며 조용히
+  // 통과한다. 배너가 넷 있는 것을 확인하고 시작한다.
+  it('배너 파일을 실제로 찾아낸다', () => {
+    expect(banners.length).toBeGreaterThanOrEqual(3)
+    expect(banners.some((file) => TONED_BACKGROUND.test(file.source))).toBe(true)
+  })
+
+  it.each(banners.map((file) => [file.path, file.source]))(
+    '%s의 글자가 제 배경에서 4.5:1을 넘는다',
+    (_path, source) => {
+      const background = TONED_BACKGROUND.exec(source)?.[1]
+      if (background === undefined) {
+        return
+      }
+
+      const failing = [...new Set(textTokens(source))]
+        .filter(isColorToken)
+        .flatMap((name) => [
+          ...(contrast(token(name), token(background)) < 4.5 ? [`${name} (밝게)`] : []),
+          ...(contrast(darkToken(name), darkToken(background)) < 4.5
+            ? [`${name} (어둡게)`]
+            : []),
+        ])
+
+      expect(failing).toEqual([])
+    },
+  )
+})
+
 // **이 테스트가 다크 모드의 완결성을 잠근다.** 화면 어딘가에서 쓰는 색인데
 // 다크 블록에 없으면, 밤에 그 자리만 라이트 값이 남아 배경과 뭉개진다 —
 // 새 색을 쓰기 시작할 때 가장 조용히 빠지는 자리라 사람이 기억할 일이 아니다.

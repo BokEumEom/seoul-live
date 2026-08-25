@@ -223,6 +223,7 @@ describe('언어를 바꾸면 화면이 따라온다', () => {
             expectedClearAt: '2026-08-21 16:00',
           }),
         ]}
+        origin={null}
         onShowOnMap={() => undefined}
       />,
     )

@@ -969,6 +969,31 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
   })
 
   // 기상특보(기상청)와 재난문자(행정안전부)는 **다른 출처이고 다른 탭**이다.
+  /**
+   * **배선을 여기서 잡는다.** `AccidentList`가 거리를 그리는 것은 제 테스트가
+   * 보지만, **안전 탭이 명소 좌표를 실제로 넘기는지**는 아무도 안 봤다 —
+   * 2026-08-25 변이 실험에서 `origin={null}`로 바꿔도 스위트가 통과했다.
+   * 기준점은 명소 중심이지 내 위치가 아니다(`facilityDistance.ts`).
+   */
+  it('안전 탭이 통제 지점까지의 거리를 적는다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        accidents: [
+          makeAccident({
+            info: '강남대로 1개 차로 통제',
+            // 강남역(37.498856, 127.02814)에서 북쪽으로 대략 500m.
+            coords: { lat: 37.503356, lng: 127.02814 },
+          }),
+        ],
+      }),
+    )
+    renderDetail()
+    await openTab('안전')
+
+    expect(screen.getByText(/500m/)).toBeInTheDocument()
+  })
+
   // 특보가 안전 탭으로 새거나 재난문자가 날씨 탭에 뜨면 사용자는 둘을 같은
   // 것으로 읽고, 하나가 비었을 때 「알림이 없다」고 잘못 판단한다.
   it('기상특보는 날씨 탭에만 있고 재난문자는 안전 탭에만 있다', async () => {

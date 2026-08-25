@@ -38,8 +38,11 @@ export function AlertBanner({ alerts }: Props) {
         <div key={`${alert.createdAt}-${index}`} className={index > 0 ? 'mt-4' : ''}>
           <p className="text-label-md text-crowded">{alertLabel(alert)}</p>
           <p className="mt-1 text-body-md leading-6 text-on-surface">{alert.message}</p>
+          {/* `text-outline`은 이 붉은 바탕에서 3.46:1이라 못 쓴다 — 흰 카드에
+              쓰라고 고른 회색이다. `-container`의 짝은 7.21:1이고 다크에서도
+              7.30:1이다(2026-08-25에 재서 고쳤다). */}
           {alert.createdAt !== '' && (
-            <p className="mt-1 text-label-sm text-outline">{alert.createdAt}</p>
+            <p className="mt-1 text-label-sm text-on-surface-variant">{alert.createdAt}</p>
           )}
         </div>
       ))}

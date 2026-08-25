@@ -1,5 +1,6 @@
 import { t } from '../../../i18n/t'
 import type { FacilityLocation } from '../../../domain/cityInfo'
+import type { Coords } from '../../../domain/types'
 import { AccidentList } from '../../cityinfo/AccidentList'
 import { AlertBanner } from '../../cityinfo/AlertBanner'
 import { InfoSection } from '../../cityinfo/InfoSection'
@@ -7,6 +8,11 @@ import { CityInfoBoundary } from '../CityInfoBoundary'
 
 interface Props {
   readonly areaName: string
+  /**
+   * 통제 지점까지의 거리를 재는 기준점. **명소 중심이지 내 위치가 아니다.**
+   * 시안 `stitch_ui_ux/_9`의 「1.2km 거리」 자리다.
+   */
+  readonly origin: Coords | null
   readonly onShowOnMap: (place: FacilityLocation) => void
 }
 
@@ -24,7 +30,7 @@ interface Props {
  * 통제에도 없다. 짐작해서 「심각도 높음」을 붙이면 앱이 하지 않은 판단을 한
  * 것으로 읽힌다.
  */
-export function SafetyPanel({ areaName, onShowOnMap }: Props) {
+export function SafetyPanel({ areaName, origin, onShowOnMap }: Props) {
   return (
     <CityInfoBoundary
       areaName={areaName}
@@ -49,7 +55,11 @@ export function SafetyPanel({ areaName, onShowOnMap }: Props) {
                   : t('기준 {시각}', { 시각: info.accidentsUpdatedAt })
               }
             >
-              <AccidentList accidents={info.accidents} onShowOnMap={onShowOnMap} />
+              <AccidentList
+                accidents={info.accidents}
+                origin={origin}
+                onShowOnMap={onShowOnMap}
+              />
             </InfoSection>
           )}
         </div>

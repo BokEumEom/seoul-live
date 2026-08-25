@@ -53,7 +53,11 @@ export function TrafficPanel({ areaName, origin, onShowOnMap }: Props) {
 
           {/* **통제는 절이 아니라 배너다.** 시안 `_4`가 도로 요약과 「주요 도로
               상황」 사이에 통째로 띄운다 — 근거는 `AccidentBanner`의 주석. */}
-          <AccidentBanner accidents={info.accidents} onShowOnMap={onShowOnMap} />
+          <AccidentBanner
+            accidents={info.accidents}
+            origin={origin}
+            onShowOnMap={onShowOnMap}
+          />
 
           {/* **요약과 절을 나눈 이유.** 위 절은 「지금 차로 갈 만한가」 한 줄과
               통제 소식이고, 이쪽은 「그래서 어느 길이」다. 한 절에 넣으면 평균

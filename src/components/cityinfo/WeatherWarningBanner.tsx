@@ -49,8 +49,10 @@ export function WeatherWarningBanner({ warnings }: Props) {
           {warning.message !== '' && (
             <p className="mt-1 text-body-md leading-6 text-on-surface">{warning.message}</p>
           )}
+          {/* `text-outline`은 이 붉은 바탕에서 3.46:1이라 못 쓴다 —
+              근거는 `AlertBanner`의 같은 자리. */}
           {warning.announcedAt !== '' && (
-            <p className="mt-1 text-label-sm text-outline">
+            <p className="mt-1 text-label-sm text-on-surface-variant">
               {t('{시각} 발효', { 시각: warning.announcedAt })}
             </p>
           )}

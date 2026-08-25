@@ -1,11 +1,14 @@
 import { t } from '../../i18n/t'
 import type { AccidentControl } from '../../domain/accident'
 import type { FacilityLocation } from '../../domain/cityInfo'
+import type { Coords } from '../../domain/types'
 import { Icon } from '../common/Icon'
 import { AccidentList } from './AccidentList'
 
 interface Props {
   readonly accidents: readonly AccidentControl[]
+  /** 거리를 재는 기준점. 명소 중심이다 — 근거는 `facilityDistance.ts`. */
+  readonly origin: Coords | null
   readonly onShowOnMap: (place: FacilityLocation) => void
 }
 
@@ -27,7 +30,7 @@ interface Props {
  * **여러 건이면 한 배너 안에 쌓는다.** 건마다 배너를 세우면 제목
  * 「차량 통제 알림」이 화면에 세 번 적힌다 — 실호출의 광화문이 두 건이었다.
  */
-export function AccidentBanner({ accidents, onShowOnMap }: Props) {
+export function AccidentBanner({ accidents, origin, onShowOnMap }: Props) {
   if (accidents.length === 0) {
     return null
   }
@@ -46,7 +49,7 @@ export function AccidentBanner({ accidents, onShowOnMap }: Props) {
         </h3>
       </div>
       <div className="mt-3">
-        <AccidentList accidents={accidents} onShowOnMap={onShowOnMap} />
+        <AccidentList accidents={accidents} origin={origin} onShowOnMap={onShowOnMap} />
       </div>
     </section>
   )

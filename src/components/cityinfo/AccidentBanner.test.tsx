@@ -10,6 +10,7 @@ describe('AccidentBanner', () => {
     render(
       <AccidentBanner
         accidents={[makeAccident({ info: '세종대로 하위1개차로 통제' })]}
+        origin={null}
         onShowOnMap={noop}
       />,
     )
@@ -27,6 +28,7 @@ describe('AccidentBanner', () => {
           makeAccident({ info: '첫째 통제', occurredAt: '2026-08-25 09:00' }),
           makeAccident({ info: '둘째 통제', occurredAt: '2026-08-25 10:00' }),
         ]}
+        origin={null}
         onShowOnMap={noop}
       />,
     )
@@ -37,7 +39,7 @@ describe('AccidentBanner', () => {
   })
 
   it('통제가 없으면 아무것도 그리지 않는다', () => {
-    const { container } = render(<AccidentBanner accidents={[]} onShowOnMap={noop} />)
+    const { container } = render(<AccidentBanner accidents={[]} origin={null} onShowOnMap={noop} />)
 
     expect(container).toBeEmptyDOMElement()
   })
@@ -51,7 +53,7 @@ describe('AccidentBanner', () => {
    */
   it('재난문자와 다른 톤을 쓴다', () => {
     const { container } = render(
-      <AccidentBanner accidents={[makeAccident()]} onShowOnMap={noop} />,
+      <AccidentBanner accidents={[makeAccident()]} origin={null} onShowOnMap={noop} />,
     )
     const banner = container.querySelector('section')
 

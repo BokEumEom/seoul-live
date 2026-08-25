@@ -2,10 +2,18 @@ import { apiText } from '../../i18n/apiText'
 import { t } from '../../i18n/t'
 import type { AccidentControl } from '../../domain/accident'
 import { toFacilityLocation, type FacilityLocation } from '../../domain/cityInfo'
+import { formatDistance } from '../../domain/distance'
+import { withDistanceFrom } from '../../domain/facilityDistance'
+import type { Coords } from '../../domain/types'
 import { ShowOnMapButton } from './ShowOnMapButton'
 
 interface Props {
   readonly accidents: readonly AccidentControl[]
+  /**
+   * 거리를 재는 기준점. **명소 중심이지 내 위치가 아니다**
+   * (`facilityDistance.ts`). 좌표를 모르면 거리 없이 그린다.
+   */
+  readonly origin: Coords | null
   readonly onShowOnMap: (place: FacilityLocation) => void
 }
 
@@ -27,14 +35,14 @@ function typeLabel(accident: AccidentControl): string {
     .join(' · ')
 }
 
-export function AccidentList({ accidents, onShowOnMap }: Props) {
+export function AccidentList({ accidents, origin, onShowOnMap }: Props) {
   if (accidents.length === 0) {
     return null
   }
 
   return (
     <ul className="flex flex-col">
-      {accidents.map((accident, index) => {
+      {withDistanceFrom(accidents, origin).map((accident, index) => {
         const label = typeLabel(accident)
         // **지도 버튼의 이름도 옮긴다.** `aria-label`이 「{시설} 지도에서 보기」라
         // 여기에 한국어 원문을 넘기면 영어 화면의 스크린리더에서만 한국어가 남는다.
@@ -66,11 +74,20 @@ export function AccidentList({ accidents, onShowOnMap }: Props) {
                     그동안 영어 화면에서 여기만 한국어로 남아 있던 자리다. */}
                 <p className="mt-1 text-body-md leading-6 text-on-surface">{info}</p>
                 {/* 사용자가 실제로 쓰는 값은 「언제 풀리나」다. 발생 시각보다 이쪽이
-                    앞이라 종료 예정만 적는다 — 시트는 좁다. */}
-                {/* `text-outline`은 주황 배너 위에서 3.46:1이라 못 쓴다. */}
-                {accident.expectedClearAt !== '' && (
+                    앞이라 종료 예정만 적는다 — 시트는 좁다.
+
+                    **거리가 뒤에 붙는다**(2026-08-25, 시안 `_9`의 「1.2km 거리」).
+                    이 목록의 항목은 전부 「이 명소 근처」인데 그 근처의 폭이
+                    200m일 수도 1.5km일 수도 있다 — 우회할지 말지가 거기서
+                    갈린다. 좌표가 없는 통제가 실제로 오므로 따로 빠진다.
+
+                    `text-outline`은 주황 배너 위에서 3.46:1이라 못 쓴다. */}
+                {(accident.expectedClearAt !== '' || accident.meters !== null) && (
                   <p className="mt-1 text-label-sm text-on-surface-variant">
-                    {t('{시각}까지 통제', { 시각: accident.expectedClearAt })}
+                    {accident.expectedClearAt !== '' &&
+                      t('{시각}까지 통제', { 시각: accident.expectedClearAt })}
+                    {accident.expectedClearAt !== '' && accident.meters !== null && ' · '}
+                    {accident.meters !== null && formatDistance(accident.meters)}
                   </p>
                 )}
               </div>

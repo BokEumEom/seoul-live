@@ -25,7 +25,7 @@ afterEach(() => {
 
 describe('AccidentList', () => {
   it('통제 내용을 보여준다', () => {
-    render(<AccidentList accidents={[accident()]} onShowOnMap={noop} />)
+    render(<AccidentList accidents={[accident()]} origin={null} onShowOnMap={noop} />)
     expect(screen.getByText('세종대로 사거리 2개 차로 통제')).toBeInTheDocument()
   })
 
@@ -45,6 +45,7 @@ describe('AccidentList', () => {
           accident({ occurredAt: '2026-08-07 08:40' }),
           accident({ occurredAt: '2026-08-07 09:10' }),
         ]}
+        origin={null}
         onShowOnMap={noop}
       />,
     )
@@ -55,32 +56,83 @@ describe('AccidentList', () => {
   })
 
   it('유형과 세부유형을 한 줄로 묶는다', () => {
-    render(<AccidentList accidents={[accident()]} onShowOnMap={noop} />)
+    render(<AccidentList accidents={[accident()]} origin={null} onShowOnMap={noop} />)
     expect(screen.getByText('교통사고 · 차대차')).toBeInTheDocument()
   })
 
   // 유형만 오고 세부유형이 없을 때 구분점이 남으면 「교통사고 ·」가 된다.
   it('세부유형이 없으면 구분점을 남기지 않는다', () => {
-    render(<AccidentList accidents={[accident({ detailType: '' })]} onShowOnMap={noop} />)
+    render(<AccidentList accidents={[accident({ detailType: '' })]} origin={null} onShowOnMap={noop} />)
     expect(screen.getByText('교통사고')).toBeInTheDocument()
     expect(screen.queryByText(/·/)).not.toBeInTheDocument()
   })
 
   // 사용자가 실제로 쓰는 값은 「언제 풀리나」다. 발생 시각보다 이쪽이 앞이다.
   it('통제 종료 예정 시각을 보여준다', () => {
-    render(<AccidentList accidents={[accident()]} onShowOnMap={noop} />)
+    render(<AccidentList accidents={[accident()]} origin={null} onShowOnMap={noop} />)
     expect(screen.getByText(/10:00까지/)).toBeInTheDocument()
   })
 
   it('종료 예정이 없으면 그 줄을 만들지 않는다', () => {
-    render(<AccidentList accidents={[accident({ expectedClearAt: '' })]} onShowOnMap={noop} />)
+    render(<AccidentList accidents={[accident({ expectedClearAt: '' })]} origin={null} onShowOnMap={noop} />)
     expect(screen.queryByText(/까지/)).not.toBeInTheDocument()
+  })
+
+  /**
+   * **거리는 「근처」의 폭을 말한다**(2026-08-25, 시안 `_9`의 「1.2km 거리」).
+   * 이 목록의 항목은 전부 이 명소 근처인데 그 근처가 200m일 수도 1.5km일
+   * 수도 있고, 우회할지 말지가 거기서 갈린다.
+   *
+   * 기준점은 **명소 중심이지 내 위치가 아니다** — 부산에서 광화문을 열어도
+   * 「120m」가 뜻을 가져야 한다(`facilityDistance.ts`).
+   */
+  it('명소 중심에서의 거리를 종료 예정 옆에 적는다', () => {
+    render(
+      <AccidentList
+        accidents={[accident({ coords: { lat: 37.5759, lng: 126.9769 } })]}
+        origin={{ lat: 37.5715, lng: 126.9769 }}
+        onShowOnMap={noop}
+      />,
+    )
+
+    expect(screen.getByText(/10:00까지 통제 · 490m/)).toBeInTheDocument()
+  })
+
+  // 좌표가 없는 통제가 실호출에 실제로 온다. 「0m」로 떨어뜨리면 「바로 여기」가
+  // 되는데, 그건 모른다는 것과 정반대의 말이다.
+  it('좌표가 없으면 거리를 안 적는다', () => {
+    render(
+      <AccidentList
+        accidents={[accident()]}
+        origin={{ lat: 37.5715, lng: 126.9769 }}
+        onShowOnMap={noop}
+      />,
+    )
+
+    expect(screen.getByText('2026-08-07 10:00까지 통제')).toBeInTheDocument()
+    expect(screen.queryByText(/m$/)).toBeNull()
+  })
+
+  // 종료 예정이 없고 거리만 있는 통제. 구분점만 남으면 「· 490m」가 된다.
+  it('종료 예정이 없으면 거리만 적는다', () => {
+    render(
+      <AccidentList
+        accidents={[
+          accident({ expectedClearAt: '', coords: { lat: 37.5759, lng: 126.9769 } }),
+        ]}
+        origin={{ lat: 37.5715, lng: 126.9769 }}
+        onShowOnMap={noop}
+      />,
+    )
+
+    expect(screen.getByText('490m')).toBeInTheDocument()
   })
 
   it('여러 건을 모두 보여준다', () => {
     render(
       <AccidentList
         accidents={[accident(), accident({ info: '남대문로 갓길 통제' })]}
+        origin={null}
         onShowOnMap={noop}
       />,
     )
@@ -98,6 +150,7 @@ describe('AccidentList', () => {
         accidents={[
           accident({ infoEn: 'Two lanes closed at Sejong-daero intersection' }),
         ]}
+        origin={null}
         onShowOnMap={noop}
       />,
     )
@@ -112,7 +165,7 @@ describe('AccidentList', () => {
   // 내용이 통째로 사라진다.
   it('영어가 안 오면 한국어 원문으로 떨어진다', () => {
     applyLanguage('en')
-    render(<AccidentList accidents={[accident()]} onShowOnMap={noop} />)
+    render(<AccidentList accidents={[accident()]} origin={null} onShowOnMap={noop} />)
 
     expect(screen.getByText('세종대로 사거리 2개 차로 통제')).toBeInTheDocument()
   })
@@ -124,6 +177,7 @@ describe('AccidentList', () => {
     render(
       <AccidentList
         accidents={[accident({ coords: { lat: 37.5715, lng: 126.9769 } })]}
+        origin={null}
         onShowOnMap={onShowOnMap}
       />,
     )
@@ -137,7 +191,7 @@ describe('AccidentList', () => {
   })
 
   it('좌표가 없으면 지도 버튼을 만들지 않는다', () => {
-    render(<AccidentList accidents={[accident()]} onShowOnMap={noop} />)
+    render(<AccidentList accidents={[accident()]} origin={null} onShowOnMap={noop} />)
     expect(screen.queryByRole('button', { name: /지도에서 보기/ })).toBeNull()
   })
 
@@ -153,6 +207,7 @@ describe('AccidentList', () => {
             coords: { lat: 37.5715, lng: 126.9769 },
           }),
         ]}
+        origin={null}
         onShowOnMap={noop}
       />,
     )
