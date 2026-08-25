@@ -1,6 +1,12 @@
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { WIND_DIRECTION_LABELS } from '../domain/cityInfo'
+import {
+  COMMERCE_AGE_LABELS,
+  COMMERCE_GENDER_LABELS,
+  COMMERCE_LEVELS,
+  COMMERCE_PAYER_LABELS,
+} from '../domain/commerce'
 import { AGE_LABELS } from '../domain/composition'
 import { congestionSentence } from '../domain/congestion'
 import { DETAIL_TABS } from '../domain/detailTabs'
@@ -86,6 +92,33 @@ const ACCIDENT_TYPE_LABELS = ['교통사고', '차대차', '공사', '도로보�
  * 있고, `보통`은 이미 대기등급 쪽에 있다.
  */
 const WEATHER_WARNING_LABELS = ['폭염', '대설', '강풍'] as const
+/**
+ * 상권 업종. 명세 222·223행이 이름만 주고 값의 종류는 비어 있다 — 실호출
+ * 8곳 69줄에서 대분류 5종·중분류 11종을 봤다(2026-08-25). **이것이 전부라고
+ * 단언할 수 없다.** 새 값을 보거든 여기와 `en.ts`에 함께 더하라.
+ *
+ * 단계 넷(`COMMERCE_LEVELS`)과 연령 여섯(`COMMERCE_AGE_LABELS`)은 **도메인에서
+ * 뽑는다** — 손으로 적으면 도메인이 늘 때 여기가 낡는다.
+ */
+const COMMERCE_CATEGORY_LABELS = [
+  '음식·음료',
+  '유통',
+  '패션·뷰티',
+  '의료',
+  '여가·오락',
+  '한식',
+  '제과/커피/패스트푸드',
+  '일식/중식/양식',
+  '기타요식',
+  '편의점',
+  '할인점/슈퍼마켓',
+  '의복/의류',
+  '패션/잡화',
+  '병원',
+  '약국',
+  '스포츠/문화/레저',
+] as const
+
 const UV_GRADE_LABELS = ['낮음', '높음', '매우높음', '위험'] as const
 /** 실호출 응답(`docs/fixtures/citydata-광화문덕수궁.json`)에서 이 둘을 봤다. */
 const SUBWAY_DIRECTION_LABELS = ['상행', '하행'] as const
@@ -159,6 +192,11 @@ function dynamicKeys(): readonly string[] {
     ...SUBWAY_DIRECTION_LABELS,
     ...WEATHER_WARNING_LABELS,
     ...UV_GRADE_LABELS,
+    ...COMMERCE_LEVELS,
+    ...COMMERCE_AGE_LABELS,
+    ...COMMERCE_CATEGORY_LABELS,
+    ...COMMERCE_GENDER_LABELS,
+    ...COMMERCE_PAYER_LABELS,
     // 16방위는 **도메인에서 뽑는다.** 손으로 적으면 방위가 하나 늘 때 여기가
     // 낡는데, 이렇게 두면 그때 「사전에 없다」로 죽는다.
     ...WIND_DIRECTION_LABELS,

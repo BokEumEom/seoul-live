@@ -18,6 +18,7 @@ import { MapLinkButtons } from '../home/MapLinkButtons'
 import { DetailAppBar } from './DetailAppBar'
 import { DetailHero } from './DetailHero'
 import { DetailTabs } from './DetailTabs'
+import { CommercePanel } from './panels/CommercePanel'
 import { EventsPanel } from './panels/EventsPanel'
 import { NearbyPanel } from './panels/NearbyPanel'
 import { PopulationPanel } from './panels/PopulationPanel'
@@ -246,6 +247,7 @@ export function AreaDetailScreen({
 
           {tab === 'weather' && <WeatherPanel areaName={areaName} />}
           {tab === 'events' && <EventsPanel areaName={areaName} />}
+          {tab === 'commerce' && <CommercePanel areaName={areaName} />}
           {tab === 'safety' && <SafetyPanel areaName={areaName} />}
         </m.div>
 

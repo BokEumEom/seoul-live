@@ -1174,3 +1174,56 @@ describe('AreaDetailScreen — 교통 탭의 승하차와 정류소', () => {
     expect(screen.queryByText('정상 호출되었습니다.')).not.toBeInTheDocument()
   })
 })
+
+// 시안(stitch_ui_ux/_2)의 탭 줄에 처음부터 있었는데 `LIVE_CMRCL_STTS`를 안
+// 읽고 있어 자리가 비어 있던 탭이다. 배선을 여기서 잡는다.
+describe('AreaDetailScreen — 상권 탭', () => {
+  const COMMERCE = {
+    level: '바쁜',
+    paymentCount: 168,
+    paymentMin: 390_000_000,
+    paymentMax: 400_000_000,
+    categories: [
+      {
+        major: '음식·음료',
+        minor: '한식',
+        level: '바쁜',
+        paymentCount: 57,
+        paymentMin: 1_300_000,
+        paymentMax: 1_400_000,
+        storeCount: 374,
+        storeCountAt: '202607',
+      },
+    ],
+    maleRate: 41.4,
+    femaleRate: 58.6,
+    ageRates: [0, 10.4, 12.8, 26.2, 26.8, 23.8],
+    personalRate: 79.4,
+    corporationRate: 20.6,
+    updatedAt: '20260825 1120',
+  }
+
+  it('상권 탭이 줄에 있다', () => {
+    renderDetail()
+    expect(screen.getByRole('tab', { name: '상권' })).toBeInTheDocument()
+  })
+
+  it('상권 탭이 지표와 업종을 보여준다', async () => {
+    useCityInfo.mockReturnValue(ok({ ...EMPTY_CITY_INFO, commerce: COMMERCE }))
+    renderDetail()
+    await openTab('상권')
+
+    expect(screen.getByText('지금 이 동네 상권은 바쁜편이에요')).toBeInTheDocument()
+    expect(screen.getByText('한식')).toBeInTheDocument()
+  })
+
+  // **명소에 따라 통째로 빈다.** 실호출에서 여의도한강공원은 이 섹션이 아예
+  // 없었고, 121곳 중 공원류가 서른 곳 넘는다.
+  it('상권이 없는 명소에서는 없다고 말한다', async () => {
+    useCityInfo.mockReturnValue(ok({ ...EMPTY_CITY_INFO, commerce: null }))
+    renderDetail()
+    await openTab('상권')
+
+    expect(screen.getByText('이 명소에는 상권 정보가 없어요.')).toBeInTheDocument()
+  })
+})

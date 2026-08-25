@@ -128,6 +128,35 @@ describe('parseCityInfoResponse — 날씨', () => {
   })
 })
 
+describe('parseCityInfoResponse — 상권', () => {
+  // **섹션이 왔는데 값이 없으면 `null`이다.** 빈 껍데기를 돌려주면 상권 탭이
+  // `!== null`로 판정해 제목만 있는 빈 화면을 그린다 — 2026-08-25 변이
+  // 실험에서 이 갈래를 지워도 통과했다.
+  it('값이 하나도 없는 섹션은 null이다', () => {
+    const info = parseCityInfoResponse(
+      payload({ LIVE_CMRCL_STTS: { AREA_CMRCL_LVL: '', CMRCL_TIME: '20260825 1120' } }),
+      AREA,
+    )
+
+    expect(info.commerce).toBeNull()
+  })
+
+  it('섹션이 아예 없으면 null이다', () => {
+    // 실호출에서 여의도한강공원이 이 상태였다(2026-08-25).
+    expect(parseCityInfoResponse(payload({}), AREA).commerce).toBeNull()
+  })
+
+  it('값이 하나라도 있으면 읽는다', () => {
+    const info = parseCityInfoResponse(
+      payload({ LIVE_CMRCL_STTS: { AREA_CMRCL_LVL: '바쁜' } }),
+      AREA,
+    )
+
+    expect(info.commerce?.level).toBe('바쁜')
+    expect(info.commerce?.ageRates).toEqual([0, 0, 0, 0, 0, 0])
+  })
+})
+
 describe('parseCityInfoResponse — 승하차 인원', () => {
   // **섹션이 없으면 `null`이지 빈 껍데기가 아니다.** 값이 하나도 없는 객체를
   // 돌려주면 화면이 「승하차 정보 있음」으로 읽어 빈 절을 그린다 — 교통 탭의

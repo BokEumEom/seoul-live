@@ -1,3 +1,4 @@
+import type { Commerce } from './commerce'
 import type { CongestionTone } from './congestion'
 import type { Freshness } from './freshness'
 import type { Coords } from './types'
@@ -487,6 +488,12 @@ export interface CityInfo {
    * 원문을 그대로 보여준다(자유 문장이라 옮기지 않는다).
    */
   readonly busResultMessage: string
+  /**
+   * 실시간 상권. **명소에 따라 통째로 안 온다** — 실호출에서 여의도한강공원은
+   * 이 섹션 자체가 없었다(2026-08-25). 공원·한강은 결제가 일어나는 곳이 아니라
+   * 정상이고, 그때 상권 탭은 빈 상태를 그린다.
+   */
+  readonly commerce: Commerce | null
   /**
    * 이 응답이 얼마나 묵었나. **모르면 `null`이고, 그때 화면은 모른다고 말한다.**
    *

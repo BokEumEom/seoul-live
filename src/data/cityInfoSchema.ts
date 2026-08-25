@@ -16,6 +16,11 @@ import type {
   Weather,
   WeatherWarning,
 } from '../domain/cityInfo'
+import {
+  hasReadableCommerce,
+  type Commerce,
+  type CommerceCategory,
+} from '../domain/commerce'
 import { AreaNameMismatchError, seoulApiErrorFrom } from './schema'
 import { asRow, coordsOrNull, numberOrNull, text, type Row } from './rowReaders'
 
@@ -279,6 +284,59 @@ function toRidership(rows: readonly Row[], prefix: string): Ridership | null {
   return anyValue ? ridership : null
 }
 
+/**
+ * 실시간 상권. **`CMRCL_RSB`가 명세에 없다** — 명세 222~229행은 업종 필드를
+ * 한 겹 펼쳐 적어 놓고 그것들을 담는 배열 이름을 안 적었다. 실호출로 확인했다
+ * (2026-08-25). 명세의 순번만 보고 평평하게 읽으면 업종이 통째로 빈다.
+ */
+function toCommerceCategories(rows: readonly Row[]): readonly CommerceCategory[] {
+  return named(
+    rows,
+    'RSB_MID_CTGR',
+    (row, minor): CommerceCategory => ({
+      major: text(row, 'RSB_LRG_CTGR'),
+      minor,
+      level: text(row, 'RSB_PAYMENT_LVL'),
+      paymentCount: numberOrNull(row, 'RSB_SH_PAYMENT_CNT'),
+      paymentMin: numberOrNull(row, 'RSB_SH_PAYMENT_AMT_MIN'),
+      paymentMax: numberOrNull(row, 'RSB_SH_PAYMENT_AMT_MAX'),
+      storeCount: numberOrNull(row, 'RSB_MCT_CNT'),
+      storeCountAt: text(row, 'RSB_MCT_TIME'),
+    }),
+  )
+}
+
+function toCommerce(rows: readonly Row[]): Commerce | null {
+  const row = rows[0]
+  if (row === undefined) {
+    return null
+  }
+  const commerce: Commerce = {
+    level: text(row, 'AREA_CMRCL_LVL'),
+    paymentCount: numberOrNull(row, 'AREA_SH_PAYMENT_CNT'),
+    paymentMin: numberOrNull(row, 'AREA_SH_PAYMENT_AMT_MIN'),
+    paymentMax: numberOrNull(row, 'AREA_SH_PAYMENT_AMT_MAX'),
+    categories: toCommerceCategories(sectionRows(row, ['CMRCL_RSB'])),
+    maleRate: numberOrNull(row, 'CMRCL_MALE_RATE'),
+    femaleRate: numberOrNull(row, 'CMRCL_FEMALE_RATE'),
+    // **여섯 칸이다**(인구 구성은 여덟). 못 읽은 칸은 0으로 떨어뜨린다 —
+    // 막대는 0을 빈자리로 그리고, 문구는 `hasReadableCommerce`가 막는다.
+    ageRates: [
+      'CMRCL_10_RATE',
+      'CMRCL_20_RATE',
+      'CMRCL_30_RATE',
+      'CMRCL_40_RATE',
+      'CMRCL_50_RATE',
+      'CMRCL_60_RATE',
+    ].map((key) => numberOrNull(row, key) ?? 0),
+    personalRate: numberOrNull(row, 'CMRCL_PERSONAL_RATE'),
+    corporationRate: numberOrNull(row, 'CMRCL_CORPORATION_RATE'),
+    updatedAt: text(row, 'CMRCL_TIME'),
+  }
+  // 섹션은 왔는데 값이 하나도 없으면 없는 것으로 접는다 — 승하차와 같은 규칙이다.
+  return hasReadableCommerce(commerce) ? commerce : null
+}
+
 function toBusStops(rows: readonly Row[]): readonly BusStop[] {
   return named(
     rows,
@@ -447,5 +505,6 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
     busRidership: toRidership(sectionRows(container, ['LIVE_BUS_PPLTN']), 'BUS'),
     // 정류소 목록의 첫 줄이 이고 온다. 줄마다 같은 값이라 하나만 읽는다.
     busResultMessage: text(sectionRows(container, ['BUS_STN_STTS'])[0] ?? {}, 'BUS_RESULT_MSG'),
+    commerce: toCommerce(sectionRows(container, ['LIVE_CMRCL_STTS'])),
   }
 }

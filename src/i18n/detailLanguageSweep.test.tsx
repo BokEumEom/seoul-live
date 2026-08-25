@@ -210,6 +210,31 @@ const CITY_INFO: CityInfo = makeCityInfo({
   // 자유 문장이라 옮기지 않는 자리다. 실패 갈래를 태워 두면 그 문장이 영어
   // 화면에 한국어로 뜨는 것이 **결함이 아님**을 스윕이 헷갈리지 않는다.
   busResultMessage: 'Service under maintenance.',
+  // 상권 갈래 값은 **한국어 그대로** 둔다 — 옮겨야 하는 값이라 스윕이 잡아야 한다.
+  commerce: {
+    level: '바쁜',
+    paymentCount: 168,
+    paymentMin: 390_000_000,
+    paymentMax: 400_000_000,
+    categories: [
+      {
+        major: '음식·음료',
+        minor: '한식',
+        level: '한산한',
+        paymentCount: 57,
+        paymentMin: 1_300_000,
+        paymentMax: 1_400_000,
+        storeCount: 374,
+        storeCountAt: '202607',
+      },
+    ],
+    maleRate: 41.4,
+    femaleRate: 58.6,
+    ageRates: [0, 10.4, 12.8, 26.2, 26.8, 23.8],
+    personalRate: 79.4,
+    corporationRate: 20.6,
+    updatedAt: '20260825 1120',
+  },
   subway: [
     {
       station: 'Gwanghwamun',

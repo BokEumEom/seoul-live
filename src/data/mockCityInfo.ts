@@ -279,6 +279,82 @@ function buildBusStops(areaName: string, seed: number): readonly unknown[] {
   })
 }
 
+const COMMERCE_SALT = 11
+
+/** 실호출 표본(2026-08-25, 명소 8곳 69줄)에서 본 대분류×중분류. */
+const COMMERCE_KINDS = [
+  ['음식·음료', '한식'],
+  ['음식·음료', '제과/커피/패스트푸드'],
+  ['음식·음료', '일식/중식/양식'],
+  ['음식·음료', '기타요식'],
+  ['유통', '편의점'],
+  ['유통', '할인점/슈퍼마켓'],
+  ['패션·뷰티', '의복/의류'],
+  ['패션·뷰티', '패션/잡화'],
+  ['의료', '병원'],
+  ['의료', '약국'],
+  ['여가·오락', '스포츠/문화/레저'],
+] as const
+
+/** 실호출에서 확인한 네 단계. `commerceLevelTone`이 아는 값과 같아야 한다. */
+const COMMERCE_LEVEL_VALUES = ['한산한', '보통', '분주한', '바쁜'] as const
+
+/**
+ * 실시간 상권. **다섯 곳 중 한 곳은 통째로 없다** — 실호출에서 여의도한강공원이
+ * 그랬다. 목업이 언제나 상권을 내면 「상권이 없는 명소」의 빈 탭을 한 번도
+ * 확인할 수 없다.
+ */
+function buildCommerce(seed: number, now: Date): Record<string, unknown> | undefined {
+  if (mixSeed(seed, COMMERCE_SALT) % 5 === 0) {
+    return undefined
+  }
+  const level = COMMERCE_LEVEL_VALUES[mixSeed(seed, COMMERCE_SALT + 1) % 4]
+  const count = 3 + (mixSeed(seed, COMMERCE_SALT + 2) % 9)
+  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+
+  // 여섯 칸을 100에 맞춘다. 남는 몫은 30·40대로 몰아 실데이터의 모양을 닮게 한다.
+  const ageRaw = Array.from(
+    { length: 6 },
+    (_, index) => 5 + (mixSeed(seed, COMMERCE_SALT + 10 + index) % 25),
+  )
+  const ageSum = ageRaw.reduce((sum, value) => sum + value, 0)
+  const ageRates = ageRaw.map((value) => Math.round((value / ageSum) * 1000) / 10)
+  const male = 30 + (mixSeed(seed, COMMERCE_SALT + 3) % 41)
+
+  return {
+    AREA_CMRCL_LVL: level,
+    AREA_SH_PAYMENT_CNT: String(20 + (mixSeed(seed, COMMERCE_SALT + 4) % 400)),
+    // 실응답은 이 둘을 **숫자**로 준다(다른 필드는 문자열이다).
+    AREA_SH_PAYMENT_AMT_MIN: 500_000 + (mixSeed(seed, COMMERCE_SALT + 5) % 60) * 100_000,
+    AREA_SH_PAYMENT_AMT_MAX: 550_000 + (mixSeed(seed, COMMERCE_SALT + 5) % 60) * 100_000,
+    CMRCL_RSB: Array.from({ length: count }, (_, index) => {
+      const [major, minor] = COMMERCE_KINDS[index % COMMERCE_KINDS.length]
+      const mixed = mixSeed(seed, COMMERCE_SALT * 10 + index)
+      return {
+        RSB_LRG_CTGR: major,
+        RSB_MID_CTGR: minor,
+        RSB_PAYMENT_LVL: COMMERCE_LEVEL_VALUES[mixed % 4],
+        RSB_SH_PAYMENT_CNT: 1 + (mixed % 90),
+        RSB_SH_PAYMENT_AMT_MIN: 100_000 + (mixed % 20) * 100_000,
+        RSB_SH_PAYMENT_AMT_MAX: 150_000 + (mixed % 20) * 100_000,
+        RSB_MCT_CNT: 5 + (mixed % 400),
+        RSB_MCT_TIME: '202607',
+      }
+    }),
+    CMRCL_MALE_RATE: male,
+    CMRCL_FEMALE_RATE: 100 - male,
+    CMRCL_10_RATE: ageRates[0],
+    CMRCL_20_RATE: ageRates[1],
+    CMRCL_30_RATE: ageRates[2],
+    CMRCL_40_RATE: ageRates[3],
+    CMRCL_50_RATE: ageRates[4],
+    CMRCL_60_RATE: ageRates[5],
+    CMRCL_PERSONAL_RATE: 60 + (mixSeed(seed, COMMERCE_SALT + 6) % 35),
+    CMRCL_CORPORATION_RATE: 40 - (mixSeed(seed, COMMERCE_SALT + 6) % 35),
+    CMRCL_TIME: stamp,
+  }
+}
+
 const PARKING_KINDS = ['공영주차장', '노외주차장', '민영주차장'] as const
 
 /**
@@ -493,6 +569,7 @@ export function buildMockCityInfo(areaName: string, now: Date = new Date()): unk
       LIVE_SUB_PPLTN: buildRidership(seed, 'SUB', RIDERSHIP_SALT, 12_000, now),
       LIVE_BUS_PPLTN: buildRidership(seed, 'BUS', RIDERSHIP_SALT + 5, 6_000, now),
       BUS_STN_STTS: buildBusStops(areaName, seed),
+      LIVE_CMRCL_STTS: buildCommerce(seed, now),
     },
   }
 }

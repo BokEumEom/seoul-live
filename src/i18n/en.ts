@@ -235,6 +235,59 @@ export const EN: Readonly<Record<string, string>> = {
   '이 명소 안 {개수}곳 기준': 'across {개수} stops here',
   '사람이 모이는 중이에요': 'People are arriving',
   '사람이 빠지는 중이에요': 'People are leaving',
+
+  // ── 상세: 상권 탭(2026-08-25) ──
+  // `LIVE_CMRCL_STTS`. 시안 `_8`이 배정한 여덟째 탭이고, 같은 `citydata`
+  // 응답 안이라 추가 호출이 0이다.
+  '이 명소에는 상권 정보가 없어요.': 'No commerce data for this place.',
+  '지금 이 동네 상권은 {정도}편이에요': 'Commerce here is {정도} right now',
+  '결제 {건수}건': '{건수} payments',
+  // 금액 단위. 도메인이 숫자와 눈금만 주고 글자는 화면이 짓는다.
+  //
+  // **억·만을 영어로 옮기지 않는다.** 「4.5억」을 「450 million」으로 적으면
+  // 자릿수가 달라져 옆의 한국어 화면과 대조가 안 되고, 「0.45B」는 원화
+  // 감각이 없는 사람에게도 없는 사람에게도 안 읽힌다. 원 기호로 크기를 준다.
+  '{금액}억': '₩{금액}00M',
+  '{금액}만': '₩{금액}0K',
+  '{금액}원': '₩{금액}',
+  업종별: 'By category',
+  '가맹점 {개수}곳': '{개수} stores',
+  '외 {개수}종': '{개수} more',
+  '누가 쓰고 있나': 'Who is spending',
+  '연령대별 소비 비율': 'Spending by age',
+  '성별 소비 비율': 'Spending by gender',
+  '개인·법인 소비 비율': 'Personal vs corporate spending',
+  남성: 'Male',
+  여성: 'Female',
+  개인: 'Personal',
+  법인: 'Corporate',
+  // 소비 연령 여섯 칸. **인구 구성의 여덟 칸과 다르다** — 양끝이 묶여 있다.
+  '10대 이하': 'Under 20',
+  '60대 이상': '60+',
+  // 상권 지표 네 단계. 실호출 7곳에서 이 넷만 봤다(2026-08-25).
+  // `보통`은 대기등급 쪽 키를 함께 쓴다.
+  한산한: 'Quiet',
+  분주한: 'Bustling',
+  바쁜: 'Busy',
+  // 업종 대분류 5종·중분류 11종. 명소 8곳 69줄 표본에서 본 것이 전부다 —
+  // 명세에 목록이 없어 **이것이 전부라고 단언할 수 없다.** 없는 값은 `t()`가
+  // 키를 그대로 돌려주어 한국어로 남고, 죽지는 않는다.
+  '음식·음료': 'Food & drink',
+  유통: 'Retail',
+  '패션·뷰티': 'Fashion & beauty',
+  의료: 'Healthcare',
+  '여가·오락': 'Leisure',
+  한식: 'Korean',
+  '제과/커피/패스트푸드': 'Cafés & bakeries',
+  '일식/중식/양식': 'Japanese/Chinese/Western',
+  기타요식: 'Other dining',
+  편의점: 'Convenience stores',
+  '할인점/슈퍼마켓': 'Supermarkets',
+  '의복/의류': 'Clothing',
+  '패션/잡화': 'Accessories',
+  병원: 'Clinics',
+  약국: 'Pharmacies',
+  '스포츠/문화/레저': 'Sports & culture',
   // 세 절(지하철·주차장·따릉이)의 「이 값이 언제 기준인가」. 아래 「최대 3시간」
   // 세 줄은 **나이를 못 읽었을 때만** 쓰인다 — `CityInfoPanel`의 `freshnessNote`.
   //
@@ -377,6 +430,7 @@ export const EN: Readonly<Record<string, string>> = {
   // 2열 카드 격자가 대신한다 — 카드는 같은 값을 보여주면서 **다른 화면**으로
   // 데려간다(`SummaryGrid`).
   요약: 'Summary',
+  상권: 'Commerce',
   인구: 'People',
   교통: 'Transit',
   주변: 'Nearby',

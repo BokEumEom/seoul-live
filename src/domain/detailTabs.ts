@@ -18,6 +18,7 @@ export type DetailTabId =
   | 'nearby'
   | 'weather'
   | 'events'
+  | 'commerce'
   | 'safety'
 
 export interface DetailTab {
@@ -33,7 +34,11 @@ export interface DetailTab {
 
 /**
  * 순서가 곧 화면 순서다. **요약이 첫째**이고 나머지는 시안의 차례다 —
- * 인구 → 교통 → 주변 → 날씨 → 행사 → 안전.
+ * 인구 → 교통 → 주변 → 날씨 → 행사 → 상권 → 안전.
+ *
+ * **「상권」은 2026-08-25에 늘었다.** 시안(stitch_ui_ux/_2)의 탭 줄에 처음부터
+ * 있었는데 `LIVE_CMRCL_STTS`를 안 읽고 있어 자리가 비어 있었다. 시안과의
+ * 구조적 격차는 이것이 마지막이다.
  *
  * 「안전」이 맨 뒤인 것은 중요도가 낮아서가 아니다. 재난문자는 발령되면 요약
  * 탭 맨 위 배너로 **탭과 무관하게** 뜬다(`DetailAlertBanner`) — 이 탭은 그
@@ -46,6 +51,7 @@ export const DETAIL_TABS: readonly DetailTab[] = [
   { id: 'nearby', label: '주변' },
   { id: 'weather', label: '날씨' },
   { id: 'events', label: '행사' },
+  { id: 'commerce', label: '상권' },
   { id: 'safety', label: '안전' },
 ]
 

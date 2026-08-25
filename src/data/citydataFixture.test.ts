@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 // 아니라 http:라 `readFileSync(new URL(...))`가 죽는다.
 import fixture from '../../docs/fixtures/citydata-광화문덕수궁.json'
 import { isBusCallFailure, parkingBaseFee } from '../domain/cityInfo'
+import { COMMERCE_LEVELS } from '../domain/commerce'
 import { parseCityInfoResponse } from './cityInfoSchema'
 
 // **실호출 응답 한 벌을 그대로 파서에 통과시킨다.** 2026-08-25에 인증키로
@@ -216,6 +217,48 @@ describe('실호출 citydata 응답 (2026-08-25) — 파서', () => {
   it('버스 호출 메시지를 읽고 성공으로 판정한다', () => {
     expect(info.busResultMessage).not.toBe('')
     expect(isBusCallFailure(info.busResultMessage)).toBe(false)
+  })
+
+  // **`CMRCL_RSB`가 명세에 없다.** 명세 222~229행은 업종 필드를 한 겹 펼쳐
+  // 적어 놓고 그것들을 담는 배열 이름을 안 적었다 — 순번만 보고 평평하게
+  // 읽으면 업종이 통째로 빈다(도로소통·지하철에서 이미 한 번 밟은 함정이다).
+  it('상권을 읽고 업종은 한 겹 안에서 꺼낸다', () => {
+    expect(info.commerce).not.toBeNull()
+    expect(info.commerce?.level).not.toBe('')
+    expect(info.commerce?.paymentCount).not.toBeNull()
+    expect(info.commerce?.categories.length).toBeGreaterThan(0)
+    expect(info.commerce?.categories[0].minor).not.toBe('')
+    expect(info.commerce?.categories[0].storeCount).not.toBeNull()
+  })
+
+  it('상권 지표가 아는 네 단계 안이다', () => {
+    // 새 값이 오면 여기서 죽는다 — 그때 `commerceLevelTone`과 사전에 함께 더한다.
+    expect(COMMERCE_LEVELS).toContain(info.commerce?.level)
+    for (const category of info.commerce?.categories ?? []) {
+      expect(COMMERCE_LEVELS).toContain(category.level)
+    }
+  })
+
+  it('성별과 개인·법인 비율을 읽는다', () => {
+    // **막대가 아니라 파서를 잰다.** 화면 쪽 테스트는 목업으로 값을 넣으므로
+    // 파서가 이 넷을 안 읽어도 통과한다 — 2026-08-25 변이 실험에서 실제로
+    // 「개인/법인 안 읽기」가 살아남았다.
+    expect(info.commerce?.maleRate).not.toBeNull()
+    expect(info.commerce?.femaleRate).not.toBeNull()
+    expect(info.commerce?.personalRate).not.toBeNull()
+    expect(info.commerce?.corporationRate).not.toBeNull()
+    // 개인과 법인은 합이 100이다(실호출: 79.4 + 20.6). 한쪽을 다른 쪽 자리에서
+    // 읽으면 여기서 걸린다.
+    expect(
+      (info.commerce?.personalRate ?? 0) + (info.commerce?.corporationRate ?? 0),
+    ).toBeCloseTo(100, 1)
+  })
+
+  it('소비 연령이 여섯 칸이다', () => {
+    // 인구 구성은 여덟 칸이다. 파서·라벨·색 셋이 어긋나면 색 없는 막대나
+    // 이름 없는 칸이 조용히 생긴다.
+    expect(info.commerce?.ageRates).toHaveLength(6)
+    expect(info.commerce?.ageRates.some((rate) => rate > 0)).toBe(true)
   })
 
   it('어느 섹션이든 내용이 있다', () => {

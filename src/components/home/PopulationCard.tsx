@@ -6,22 +6,14 @@ import {
   residentLabel,
 } from '../../domain/composition'
 import type { PopulationComposition } from '../../domain/composition'
+import { shareWidths } from '../../domain/share'
 
 /** 이 비율 이상인 연령대만 라벨을 적는다. 여덟 칸을 다 적으면 두 줄을 먹는다. */
 const LABEL_THRESHOLD = 10
 
-/** 막대 폭의 최소 분모. 서울 API가 합을 100으로 준다는 보장이 없다.
- *
- * 실제 합으로만 정규화하면 절반만 읽힌 구성에서 남은 두 칸이 100%를 나눠 가져
- * 「10대와 30대가 이 장소의 전부」라고 그린다 — 바로 아래 글자는 25%·15%라고
- * 적으니 두 줄이 모순되고 막대 쪽이 거짓이다. 못 읽은 칸의 빈자리는 그대로 둔다.
- * 합이 99면 눈에 안 띄는 1% 여백만 남고, 100을 넘으면 실제 합으로 되돌아간다.
- *
- * 넘칠 때의 이득은 **지금은 화면에 안 보인다.** flex 기본 shrink가 폭 합이
- * 100%를 넘으면 basis에 비례해 압축해서 `value/total`과 같은 픽셀을 낸다 —
- * 브라우저로 재서 확인했다. 이 분기가 값을 갖는 건 막대에 `shrink-0`이나
- * `flex-none`이 붙는 순간이다. 그때는 이것만이 넘침을 막는다. */
-const MIN_DENOMINATOR = 100
+// 막대 폭의 셈은 `domain/share.ts`가 갖는다. **2026-08-25에 여기서 꺼냈다** —
+// 상권 소비 구성이 같은 규칙을 필요로 했고, 두 화면이 각자 들고 있으면 한쪽만
+// 고치는 날이 온다. 그때 같은 화면의 두 막대가 다른 셈을 하는데 눈으로는 안 보인다.
 
 // 동적 클래스 금지라 리터럴 맵으로 둔다. 20~30대를 진하게 해서 어느 층이
 // 많은지 색만으로도 읽히게 한다.
@@ -65,6 +57,7 @@ export function PopulationCard({ composition }: Props) {
   }
 
   const total = composition.ageRates.reduce((sum, value) => sum + value, 0)
+  const widths = shareWidths(composition.ageRates)
   const label = residentLabel(composition)
   const showGender = hasGenderSplit(composition)
   // 세 알약의 조건이 한 줄로 읽힌다. residentLabel은 nonResidentRate가 0일 때만
@@ -128,13 +121,13 @@ export function PopulationCard({ composition }: Props) {
             aria-label={t('연령대 비율: {내용}', { 내용: chartLabel })}
             className="mt-3 flex h-2.5 overflow-hidden rounded-full"
           >
-            {composition.ageRates.map((value, index) => (
+            {widths.map((width, index) => (
               <span
                 // `key`는 감싸지 않은 값이다 — 언어가 바뀔 때 키까지 바뀌면
                 // React가 같은 칸을 지웠다 새로 만든다.
                 key={AGE_LABELS[index]}
                 style={{
-                  width: `${(value / Math.max(total, MIN_DENOMINATOR)) * 100}%`,
+                  width: `${width}%`,
                 }}
                 className={AGE_CLASS[index]}
               />
