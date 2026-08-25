@@ -129,6 +129,25 @@ describe('parseCityInfoResponse — 날씨', () => {
 })
 
 describe('parseCityInfoResponse — 주차장', () => {
+  // **도로명이 있으면 도로명이다.** 실호출 33곳 중 도로명이 있는 곳은 하나뿐이라
+  // 픽스처만으로는 이 우선순위가 한 번도 안 밟힌다 — 지번만 읽게 바꿔도 통과했다
+  // (2026-08-25 변이 실험). 그래서 둘 다 있는 행을 여기서 따로 만든다.
+  it('도로명주소가 있으면 지번보다 먼저 쓴다', () => {
+    const info = parseCityInfoResponse(
+      payload({
+        PRK_STTS: [
+          { PRK_NM: '둘 다', ROAD_ADDR: '중구 청계천로 14', ADDRESS: '중구 북창동 18-9' },
+          { PRK_NM: '지번만', ROAD_ADDR: '', ADDRESS: '중구 북창동 35-0' },
+        ],
+      }),
+      AREA,
+    )
+    expect(info.parking.map((lot) => lot.address)).toEqual([
+      '중구 청계천로 14',
+      '중구 북창동 35-0',
+    ])
+  })
+
   it('이름·수용·여유 면수와 실시간 제공 여부를 읽는다', () => {
     const info = parseCityInfoResponse(
       payload({
@@ -139,22 +158,33 @@ describe('parseCityInfoResponse — 주차장', () => {
       }),
       AREA,
     )
+    // **리터럴을 그대로 둔다.** `makeParkingLot()`으로 채우면 이 단언이 「파서와
+    // 빌더가 같은 기본값을 쓴다」가 되어 파서가 필드를 통째로 빠뜨려도 통과한다.
+    // 요금·주소·코드가 없는 응답에서 무엇이 되는지도 여기서 함께 잠근다.
     expect(info.parking).toEqual([
       {
         name: '세종로 공영주차장',
+        code: '',
+        address: '',
         coords: null,
         capacity: 300,
         available: 42,
         liveAvailable: true,
+        liveCountAt: '',
         paid: true,
+        fee: null,
       },
       {
         name: '실시간 없음',
+        code: '',
+        address: '',
         coords: null,
         capacity: 120,
         available: null,
         liveAvailable: false,
+        liveCountAt: '',
         paid: false,
+        fee: null,
       },
     ])
   })

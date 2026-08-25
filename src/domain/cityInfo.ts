@@ -138,8 +138,79 @@ export interface Weather {
   readonly updatedAt: string
 }
 
+/**
+ * 주차요금 네 값. 명세 54~57행.
+ *
+ * **`baseFee`가 0인 것과 값이 없는 것은 다르다.** 실호출에서 `PAY_YN: 'Y'`인데
+ * `RATES: '0'`인 주차장이 셋 있었다(서울파이낸스빌딩·서울시청 본청사·
+ * 광화문오피시아빌딩, 2026-08-25). 유료 주차장인데 기본요금이 0 — 그건
+ * 「기본 시간 동안은 무료이고 그 뒤부터 과금」이라는 뜻이다. 이걸 「30분
+ * 0원」이라고 적으면 공짜 주차장으로 읽힌다.
+ */
+export interface ParkingFee {
+  /** RATES — 기본주차요금(원) */
+  readonly baseFee: number | null
+  /** TIME_RATES — 기본주차단위시간(분) */
+  readonly baseMinutes: number | null
+  /** ADD_RATES — 추가주차단위요금(원) */
+  readonly addFee: number | null
+  /** ADD_TIME_RATES — 추가주차단위시간(분) */
+  readonly addMinutes: number | null
+}
+
+/**
+ * 기본요금 문구의 **재료**. 도메인은 완성된 글자를 짓지 않는다 — 어떤 문장을
+ * 쓸지(`kind`)와 값만 주고 문장은 화면이 `t()`로 만든다.
+ */
+export type ParkingBaseFee =
+  | { readonly kind: 'paid'; readonly minutes: number; readonly won: number }
+  | { readonly kind: 'freeFor'; readonly minutes: number }
+
+/** 단위시간이 0이거나 없으면 요금을 말할 수 없다 — 「0분에 2,000원」은 뜻이 없다. */
+export function parkingBaseFee(fee: ParkingFee | null): ParkingBaseFee | null {
+  if (fee === null || fee.baseMinutes === null || fee.baseMinutes <= 0) {
+    return null
+  }
+  if (fee.baseFee === null) {
+    return null
+  }
+  return fee.baseFee <= 0
+    ? { kind: 'freeFor', minutes: fee.baseMinutes }
+    : { kind: 'paid', minutes: fee.baseMinutes, won: fee.baseFee }
+}
+
+/**
+ * 추가요금. **0원은 안 적는다** — 무료 주차장이 네 값을 전부 0으로 보내는데
+ * (`PAY_YN: 'N'`인 관광버스 승하차 구간 셋이 그랬다), 「10분당 0원」은
+ * 정보가 아니라 잡음이다.
+ */
+export function parkingAddFee(
+  fee: ParkingFee | null,
+): { readonly minutes: number; readonly won: number } | null {
+  if (fee === null || fee.addMinutes === null || fee.addMinutes <= 0) {
+    return null
+  }
+  return fee.addFee === null || fee.addFee <= 0
+    ? null
+    : { minutes: fee.addMinutes, won: fee.addFee }
+}
+
 export interface ParkingLot {
   readonly name: string
+  /**
+   * PRK_CD — 주차장코드. **화면에 안 나온다. 목록의 키다.**
+   *
+   * 예전에는 이름을 키로 썼는데 한 명소에 같은 이름의 주차장이 둘 올 수 있다
+   * (실호출에 「세종대로1·2·3 관광버스 승하차 허용 구간」처럼 번호만 다른
+   * 것들이 있다). 코드가 없으면 이름으로 돌아간다.
+   */
+  readonly code: string
+  /** ROAD_ADDR가 있으면 그것, 없으면 ADDRESS. 실호출은 33곳 중 1곳만 도로명이 있었다 */
+  readonly address: string
+  /** 요금 네 값. 하나도 못 읽으면 `null` */
+  readonly fee: ParkingFee | null
+  /** CUR_PRK_TIME — 실시간 주차 대수의 기준 시각. 실시간을 주는 곳에만 있다 */
+  readonly liveCountAt: string
   /**
    * `LAT`/`LNG`. 지도에서 자리를 짚어 주는 데 쓴다.
    *

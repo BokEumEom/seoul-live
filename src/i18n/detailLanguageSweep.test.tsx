@@ -8,7 +8,7 @@ import { DETAIL_TABS } from '../domain/detailTabs'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { reset as resetFavorites } from '../hooks/favoritesStore'
 import { reset as resetLanguage, setLanguage } from '../hooks/languageStore'
-import { makeWeather } from '../test/cityInfo'
+import { makeParkingLot, makeWeather } from '../test/cityInfo'
 
 // **왜 별도 파일인가.** 상세 화면을 세우려면 조회 훅 넷과 저장소 둘을 목업해야
 // 하는데, `vi.mock`은 파일 단위라 `languageSwitch.test.tsx`에 넣으면 거기서
@@ -148,14 +148,19 @@ const CITY_INFO: CityInfo = {
     },
   ],
   parking: [
-    {
+    makeParkingLot({
       name: 'Gwanghwamun Public Parking',
+      // 주소는 고유명사라 영어 화면에도 원문이 남는 자리다. 라틴 문자로 둬야
+      // 스윕이 「옮겼어야 하는데 안 옮긴 것」만 세게 된다.
+      address: '14 Cheonggyecheon-ro, Jung-gu',
       coords: { lat: 37.57, lng: 126.977 },
       capacity: 100,
       available: 45,
       liveAvailable: true,
       paid: true,
-    },
+      // 「30분까지 무료, 이후 10분당 1,000원」. 실호출에 있던 갈래다.
+      fee: { baseFee: 0, baseMinutes: 30, addFee: 1000, addMinutes: 10 },
+    }),
   ],
   bikes: [
     {

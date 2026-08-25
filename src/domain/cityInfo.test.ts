@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { makeWeather } from '../test/cityInfo'
+import { makeParkingLot, makeWeather } from '../test/cityInfo'
 import {
   airGradeTone,
   formatForecastTemperature,
@@ -8,6 +8,8 @@ import {
   groupSubwayArrivals,
   hasAnyCityInfo,
   isActiveWarning,
+  parkingAddFee,
+  parkingBaseFee,
   parkingTone,
   roadIndexTone,
   sortBikesByStock,
@@ -22,7 +24,7 @@ import {
 } from './cityInfo'
 
 function lot(name: string, available: number | null, capacity: number | null): ParkingLot {
-  return { name, coords: null, available, capacity, liveAvailable: true, paid: null }
+  return makeParkingLot({ name, available, capacity, liveAvailable: true })
 }
 
 function station(name: string, bikes: number | null): BikeStation {
@@ -487,5 +489,51 @@ describe('isActiveWarning', () => {
 
   it('앞뒤 공백이 붙어 와도 해제를 알아본다', () => {
     expect(isActiveWarning({ ...warning, command: ' 해제 ' })).toBe(false)
+  })
+})
+
+describe('parkingBaseFee', () => {
+  const fee = { baseFee: 2000, baseMinutes: 30, addFee: 1000, addMinutes: 10 }
+
+  it('기본요금이 있으면 시간과 금액을 준다', () => {
+    expect(parkingBaseFee(fee)).toEqual({ kind: 'paid', minutes: 30, won: 2000 })
+  })
+
+  // **이 갈래가 이 함수의 존재 이유다.** 실호출에 `PAY_YN: 'Y'`인데
+  // `RATES: '0'`인 주차장이 셋 있었다(2026-08-25). 「30분 0원」이라고 적으면
+  // 공짜 주차장으로 읽히는데, 실제로는 「30분까지 무료, 이후 과금」이다.
+  it('기본요금 0원은 「그 시간 동안 무료」다', () => {
+    expect(parkingBaseFee({ ...fee, baseFee: 0 })).toEqual({ kind: 'freeFor', minutes: 30 })
+  })
+
+  // 「0분에 2,000원」은 뜻이 없는 문장이다. 무료 주차장이 네 값을 전부 0으로
+  // 보내는데, 단위시간을 안 보면 그것들이 「0분 무료」로 새어 나온다.
+  it('단위시간이 없거나 0이면 아무 말도 안 한다', () => {
+    expect(parkingBaseFee({ ...fee, baseMinutes: 0 })).toBeNull()
+    expect(parkingBaseFee({ ...fee, baseMinutes: null })).toBeNull()
+  })
+
+  it('기본요금을 못 읽으면 아무 말도 안 한다', () => {
+    expect(parkingBaseFee({ ...fee, baseFee: null })).toBeNull()
+    expect(parkingBaseFee(null)).toBeNull()
+  })
+})
+
+describe('parkingAddFee', () => {
+  const fee = { baseFee: 2000, baseMinutes: 30, addFee: 1000, addMinutes: 10 }
+
+  it('추가요금을 시간과 금액으로 준다', () => {
+    expect(parkingAddFee(fee)).toEqual({ minutes: 10, won: 1000 })
+  })
+
+  // 무료 주차장이 네 값을 전부 0으로 보낸다. 「10분당 0원」은 정보가 아니다.
+  it('0원이면 안 적는다', () => {
+    expect(parkingAddFee({ ...fee, addFee: 0 })).toBeNull()
+  })
+
+  it('단위시간이 없거나 0이면 안 적는다', () => {
+    expect(parkingAddFee({ ...fee, addMinutes: 0 })).toBeNull()
+    expect(parkingAddFee({ ...fee, addMinutes: null })).toBeNull()
+    expect(parkingAddFee(null)).toBeNull()
   })
 })

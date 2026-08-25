@@ -1,4 +1,4 @@
-import type { CityInfo, Weather } from '../domain/cityInfo'
+import type { CityInfo, ParkingLot, Weather } from '../domain/cityInfo'
 
 // 테스트가 쓰는 `CityInfo` 조각 빌더.
 //
@@ -39,6 +39,22 @@ export function makeWeather(overrides: Partial<Weather> = {}): Weather {
     airMessage: '',
     warnings: [],
     updatedAt: '',
+    ...overrides,
+  }
+}
+
+export function makeParkingLot(overrides: Partial<ParkingLot> = {}): ParkingLot {
+  return {
+    name: '',
+    code: '',
+    address: '',
+    coords: null,
+    capacity: null,
+    available: null,
+    liveAvailable: false,
+    liveCountAt: '',
+    paid: null,
+    fee: null,
     ...overrides,
   }
 }

@@ -6,7 +6,7 @@ import type { CityInfo } from '../../domain/cityInfo'
 import { DETAIL_TABS } from '../../domain/detailTabs'
 import type { AreaCongestion, AreaSnapshot } from '../../domain/types'
 import { reset } from '../../hooks/favoritesStore'
-import { makeWeather } from '../../test/cityInfo'
+import { makeParkingLot, makeWeather } from '../../test/cityInfo'
 import { findAreaByName } from '../../data/areas'
 import { TONE_TEXT_CLASS } from '../common/toneClass'
 import { AreaDetailScreen } from './AreaDetailScreen'
@@ -78,14 +78,12 @@ const EMPTY_CITY_INFO: CityInfo = {
   subway: [],
 }
 
-const PARKING_LOT = {
+const PARKING_LOT = makeParkingLot({
   name: '주차장',
-  coords: null,
   capacity: 100,
   available: 45,
   liveAvailable: true,
-  paid: null,
-} as const
+})
 
 function ok<T>(data: T): UseQueryResult<T> {
   return { data, isPending: false, isError: false } as UseQueryResult<T>

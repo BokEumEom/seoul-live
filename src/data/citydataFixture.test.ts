@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 // JSON을 import로 읽는다. jsdom 환경에서는 `import.meta.url`이 file: 스킴이
 // 아니라 http:라 `readFileSync(new URL(...))`가 죽는다.
 import fixture from '../../docs/fixtures/citydata-광화문덕수궁.json'
+import { parkingBaseFee } from '../domain/cityInfo'
 import { parseCityInfoResponse } from './cityInfoSchema'
 
 // **실호출 응답 한 벌을 그대로 파서에 통과시킨다.** 2026-08-25에 인증키로
@@ -148,6 +149,15 @@ describe('실호출 citydata 응답 (2026-08-25) — 파서', () => {
     expect(info.weather?.warnings[0].level).not.toBe('')
     // 재난문자 쪽은 이 날 비어 있었다. 둘이 서로 다른 출처임을 여기서 못 박는다.
     expect(info.alerts).toEqual([])
+  })
+
+  it('주차장의 요금과 주소를 읽는다', () => {
+    // 33곳 중 3곳으로 줄인 픽스처인데 셋 다 요금이 있다(2026-08-25 실호출).
+    const withFee = info.parking.filter((lot) => parkingBaseFee(lot.fee) !== null)
+    expect(withFee.length).toBeGreaterThan(0)
+    // 실호출은 도로명주소가 33곳 중 1곳뿐이고 나머지는 지번으로 온다.
+    expect(info.parking.every((lot) => lot.address !== '')).toBe(true)
+    expect(info.parking.every((lot) => lot.code !== '')).toBe(true)
   })
 
   it('주차장·따릉이·행사를 읽는다', () => {

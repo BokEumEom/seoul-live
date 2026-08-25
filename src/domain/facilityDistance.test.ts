@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { makeParkingLot } from '../test/cityInfo'
 import type { BikeStation, ParkingLot } from './cityInfo'
 import { sortBikesForWalking, withDistanceFrom } from './facilityDistance'
 import type { Coords } from './types'
@@ -16,7 +17,7 @@ function station(name: string, bikes: number | null, coords: Coords | null): Bik
 }
 
 function lot(name: string, coords: Coords | null): ParkingLot {
-  return { name, coords, capacity: 100, available: 40, liveAvailable: true, paid: null }
+  return makeParkingLot({ name, coords, capacity: 100, available: 40, liveAvailable: true })
 }
 
 describe('withDistanceFrom', () => {

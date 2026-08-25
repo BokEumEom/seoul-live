@@ -1,17 +1,14 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { ParkingLot } from '../../domain/cityInfo'
+import { makeParkingLot } from '../../test/cityInfo'
 import { ParkingList } from './ParkingList'
 
+// 이 파일이 보는 것은 **목록의 표시**다. 그래서 빌더의 「전부 없음」 기본값
+// 위에 「보통의 주차장」을 한 겹 얹는다 — 면수·실시간 여부를 테스트마다
+// 다시 적으면 정작 무엇이 그 테스트의 대상인지가 안 보인다.
 function lot(overrides: Partial<ParkingLot> & { name: string }): ParkingLot {
-  return {
-    coords: null,
-    capacity: 100,
-    available: 10,
-    liveAvailable: true,
-    paid: null,
-    ...overrides,
-  }
+  return makeParkingLot({ capacity: 100, available: 10, liveAvailable: true, ...overrides })
 }
 
 describe('ParkingList', () => {
@@ -86,5 +83,133 @@ describe('ParkingList', () => {
     render(<ParkingList origin={null} onShowOnMap={() => undefined} lots={[lot({ name: '하나' })]} />)
 
     expect(screen.queryByText(/^외 /)).not.toBeInTheDocument()
+  })
+})
+
+// 시안 `stitch_ui_ux/_5`의 요금 줄. 「어느 주차장으로 갈까」를 고를 때 면수
+// 다음으로 보는 값이다.
+describe('ParkingList — 요금과 주소', () => {
+  it('기본요금과 추가요금을 함께 적는다', () => {
+    render(
+      <ParkingList
+        lots={[
+          lot({
+            name: '세종로 공영주차장',
+            paid: true,
+            fee: { baseFee: 2000, baseMinutes: 30, addFee: 1000, addMinutes: 10 },
+          }),
+        ]}
+        origin={null}
+        onShowOnMap={() => undefined}
+      />,
+    )
+
+    expect(screen.getByText(/30분 2,000원/)).toBeInTheDocument()
+    expect(screen.getByText(/이후 10분당 1,000원/)).toBeInTheDocument()
+  })
+
+  // **여기가 이 회차의 핵심이다.** 유료인데 기본요금이 0원인 주차장이 실호출에
+  // 셋 있었다. 「30분 0원」으로 적으면 공짜로 읽힌다.
+  it('유료인데 기본요금이 0원이면 「무료 시간」으로 적는다', () => {
+    render(
+      <ParkingList
+        lots={[
+          lot({
+            name: '서울시청 본청사 주차장',
+            paid: true,
+            fee: { baseFee: 0, baseMinutes: 30, addFee: 1000, addMinutes: 10 },
+          }),
+        ]}
+        origin={null}
+        onShowOnMap={() => undefined}
+      />,
+    )
+
+    expect(screen.getByText(/30분 무료/)).toBeInTheDocument()
+    expect(screen.queryByText(/30분 0원/)).not.toBeInTheDocument()
+  })
+
+  // 무료 주차장은 네 값이 전부 0으로 온다(실호출의 관광버스 승하차 구간 셋).
+  it('무료 주차장이 0을 네 개 보내도 요금이 안 샌다', () => {
+    render(
+      <ParkingList
+        lots={[
+          lot({
+            name: '관광버스 승하차 구간',
+            paid: false,
+            fee: { baseFee: 0, baseMinutes: 0, addFee: 0, addMinutes: 0 },
+          }),
+        ]}
+        origin={null}
+        onShowOnMap={() => undefined}
+      />,
+    )
+
+    expect(screen.getByText(/무료/)).toBeInTheDocument()
+    expect(screen.queryByText(/0원/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/0분/)).not.toBeInTheDocument()
+  })
+
+  // **위 테스트만으로는 `paid === false` 가드가 안 밟힌다.** 네 값이 0이면
+  // 도메인이 이미 아무것도 안 돌려줘서, 가드를 통째로 지워도 통과했다
+  // (2026-08-25 변이 실험). 가드가 막는 것은 **무료인데 단위시간이 붙어 오는**
+  // 경우다 — 그때 「무료 · 30분 무료」라고 같은 말을 두 번 하게 된다.
+  it('무료 주차장에 단위시간이 붙어 와도 요금을 안 적는다', () => {
+    render(
+      <ParkingList
+        lots={[
+          lot({
+            name: '무료인데 시간이 붙음',
+            paid: false,
+            fee: { baseFee: 0, baseMinutes: 30, addFee: 0, addMinutes: 10 },
+          }),
+        ]}
+        origin={null}
+        onShowOnMap={() => undefined}
+      />,
+    )
+
+    expect(screen.queryByText(/30분 무료/)).not.toBeInTheDocument()
+  })
+
+  it('주소를 함께 보여준다', () => {
+    render(
+      <ParkingList
+        lots={[lot({ name: '백영북창빌딩', address: '중구 북창동 18-9' })]}
+        origin={null}
+        onShowOnMap={() => undefined}
+      />,
+    )
+
+    expect(screen.getByText('중구 북창동 18-9')).toBeInTheDocument()
+  })
+
+  // 이름이 같은 주차장이 실제로 온다(「세종대로1·2·3 관광버스 승하차 허용
+  // 구간」은 이름이 잘려 같아 보인다). 이름을 키로 쓰면 React가 둘을 같은
+  // 항목으로 본다.
+  //
+  // **눈에 보이는 결과로는 이걸 못 잡는다** — 키가 겹쳐도 둘 다 그려진다
+  // (2026-08-25 변이 실험에서 이름 키로 되돌려도 통과했다). React가 내는
+  // 경고를 세는 것이 이 계약을 관측하는 유일한 길이다.
+  it('이름이 같아도 코드가 다르면 키가 안 겹친다', () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      render(
+        <ParkingList
+          lots={[
+            lot({ name: '승하차 구간', code: 'A1', capacity: 10, available: 5 }),
+            lot({ name: '승하차 구간', code: 'A2', capacity: 20, available: 9 }),
+          ]}
+          origin={null}
+          onShowOnMap={() => undefined}
+        />,
+      )
+
+      expect(screen.getAllByText('승하차 구간')).toHaveLength(2)
+      const messages = errors.mock.calls.map((call) => String(call[0]))
+      expect(messages.filter((message) => /same key|duplicate key/i.test(message))).toEqual([])
+    } finally {
+      errors.mockRestore()
+    }
   })
 })

@@ -236,8 +236,14 @@ function buildParking(areaName: string, seed: number, now: Date): readonly unkno
     // 5곳 중 1곳은 만차로 둔다. 만차 배지를 목업으로 확인할 수 있어야 한다.
     const full = mixed % 5 === 0
     const at = scatter(areaName, mixed)
+    const free = mixed % 3 === 0
+    // **기본요금 0원짜리 유료 주차장을 반드시 하나는 낸다.** 실호출에 셋
+    // 있었고(「30분까지 무료, 이후 과금」), 목업이 그 갈래를 한 번도 안 내면
+    // 화면이 그것을 「무료 주차장」으로 잘못 적어도 아무도 모른다.
+    const freeGrace = !free && mixed % 4 === 1
     return {
       PRK_NM: `${areaName} ${PARKING_KINDS[index % PARKING_KINDS.length]}`,
+      PRK_CD: `MOCK${String(mixed % 100000).padStart(5, '0')}`,
       // 실응답은 문자열로 준다(docs/fixtures/citydata-광화문덕수궁.json).
       LAT: String(at.lat),
       LNG: String(at.lng),
@@ -245,7 +251,17 @@ function buildParking(areaName: string, seed: number, now: Date): readonly unkno
       CUR_PRK_CNT: full ? '0' : String(mixed % capacity),
       CUR_PRK_TIME: formatSeoulTime(now),
       CUR_PRK_YN: 'Y',
-      PAY_YN: mixed % 3 === 0 ? 'N' : 'Y',
+      PAY_YN: free ? 'N' : 'Y',
+      // 무료 주차장은 네 값이 전부 0으로 온다 — 실호출의 관광버스 승하차
+      // 구간 셋이 그랬다. 「10분당 0원」이 화면에 새지 않는지 이것이 확인한다.
+      RATES: free ? '0' : freeGrace ? '0' : String(1000 + (mixed % 3) * 1000),
+      TIME_RATES: free ? '0' : String([10, 15, 30][mixed % 3]),
+      ADD_RATES: free ? '0' : String(500 + (mixed % 3) * 500),
+      ADD_TIME_RATES: free ? '0' : '10',
+      // 실호출은 도로명주소가 거의 비어 있고 지번만 온다. 그 쪽을 기본으로
+      // 두어야 화면이 지번을 그리는 자리를 목업으로 확인할 수 있다.
+      ADDRESS: `${areaName} ${100 + (mixed % 400)}-${mixed % 30}`,
+      ROAD_ADDR: '',
     }
   })
 }

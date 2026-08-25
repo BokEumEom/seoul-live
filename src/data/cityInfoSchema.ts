@@ -6,6 +6,7 @@ import type {
   CityInfo,
   CulturalEvent,
   HourlyForecast,
+  ParkingFee,
   ParkingLot,
   RoadTraffic,
   SubwayArrival,
@@ -201,17 +202,34 @@ function toAccidents(rows: readonly Row[]): readonly AccidentControl[] {
   )
 }
 
+/** 네 값을 하나도 못 읽으면 요금 자체가 없는 것으로 접는다. */
+function toParkingFee(row: Row): ParkingFee | null {
+  const fee: ParkingFee = {
+    baseFee: numberOrNull(row, 'RATES'),
+    baseMinutes: numberOrNull(row, 'TIME_RATES'),
+    addFee: numberOrNull(row, 'ADD_RATES'),
+    addMinutes: numberOrNull(row, 'ADD_TIME_RATES'),
+  }
+  return Object.values(fee).every((value) => value === null) ? null : fee
+}
+
 function toParking(rows: readonly Row[]): readonly ParkingLot[] {
   return named(
     rows,
     'PRK_NM',
     (row, name): ParkingLot => ({
       name,
+      code: text(row, 'PRK_CD'),
+      // **도로명이 먼저다.** 실호출 33곳 중 도로명이 있는 곳은 하나뿐이라
+      // 대부분 지번으로 떨어지지만, 있을 때 안 쓰면 더 읽기 쉬운 쪽을 버린다.
+      address: text(row, 'ROAD_ADDR') || text(row, 'ADDRESS'),
       coords: coordsOrNull(row, 'LAT', 'LNG'),
       capacity: numberOrNull(row, 'CPCTY'),
       available: numberOrNull(row, 'CUR_PRK_CNT'),
       liveAvailable: text(row, 'CUR_PRK_YN').toUpperCase() === 'Y',
+      liveCountAt: text(row, 'CUR_PRK_TIME'),
       paid: paidFlag(row, 'PAY_YN'),
+      fee: toParkingFee(row),
     }),
   )
 }
