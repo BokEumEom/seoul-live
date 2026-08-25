@@ -55,13 +55,27 @@ describe('CommerceCard', () => {
 
   // **금액은 최소값을 쓴다.** 구간을 그대로 적으면 줄이 두 배로 길어지는데
   // 이 값이 답하는 것은 「대략 얼마나 도나」다 — 최소값이면 넘겨 말하지 않는다.
-  it('결제 건수와 금액을 억 단위로 접어 한 줄에 적는다', () => {
+  //
+  // **2026-08-25에 한 줄에서 두 칸으로 갈렸다**(시안 `_8`). 이 둘은 규모를
+  // 말하는 머릿수치라 본문 크기로 적으면 아래 업종 목록의 글자와 구별이 안 된다.
+  it('결제 건수와 금액을 저마다의 칸에 크게 적는다', () => {
     render(<CommerceCard commerce={commerce()} />)
 
-    expect(screen.getByText(/결제 168건/)).toBeInTheDocument()
-    expect(screen.getByText(/3\.9억/)).toBeInTheDocument()
+    expect(screen.getByText('결제 건수')).toBeInTheDocument()
+    expect(screen.getByText('168')).toHaveClass('text-display-lg')
+    expect(screen.getByText('결제 금액')).toBeInTheDocument()
+    expect(screen.getByText('3.9억')).toHaveClass('text-display-lg')
     // 최대값(4.0억)은 안 적는다.
     expect(screen.queryByText(/4억/)).not.toBeInTheDocument()
+  })
+
+  // 두 값 중 하나만 오는 응답이 있다. 남은 하나가 격자를 혼자 쓰면 된다 —
+  // 빈 칸을 그리면 「금액이 0원」으로 읽힌다.
+  it('금액을 못 읽으면 건수 칸만 남는다', () => {
+    render(<CommerceCard commerce={commerce({ paymentMin: null })} />)
+
+    expect(screen.getByText('결제 건수')).toBeInTheDocument()
+    expect(screen.queryByText('결제 금액')).toBeNull()
   })
 
   it('업종을 결제 많은 순으로 여섯 줄까지 보여준다', () => {
@@ -70,7 +84,10 @@ describe('CommerceCard', () => {
     )
     render(<CommerceCard commerce={commerce({ categories: many })} />)
 
-    const rows = screen.getAllByRole('listitem')
+    // 「누가 쓰고 있나」의 연령 줄도 `listitem`이라 업종 목록만 골라 센다.
+    const rows = within(
+      screen.getByRole('list', { name: '업종별' }),
+    ).getAllByRole('listitem')
     expect(rows).toHaveLength(6)
     expect(within(rows[0]).getByText('업종7')).toBeInTheDocument()
     expect(screen.queryByText('업종0')).not.toBeInTheDocument()
@@ -94,21 +111,45 @@ describe('CommerceCard', () => {
     expect(screen.getByText('한산한')).toHaveClass(TONE_CLASS.calm)
   })
 
-  it('연령·성별·개인법인 막대를 그린다', () => {
+  // **인구 탭과 같은 막대를 쓴다**(2026-08-25). 연령은 줄로 펴고 성별·개인법인은
+  // 양 끝에 이름을 두는 두 칸 막대다 — 시안 `_8`의 「누가 많이 이용하고
+  // 있나요?」가 `_3`의 인구 구성과 같은 모양이다.
+  it('연령대는 줄로 펴서 값마다 이름과 비율을 적는다', () => {
     render(<CommerceCard commerce={commerce()} />)
+    const rows = within(
+      screen.getByRole('list', { name: '연령대별 소비 비율' }),
+    ).getAllByRole('listitem')
 
-    expect(screen.getByRole('img', { name: /연령대별 소비 비율/ })).toHaveAccessibleName(
-      expect.stringContaining('40대 26%'),
-    )
-    expect(screen.getByRole('img', { name: /성별 소비 비율/ })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /개인·법인 소비 비율/ })).toBeInTheDocument()
+    // 0인 「10대 이하」는 줄을 만들지 않는다.
+    expect(rows).toHaveLength(5)
+    expect(within(rows[2]).getByText('40대')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('26%')).toBeInTheDocument()
   })
 
-  // 남녀·개인법인은 칸이 둘뿐이라 10% 문턱을 두면 한쪽이 통째로 사라진다.
-  it('두 칸짜리 막대는 작은 쪽도 글자로 적는다', () => {
+  /**
+   * **이름과 값이 짝을 지켜야 한다.** 두 칸 막대는 왼쪽·오른쪽에 값을 따로
+   * 넘기는 모양이라 자리를 바꿔 넘겨도 화면이 멀쩡해 보인다 — 「남성 59% ·
+   * 41% 여성」은 그럴듯하고 **틀렸다**. 2026-08-25 변이 실험에서 실제로
+   * 살아남았다.
+   */
+  it('성별과 개인·법인은 두 칸 막대로 그리고 이름과 값이 짝을 지킨다', () => {
+    render(<CommerceCard commerce={commerce()} />)
+
+    expect(screen.getByRole('img', { name: /성별 소비 비율/ })).toHaveAccessibleName(
+      '성별 소비 비율: 남성 41%, 여성 59%',
+    )
+    expect(screen.getByRole('img', { name: /개인·법인 소비 비율/ })).toHaveAccessibleName(
+      '개인·법인 소비 비율: 개인 79%, 법인 21%',
+    )
+  })
+
+  // **옛 막대는 10% 미만인 칸의 이름을 아예 안 적었다.** 화면에는 색만 남고
+  // 「법인 5%」가 어디에도 없었다 — 작은 값은 작게 그리면 되지 지울 이유가 없다.
+  it('작은 쪽도 글자로 적는다', () => {
     render(<CommerceCard commerce={commerce({ personalRate: 95, corporationRate: 5 })} />)
 
     expect(screen.getByText('법인')).toBeInTheDocument()
+    expect(screen.getByText('5%')).toBeInTheDocument()
   })
 
   it('비율이 전부 0이면 막대를 안 그린다', () => {
@@ -125,5 +166,6 @@ describe('CommerceCard', () => {
     )
 
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: '연령대별 소비 비율' })).toBeNull()
   })
 })

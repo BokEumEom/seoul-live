@@ -312,7 +312,10 @@ export const EN: Readonly<Record<string, string>> = {
   // 응답 안이라 추가 호출이 0이다.
   '이 명소에는 상권 정보가 없어요.': 'No commerce data for this place.',
   '지금 이 동네 상권은 {정도}편이에요': 'Commerce here is {정도} right now',
-  '결제 {건수}건': '{건수} payments',
+  // 시안 `_8`의 머릿수치 카드 둘. 단위(「건」)가 숫자와 떨어져 있어 따로 옮긴다.
+  '결제 건수': 'Payments',
+  '결제 금액': 'Amount',
+  건: 'txns',
   // 금액 단위. 도메인이 숫자와 눈금만 주고 글자는 화면이 짓는다.
   //
   // **억·만을 영어로 옮기지 않는다.** 「4.5억」을 「450 million」으로 적으면
@@ -324,7 +327,6 @@ export const EN: Readonly<Record<string, string>> = {
   업종별: 'By category',
   '가맹점 {개수}곳': '{개수} stores',
   '외 {개수}종': '{개수} more',
-  '누가 쓰고 있나': 'Who is spending',
   '연령대별 소비 비율': 'Spending by age',
   '성별 소비 비율': 'Spending by gender',
   '개인·법인 소비 비율': 'Personal vs corporate spending',

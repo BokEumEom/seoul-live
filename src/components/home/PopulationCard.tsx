@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { t } from '../../i18n/t'
 import {
+  AGE_LABELS,
   GENDER_LABELS,
   hasGenderSplit,
   hasReadableComposition,
@@ -10,8 +11,8 @@ import {
 } from '../../domain/composition'
 import type { PopulationComposition } from '../../domain/composition'
 import { Icon } from '../common/Icon'
-import { AgeShareRows } from './AgeShareRows'
-import { SplitShareBar } from './SplitShareBar'
+import { ShareRows } from '../common/ShareRows'
+import { SplitShareBar } from '../common/SplitShareBar'
 
 /**
  * 시안 `stitch_ui_ux/_3`의 카드 하나. 테두리·여백이 한 곳에 있다.
@@ -81,7 +82,11 @@ export function PopulationCard({ composition }: Props) {
           0% 여덟 줄은 「모든 연령대가 0명」이라는 없는 사실을 그린다. */}
       {total > 0 && (
         <ShareCard title={t('연령대별 비율')}>
-          <AgeShareRows rates={composition.ageRates} />
+          <ShareRows
+            labels={AGE_LABELS}
+            rates={composition.ageRates}
+            title={t('연령대별 비율')}
+          />
         </ShareCard>
       )}
 
