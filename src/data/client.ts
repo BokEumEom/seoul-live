@@ -1,15 +1,17 @@
 import type { CctvCamera } from '../domain/cctv'
-import type { PopulationTrend } from '../domain/populationTrend'
+import type { AreaPopulation } from '../domain/populationTrend'
+import { EMPTY_POPULATION_FLOW } from '../domain/populationFlow'
 import type { CityInfo } from '../domain/cityInfo'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { AREA_NAMES } from './areas'
 import { parseCctvResponse } from './cctvSchema'
 import { parsePopulationTrend } from './ppltnSchema'
+import { parsePopulationFlow } from './ppltnCongestSchema'
 import { parseCityInfoResponse } from './cityInfoSchema'
 import { parseHotspotsResponse } from './hotspotsSchema'
 import { buildMockSnapshot } from './mock'
 import { buildMockCctv } from './mockCctv'
-import { buildMockPopulationTrend } from './mockPopulationTrend'
+import { buildMockAreaPopulation } from './mockPopulationTrend'
 import { buildMockCityInfo } from './mockCityInfo'
 import { parseBulkEnvelope, parseCitydataResponse } from './schema'
 
@@ -214,7 +216,7 @@ export async function fetchCctv(areaName: string): Promise<readonly CctvCamera[]
 }
 
 /**
- * 명소 인구의 **시간 대비**(1시간·3시간·한달 전). CCTV와 같은 상류·같은 규칙이다 —
+ * 명소 인구의 **시간 대비와 24시간 흐름**. CCTV와 같은 상류·같은 규칙이다 —
  * **하루 1,000회 한도와 무관**하고(`api/ppltn.ts`), **실패해도 던지지 않는다.**
  *
  * 던지지 않는 이유가 CCTV보다 강하다. 이 값은 인구 탭 안에서 공식 API가 준
@@ -222,19 +224,23 @@ export async function fetchCctv(areaName: string): Promise<readonly CctvCamera[]
  * 고장 난 화면으로 끌고 들어간다. 빈 응답은 관대한 리더가 세 칸을 전부
  * `null`로 읽어 그 절만 사라진다.
  */
-export async function fetchPopulationTrend(areaName: string): Promise<PopulationTrend> {
+export async function fetchAreaPopulation(areaName: string): Promise<AreaPopulation> {
   if (isMockMode()) {
-    return buildMockPopulationTrend(areaName)
+    return buildMockAreaPopulation(areaName)
   }
 
   const url = `${baseUrl()}/api/ppltn?area=${encodeURIComponent(areaName)}`
   try {
-    const { body } = await requestJson(url, SINGLE_AREA_TIMEOUT_MS, '인구 대비 정보')
-    return parsePopulationTrend(body)
+    const { body } = await requestJson(url, SINGLE_AREA_TIMEOUT_MS, '인파 변화 정보')
+    const envelope = (body ?? {}) as { ppltn?: unknown; congest?: unknown }
+    return {
+      trend: parsePopulationTrend(envelope.ppltn),
+      flow: parsePopulationFlow(envelope.congest),
+    }
   } catch (error) {
     // requestJson이 이미 콘솔에 남겼다. 여기서는 화면을 지키는 것만 한다.
-    console.error(`[${areaName}] 인구 대비 조회 실패:`, error)
-    return parsePopulationTrend(null)
+    console.error(`[${areaName}] 인파 변화 조회 실패:`, error)
+    return { trend: parsePopulationTrend(null), flow: EMPTY_POPULATION_FLOW }
   }
 }
 

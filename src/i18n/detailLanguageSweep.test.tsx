@@ -30,12 +30,23 @@ vi.mock('../data/queries', () => ({
   useCctv: vi.fn(() => ({ data: [], isPending: false, isError: false })),
   // 세 칸을 다 채운다. 이 절의 낱말(「1시간 전」·「증가」)이 영어로 바뀌는지가
   // 이 파일이 볼 것이고, 비워 두면 절이 통째로 사라져 조용히 통과한다.
-  usePopulationTrend: vi.fn(() => ({
-    data: {
+  useAreaPopulation: vi.fn(() => ({
+    data: { trend: {
       lastHour: { direction: 'up', percent: 7 },
       lastThreeHours: { direction: 'down', percent: 30.1 },
       lastMonth: { direction: 'up', percent: 15.3 },
-    },
+    }, flow: {
+      // 25칸을 채운다. 「지금」·「{시}시」·「약 {인원}명」·「평소 약 {인원}명」·
+      // 「예상」이 전부 이 절에서만 나오는 낱말이라, 비워 두면 폴백이 그려지며
+      // 조용히 통과한다.
+      slots: Array.from({ length: 25 }, (_, index) => ({
+        hour: (index + 1) % 24,
+        people: 1_000 * (index + 1),
+        usual: 900 * (index + 1),
+        congestion: '보통' as const,
+      })),
+      nowIndex: 12,
+    } },
     isPending: false,
     isError: false,
   })),

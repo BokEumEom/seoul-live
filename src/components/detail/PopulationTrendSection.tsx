@@ -1,4 +1,4 @@
-import { usePopulationTrend } from '../../data/queries'
+import { useAreaPopulation } from '../../data/queries'
 import { PopulationTrendCard } from './PopulationTrendCard'
 
 interface Props {
@@ -23,7 +23,7 @@ interface Props {
  * 「있으면 뜨고 없으면 없다」로 충분하다 — 부가 정보라 재시도 버튼도 두지 않는다.
  */
 export function PopulationTrendSection({ areaName }: Props) {
-  const { data } = usePopulationTrend(areaName)
+  const { data } = useAreaPopulation(areaName)
 
-  return data === undefined ? null : <PopulationTrendCard trend={data} />
+  return data === undefined ? null : <PopulationTrendCard trend={data.trend} />
 }

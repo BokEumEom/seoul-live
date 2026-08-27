@@ -85,20 +85,28 @@ async function get(url: string, init: RequestInit): Promise<Response> {
  * 오는데 정작 목록이 302다 — 「쿠키가 있으니 됐다」고 착각하기 딱 좋은 자리이고
  * 실제로 한 번 여기서 헤맸다.
  */
-async function withSession(path: string, seedArea: string): Promise<Response> {
+async function openSession(seedArea: string): Promise<string> {
   const bootstrap = await get(
     `${SEOUL_RTD_BASE}/map?hotspotNm=${encodeURIComponent(seedArea)}`,
     {},
   )
+  return sessionCookie(bootstrap.headers)
+}
+
+function callApi(path: string, cookie: string): Promise<Response> {
   return get(`${SEOUL_RTD_BASE}${path}`, {
     headers: {
-      Cookie: sessionCookie(bootstrap.headers),
+      Cookie: cookie,
       // 셋 다 있어야 통과한다. 하나라도 빼고 부르면 302를 받는다.
       Referer: `${SEOUL_RTD_BASE}/map`,
       'X-Requested-With': 'XMLHttpRequest',
       Accept: 'application/json',
     },
   })
+}
+
+async function withSession(path: string, seedArea: string): Promise<Response> {
+  return callApi(path, await openSession(seedArea))
 }
 
 /**
@@ -135,8 +143,16 @@ export async function fetchHotspotRows(): Promise<readonly unknown[]> {
   return rows
 }
 
+/** 두 엔드포인트의 원본을 한 봉투에 담은 것. 화면이 언제나 함께 쓴다. */
+export interface PopulationPayload {
+  /** `/api/ppltn` — 1시간·3시간·한달 전 대비 */
+  readonly ppltn: unknown
+  /** `/api/ppltn_congest` — 24시간 흐름 25칸 + 최근 4주 평균 */
+  readonly congest: unknown
+}
+
 /**
- * 한 명소의 인구 **시간 대비**(1시간·3시간·한달 전). 원본 배열을 그대로 넘긴다.
+ * 한 명소의 인구 **시간 대비와 24시간 흐름**. 원본을 그대로 넘긴다.
  *
  * **공식 API가 못 주는 값이라 여기까지 왔다.** `citydata_ppltn`은 요청 인자
  * 여섯에 날짜가 없어 과거를 안 준다 — 이 앱이 요일×시간 패턴을 기기에 직접
@@ -147,19 +163,28 @@ export async function fetchHotspotRows(): Promise<readonly unknown[]> {
  * 대신 같은 약점을 진다: 문서화된 API가 아니라 조용히 깨진다. 호출부가 실패를
  * 화면 오류로 올리지 말고 「이 값 없음」으로 접어야 한다(`api/ppltn.ts`).
  */
-export async function fetchPopulationRows(areaName: string): Promise<unknown> {
-  const listed = await withSession(
-    `/api/ppltn?hotspotNm=${encodeURIComponent(areaName)}`,
-    areaName,
-  )
+export async function fetchPopulationRows(areaName: string): Promise<PopulationPayload> {
+  const encoded = encodeURIComponent(areaName)
+  // **세션을 한 번만 연다.** 둘을 따로 부르면 부트스트랩이 두 번이라 남의
+  // 서버에 요청이 넷 나간다. 한 번 열어 나눠 쓰면 셋이다.
+  const cookie = await openSession(areaName)
 
-  if (!listed.ok) {
-    throw new Error(`SeoulRtd ppltn responded ${listed.status}`)
+  const [trend, congest] = await Promise.all([
+    callApi(`/api/ppltn?hotspotNm=${encoded}`, cookie),
+    callApi(`/api/ppltn_congest?hotspotNm=${encoded}`, cookie),
+  ])
+
+  if (!trend.ok || !congest.ok) {
+    throw new Error(
+      `SeoulRtd ppltn responded ${trend.status}/${congest.status}`,
+    )
   }
 
   // **정규화하지 않는다.** 배열인지 아닌지도 여기서 안 따진다 — 파싱은
-  // 클라이언트의 관대한 리더(`ppltnSchema.ts`)가 맡는다(CCTV와 같은 경계).
-  return listed.json()
+  // 클라이언트의 관대한 리더가 맡는다(CCTV와 같은 경계). 다만 **둘을 한 봉투에
+  // 담는 것은 정규화가 아니라 합치기**다: 화면이 언제나 함께 쓰므로 왕복과
+  // 캐시 항목을 하나로 둔다.
+  return { ppltn: await trend.json(), congest: await congest.json() }
 }
 
 export async function fetchCctvRows(areaName: string): Promise<readonly unknown[]> {

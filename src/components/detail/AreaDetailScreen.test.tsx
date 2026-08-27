@@ -29,12 +29,20 @@ vi.mock('../../data/queries', () => ({
   useCctv: vi.fn(() => ({ data: [], isPending: false, isError: false })),
   // 인파 변화는 SeoulRtd에서 오는 부가 정보다. 기본값을 「읽힌 값」으로 두는
   // 이유는 그게 정상 화면이기 때문이다 — 실호출 10곳이 전부 세 칸을 다 줬다.
-  usePopulationTrend: vi.fn(() => ({
-    data: {
+  useAreaPopulation: vi.fn(() => ({
+    data: { trend: {
       lastHour: { direction: 'up', percent: 7 },
       lastThreeHours: { direction: 'up', percent: 30.1 },
       lastMonth: { direction: 'down', percent: 15.3 },
-    },
+    }, flow: {
+      slots: Array.from({ length: 25 }, (_, index) => ({
+        hour: (index + 1) % 24,
+        people: 1_000 * (index + 1),
+        usual: 900 * (index + 1),
+        congestion: '보통',
+      })),
+      nowIndex: 12,
+    } },
     isPending: false,
     isError: false,
   })),
@@ -62,7 +70,27 @@ const shareMessage = vi.mocked(links.shareMessage)
 const useAreaSnapshot = vi.mocked(queries.useAreaSnapshot)
 const useAreaCongestion = vi.mocked(queries.useAreaCongestion)
 const useCityInfo = vi.mocked(queries.useCityInfo)
-const usePopulationTrend = vi.mocked(queries.usePopulationTrend)
+const useAreaPopulation = vi.mocked(queries.useAreaPopulation)
+
+/**
+ * 실응답 모양의 25칸. **이게 정상 상태다** — SeoulRtd는 대개 답하고, 그때 인구
+ * 탭의 그래프는 「24시간 인파 흐름」이다. 못 받았을 때의 폴백은 따로 잰다.
+ */
+const FLOW_LESS_TREND = {
+  lastHour: { direction: 'up' as const, percent: 7 },
+  lastThreeHours: { direction: 'up' as const, percent: 30.1 },
+  lastMonth: { direction: 'down' as const, percent: 15.3 },
+}
+
+const FLOW = {
+  slots: Array.from({ length: 25 }, (_, index) => ({
+    hour: (index + 1) % 24,
+    people: 1_000 * (index + 1),
+    usual: 900 * (index + 1),
+    congestion: '보통' as const,
+  })),
+  nowIndex: 12,
+}
 const useLocation = vi.mocked(locationContext.useLocation)
 
 const SNAPSHOT: AreaSnapshot = {
@@ -124,11 +152,14 @@ beforeEach(() => {
   // **여기서 다시 세워야 한다.** `clearAllMocks`는 호출 기록만 지우고
   // `mockReturnValue`는 남긴다 — 한 테스트가 「못 받은 인파 변화」를 넣으면
   // 그 값이 뒤 테스트로 새어 그쪽에서는 절이 조용히 사라진다.
-  usePopulationTrend.mockReturnValue(
+  useAreaPopulation.mockReturnValue(
     ok({
-      lastHour: { direction: 'up', percent: 7 },
-      lastThreeHours: { direction: 'up', percent: 30.1 },
-      lastMonth: { direction: 'down', percent: 15.3 },
+      trend: {
+        lastHour: { direction: 'up', percent: 7 },
+        lastThreeHours: { direction: 'up', percent: 30.1 },
+        lastMonth: { direction: 'down', percent: 15.3 },
+      },
+      flow: FLOW,
     } as const),
   )
   standAt(null)
@@ -444,7 +475,7 @@ describe('AreaDetailScreen — 탭', () => {
     await openTab('인구')
     expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('인구')
     expect(
-      screen.getByRole('heading', { name: '시간대별 인파' }),
+      screen.getByRole('heading', { name: '24시간 인파 흐름' }),
     ).toBeInTheDocument()
   })
 
@@ -647,7 +678,7 @@ describe('AreaDetailScreen — 인구 탭', () => {
     for (const name of ['성별 비율', '연령대별 비율', '거주 비율']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
     }
-    expect(screen.getByRole('heading', { name: '시간대별 인파' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '24시간 인파 흐름' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '요일×시간 패턴' })).toBeInTheDocument()
   })
 
@@ -663,37 +694,58 @@ describe('AreaDetailScreen — 인구 탭', () => {
     renderDetail('강남역')
     await openTab('인구')
 
-    expect(usePopulationTrend).toHaveBeenCalledWith('강남역')
+    expect(useAreaPopulation).toHaveBeenCalledWith('강남역')
     expect(screen.getByRole('heading', { name: '인파 변화' })).toBeInTheDocument()
   })
 
   // 이 절은 문서화되지 않은 상류에서 온다. 못 받았을 때 인구 탭의 나머지가
   // 멀쩡해야 한다 — 공식 API에서 온 값까지 끌고 들어가면 안 된다.
   it('인파 변화를 못 받아도 나머지 인구 탭은 그대로다', async () => {
-    usePopulationTrend.mockReturnValue({
+    useAreaPopulation.mockReturnValue({
       data: {
-        lastHour: { direction: null, percent: null },
-        lastThreeHours: { direction: null, percent: null },
-        lastMonth: { direction: null, percent: null },
+        trend: {
+          lastHour: { direction: null, percent: null },
+          lastThreeHours: { direction: null, percent: null },
+          lastMonth: { direction: null, percent: null },
+        },
+        flow: FLOW,
       },
       isPending: false,
       isError: false,
-    } as unknown as ReturnType<typeof usePopulationTrend>)
+    } as unknown as ReturnType<typeof useAreaPopulation>)
     renderDetail()
     await openTab('인구')
 
     expect(screen.queryByRole('heading', { name: '인파 변화' })).toBeNull()
     expect(screen.getByRole('heading', { name: '성별 비율' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '시간대별 인파' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '24시간 인파 흐름' })).toBeInTheDocument()
   })
 
-  it('인구 구성이 시간대별 인파보다 위에 있다', async () => {
+  it('인구 구성이 인파 그래프보다 위에 있다', async () => {
     renderDetail()
     await openTab('인구')
     const who = screen.getByRole('heading', { name: '성별 비율' })
-    expect(before(who, screen.getByRole('heading', { name: '시간대별 인파' }))).toBe(
-      true,
-    )
+    expect(
+      before(who, screen.getByRole('heading', { name: '24시간 인파 흐름' })),
+    ).toBe(true)
+  })
+
+  /**
+   * **폴백은 오른쪽 절반이다.** SeoulRtd는 문서화된 API가 아니라 조용히 깨지는데,
+   * 그때 그래프가 통째로 사라지면 안 된다 — 공식 API가 예보 12칸을 들고 있다.
+   * 제목도 함께 물러난다: 과거가 없는데 「24시간」이라고 쓰면 거짓말이다.
+   */
+  it('흐름을 못 받으면 예보 12칸으로 떨어진다', async () => {
+    useAreaPopulation.mockReturnValue({
+      data: { trend: FLOW_LESS_TREND, flow: { slots: [], nowIndex: null } },
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useAreaPopulation>)
+    renderDetail()
+    await openTab('인구')
+
+    expect(screen.getByRole('heading', { name: '시간대별 인파' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '24시간 인파 흐름' })).toBeNull()
   })
 
   // **카드 안의 카드가 아니다**(2026-08-25). 시안 `_3`이 성별·연령을 각자
@@ -719,7 +771,7 @@ describe('AreaDetailScreen — 인구 탭', () => {
     for (const name of ['성별 비율', '연령대별 비율', '거주 비율']) {
       expect(screen.queryByRole('heading', { name })).toBeNull()
     }
-    expect(screen.getByRole('heading', { name: '시간대별 인파' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '24시간 인파 흐름' })).toBeInTheDocument()
   })
 
   // **히어로가 이미 말한 것을 카드가 또 말하면 안 된다.** 히어로는 탭과 무관하게

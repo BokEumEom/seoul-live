@@ -4,8 +4,12 @@ import { setCacheHeaders, setCorsHeaders, setNoStoreHeader } from './_lib/http.j
 import { cacheTtlSeconds } from './_lib/seoul.js'
 import { fetchPopulationRows } from './_lib/seoulRtd.js'
 
-// 명소 인구의 시간 대비(1시간·3시간·한달 전). `cctv.ts`와 모양이 같다 — 같은
-// 상류(SeoulRtd)이고 **인증키를 안 쓰므로 하루 1,000회 한도와 무관하다.**
+// 명소 인구의 시간 대비(1시간·3시간·한달 전)와 24시간 흐름 25칸. `cctv.ts`와
+// 모양이 같다 — 같은 상류(SeoulRtd)이고 **인증키를 안 쓰므로 하루 1,000회
+// 한도와 무관하다.**
+//
+// **두 엔드포인트를 한 봉투로 준다.** 화면이 언제나 함께 쓰므로 왕복도 캐시
+// 항목도 하나여야 하고, 상류 세션도 한 번만 연다(`_lib/seoulRtd.ts`).
 //
 // **TTL이 5분이 아니라 상세 혼잡도와 같은 값이다.** 상류는 5분마다 갱신되지만
 // (`hotspotsCacheTtlSeconds`의 근거), 이 값은 인구 탭에서 **인원수 바로 옆에
@@ -50,7 +54,7 @@ export default async function handler(
     console.error(`[ppltn] area="${area}" 조회 실패:`, error)
     // 실패는 캐시하지 않는다 — 상류가 돌아와도 TTL이 끝날 때까지 빈 절이 된다.
     setNoStoreHeader(res)
-    // 200 + 빈 배열이다. 관대한 리더가 세 칸을 전부 `null`로 읽는다.
-    res.status(200).json([])
+    // 200 + 빈 봉투다. 관대한 리더가 대비 세 칸을 `null`로, 흐름을 빈 칸으로 읽는다.
+    res.status(200).json({ ppltn: [], congest: [] })
   }
 }

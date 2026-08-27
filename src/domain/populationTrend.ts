@@ -1,3 +1,5 @@
+import type { PopulationFlow } from './populationFlow'
+
 /**
  * 명소 인구의 **시간 대비** — 1시간 전 · 3시간 전 · 한달 전.
  *
@@ -38,6 +40,15 @@ export interface PopulationChange {
    * 는 건지 준 건지 알 수 없고, 화면은 반드시 `direction`과 함께 읽어야 한다.
    */
   readonly percent: number | null
+}
+
+/**
+ * 인구 탭이 SeoulRtd에서 받는 것 전부. **한 번의 조회로 함께 온다** — 둘이
+ * 같은 화면에 나란히 서므로 왕복도 캐시도 하나다(`api/ppltn.ts`).
+ */
+export interface AreaPopulation {
+  readonly trend: PopulationTrend
+  readonly flow: PopulationFlow
 }
 
 export interface PopulationTrend {

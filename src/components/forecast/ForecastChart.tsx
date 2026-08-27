@@ -1,14 +1,13 @@
-import { formatPopulationTick } from '../../i18n/format'
 import { t } from '../../i18n/t'
 import { congestionTone } from '../../domain/congestion'
 import {
-  AXIS_TICKS,
   forecastPopulation,
   niceAxisMax,
   peakForecast,
 } from '../../domain/forecast'
 import type { AreaSnapshot, CongestionLevel } from '../../domain/types'
 import { TONE_FILL_CLASS } from '../common/toneClass'
+import { ChartYAxis } from './ChartYAxis'
 
 interface Props {
   readonly snapshot: AreaSnapshot
@@ -108,23 +107,7 @@ export function ForecastChart({ snapshot }: Props) {
       )}
 
       <div className="mt-3 flex gap-2">
-        {/* 세로축. 위가 최댓값이고 아래가 0이다.
-            **`justify-between`이 아니라 절대 위치다.** flex로 펼치면 글자
-            상자의 높이만큼 눈금이 안쪽으로 밀려, 「0」이 막대 바닥선보다 위에
-            뜨고 최댓값은 천장보다 아래에 앉는다(390px 실측에서 눈에 보였다).
-            각 눈금의 **가운데**가 제 격자선에 와야 하므로 위치를 퍼센트로 주고
-            절반만큼 끌어올린다. `w-11`은 「4.5만」이 안 접히는 최소 폭이다. */}
-        <div aria-hidden="true" className="relative h-32 w-11 shrink-0">
-          {Array.from({ length: AXIS_TICKS + 1 }, (_, index) => (
-            <span
-              key={index}
-              style={{ top: `${String((index / AXIS_TICKS) * 100)}%` }}
-              className="absolute right-0 -translate-y-1/2 whitespace-nowrap text-label-sm leading-none text-outline"
-            >
-              {formatPopulationTick((axisMax * (AXIS_TICKS - index)) / AXIS_TICKS)}
-            </span>
-          ))}
-        </div>
+        <ChartYAxis axisMax={axisMax} />
 
         {/* 막대들. `ul`인 이유는 스크린리더가 「목록, 5개 항목」으로 먼저
             규모를 알려주기 때문이다 — 그래프에는 그런 안내가 없다. */}

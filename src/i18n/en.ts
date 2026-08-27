@@ -246,6 +246,19 @@ export const EN: Readonly<Record<string, string>> = {
   '1시간 전': '1 hour ago',
   '3시간 전': '3 hours ago',
   '한달 전': 'A month ago',
+  // ── 24시간 인파 흐름(SeoulRtd `/api/ppltn_congest`, 2026-08-27) ──
+  //
+  // 제목이 출처를 따라간다. 예보만 있을 때 「24시간」이라고 쓰면 거짓말이다.
+  '24시간 인파 흐름': '24-hour crowd flow',
+  '막대 = 인원': 'Bars = people',
+  '점선은 최근 4주 같은 요일의 평균이에요': 'Dashed line is the 4-week average for this weekday',
+  // 막대마다 소리로 나가는 값. 곡선은 그림이라 이게 없으면 「오늘 대 평소」가
+  // 그래프를 못 보는 사용자에게 통째로 사라진다.
+  '약 {인원}명': 'about {인원}',
+  '평소 약 {인원}명': 'usually about {인원}',
+  '인원 정보 없음': 'No population data',
+  예상: 'forecast',
+
   // 화살표는 그림이라 소리 채널에 안 실린다(`Icon`이 언제나 `aria-hidden`).
   // 이 둘이 방향의 유일한 두 번째 채널이라 `sr-only`로 값 뒤에 선다.
   증가: 'increase',

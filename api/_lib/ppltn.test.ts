@@ -29,28 +29,36 @@ function createResponse(): MockResponse {
   return res as unknown as MockResponse
 }
 
-/** 세션 부트스트랩 + 본 요청. 상류가 요청을 둘 받는다(`seoulRtd.ts`). */
-function stubUpstream(rows: unknown) {
-  vi.stubGlobal(
-    'fetch',
-    vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'set-cookie': 'JSESSIONID=ABC' }),
-        text: async () => '',
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers(),
-        json: async () => rows,
-      }),
-  )
+/**
+ * **요청이 셋이다.** 세션 부트스트랩 한 번 + 엔드포인트 둘. URL로 갈라 응답한다 —
+ * 호출 순서에 기대면 병렬로 부르는 두 요청의 차례가 바뀌는 날 조용히 어긋난다.
+ */
+function stubUpstream(ppltn: unknown, congest: unknown) {
+  const fetchMock = vi.fn((url: string) => {
+    if (url.includes('/api/ppltn_congest')) {
+      return Promise.resolve(json(congest))
+    }
+    if (url.includes('/api/ppltn')) {
+      return Promise.resolve(json(ppltn))
+    }
+    // 지도 페이지 = 세션 부트스트랩.
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'set-cookie': 'JSESSIONID=ABC' }),
+      text: async () => '',
+    })
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
 }
 
-const ROWS = [{ hotspot_nm: '강남역', ONEHOUR_RATE_UP_DOWN: 'up', ONEHOUR_RATE: '7.0%' }]
+function json(body: unknown) {
+  return { ok: true, status: 200, headers: new Headers(), json: async () => body }
+}
+
+const PPLTN = [{ hotspot_nm: '강남역', ONEHOUR_RATE_UP_DOWN: 'up', ONEHOUR_RATE: '7.0%' }]
+const CONGEST = [{ hotspot_nm: '강남역', time_cd: '11시|현재', people_value: '10|20' }]
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -89,14 +97,28 @@ describe('ppltn 핸들러', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('상류 응답을 그대로 넘긴다', async () => {
-    stubUpstream(ROWS)
+  it('두 엔드포인트를 한 봉투로 넘긴다', async () => {
+    stubUpstream(PPLTN, CONGEST)
     const res = createResponse()
 
     await handler(createRequest({ area: '강남역' }), res)
 
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(res.json).toHaveBeenCalledWith(ROWS)
+    expect(res.json).toHaveBeenCalledWith({ ppltn: PPLTN, congest: CONGEST })
+  })
+
+  /**
+   * **세션을 한 번만 연다.** 둘을 따로 부르면 부트스트랩이 두 번이라 남의 서버에
+   * 요청이 넷 나간다. 이건 화면에 아무 표시도 안 나는 종류의 낭비라 수로 잠근다.
+   */
+  it('상류 요청이 셋이다 — 부트스트랩 하나에 호출 둘', async () => {
+    const fetchMock = stubUpstream(PPLTN, CONGEST)
+
+    await handler(createRequest({ area: '강남역' }), createResponse())
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    const urls = fetchMock.mock.calls.map((call) => String(call[0]))
+    expect(urls.filter((url) => url.includes('/map?'))).toHaveLength(1)
   })
 
   /**
@@ -106,7 +128,7 @@ describe('ppltn 핸들러', () => {
    */
   it('상세 혼잡도와 같은 TTL로 캐시한다', async () => {
     vi.stubEnv('CACHE_TTL_SECONDS', '1800')
-    stubUpstream(ROWS)
+    stubUpstream(PPLTN, CONGEST)
     const res = createResponse()
 
     await handler(createRequest({ area: '강남역' }), res)
@@ -120,9 +142,9 @@ describe('ppltn 핸들러', () => {
   /**
    * **실패를 502로 올리지 않는다.** 이 상류는 문서화된 API가 아니라 조용히
    * 깨지는데, 그때 인구 탭에 오류가 뜨면 공식 API에서 멀쩡히 온 인원수·구성비까지
-   * 고장 난 것처럼 보인다. 관대한 리더가 빈 배열을 세 칸 `null`로 읽는다.
+   * 고장 난 것처럼 보인다. 관대한 리더가 빈 봉투를 세 칸 `null`과 빈 흐름으로 읽는다.
    */
-  it('상류가 실패해도 200 + 빈 배열이다', async () => {
+  it('상류가 실패해도 200 + 빈 봉투다', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('boom')))
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const res = createResponse()
@@ -130,7 +152,7 @@ describe('ppltn 핸들러', () => {
     await handler(createRequest({ area: '강남역' }), res)
 
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(res.json).toHaveBeenCalledWith([])
+    expect(res.json).toHaveBeenCalledWith({ ppltn: [], congest: [] })
   })
 
   // 실패를 캐시하면 상류가 돌아와도 TTL이 끝날 때까지 빈 절이 된다.

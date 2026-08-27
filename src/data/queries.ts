@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-query'
 import { z } from 'zod'
 import type { CctvCamera } from '../domain/cctv'
-import type { PopulationTrend } from '../domain/populationTrend'
+import type { AreaPopulation } from '../domain/populationTrend'
 import type { CityInfo } from '../domain/cityInfo'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import {
@@ -14,7 +14,7 @@ import {
   fetchAreaSnapshot,
   fetchAreaSnapshots,
   fetchCctv,
-  fetchPopulationTrend,
+  fetchAreaPopulation,
   fetchCityInfo,
   ProxyResponseError,
 } from './client'
@@ -173,26 +173,29 @@ export function useCctv(areaName: string | undefined): UseQueryResult<readonly C
 }
 
 /**
- * 명소 인구의 시간 대비. **상세 혼잡도와 같은 시계를 쓴다.**
+ * 명소 인구의 시간 대비와 24시간 흐름. **상세 혼잡도와 같은 시계를 쓴다.**
+ *
+ * **한 질의가 둘을 다 준다.** 인구 탭이 언제나 함께 그리므로 왕복도 캐시도
+ * 하나여야 한다 — 프록시가 상류 세션까지 한 번만 연다(`api/ppltn.ts`).
  *
  * `staleTime`이 CCTV(1시간)가 아니라 상세 혼잡도(30분)와 같은 값인 이유는
  * 프록시 TTL을 그렇게 맞춘 이유와 같다(`api/ppltn.ts`) — 이 값이 인원수 바로
  * 옆에 놓이므로 두 숫자가 서로 다른 순간을 말하면 안 된다.
  */
-export function usePopulationTrend(
+export function useAreaPopulation(
   areaName: string | undefined,
-): UseQueryResult<PopulationTrend> {
+): UseQueryResult<AreaPopulation> {
   return useQuery({
     queryKey: ['ppltn', areaName],
     queryFn: () => {
       if (!areaName) {
         return Promise.reject(new Error('areaName이 없어 조회할 수 없습니다.'))
       }
-      return fetchPopulationTrend(areaName)
+      return fetchAreaPopulation(areaName)
     },
     enabled: Boolean(areaName),
     staleTime: THIRTY_MINUTES,
-    // **재시도하지 않는다.** `fetchPopulationTrend`가 실패를 이미 빈 값으로
+    // **재시도하지 않는다.** `fetchAreaPopulation`이 실패를 이미 빈 값으로
     // 흡수하므로 여기까지 오는 에러는 사실상 없고, 재시도는 문서화되지 않은
     // 남의 서버에 요청을 더 보내는 일일 뿐이다(`useCctv`와 같다).
     retry: false,
