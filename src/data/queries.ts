@@ -104,6 +104,20 @@ export function findSeededSnapshot(
 const THIRTY_MINUTES = 30 * 60 * 1_000
 
 /**
+ * 상세 한 곳의 원본 응답 캐시 키.
+ *
+ * **문자열을 두 군데 적지 않는다.** 이 저장소는 같은 실수로 이미 한 번
+ * 기능을 잃었다 — 씨앗 심기(`findSeededSnapshot`)가 2026-08-20에 멈춘
+ * 원인이 「뒤지는 키와 채우는 키가 갈렸다」였고, 코드는 안 깨지고 테스트도
+ * 초록이었다(AGENTS.md 참고). 캐시를 직접 읽는 쪽(`useCachedCityAlerts`)도
+ * `queryFn`으로 채우지 않고 `getQueryData`로 뒤지기만 하지만, 키는 반드시
+ * 이 함수로만 만든다.
+ */
+export function areaPayloadKey(areaName: string | undefined) {
+  return ['areaPayload', areaName] as const
+}
+
+/**
  * 상세 한 곳의 원본 응답. **두 훅이 이 항목 하나를 나눠 쓴다.**
  *
  * 키를 공유하지 않으면 같은 URL을 두 번 부른다 — CDN이 상류 호출은 막아
@@ -111,7 +125,7 @@ const THIRTY_MINUTES = 30 * 60 * 1_000
  */
 function areaPayloadOptions(areaName: string | undefined) {
   return {
-    queryKey: ['areaPayload', areaName] as const,
+    queryKey: areaPayloadKey(areaName),
     // enabled에만 기대지 않고 가드를 둔다 — enabled는 런타임 보장이지
     // TypeScript가 아는 사실이 아니다.
     queryFn: () => {
