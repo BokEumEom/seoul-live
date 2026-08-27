@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { AGE_LABELS } from '../domain/composition'
 import { parseComposition } from './compositionSchema'
 
+// citydata 응답 모양으로 고정한다. 옛 citydata_ppltn 봉투는 2026-08-27에 프록시와
+// 함께 저장소에서 지웠다 — populationRows가 더는 그 키를 안 읽는다.
 function payload(area: Record<string, unknown>): unknown {
-  return { 'SeoulRtd.citydata_ppltn': [{ AREA_NM: '강남역', ...area }] }
+  return { CITYDATA: { LIVE_PPLTN_STTS: [{ AREA_NM: '강남역', ...area }] } }
 }
 
 const FULL = {
@@ -125,23 +127,14 @@ describe('parseComposition', () => {
 
   it('여러 명소가 담긴 payload에서 요청한 명소의 것을 고른다', () => {
     const multi = {
-      'SeoulRtd.citydata_ppltn': [
-        { AREA_NM: '경복궁', ...FULL, MALE_PPLTN_RATE: '10' },
-        { AREA_NM: '강남역', ...FULL, MALE_PPLTN_RATE: '90' },
-      ],
+      CITYDATA: {
+        LIVE_PPLTN_STTS: [
+          { AREA_NM: '경복궁', ...FULL, MALE_PPLTN_RATE: '10' },
+          { AREA_NM: '강남역', ...FULL, MALE_PPLTN_RATE: '90' },
+        ],
+      },
     }
     expect(parseComposition(multi, '강남역')?.maleRate).toBe(90)
     expect(parseComposition(multi, '경복궁')?.maleRate).toBe(10)
-  })
-})
-
-describe('citydata 봉투', () => {
-  it('CITYDATA.LIVE_PPLTN_STTS에서도 같은 구성을 읽는다', () => {
-    const row = { AREA_NM: '강남역', MALE_PPLTN_RATE: '50.5', FEMALE_PPLTN_RATE: '49.5' }
-    const fromCitydata = parseComposition({ CITYDATA: { LIVE_PPLTN_STTS: [row] } }, '강남역')
-    // parseComposition은 실패해도 던지지 않고 null을 돌려주므로, toEqual만으로는
-    // 둘 다 null이어도(=아무것도 못 읽어도) 통과한다. 정상 경로임을 여기서도 못 박는다.
-    expect(fromCitydata).not.toBeNull()
-    expect(fromCitydata).toEqual(parseComposition({ 'SeoulRtd.citydata_ppltn': [row] }, '강남역'))
   })
 })

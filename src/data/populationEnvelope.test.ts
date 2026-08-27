@@ -7,10 +7,9 @@ describe('populationRows', () => {
     expect(populationRows({ CITYDATA: { LIVE_PPLTN_STTS: rows } })).toBe(rows)
   })
 
-  it('citydata_ppltn 봉투에서도 꺼낸다', () => {
-    // 마이그레이션 중에만 필요하다. Task 7에서 이 갈래와 이 테스트를 함께 지운다.
-    const rows = [{ AREA_NM: '강남역' }]
-    expect(populationRows({ 'SeoulRtd.citydata_ppltn': rows })).toBe(rows)
+  it('옛 citydata_ppltn 봉투는 더 이상 안 읽는다', () => {
+    // 2026-08-27에 그 프록시를 걷어냈다. 되살리려는 커밋을 여기서 막는다.
+    expect(populationRows({ 'SeoulRtd.citydata_ppltn': [{ AREA_NM: '강남역' }] })).toBeUndefined()
   })
 
   it('봉투가 아니면 undefined다', () => {

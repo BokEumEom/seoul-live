@@ -2,28 +2,33 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { AreaNameMismatchError, parseBulkEnvelope, parseCitydataResponse, SeoulApiError } from './schema'
 
-const VALID = {
-  'SeoulRtd.citydata_ppltn': [
+// citydata 응답 모양으로 고정한다. 옛 citydata_ppltn 봉투(`SeoulRtd.citydata_ppltn`)는
+// 2026-08-27에 프록시와 함께 저장소에서 지웠다 — populationRows가 더는 그 키를 읽지
+// 않으므로 여기서 계속 썼다면 모든 테스트가 "빈 배열" ZodError로 죽었을 것이다.
+function citydataEnvelope(rows: readonly unknown[]): unknown {
+  return { CITYDATA: { LIVE_PPLTN_STTS: rows } }
+}
+
+const VALID_ROW = {
+  AREA_NM: '광화문·덕수궁',
+  AREA_CD: 'POI009',
+  AREA_CONGEST_LVL: '보통',
+  AREA_CONGEST_MSG: '크게 붐비지는 않아요.',
+  AREA_PPLTN_MIN: '42000',
+  AREA_PPLTN_MAX: '44000',
+  PPLTN_TIME: '2026-08-03 14:35',
+  FCST_YN: 'Y',
+  FCST_PPLTN: [
     {
-      AREA_NM: '광화문·덕수궁',
-      AREA_CD: 'POI009',
-      AREA_CONGEST_LVL: '보통',
-      AREA_CONGEST_MSG: '크게 붐비지는 않아요.',
-      AREA_PPLTN_MIN: '42000',
-      AREA_PPLTN_MAX: '44000',
-      PPLTN_TIME: '2026-08-03 14:35',
-      FCST_YN: 'Y',
-      FCST_PPLTN: [
-        {
-          FCST_TIME: '2026-08-03 16:00',
-          FCST_CONGEST_LVL: '약간 붐빔',
-          FCST_PPLTN_MIN: '42000',
-          FCST_PPLTN_MAX: '44000',
-        },
-      ],
+      FCST_TIME: '2026-08-03 16:00',
+      FCST_CONGEST_LVL: '약간 붐빔',
+      FCST_PPLTN_MIN: '42000',
+      FCST_PPLTN_MAX: '44000',
     },
   ],
 }
+
+const VALID = citydataEnvelope([VALID_ROW])
 
 const NAME = '광화문·덕수궁'
 
@@ -48,124 +53,94 @@ describe('parseCitydataResponse', () => {
   })
 
   it('자정 예측도 0시로 읽는다', () => {
-    const midnight = {
-      'SeoulRtd.citydata_ppltn': [
-        {
-          ...VALID['SeoulRtd.citydata_ppltn'][0],
-          FCST_PPLTN: [
-            {
-              FCST_TIME: '2026-08-04 00:00',
-              FCST_CONGEST_LVL: '여유',
-              FCST_PPLTN_MIN: '100',
-              FCST_PPLTN_MAX: '200',
-            },
-          ],
-        },
-      ],
-    }
+    const midnight = citydataEnvelope([
+      {
+        ...VALID_ROW,
+        FCST_PPLTN: [
+          {
+            FCST_TIME: '2026-08-04 00:00',
+            FCST_CONGEST_LVL: '여유',
+            FCST_PPLTN_MIN: '100',
+            FCST_PPLTN_MAX: '200',
+          },
+        ],
+      },
+    ])
     expect(parseCitydataResponse(midnight, NAME).forecasts[0].hour).toBe(0)
   })
 
   it('예측 시각 형식이 다르면 ZodError를 던진다', () => {
-    const badTime = {
-      'SeoulRtd.citydata_ppltn': [
-        {
-          ...VALID['SeoulRtd.citydata_ppltn'][0],
-          FCST_PPLTN: [
-            {
-              FCST_TIME: '2026/08/04 16:00',
-              FCST_CONGEST_LVL: '여유',
-              FCST_PPLTN_MIN: '100',
-              FCST_PPLTN_MAX: '200',
-            },
-          ],
-        },
-      ],
-    }
+    const badTime = citydataEnvelope([
+      {
+        ...VALID_ROW,
+        FCST_PPLTN: [
+          {
+            FCST_TIME: '2026/08/04 16:00',
+            FCST_CONGEST_LVL: '여유',
+            FCST_PPLTN_MIN: '100',
+            FCST_PPLTN_MAX: '200',
+          },
+        ],
+      },
+    ])
     expect(() => parseCitydataResponse(badTime, NAME)).toThrow(z.ZodError)
   })
 
   it('시(hour)가 0~23 범위를 벗어나면 ZodError를 던진다', () => {
-    const badHour = {
-      'SeoulRtd.citydata_ppltn': [
-        {
-          ...VALID['SeoulRtd.citydata_ppltn'][0],
-          FCST_PPLTN: [
-            {
-              FCST_TIME: '2026-08-04 99:99',
-              FCST_CONGEST_LVL: '여유',
-              FCST_PPLTN_MIN: '100',
-              FCST_PPLTN_MAX: '200',
-            },
-          ],
-        },
-      ],
-    }
+    const badHour = citydataEnvelope([
+      {
+        ...VALID_ROW,
+        FCST_PPLTN: [
+          {
+            FCST_TIME: '2026-08-04 99:99',
+            FCST_CONGEST_LVL: '여유',
+            FCST_PPLTN_MIN: '100',
+            FCST_PPLTN_MAX: '200',
+          },
+        ],
+      },
+    ])
     expect(() => parseCitydataResponse(badHour, NAME)).toThrow(z.ZodError)
   })
 
   it('예측이 없어도 빈 배열로 처리한다', () => {
-    const withoutForecast = {
-      'SeoulRtd.citydata_ppltn': [
-        { ...VALID['SeoulRtd.citydata_ppltn'][0], FCST_YN: 'N', FCST_PPLTN: null },
-      ],
-    }
+    const withoutForecast = citydataEnvelope([
+      { ...VALID_ROW, FCST_YN: 'N', FCST_PPLTN: null },
+    ])
     expect(parseCitydataResponse(withoutForecast, NAME).forecasts).toEqual([])
   })
 
   it('모르는 혼잡도 값이 오면 ZodError를 던진다', () => {
-    const badLevel = {
-      'SeoulRtd.citydata_ppltn': [
-        { ...VALID['SeoulRtd.citydata_ppltn'][0], AREA_CONGEST_LVL: '초혼잡' },
-      ],
-    }
+    const badLevel = citydataEnvelope([{ ...VALID_ROW, AREA_CONGEST_LVL: '초혼잡' }])
     expect(() => parseCitydataResponse(badLevel, NAME)).toThrow(z.ZodError)
   })
 
   it('숫자가 아닌 인구값이 오면 ZodError를 던진다', () => {
-    const badNumber = {
-      'SeoulRtd.citydata_ppltn': [
-        { ...VALID['SeoulRtd.citydata_ppltn'][0], AREA_PPLTN_MIN: '알수없음' },
-      ],
-    }
+    const badNumber = citydataEnvelope([{ ...VALID_ROW, AREA_PPLTN_MIN: '알수없음' }])
     expect(() => parseCitydataResponse(badNumber, NAME)).toThrow(z.ZodError)
   })
 
   it('빈 문자열 인구값은 0으로 통과시키지 않고 ZodError를 던진다', () => {
-    const emptyNumber = {
-      'SeoulRtd.citydata_ppltn': [{ ...VALID['SeoulRtd.citydata_ppltn'][0], AREA_PPLTN_MIN: '' }],
-    }
+    const emptyNumber = citydataEnvelope([{ ...VALID_ROW, AREA_PPLTN_MIN: '' }])
     expect(() => parseCitydataResponse(emptyNumber, NAME)).toThrow(z.ZodError)
   })
 
   it('음수·소수·16진수·지수 인구값은 ZodError를 던진다', () => {
     for (const bad of ['-500', '42000.5', '0x1f', '1e5']) {
-      const badNumber = {
-        'SeoulRtd.citydata_ppltn': [
-          { ...VALID['SeoulRtd.citydata_ppltn'][0], AREA_PPLTN_MIN: bad },
-        ],
-      }
+      const badNumber = citydataEnvelope([{ ...VALID_ROW, AREA_PPLTN_MIN: bad }])
       expect(() => parseCitydataResponse(badNumber, NAME)).toThrow(z.ZodError)
     }
   })
 
   it('최소 인구가 최대 인구보다 크면 ZodError를 던진다', () => {
-    const inverted = {
-      'SeoulRtd.citydata_ppltn': [
-        {
-          ...VALID['SeoulRtd.citydata_ppltn'][0],
-          AREA_PPLTN_MIN: '50000',
-          AREA_PPLTN_MAX: '40000',
-        },
-      ],
-    }
+    const inverted = citydataEnvelope([
+      { ...VALID_ROW, AREA_PPLTN_MIN: '50000', AREA_PPLTN_MAX: '40000' },
+    ])
     expect(() => parseCitydataResponse(inverted, NAME)).toThrow(z.ZodError)
   })
 
   it('빈 배열이면 ZodError를 던진다', () => {
-    expect(() => parseCitydataResponse({ 'SeoulRtd.citydata_ppltn': [] }, NAME)).toThrow(
-      z.ZodError,
-    )
+    expect(() => parseCitydataResponse(citydataEnvelope([]), NAME)).toThrow(z.ZodError)
   })
 
   it('형태가 아예 다르면 ZodError를 던진다', () => {
@@ -197,21 +172,19 @@ describe('parseCitydataResponse', () => {
 
   it('인구 구성이 깨져 있어도 혼잡도는 살아남는다', () => {
     // 부가 정보 때문에 본체를 잃지 않는다.
-    const payload = {
-      'SeoulRtd.citydata_ppltn': [
-        {
-          AREA_NM: '강남역',
-          AREA_CD: 'POI014',
-          AREA_CONGEST_LVL: '붐빔',
-          AREA_CONGEST_MSG: '붐벼요',
-          AREA_PPLTN_MIN: '74000',
-          AREA_PPLTN_MAX: '76000',
-          PPLTN_TIME: '2026-08-10 11:00',
-          MALE_PPLTN_RATE: { 이상한: '모양' },
-          PPLTN_RATE_20: [1, 2, 3],
-        },
-      ],
-    }
+    const payload = citydataEnvelope([
+      {
+        AREA_NM: '강남역',
+        AREA_CD: 'POI014',
+        AREA_CONGEST_LVL: '붐빔',
+        AREA_CONGEST_MSG: '붐벼요',
+        AREA_PPLTN_MIN: '74000',
+        AREA_PPLTN_MAX: '76000',
+        PPLTN_TIME: '2026-08-10 11:00',
+        MALE_PPLTN_RATE: { 이상한: '모양' },
+        PPLTN_RATE_20: [1, 2, 3],
+      },
+    ])
 
     const snapshot = parseCitydataResponse(payload, '강남역')
     expect(snapshot.congestion).toBe('붐빔')
@@ -220,19 +193,17 @@ describe('parseCitydataResponse', () => {
   })
 
   it('인구 구성 필드가 아예 없으면 composition이 null이다', () => {
-    const payload = {
-      'SeoulRtd.citydata_ppltn': [
-        {
-          AREA_NM: '강남역',
-          AREA_CD: 'POI014',
-          AREA_CONGEST_LVL: '여유',
-          AREA_CONGEST_MSG: '한산해요',
-          AREA_PPLTN_MIN: '1000',
-          AREA_PPLTN_MAX: '2000',
-          PPLTN_TIME: '2026-08-10 11:00',
-        },
-      ],
-    }
+    const payload = citydataEnvelope([
+      {
+        AREA_NM: '강남역',
+        AREA_CD: 'POI014',
+        AREA_CONGEST_LVL: '여유',
+        AREA_CONGEST_MSG: '한산해요',
+        AREA_PPLTN_MIN: '1000',
+        AREA_PPLTN_MAX: '2000',
+        PPLTN_TIME: '2026-08-10 11:00',
+      },
+    ])
 
     expect(parseCitydataResponse(payload, '강남역').composition).toBeNull()
   })
@@ -256,8 +227,7 @@ describe('parseCitydataResponse', () => {
 
 describe('parseCitydataResponse — REPLACE_YN', () => {
   function withReplace(value: unknown): unknown {
-    const [area] = VALID['SeoulRtd.citydata_ppltn']
-    return { 'SeoulRtd.citydata_ppltn': [{ ...area, REPLACE_YN: value }] }
+    return citydataEnvelope([{ ...VALID_ROW, REPLACE_YN: value }])
   }
 
   it("'Y'면 대체값으로 읽는다", () => {
@@ -306,8 +276,7 @@ describe('parseCitydataResponse — REPLACE_YN', () => {
 
 describe('parseCitydataResponse — FCST_YN', () => {
   function withForecastFlag(value: unknown): unknown {
-    const [area] = VALID['SeoulRtd.citydata_ppltn']
-    return { 'SeoulRtd.citydata_ppltn': [{ ...area, FCST_YN: value }] }
+    return citydataEnvelope([{ ...VALID_ROW, FCST_YN: value }])
   }
 
   // **「예보가 비는 두 이유」를 가른다** — 서울이 이 명소는 예측을 안 주는 것과,
@@ -328,12 +297,10 @@ describe('parseCitydataResponse — FCST_YN', () => {
   })
 
   it('필드가 아예 없어도 죽지 않는다', () => {
-    const [area] = VALID['SeoulRtd.citydata_ppltn']
-    const withoutFlag: Record<string, unknown> = { ...area }
+    const withoutFlag: Record<string, unknown> = { ...VALID_ROW }
     delete withoutFlag.FCST_YN
     expect(
-      parseCitydataResponse({ 'SeoulRtd.citydata_ppltn': [withoutFlag] }, NAME)
-        .forecastProvided,
+      parseCitydataResponse(citydataEnvelope([withoutFlag]), NAME).forecastProvided,
     ).toBeNull()
   })
 })
@@ -360,15 +327,5 @@ describe('parseBulkEnvelope', () => {
 
   it('results가 객체가 아니면 ZodError를 던진다', () => {
     expect(() => parseBulkEnvelope({ results: [VALID] })).toThrow(z.ZodError)
-  })
-})
-
-describe('citydata 봉투', () => {
-  it('CITYDATA.LIVE_PPLTN_STTS에서도 같은 스냅샷을 만든다', () => {
-    // 2026-08-27 실호출 대조: 두 서비스의 행이 완전히 같다(스펙 참고).
-    const rows = VALID['SeoulRtd.citydata_ppltn']
-    const fromLegacy = parseCitydataResponse({ 'SeoulRtd.citydata_ppltn': rows }, NAME)
-    const fromCitydata = parseCitydataResponse({ CITYDATA: { LIVE_PPLTN_STTS: rows } }, NAME)
-    expect(fromCitydata).toEqual(fromLegacy)
   })
 })

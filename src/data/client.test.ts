@@ -8,19 +8,23 @@ afterEach(() => {
 
 // 일괄 조회(fetchAreaSnapshots)는 아직 api/citydata-bulk.ts를 그대로 부른다 —
 // 이번 태스크가 건드리는 건 상세 단건(fetchAreaPayload)뿐이다.
+// citydata 응답 모양으로 고정한다. 옛 citydata_ppltn 봉투는 2026-08-27에 프록시와
+// 함께 저장소에서 지웠다 — populationRows가 더는 그 키를 안 읽는다.
 const PAYLOAD = {
-  'SeoulRtd.citydata_ppltn': [
-    {
-      AREA_NM: '강남역',
-      AREA_CD: 'POI014',
-      AREA_CONGEST_LVL: '붐빔',
-      AREA_CONGEST_MSG: '매우 붐벼요.',
-      AREA_PPLTN_MIN: '50000',
-      AREA_PPLTN_MAX: '52000',
-      PPLTN_TIME: '2026-08-03 14:00',
-      FCST_PPLTN: [],
-    },
-  ],
+  CITYDATA: {
+    LIVE_PPLTN_STTS: [
+      {
+        AREA_NM: '강남역',
+        AREA_CD: 'POI014',
+        AREA_CONGEST_LVL: '붐빔',
+        AREA_CONGEST_MSG: '매우 붐벼요.',
+        AREA_PPLTN_MIN: '50000',
+        AREA_PPLTN_MAX: '52000',
+        PPLTN_TIME: '2026-08-03 14:00',
+        FCST_PPLTN: [],
+      },
+    ],
+  },
 }
 
 // citydata 봉투. fetchAreaPayload는 이 안을 파싱하지 않고 그대로 넘긴다 —
@@ -225,9 +229,15 @@ describe('fetchAreaSnapshots', () => {
           results: {
             강남역: PAYLOAD,
             경복궁: {
-              'SeoulRtd.citydata_ppltn': [
-                { ...PAYLOAD['SeoulRtd.citydata_ppltn'][0], AREA_NM: '경복궁', AREA_CD: 'POI007' },
-              ],
+              CITYDATA: {
+                LIVE_PPLTN_STTS: [
+                  {
+                    ...PAYLOAD.CITYDATA.LIVE_PPLTN_STTS[0],
+                    AREA_NM: '경복궁',
+                    AREA_CD: 'POI007',
+                  },
+                ],
+              },
             },
           },
         }),

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { AGE_LABELS, residentLabel } from '../domain/composition'
 import type { PopulationComposition } from '../domain/composition'
 import { AREA_CATALOG } from './areas'
-import { buildMockSnapshot } from './mock'
+import { buildMockPopulationRows } from './mock'
 import { parseCitydataResponse } from './schema'
 
 // 인구 구성이 **있는** 명소. 목업은 일부 명소의 인구 구성을 일부러 비우므로(빈 상태
@@ -10,49 +10,53 @@ import { parseCitydataResponse } from './schema'
 // 명소가 빈 쪽으로 넘어갈 수 있고, 그러면 아래 테스트들이 곧바로 실패해서 알려준다.
 const WITH_COMPOSITION = '광화문·덕수궁'
 
-describe('buildMockSnapshot', () => {
+// `buildMockPopulationRows`는 행 배열만 돌려준다(mockCityInfo.ts가 다른 절과 함께
+// CITYDATA 봉투로 조립한다). 이 파일은 파서 자체를 검증하는 것이 목적이라
+// parseCitydataResponse가 기대하는 최소 봉투로 직접 감싼다.
+function parseMockRows(name: string, now?: Date) {
+  return parseCitydataResponse(
+    { CITYDATA: { LIVE_PPLTN_STTS: buildMockPopulationRows(name, now) } },
+    name,
+  )
+}
+
+describe('buildMockPopulationRows', () => {
   it('실제 응답 스키마를 통과하는 형태를 만든다', () => {
-    expect(() => parseCitydataResponse(buildMockSnapshot('강남역'), '강남역')).not.toThrow()
+    expect(() => parseMockRows('강남역')).not.toThrow()
   })
 
   it('요청한 명소 이름을 그대로 반영한다', () => {
-    expect(parseCitydataResponse(buildMockSnapshot('성수카페거리'), '성수카페거리').name).toBe(
-      '성수카페거리',
-    )
+    expect(parseMockRows('성수카페거리').name).toBe('성수카페거리')
   })
 
   it('카탈로그에 등록된 코드를 그대로 돌려준다', () => {
     // 실제 응답도 목업도 같은 code를 줘야 client.ts에서 snapshot.code === entry.code로
     // 오타를 대조하거나, React key로 안전하게 쓸 수 있다.
     for (const area of AREA_CATALOG) {
-      const snapshot = parseCitydataResponse(buildMockSnapshot(area.name), area.name)
+      const snapshot = parseMockRows(area.name)
       expect(snapshot.code).toBe(area.code)
     }
   })
 
   it('같은 명소는 항상 같은 혼잡도를 준다', () => {
-    const first = parseCitydataResponse(buildMockSnapshot('강남역'), '강남역')
-    const second = parseCitydataResponse(buildMockSnapshot('강남역'), '강남역')
+    const first = parseMockRows('강남역')
+    const second = parseMockRows('강남역')
     expect(first.congestion).toBe(second.congestion)
   })
 
   it('명소마다 혼잡도가 다르게 나온다', () => {
     // 30곳 중 29곳이 같은 값이어도 toBeGreaterThan(1)은 통과한다 — 4단계가 실제로
     // 골고루 등장하는지까지 고정한다.
-    const levels = new Set(
-      AREA_CATALOG.map((a) => parseCitydataResponse(buildMockSnapshot(a.name), a.name).congestion),
-    )
+    const levels = new Set(AREA_CATALOG.map((a) => parseMockRows(a.name).congestion))
     expect(levels.size).toBe(4)
   })
 
   it('12시간치 예측을 만든다', () => {
-    expect(parseCitydataResponse(buildMockSnapshot('경복궁'), '경복궁').forecasts).toHaveLength(
-      12,
-    )
+    expect(parseMockRows('경복궁').forecasts).toHaveLength(12)
   })
 
   it('예측 hour가 0~23 범위다', () => {
-    for (const f of parseCitydataResponse(buildMockSnapshot('경복궁'), '경복궁').forecasts) {
+    for (const f of parseMockRows('경복궁').forecasts) {
       expect(f.hour).toBeGreaterThanOrEqual(0)
       expect(f.hour).toBeLessThanOrEqual(23)
     }
@@ -60,7 +64,7 @@ describe('buildMockSnapshot', () => {
 
   it('카탈로그의 모든 명소에 대해 동작한다', () => {
     for (const area of AREA_CATALOG) {
-      expect(() => parseCitydataResponse(buildMockSnapshot(area.name), area.name)).not.toThrow()
+      expect(() => parseMockRows(area.name)).not.toThrow()
     }
   })
 
@@ -68,9 +72,9 @@ describe('buildMockSnapshot', () => {
     // 시간 간 상관이 있으면(예: 매시간 한 단계씩 순환) 극단값이 실제보다 덜/더 나올 수 있다.
     // 카탈로그 전체·모든 시간대를 훑어 4단계가 골고루 나오는지 고정한다.
     const levels = new Set(
-      AREA_CATALOG.flatMap(
-        (area) => parseCitydataResponse(buildMockSnapshot(area.name), area.name).forecasts,
-      ).map((forecast) => forecast.congestion),
+      AREA_CATALOG.flatMap((area) => parseMockRows(area.name).forecasts).map(
+        (forecast) => forecast.congestion,
+      ),
     )
     expect(levels.size).toBe(4)
   })
@@ -79,7 +83,7 @@ describe('buildMockSnapshot', () => {
     // "지금은 붐빔, 21시엔 여유 예상" 같은 한산 시간 추천 기능은 "한산해지는 시각 없음"
     // 빈 상태도 다뤄야 한다. 그 화면을 목업만으로 개발할 수 있어야 한다.
     const hasAreaWithoutCalmHour = AREA_CATALOG.some((area) => {
-      const snapshot = parseCitydataResponse(buildMockSnapshot(area.name), area.name)
+      const snapshot = parseMockRows(area.name)
       return snapshot.forecasts.every((forecast) => forecast.congestion !== '여유')
     })
     expect(hasAreaWithoutCalmHour).toBe(true)
@@ -87,7 +91,7 @@ describe('buildMockSnapshot', () => {
 
   describe('인구 구성', () => {
     function compositionOf(name: string): PopulationComposition | null {
-      return parseCitydataResponse(buildMockSnapshot(name), name).composition
+      return parseMockRows(name).composition
     }
 
     function allCompositions(): readonly (PopulationComposition | null)[] {
@@ -168,10 +172,10 @@ describe('buildMockSnapshot', () => {
 
   describe('자정을 넘기는 시각', () => {
     it('23시 기준으로 만든 예측도 다음날로 굴러가며 스키마를 통과한다', () => {
-      // 가짜 타이머 없이 `now`를 직접 주입한다 — buildMockSnapshot(areaName, now)가
+      // 가짜 타이머 없이 `now`를 직접 주입한다 — buildMockPopulationRows(areaName, now)가
       // 이걸 위해 존재한다.
       const lateNight = new Date('2026-08-03T23:30:00')
-      const snapshot = parseCitydataResponse(buildMockSnapshot('강남역', lateNight), '강남역')
+      const snapshot = parseMockRows('강남역', lateNight)
       expect(snapshot.forecasts).toHaveLength(12)
       expect(snapshot.forecasts[0].hour).toBe(0)
       expect(snapshot.forecasts[0].time).toBe('2026-08-04 00:00')

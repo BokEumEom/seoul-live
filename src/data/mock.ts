@@ -104,7 +104,11 @@ function topOfHourAfter(base: Date, hoursAhead: number): Date {
   )
 }
 
-export function buildMockSnapshot(areaName: string, now: Date = new Date()): unknown {
+/** 목업 인구 행 한 벌. `buildMockCityInfo`가 `LIVE_PPLTN_STTS`에 싣는다. */
+export function buildMockPopulationRows(
+  areaName: string,
+  now: Date = new Date(),
+): readonly unknown[] {
   const seed = hashAreaName(areaName)
   const level = CONGESTION_LEVELS[seed % CONGESTION_LEVELS.length]
   const base = 8_000 + (seed % 40) * 1_000
@@ -123,25 +127,23 @@ export function buildMockSnapshot(areaName: string, now: Date = new Date()): unk
     }
   })
 
-  return {
-    'SeoulRtd.citydata_ppltn': [
-      {
-        AREA_NM: areaName,
-        AREA_CD: areaCode,
-        AREA_CONGEST_LVL: level,
-        AREA_CONGEST_MSG: MESSAGES[level],
-        AREA_PPLTN_MIN: String(base),
-        AREA_PPLTN_MAX: String(base + 2_000),
-        PPLTN_TIME: formatSeoulTime(now),
-        // 대체값은 드물어야 한다. 6곳 중 1곳쯤만 'Y'로 둬야 개발 중에 기본으로
-        // 보이는 화면이 **안내가 없는 쪽**이 된다 — 실제로도 그게 정상이다.
-        // 값이 'Y'/'N'인지는 명세가 알려주지 않는다(`schema.ts`의 `replacedFlag`
-        // 주석). 목업이 이 둘을 쓴다고 파서가 이 둘만 안다고 읽지 마라.
-        REPLACE_YN: seed % 6 === 0 ? 'Y' : 'N',
-        ...buildComposition(seed),
-        FCST_YN: 'Y',
-        FCST_PPLTN: forecasts,
-      },
-    ],
-  }
+  return [
+    {
+      AREA_NM: areaName,
+      AREA_CD: areaCode,
+      AREA_CONGEST_LVL: level,
+      AREA_CONGEST_MSG: MESSAGES[level],
+      AREA_PPLTN_MIN: String(base),
+      AREA_PPLTN_MAX: String(base + 2_000),
+      PPLTN_TIME: formatSeoulTime(now),
+      // 대체값은 드물어야 한다. 6곳 중 1곳쯤만 'Y'로 둬야 개발 중에 기본으로
+      // 보이는 화면이 **안내가 없는 쪽**이 된다 — 실제로도 그게 정상이다.
+      // 값이 'Y'/'N'인지는 명세가 알려주지 않는다(`schema.ts`의 `replacedFlag`
+      // 주석). 목업이 이 둘을 쓴다고 파서가 이 둘만 안다고 읽지 마라.
+      REPLACE_YN: seed % 6 === 0 ? 'Y' : 'N',
+      ...buildComposition(seed),
+      FCST_YN: 'Y',
+      FCST_PPLTN: forecasts,
+    },
+  ]
 }

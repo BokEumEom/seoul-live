@@ -8,7 +8,7 @@ import { parseCctvResponse } from './cctvSchema'
 import { parsePopulationTrend } from './ppltnSchema'
 import { parsePopulationFlow } from './ppltnCongestSchema'
 import { parseHotspotsResponse } from './hotspotsSchema'
-import { buildMockSnapshot } from './mock'
+import { buildMockPopulationRows } from './mock'
 import { buildMockCctv } from './mockCctv'
 import { buildMockAreaPopulation } from './mockPopulationTrend'
 import { buildMockCityInfo } from './mockCityInfo'
@@ -48,7 +48,7 @@ function baseUrl(): string {
 }
 
 // M2 — 실데이터 경로는 명소 하나가 실패하면 그 자리를 null로 돌려주지만(위의
-// 개별 try/catch), 목업 경로는 buildMockSnapshot이 항상 성공하는 값만 만들어서
+// 개별 try/catch), 목업 경로는 buildMockPopulationRows가 항상 성공하는 값만 만들어서
 // null이 나올 수가 없었다. 그러면 "정보 없음" 카드 상태를 목업만으로 개발하거나
 // 테스트할 방법이 없다. VITE_MOCK_FAIL_AREAS에 쉼표로 구분한 명소 이름을 넣으면
 // 목업 모드에서도 그 명소만 실패를 흉내 낸다.
@@ -267,7 +267,10 @@ export async function fetchAreaCongestion(): Promise<readonly AreaCongestion[]> 
     const failing = mockFailureAreaNames()
     return AREA_NAMES.filter((name) => !failing.has(name)).map((name) => ({
       name,
-      congestion: parseCitydataResponse(buildMockSnapshot(name), name).congestion,
+      congestion: parseCitydataResponse(
+        { CITYDATA: { LIVE_PPLTN_STTS: buildMockPopulationRows(name) } },
+        name,
+      ).congestion,
     }))
   }
 
@@ -282,7 +285,12 @@ export async function fetchAreaSnapshots(
   if (isMockMode()) {
     const failing = mockFailureAreaNames()
     return areaNames.map((name) =>
-      failing.has(name) ? null : parseCitydataResponse(buildMockSnapshot(name), name),
+      failing.has(name)
+        ? null
+        : parseCitydataResponse(
+            { CITYDATA: { LIVE_PPLTN_STTS: buildMockPopulationRows(name) } },
+            name,
+          ),
     )
   }
 
