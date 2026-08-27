@@ -1,10 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import type { AreaSnapshot } from '../domain/types'
-import { shouldRetry, useAreaSnapshot } from './queries'
+import { shouldRetry, useAreaSnapshot, useCityInfo } from './queries'
 import { AreaNameMismatchError, SeoulApiError } from './schema'
 import { ProxyResponseError } from './client'
 
@@ -12,11 +12,11 @@ import { ProxyResponseError } from './client'
 // 망에 나가는 함수만 바꿔 낀다.
 vi.mock('./client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./client')>()),
-  fetchAreaSnapshot: vi.fn(),
+  fetchAreaPayload: vi.fn(),
 }))
 
 const client = await import('./client')
-const fetchAreaSnapshot = vi.mocked(client.fetchAreaSnapshot)
+const fetchAreaPayload = vi.mocked(client.fetchAreaPayload)
 
 // I5 — shouldRetry는 재시도 정책이라는, 겉으로는 자명해 보이지만 실은 미묘한
 // 규칙(어떤 에러는 절대 재시도해도 안 풀린다)을 담은 순수 함수다. React 렌더
@@ -85,6 +85,46 @@ describe('shouldRetry', () => {
   })
 })
 
+// Task 5 Step 1 — 분기점. 두 훅(useAreaSnapshot·useCityInfo)이 같은 queryKey를
+// 공유하면서 각자 select로 파싱을 나눠 하려면, 한 select가 던져도 다른 select는
+// 멀쩡해야 한다. TanStack Query 5의 select는 옵저버별로 돈다는 것이 이 설계의
+// 바닥이다 — 여기가 깨지면 select를 버리고 훅 안에서 파싱해야 한다.
+describe('select 오염 여부 (Task 5 설계의 분기점)', () => {
+  it('한 select가 던져도 다른 select는 멀쩡하다', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children)
+    const payload = { ok: 1 }
+
+    const bad = renderHook(
+      () =>
+        useQuery({
+          queryKey: ['shared'],
+          queryFn: async () => payload,
+          select: () => {
+            throw new Error('던진다')
+          },
+        }),
+      { wrapper },
+    )
+    const good = renderHook(
+      () =>
+        useQuery({
+          queryKey: ['shared'],
+          queryFn: async () => payload,
+          select: (p: typeof payload) => p.ok,
+        }),
+      { wrapper },
+    )
+
+    await waitFor(() => expect(good.result.current.data).toBe(1))
+    expect(bad.result.current.isError).toBe(true)
+    expect(good.result.current.isError).toBe(false)
+  })
+})
+
 function snapshot(name: string): AreaSnapshot {
   return {
     code: 'POI014',
@@ -102,7 +142,48 @@ function snapshot(name: string): AreaSnapshot {
   }
 }
 
-describe('useAreaSnapshot', () => {
+/**
+ * `useAreaSnapshot`·`useCityInfo`가 함께 소비하는 `citydata` 봉투. `snapshot(name)`이
+ * 기대하는 여섯 필드를 그대로 담아, select(`parseCitydataResponse`)를 거치면 정확히
+ * `snapshot(name)`이 나오게 맞춘다.
+ */
+function citydataPayload(name: string): unknown {
+  return {
+    CITYDATA: {
+      AREA_NM: name,
+      AREA_CD: 'POI014',
+      LIVE_PPLTN_STTS: [
+        {
+          AREA_NM: name,
+          AREA_CD: 'POI014',
+          AREA_CONGEST_LVL: '보통',
+          AREA_CONGEST_MSG: '조금 붐벼요.',
+          AREA_PPLTN_MIN: '39000',
+          AREA_PPLTN_MAX: '41000',
+          PPLTN_TIME: '2026-08-14 14:00',
+          FCST_PPLTN: [],
+        },
+      ],
+    },
+  }
+}
+
+/**
+ * `LIVE_PPLTN_STTS`가 비어 `rowsSchema`(min 1)를 못 채운다 — `parseCitydataResponse`만
+ * 던지고, `parseCityInfoResponse`는 `AREA_NM`만 보므로 멀쩡하다.
+ */
+function brokenCongestionPayload(name: string): unknown {
+  return {
+    CITYDATA: {
+      AREA_NM: name,
+      AREA_CD: 'POI014',
+      LIVE_PPLTN_STTS: [],
+      WEATHER_STTS: [{ TEMP: '29.1' }],
+    },
+  }
+}
+
+describe('useAreaSnapshot·useCityInfo', () => {
   let queryClient: QueryClient
 
   function harness(): { wrapper: (props: { children: ReactNode }) => ReactNode } {
@@ -112,75 +193,68 @@ describe('useAreaSnapshot', () => {
     }
   }
 
-  /** 홈 목록이 방금 받아 둔 것. queryKey의 두 번째 칸이 곧 자리 번호표다. */
-  function seedList(names: readonly string[], data: readonly (AreaSnapshot | null)[]): void {
-    queryClient.setQueryData(['areas', names], data)
-  }
-
   beforeEach(() => {
-    fetchAreaSnapshot.mockReset()
-    fetchAreaSnapshot.mockResolvedValue(snapshot('강남역'))
+    fetchAreaPayload.mockReset()
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
   })
 
-  it('목록이 이미 받아 둔 명소는 기다리지 않고 곧바로 보여준다', () => {
-    // **이 테스트가 이 훅의 존재 이유다.** 홈의 일괄 조회(`useAreaSnapshots`)가
-    // 30곳을 통째로 받아 두는데, 상세는 그중 한 곳을 **다시** 물었다. 이미
-    // 메모리에 있는 값을 받으려고 왕복 한 번을 더 기다린 것이고, 그동안 화면에는
-    // 스켈레톤이 떴다 — 서울 인파레이더가 즉시 열리는 것과 갈리는 자리다.
-    // 게다가 그 왕복은 CDN 캐시 키가 따로라 서울 API 호출을 **또** 썼다.
-    seedList(['강남역', '광화문·덕수궁'], [snapshot('강남역'), snapshot('광화문·덕수궁')])
-
-    const { result } = renderHook(() => useAreaSnapshot('광화문·덕수궁'), harness())
-
-    // 첫 렌더에 이미 값이 있어야 한다. waitFor로 감싸면 "한 틱 뒤에 왔다"도
-    // 통과해버려 스켈레톤이 뜨는 것을 못 잡는다.
-    expect(result.current.isPending).toBe(false)
-    expect(result.current.data?.name).toBe('광화문·덕수궁')
-    expect(fetchAreaSnapshot).not.toHaveBeenCalled()
-  })
-
-  it('목록에 없는 명소는 평소대로 조회한다', async () => {
-    seedList(['광화문·덕수궁'], [snapshot('광화문·덕수궁')])
+  it('상세 혼잡도를 조회해서 파싱한 값을 돌려준다', async () => {
+    fetchAreaPayload.mockResolvedValue({
+      body: citydataPayload('강남역'),
+      freshness: { ageSeconds: 0, receivedAt: Date.now() },
+    })
 
     const { result } = renderHook(() => useAreaSnapshot('강남역'), harness())
 
     await waitFor(() => {
-      expect(result.current.data?.name).toBe('강남역')
+      expect(result.current.data).toEqual(snapshot('강남역'))
     })
-    expect(fetchAreaSnapshot).toHaveBeenCalledWith('강남역')
+    expect(fetchAreaPayload).toHaveBeenCalledWith('강남역')
   })
 
-  it('목록에서 그 자리가 비어 있으면 상세에서 다시 조회한다', async () => {
-    // 일괄 조회는 명소 하나가 실패하면 그 자리를 null로 돌려준다(client.ts).
-    // null을 「받아 둔 값」으로 세면 상세가 영영 빈 화면이 된다.
-    seedList(['강남역', '광화문·덕수궁'], [null, snapshot('광화문·덕수궁')])
+  it('areaName이 없으면 조회하지 않는다', () => {
+    const { result } = renderHook(() => useAreaSnapshot(undefined), harness())
 
-    const { result } = renderHook(() => useAreaSnapshot('강남역'), harness())
-
-    await waitFor(() => {
-      expect(result.current.data?.name).toBe('강남역')
-    })
-    expect(fetchAreaSnapshot).toHaveBeenCalledWith('강남역')
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(fetchAreaPayload).not.toHaveBeenCalled()
   })
 
-  it('목록이 오래됐으면 보여주면서 뒤에서 새로 받는다', async () => {
-    // 값을 즉시 보여주는 것과 최신으로 유지하는 것은 양자택일이 아니다.
-    // 일괄 조회가 5분을 넘겼으면 화면은 옛 값으로 즉시 그리되 조회는 나가야 한다.
-    seedList(['강남역'], [snapshot('강남역')])
-    const state = queryClient.getQueryState(['areas', ['강남역']])
-    // 6분 전에 받은 것으로 되돌린다. staleTime(5분)을 넘긴 상태를 만드는 것이다.
-    if (state !== undefined) {
-      state.dataUpdatedAt = state.dataUpdatedAt - 6 * 60 * 1_000
-    }
-
-    const { result } = renderHook(() => useAreaSnapshot('강남역'), harness())
-
-    expect(result.current.isPending).toBe(false) // 스켈레톤 없이 즉시
-    await waitFor(() => {
-      expect(fetchAreaSnapshot).toHaveBeenCalledWith('강남역') // 그래도 새로 받는다
+  it('같은 명소를 두 훅이 물으면 fetchAreaPayload는 한 번만 나간다', async () => {
+    // Task 5의 존재 이유다. 예전에는 useAreaSnapshot이 `/api/citydata`를,
+    // useCityInfo가 `/api/cityinfo`를 따로 불렀다 — 이제 캐시 키(['areaPayload', name])를
+    // 공유하므로 같은 명소를 여는 순간 한 왕복으로 줄어든다.
+    fetchAreaPayload.mockResolvedValue({
+      body: citydataPayload('강남역'),
+      freshness: { ageSeconds: 5, receivedAt: Date.now() },
     })
+
+    const snap = renderHook(() => useAreaSnapshot('강남역'), harness())
+    const info = renderHook(() => useCityInfo('강남역'), harness())
+
+    await waitFor(() => {
+      expect(snap.result.current.data).toEqual(snapshot('강남역'))
+      expect(info.result.current.data?.areaName).toBe('강남역')
+    })
+    expect(fetchAreaPayload).toHaveBeenCalledTimes(1)
+  })
+
+  it('혼잡도 파싱이 실패해도 도시정보는 멀쩡하다', async () => {
+    // Task 5 Step 1에서 확인한 전제(옵저버별 select 격리)가 실제 훅 조합에서도
+    // 성립하는지 확인한다. LIVE_PPLTN_STTS가 비면 parseCitydataResponse만 던진다.
+    fetchAreaPayload.mockResolvedValue({
+      body: brokenCongestionPayload('강남역'),
+      freshness: { ageSeconds: 0, receivedAt: Date.now() },
+    })
+
+    const snap = renderHook(() => useAreaSnapshot('강남역'), harness())
+    const info = renderHook(() => useCityInfo('강남역'), harness())
+
+    await waitFor(() => {
+      expect(info.result.current.isSuccess).toBe(true)
+    })
+    expect(snap.result.current.isError).toBe(true)
+    expect(info.result.current.data?.weather?.temperature).toBe(29.1)
   })
 })

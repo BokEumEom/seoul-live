@@ -1,6 +1,5 @@
 import {
   useQuery,
-  useQueryClient,
   type QueryClient,
   type UseQueryResult,
 } from '@tanstack/react-query'
@@ -11,14 +10,14 @@ import type { CityInfo } from '../domain/cityInfo'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import {
   fetchAreaCongestion,
-  fetchAreaSnapshot,
+  fetchAreaPayload,
   fetchAreaSnapshots,
   fetchCctv,
   fetchAreaPopulation,
-  fetchCityInfo,
   ProxyResponseError,
 } from './client'
-import { AreaNameMismatchError, SeoulApiError } from './schema'
+import { AreaNameMismatchError, SeoulApiError, parseCitydataResponse } from './schema'
+import { parseCityInfoResponse } from './cityInfoSchema'
 
 const FIVE_MINUTES = 5 * 60 * 1_000
 const MAX_RETRIES = 2
@@ -99,54 +98,58 @@ export function findSeededSnapshot(
   return undefined
 }
 
-export function useAreaSnapshot(
-  areaName: string | undefined,
-): UseQueryResult<AreaSnapshot> {
-  const client = useQueryClient()
-  const seeded = areaName === undefined ? undefined : findSeededSnapshot(client, areaName)
-
-  return useQuery({
-    queryKey: ['area', areaName],
-    // 목록에서 받아 둔 값을 첫 값으로 깐다. 이 훅의 캐시 항목이 아직 없을 때만
-    // 쓰이므로, 한 번 조회된 뒤에는 이 값이 최신을 덮어쓰지 않는다.
-    initialData: seeded?.snapshot,
-    // **받은 시각을 같이 넘기는 것이 핵심이다.** 안 넘기면 「방금 받은 값」으로
-    // 취급되어 아무리 묵어도 다시 받지 않는다. 넘기면 staleTime(5분)이 목록을
-    // 받은 시점부터 세어져서, 오래됐으면 화면은 즉시 그리면서 뒤에서 새로 받는다.
-    initialDataUpdatedAt: seeded?.updatedAt,
-    // `enabled: Boolean(areaName)`가 areaName이 undefined일 때 queryFn 자체를 호출하지
-    // 않게 막아주지만, 그건 런타임 보장이지 TypeScript가 아는 사실이 아니다. `areaName as
-    // string` 단언 대신 가드로 좁히면 캐스트 없이도 타입이 맞고, enabled의 동작이 훗날
-    // 바뀌더라도(예: 실수로 지워지더라도) 여기서 한 번 더 방어된다.
-    queryFn: () => {
-      if (!areaName) {
-        return Promise.reject(new Error('areaName이 없어 조회할 수 없습니다.'))
-      }
-      return fetchAreaSnapshot(areaName)
-    },
-    enabled: Boolean(areaName),
-    staleTime: FIVE_MINUTES,
-    retry: shouldRetry,
-  })
-}
-
 // 도시정보는 인구보다 느리게 변한다(날씨는 정시, 문화행사는 하루 단위). 혼잡도와
-// 같은 5분을 쓰면 사실상 바뀌지 않는 값을 계속 다시 받는다.
+// 같은 5분을 쓰면 사실상 바뀌지 않는 값을 계속 다시 받는다. 이제 두 훅이 이
+// staleTime 하나를 함께 쓴다 — 캐시 항목이 하나뿐이라 둘을 따로 둘 수 없다.
 const THIRTY_MINUTES = 30 * 60 * 1_000
 
-export function useCityInfo(areaName: string | undefined): UseQueryResult<CityInfo> {
-  return useQuery({
-    queryKey: ['cityInfo', areaName],
-    // useAreaSnapshot과 같은 이유로 enabled에만 기대지 않고 가드를 둔다.
+/**
+ * 상세 한 곳의 원본 응답. **두 훅이 이 항목 하나를 나눠 쓴다.**
+ *
+ * 키를 공유하지 않으면 같은 URL을 두 번 부른다 — CDN이 상류 호출은 막아
+ * 주지만 왕복이 둘이고, 그만큼 상세가 늦게 뜬다.
+ */
+function areaPayloadOptions(areaName: string | undefined) {
+  return {
+    queryKey: ['areaPayload', areaName] as const,
+    // enabled에만 기대지 않고 가드를 둔다 — enabled는 런타임 보장이지
+    // TypeScript가 아는 사실이 아니다.
     queryFn: () => {
       if (!areaName) {
         return Promise.reject(new Error('areaName이 없어 조회할 수 없습니다.'))
       }
-      return fetchCityInfo(areaName)
+      return fetchAreaPayload(areaName)
     },
     enabled: Boolean(areaName),
     staleTime: THIRTY_MINUTES,
     retry: shouldRetry,
+  }
+}
+
+/**
+ * 명소 상세의 혼잡도. **던진다** — 이 값이 없으면 상세의 본체가 없다.
+ */
+export function useAreaSnapshot(
+  areaName: string | undefined,
+): UseQueryResult<AreaSnapshot> {
+  return useQuery({
+    ...areaPayloadOptions(areaName),
+    // areaName이 없으면 queryFn이 먼저 거절하므로 여기까지 안 온다.
+    select: (payload) => parseCitydataResponse(payload.body, areaName ?? ''),
+  })
+}
+
+/**
+ * 명소 상세의 도시정보. **관대하다** — 절이 하나 비는 것과 화면이 통째로
+ * 깨지는 것은 다르다.
+ */
+export function useCityInfo(areaName: string | undefined): UseQueryResult<CityInfo> {
+  return useQuery({
+    ...areaPayloadOptions(areaName),
+    select: (payload) => ({
+      ...parseCityInfoResponse(payload.body, areaName ?? ''),
+      freshness: payload.freshness,
+    }),
   })
 }
 

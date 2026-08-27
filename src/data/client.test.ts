@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchAreaSnapshot, fetchAreaSnapshots, fetchCityInfo } from './client'
+import { fetchAreaPayload, fetchAreaSnapshots } from './client'
 
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
 })
 
+// 일괄 조회(fetchAreaSnapshots)는 아직 api/citydata-bulk.ts를 그대로 부른다 —
+// 이번 태스크가 건드리는 건 상세 단건(fetchAreaPayload)뿐이다.
 const PAYLOAD = {
   'SeoulRtd.citydata_ppltn': [
     {
@@ -21,33 +23,47 @@ const PAYLOAD = {
   ],
 }
 
-describe('fetchAreaSnapshot', () => {
+// citydata 봉투. fetchAreaPayload는 이 안을 파싱하지 않고 그대로 넘긴다 —
+// 파싱(혼잡도·도시정보 양쪽)은 이제 queries.ts의 select가 한다.
+const CITY_PAYLOAD = {
+  CITYDATA: {
+    AREA_NM: '강남역',
+    AREA_CD: 'POI014',
+    WEATHER_STTS: [{ TEMP: '29.1', AIR_IDX: '보통' }],
+  },
+}
+
+describe('fetchAreaPayload', () => {
   it('목업 모드에서는 네트워크를 타지 않는다', async () => {
     vi.stubEnv('VITE_USE_MOCK', 'true')
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)
 
-    const snapshot = await fetchAreaSnapshot('강남역')
+    const payload = await fetchAreaPayload('강남역')
 
-    expect(snapshot.name).toBe('강남역')
     expect(fetchSpy).not.toHaveBeenCalled()
+    // 목업에는 CDN도 서울 API도 없으므로 나이가 0이다 — 「모른다」가 아니라
+    // 실제로 아는 사실이다.
+    expect(payload.freshness?.ageSeconds).toBe(0)
   })
 
-  it('실데이터 모드에서는 프록시를 호출한다', async () => {
+  it('/api/cityinfo 하나만 부르고 나이를 함께 준다', async () => {
     vi.stubEnv('VITE_USE_MOCK', 'false')
     vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, headers: new Headers(), json: async () => PAYLOAD }),
-    )
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ Age: '42' }),
+      json: async () => ({ CITYDATA: { AREA_NM: '강남역' } }),
+    })
+    vi.stubGlobal('fetch', fetchSpy)
 
-    const snapshot = await fetchAreaSnapshot('강남역')
+    const result = await fetchAreaPayload('강남역')
 
-    expect(snapshot.congestion).toBe('붐빔')
-    expect(fetch).toHaveBeenCalledWith(
-      'https://proxy.example.com/api/citydata?area=%EA%B0%95%EB%82%A8%EC%97%AD',
-      expect.anything(),
-    )
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(String(fetchSpy.mock.calls[0][0])).toContain('/api/cityinfo?area=')
+    // **`citydata_ppltn` 프록시는 더 이상 안 부른다.**
+    expect(String(fetchSpy.mock.calls[0][0])).not.toContain('/api/citydata?')
+    expect(result.freshness?.ageSeconds).toBe(42)
   })
 
   it('HTTP 실패는 사용자용 메시지로 바꾼다', async () => {
@@ -55,18 +71,7 @@ describe('fetchAreaSnapshot', () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 502 }))
 
-    await expect(fetchAreaSnapshot('강남역')).rejects.toThrow('혼잡도 정보를 가져오지 못했어요')
-  })
-
-  it('다른 명소 응답이 오면 그대로 던진다', async () => {
-    vi.stubEnv('VITE_USE_MOCK', 'false')
-    vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, headers: new Headers(), json: async () => PAYLOAD }),
-    )
-
-    await expect(fetchAreaSnapshot('경복궁')).rejects.toThrow()
+    await expect(fetchAreaPayload('강남역')).rejects.toThrow('도시 정보를 가져오지 못했어요')
   })
 
   // M2 — 목업 경로도 실패를 흉내 낼 수 있어야 T17/T18의 "정보 없음" 상태를
@@ -75,81 +80,15 @@ describe('fetchAreaSnapshot', () => {
     vi.stubEnv('VITE_USE_MOCK', 'true')
     vi.stubEnv('VITE_MOCK_FAIL_AREAS', '강남역,경복궁')
 
-    await expect(fetchAreaSnapshot('강남역')).rejects.toThrow()
+    await expect(fetchAreaPayload('강남역')).rejects.toThrow()
   })
 
   it('VITE_MOCK_FAIL_AREAS에 없는 명소는 목업 모드에서 평소대로 성공한다', async () => {
     vi.stubEnv('VITE_USE_MOCK', 'true')
     vi.stubEnv('VITE_MOCK_FAIL_AREAS', '경복궁')
 
-    const snapshot = await fetchAreaSnapshot('강남역')
-    expect(snapshot.name).toBe('강남역')
-  })
-})
-
-describe('fetchCityInfo', () => {
-  const CITY_PAYLOAD = {
-    CITYDATA: {
-      AREA_NM: '강남역',
-      AREA_CD: 'POI014',
-      WEATHER_STTS: [{ TEMP: '29.1', AIR_IDX: '보통' }],
-    },
-  }
-
-  it('목업 모드에서는 네트워크를 타지 않는다', async () => {
-    vi.stubEnv('VITE_USE_MOCK', 'true')
-    const fetchSpy = vi.fn()
-    vi.stubGlobal('fetch', fetchSpy)
-
-    const info = await fetchCityInfo('강남역')
-
-    expect(info.areaName).toBe('강남역')
-    expect(fetchSpy).not.toHaveBeenCalled()
-  })
-
-  it('실데이터 모드에서는 혼잡도와 다른 엔드포인트를 호출한다', async () => {
-    // citydata와 citydata_ppltn은 응답 크기가 크게 달라 캐시 TTL도 따로 잡는다.
-    // 같은 엔드포인트에 얹으면 인구만 필요한 목록 화면까지 큰 응답을 받는다.
-    vi.stubEnv('VITE_USE_MOCK', 'false')
-    vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, headers: new Headers(), json: async () => CITY_PAYLOAD }),
-    )
-
-    const info = await fetchCityInfo('강남역')
-
-    expect(info.weather?.temperature).toBe(29.1)
-    expect(fetch).toHaveBeenCalledWith(
-      'https://proxy.example.com/api/cityinfo?area=%EA%B0%95%EB%82%A8%EC%97%AD',
-      expect.anything(),
-    )
-  })
-
-  it('HTTP 실패는 도시정보용 메시지로 바꾼다', async () => {
-    vi.stubEnv('VITE_USE_MOCK', 'false')
-    vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 502 }))
-
-    await expect(fetchCityInfo('강남역')).rejects.toThrow('도시 정보를 가져오지 못했어요')
-  })
-
-  it('다른 명소 응답이 오면 그대로 던진다', async () => {
-    vi.stubEnv('VITE_USE_MOCK', 'false')
-    vi.stubEnv('VITE_API_BASE_URL', 'https://proxy.example.com')
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, headers: new Headers(), json: async () => CITY_PAYLOAD }),
-    )
-
-    await expect(fetchCityInfo('경복궁')).rejects.toThrow()
-  })
-
-  it('VITE_MOCK_FAIL_AREAS에 있는 명소는 목업 모드에서도 실패한다', async () => {
-    vi.stubEnv('VITE_USE_MOCK', 'true')
-    vi.stubEnv('VITE_MOCK_FAIL_AREAS', '강남역')
-
-    await expect(fetchCityInfo('강남역')).rejects.toThrow()
+    const payload = await fetchAreaPayload('강남역')
+    expect(payload.freshness).not.toBeNull()
   })
 
   // 프록시가 CDN 캐시에서 준 응답이면 얼마나 묵었는지 `Age`에 실려 온다. 그 값이
@@ -170,9 +109,9 @@ describe('fetchCityInfo', () => {
       vi.setSystemTime(new Date('2026-08-18T09:00:00Z'))
       stubCityFetch(new Headers({ Age: '742' }))
 
-      const info = await fetchCityInfo('강남역')
+      const payload = await fetchAreaPayload('강남역')
 
-      expect(info.freshness).toEqual({ ageSeconds: 742, receivedAt: Date.now() })
+      expect(payload.freshness).toEqual({ ageSeconds: 742, receivedAt: Date.now() })
       vi.useRealTimers()
     })
 
@@ -182,7 +121,7 @@ describe('fetchCityInfo', () => {
     it('Age 헤더가 없으면 모른다고 한다', async () => {
       stubCityFetch(new Headers())
 
-      expect((await fetchCityInfo('강남역')).freshness).toBeNull()
+      expect((await fetchAreaPayload('강남역')).freshness).toBeNull()
     })
 
     it('Age가 숫자가 아니면 모른다고 한다', async () => {
@@ -190,15 +129,15 @@ describe('fetchCityInfo', () => {
       // 「없는 값」이 아니라 **그럴듯한 틀린 값**이 화면에 뜬다(AGENTS.md의 규칙).
       stubCityFetch(new Headers({ Age: '1e1' }))
 
-      expect((await fetchCityInfo('강남역')).freshness).toBeNull()
+      expect((await fetchAreaPayload('강남역')).freshness).toBeNull()
     })
 
     it('목업은 방금 만든 값이다', async () => {
       vi.stubEnv('VITE_USE_MOCK', 'true')
 
-      const info = await fetchCityInfo('강남역')
+      const payload = await fetchAreaPayload('강남역')
 
-      expect(info.freshness?.ageSeconds).toBe(0)
+      expect(payload.freshness?.ageSeconds).toBe(0)
     })
   })
 })

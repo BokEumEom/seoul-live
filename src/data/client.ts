@@ -1,13 +1,12 @@
 import type { CctvCamera } from '../domain/cctv'
 import type { AreaPopulation } from '../domain/populationTrend'
 import { EMPTY_POPULATION_FLOW } from '../domain/populationFlow'
-import type { CityInfo } from '../domain/cityInfo'
+import type { Freshness } from '../domain/freshness'
 import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import { AREA_NAMES } from './areas'
 import { parseCctvResponse } from './cctvSchema'
 import { parsePopulationTrend } from './ppltnSchema'
 import { parsePopulationFlow } from './ppltnCongestSchema'
-import { parseCityInfoResponse } from './cityInfoSchema'
 import { parseHotspotsResponse } from './hotspotsSchema'
 import { buildMockSnapshot } from './mock'
 import { buildMockCctv } from './mockCctv'
@@ -143,48 +142,46 @@ async function requestJson(
   }
 }
 
-export async function fetchAreaSnapshot(areaName: string): Promise<AreaSnapshot> {
+/** 상세 한 곳의 원본 `citydata` 응답과 그 나이. */
+export interface AreaPayload {
+  readonly body: unknown
+  readonly freshness: Freshness | null
+}
+
+/**
+ * 상세 한 곳의 **모든 것**. 혼잡도와 도시정보가 한 응답에서 나온다.
+ *
+ * **예전에는 둘을 따로 불렀다**(`/api/citydata` + `/api/cityinfo`). 그런데
+ * `citydata` 응답의 `CITYDATA.LIVE_PPLTN_STTS`가 `citydata_ppltn`이 주는 행을
+ * 통째로 포함한다 — 2026-08-27에 명소 3곳에서 같은 순간을 재어 6필드와 예보
+ * 12칸이 전부 일치하는 것을 확인했다. **앞의 24회/일/명소는 낭비였다.**
+ *
+ * 파싱은 여기서 안 한다. 두 훅(`useAreaSnapshot`·`useCityInfo`)이 같은 캐시
+ * 항목을 나눠 쓰면서 각자 `select`로 뽑기 때문이다 — 여기서 미리 파싱하면
+ * 캐시에 파생값이 앉아 한쪽 파서의 실패가 다른 쪽까지 끌고 내려간다.
+ *
+ * **`receivedAt`을 여기서 찍는다.** `select`는 렌더마다 다시 도는 자리라
+ * 거기서 `Date.now()`를 부르면 「받은 시각」이 계속 지금으로 갱신된다.
+ */
+export async function fetchAreaPayload(areaName: string): Promise<AreaPayload> {
   if (isMockMode()) {
     if (mockFailureAreaNames().has(areaName)) {
       throw new Error(
         `[목업] ${areaName} 조회 실패를 시뮬레이션합니다. (VITE_MOCK_FAIL_AREAS)`,
       )
     }
-    return parseCitydataResponse(buildMockSnapshot(areaName), areaName)
-  }
-
-  const url = `${baseUrl()}/api/citydata?area=${encodeURIComponent(areaName)}`
-  const { body } = await requestJson(url, SINGLE_AREA_TIMEOUT_MS)
-  // 혼잡도는 나이를 안 싣는다. 이 응답에는 관측 시각(`PPLTN_TIME`)이 함께 와서
-  // 화면이 이미 「11:00 기준」이라고 정확히 말할 수 있다 — 도시정보 쪽에
-  // `Age`가 필요한 것은 거기에 그런 시각이 없기 때문이다.
-  return parseCitydataResponse(body, areaName)
-}
-
-// 「더보기」(도시정보). `citydata_ppltn`이 아니라 `citydata`를 부르므로 주차장·따릉이·
-// 날씨·문화행사·재난문자가 한 응답에 전부 온다 — 명소당 호출 횟수는 그대로 1회다.
-export async function fetchCityInfo(areaName: string): Promise<CityInfo> {
-  if (isMockMode()) {
-    if (mockFailureAreaNames().has(areaName)) {
-      throw new Error(
-        `[목업] ${areaName} 도시정보 조회 실패를 시뮬레이션합니다. (VITE_MOCK_FAIL_AREAS)`,
-      )
-    }
     // 방금 만든 값이다. 목업에는 CDN도 서울 API도 없으므로 나이가 0이고,
     // 그건 「모른다」가 아니라 실제로 아는 사실이다.
     return {
-      ...parseCityInfoResponse(buildMockCityInfo(areaName), areaName),
+      body: buildMockCityInfo(areaName),
       freshness: { ageSeconds: 0, receivedAt: Date.now() },
     }
   }
 
   const url = `${baseUrl()}/api/cityinfo?area=${encodeURIComponent(areaName)}`
   const { body, ageSeconds } = await requestJson(url, SINGLE_AREA_TIMEOUT_MS, '도시 정보')
-  // **`receivedAt`을 함께 든다.** `Age`만으로는 부족하다 — 이 응답이
-  // TanStack Query 캐시에 `staleTime`(30분)만큼 더 앉아 있을 수 있어서,
-  // 그 몫을 안 더하면 42분 묵은 값에 「12분 전」이라 적는다.
   return {
-    ...parseCityInfoResponse(body, areaName),
+    body,
     freshness: ageSeconds === null ? null : { ageSeconds, receivedAt: Date.now() },
   }
 }
