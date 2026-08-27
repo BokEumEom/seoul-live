@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { AreaNameMismatchError, parseBulkEnvelope, parseCitydataResponse, SeoulApiError } from './schema'
+import { AreaNameMismatchError, parseCitydataResponse, SeoulApiError } from './schema'
 
 // citydata 응답 모양으로 고정한다. 옛 citydata_ppltn 봉투(`SeoulRtd.citydata_ppltn`)는
 // 2026-08-27에 프록시와 함께 저장소에서 지웠다 — populationRows가 더는 그 키를 읽지
@@ -302,30 +302,5 @@ describe('parseCitydataResponse — FCST_YN', () => {
     expect(
       parseCitydataResponse(citydataEnvelope([withoutFlag]), NAME).forecastProvided,
     ).toBeNull()
-  })
-})
-
-describe('parseBulkEnvelope', () => {
-  it('이름을 키로 하는 정상 봉투를 그대로 돌려준다', () => {
-    const envelope = { results: { 강남역: VALID, 경복궁: null } }
-    expect(parseBulkEnvelope(envelope)).toEqual({ 강남역: VALID, 경복궁: null })
-  })
-
-  it('빈 results도 허용한다', () => {
-    expect(parseBulkEnvelope({ results: {} })).toEqual({})
-  })
-
-  it('results 키가 없으면 ZodError를 던진다', () => {
-    expect(() => parseBulkEnvelope({})).toThrow(z.ZodError)
-  })
-
-  it('payload가 null이면 TypeError가 아니라 ZodError를 던진다', () => {
-    // 이게 I6의 핵심이다 — 캐스트만 쓰면 `payload.results`에서 원본 TypeError가
-    // 나서 사용자에게 번역되지 않은 메시지가 샐 수 있었다.
-    expect(() => parseBulkEnvelope(null)).toThrow(z.ZodError)
-  })
-
-  it('results가 객체가 아니면 ZodError를 던진다', () => {
-    expect(() => parseBulkEnvelope({ results: [VALID] })).toThrow(z.ZodError)
   })
 })

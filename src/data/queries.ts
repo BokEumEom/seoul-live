@@ -12,7 +12,6 @@ import type { AreaCongestion, AreaSnapshot } from '../domain/types'
 import {
   fetchAreaCongestion,
   fetchAreaPayload,
-  fetchAreaSnapshots,
   fetchCctv,
   fetchAreaPopulation,
   ProxyResponseError,
@@ -243,9 +242,11 @@ export function useAreaPopulation(
 /**
  * 명소 **전부**의 지금 혼잡도. 목록·지도·「오늘의 서울」의 출처다.
  *
- * **`useAreaSnapshots`와 달리 인자가 없다.** 한 번에 전부 오므로 고를 것이
- * 없고, 그 덕에 `queryKey`도 상수 하나다 — 저쪽이 배열을 키로 쓰면서 감수하던
- * 「원소 구성이 바뀌면 캐시가 미스된다」는 문제가 여기서는 생기지 않는다.
+ * **예전의 `useAreaSnapshots`와 달리 인자가 없다.** 한 번에 전부 오므로 고를
+ * 것이 없고, 그 덕에 `queryKey`도 상수 하나다 — 저쪽이 배열을 키로 쓰면서
+ * 감수하던 「원소 구성이 바뀌면 캐시가 미스된다」는 문제가 여기서는 생기지
+ * 않는다. `useAreaSnapshots`는 2026-08-27에 지웠다(Task 7) — 아무도 안 부르는
+ * 죽은 코드였다.
  *
  * `staleTime`이 5분인 것은 상류의 실제 갱신 주기다(`api/_lib/seoul.ts`의
  * `hotspotsCacheTtlSeconds` 주석). 서버 캐시와 같은 값을 두어, 클라이언트가
@@ -260,27 +261,3 @@ export function useAreaCongestion(): UseQueryResult<readonly AreaCongestion[]> {
   })
 }
 
-export function useAreaSnapshots(
-  areaNames: readonly string[],
-): UseQueryResult<readonly (AreaSnapshot | null)[]> {
-  // queryKey에 배열을 그대로 넣는다. TanStack Query는 queryKey를 참조가 아니라 값으로
-  // 안정적으로 직렬화해 해시하므로(JSON.stringify 계열), areaNames가 매 렌더마다 새
-  // 배열 참조로 넘어와도 내용이 같으면 같은 캐시 항목을 찾는다 — "참조가 바뀌면 캐시가
-  // 안 먹는다"는 걱정은 실제로는 기우다.
-  //
-  // 값 자체(원소 구성·순서)가 호출마다 바뀌는 건 이 훅의 캐시(TanStack Query)를
-  // 진짜로 미스시킨다 — 그건 감수한다. 다만 서버 쪽 CDN 캐시(api/citydata-bulk.ts의
-  // Cache-Control: s-maxage)까지 함께 쪼개지는 건 별도로 막혀 있다: client.ts의
-  // fetchAreaSnapshots가 실제 요청 URL을 만들 때 areaNames를 중복 제거 + 정렬해서
-  // 보내므로, 이 훅에 넘어오는 areaNames의 순서가(예: 나중에 "거리순 정렬" 기능이
-  // 생겨) 호출마다 달라지더라도 서버로 나가는 요청과 CDN 캐시 키는 항상 하나로
-  // 수렴한다. 즉 호출부가 정렬된 배열을 넘기는 건 이 훅의 자체 캐시 효율을 위한
-  // 최적화일 뿐, 서버 호출량이 느는 걸 막는 안전장치가 아니다 — 안전장치는 이미
-  // client.ts에 있다.
-  return useQuery({
-    queryKey: ['areas', areaNames],
-    queryFn: () => fetchAreaSnapshots(areaNames),
-    staleTime: FIVE_MINUTES,
-    retry: shouldRetry,
-  })
-}

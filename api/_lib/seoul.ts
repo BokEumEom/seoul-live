@@ -1,17 +1,16 @@
 const SEOUL_API_BASE = 'http://openapi.seoul.go.kr:8088'
 const FETCH_TIMEOUT_MS = 8_000
 
-// 우리가 쓰는 두 서비스. `citydata`는 인구·주차장·따릉이·날씨·문화행사·재난문자를
-// 한 번에 주고, `citydata_ppltn`은 그중 인구만 준다. 명소당 호출 1회는 어느 쪽이든
-// 같지만 응답 크기가 크게 달라, 인구만 필요한 목록 화면은 계속 좁은 쪽을 쓴다.
+// 이제 한 서비스만 쓴다. `citydata`가 인구·주차장·따릉이·날씨·문화행사·
+// 재난문자를 한 번에 준다 — `citydata_ppltn`은 그중 인구만 주던 좁은 문이라
+// 2026-08-27에 걷어냈다(같은 행을 두 번 받고 있었다, populationEnvelope.ts 참고).
 //
-// **2026-08-27, 상세 프록시(citydata.ts)를 지우면서 이 타입을 `citydata` 하나로
-// 좁히는 것도 검토했지만 하지 않았다.** citydata-bulk.ts(목록 화면)가 여전히
-// `fetchArea(name)`을 두 번째 인자 없이 불러 아래 기본값(`citydata_ppltn`)에
-// 기댄다 — 지우면 목록 화면이 조용히 `citydata`(몇 배 큰 응답)로 갈아타 버린다.
-// 그 호출자는 fetchAreaSnapshots·useAreaSnapshots와 함께 Task 7에서 지워진다.
-// 그때 이 타입도 `citydata` 하나로 좁히고 두 번째 인자 자체를 없애면 된다.
-export type SeoulService = 'citydata_ppltn' | 'citydata'
+// **선택할 서비스가 남지 않아 `fetchArea`도 두 번째 인자를 받지 않는다.**
+// citydata-bulk.ts(목록 화면)가 그 인자 없이 불러 기본값(`citydata_ppltn`)에
+// 기대던 시절이 있었다 — 그 호출자와 그걸 부르던 fetchAreaSnapshots·
+// useAreaSnapshots를 Task 7에서 함께 지웠다. 고를 서비스가 하나뿐이라 타입
+// (`SeoulService`)도 남겨 둘 이유가 없어 지웠다 — 이 파일 밖에서 참조하는
+// 곳이 없었다.
 
 export function cacheTtlSeconds(): number {
   const raw = Number(process.env.CACHE_TTL_SECONDS)
@@ -90,7 +89,8 @@ export function apiKey(): string {
 // ("Failed to parse URL from ...")로 던지는 에러의 message에는 시도한 URL 전체가
 // 그대로 실려오는 구현이 있다 — 그러면 키가 예외 메시지를 타고 로그로 샌다.
 // 여기서 한 번 걸러 키 문자열을 치환해두면, 이 함수를 호출하는 곳(cityinfo.ts,
-// citydata-bulk.ts)이 무슨 짓을 하든(그대로 console.error 등) 키가 새지 않는다.
+// vite.config.ts의 개발 서버)이 무슨 짓을 하든(그대로 console.error 등) 키가
+// 새지 않는다.
 //
 // 원본 키뿐 아니라 URL 인코딩된 형태도 치환한다 — 키에 URL에서 특별한 의미를
 // 갖는 문자가 섞여 있으면(현재 실제로 그런 키가 있는지와 무관하게), 에러 메시지에
@@ -104,12 +104,9 @@ export function redactApiKey(message: string, key: string): string {
   return message.split(key).join('[REDACTED]').split(encodeURIComponent(key)).join('[REDACTED]')
 }
 
-export async function fetchArea(
-  areaName: string,
-  service: SeoulService = 'citydata_ppltn',
-): Promise<unknown> {
+export async function fetchArea(areaName: string): Promise<unknown> {
   const key = apiKey()
-  const url = `${SEOUL_API_BASE}/${key}/json/${service}/1/5/` + encodeURIComponent(areaName)
+  const url = `${SEOUL_API_BASE}/${key}/json/citydata/1/5/` + encodeURIComponent(areaName)
 
   try {
     const response = await fetch(url, {

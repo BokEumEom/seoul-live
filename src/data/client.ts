@@ -2,7 +2,7 @@ import type { CctvCamera } from '../domain/cctv'
 import type { AreaPopulation } from '../domain/populationTrend'
 import { EMPTY_POPULATION_FLOW } from '../domain/populationFlow'
 import type { Freshness } from '../domain/freshness'
-import type { AreaCongestion, AreaSnapshot } from '../domain/types'
+import type { AreaCongestion } from '../domain/types'
 import { AREA_NAMES } from './areas'
 import { parseCctvResponse } from './cctvSchema'
 import { parsePopulationTrend } from './ppltnSchema'
@@ -12,7 +12,7 @@ import { buildMockPopulationRows } from './mock'
 import { buildMockCctv } from './mockCctv'
 import { buildMockAreaPopulation } from './mockPopulationTrend'
 import { buildMockCityInfo } from './mockCityInfo'
-import { parseBulkEnvelope, parseCitydataResponse } from './schema'
+import { parseCitydataResponse } from './schema'
 
 // 단일 명소 타임아웃. 이 상수를 쓰는 셋(fetchAreaPayload→/api/cityinfo,
 // fetchCctv→/api/cctv, fetchAreaPopulation→/api/ppltn) 모두 상류 호출 자체를
@@ -25,15 +25,21 @@ import { parseBulkEnvelope, parseCitydataResponse } from './schema'
 // 될 뻔했다 — 게다가 그 파일 자체가 이제 없다(Task 6, `53803aa`).
 const SINGLE_AREA_TIMEOUT_MS = 10_000
 
-// 일괄 조회 타임아웃. maxDuration(15초)은 Vercel 함수의 "실행 시간"이고 이 값은
-// 클라이언트 쪽 "벽시계" 시간이라 콜드 스타트(200ms~1s+), TLS 핸드셰이크+RTT, 504
-// 전파 시간까지 더해진다 — maxDuration보다 1초만 여유를 두면 콜드 스타트에서 먼저
-// 진다. 게다가 api/citydata-bulk.ts는 상류(서울 API)에 대한 동시 연결 수를
-// 8개로 제한한다(레거시 API 보호) — 최악의 경우 여러 "웨이브"로 나뉘어 실행되므로
-// "8~9초면 끝난다"는 가정도 더는 유효하지 않다. maxDuration보다 5초 이상 여유를
-// 두어, 함수가 끝까지 실행되거나 플랫폼이 자체적으로 타임아웃 응답을 만들 시간을
-// 먼저 준다 — 그래야 사용자가 실제로는 플랫폼 타임아웃인데 "네트워크 상태를
-// 확인해주세요" 같은 오해를 부르는 메시지를 보지 않는다.
+// 전체 혼잡도(/api/hotspots) 타임아웃. maxDuration(15초)은 Vercel 함수의 "실행
+// 시간"이고 이 값은 클라이언트 쪽 "벽시계" 시간이라 콜드 스타트(200ms~1s+), TLS
+// 핸드셰이크+RTT, 504 전파 시간까지 더해진다 — maxDuration보다 1초만 여유를 두면
+// 콜드 스타트에서 먼저 진다. 게다가 api/hotspots.ts(→fetchHotspotRows)는 상류를
+// **두 번 순차로** 부른다(세션 부트스트랩 + 목록, 각각 최대 8초·`seoulRtd.ts`의
+// FETCH_TIMEOUT_MS) — 최악의 경우 그것만으로 16초라 maxDuration에 이미 근접한다.
+// maxDuration보다 5초 이상 여유를 두어, 함수가 끝까지 실행되거나 플랫폼이
+// 자체적으로 타임아웃 응답을 만들 시간을 먼저 준다 — 그래야 사용자가 실제로는
+// 플랫폼 타임아웃인데 "네트워크 상태를 확인해주세요" 같은 오해를 부르는 메시지를
+// 보지 않는다.
+//
+// **예전에는 api/citydata-bulk.ts(동시 연결 8개로 제한된 명소별 호출)의 타임아웃도
+// 겸했다.** 그 프록시와 그걸 부르던 fetchAreaSnapshots는 2026-08-27에 지웠다
+// (Task 7, 죽은 일괄 조회 경로) — 지금은 이 상수를 쓰는 호출이 fetchAreaCongestion
+// 하나뿐이다.
 const BULK_TIMEOUT_MS = 20_000
 
 // 이름을 `useMock`으로 지으면 ESLint의 react-hooks/rules-of-hooks가 "use"로 시작하는
@@ -251,13 +257,15 @@ export async function fetchAreaPopulation(areaName: string): Promise<AreaPopulat
 /**
  * 명소 **전부**의 지금 혼잡도. 목록과 지도가 쓴다.
  *
- * **`fetchAreaSnapshots`를 대신한다.** 그쪽은 이름 목록을 받아 명소당 1회씩
- * 공식 API를 부르는데, 121곳에서는 갱신 한 번에 121회라 하루 한도(1,000)를
- * 세 배로 넘긴다. 이쪽은 인증키 없는 상류라 **한 번에 다 오고 쿼터를 안 쓴다**.
+ * **예전의 `fetchAreaSnapshots`를 대신한다.** 그쪽은 이름 목록을 받아 명소당
+ * 1회씩 공식 API를 불렀는데, 121곳에서는 갱신 한 번에 121회라 하루 한도(1,000)를
+ * 세 배로 넘겼다. 이쪽은 인증키 없는 상류라 **한 번에 다 오고 쿼터를 안 쓴다**.
+ * `fetchAreaSnapshots`와 그 프록시(api/citydata-bulk.ts)는 2026-08-27에 지웠다
+ * (Task 7).
  *
  * **이름을 인자로 안 받는다.** 전체가 오기 때문이기도 하고, 인자가 없어야
  * URL이 하나로 굳어 CDN 캐시를 사용자 전체가 나눠 쓰기 때문이다 — 저쪽이
- * 이름을 정렬·중복제거해서 보내며 애써 만들던 성질을 여기서는 공짜로 얻는다.
+ * 이름을 정렬·중복제거해서 보내며 애써 만들던 성질을 여기서는 공짜로 얻었다.
  *
  * 카탈로그에 없는 명소가 섞여 와도 그대로 둔다. 거르는 자리는 호출부이고
  * (카탈로그와 이름으로 맞춘다), 여기서 걸러 봐야 같은 일을 두 번 한다.
@@ -277,46 +285,4 @@ export async function fetchAreaCongestion(): Promise<readonly AreaCongestion[]> 
   const url = `${baseUrl()}/api/hotspots`
   const { body } = await requestJson(url, BULK_TIMEOUT_MS, '혼잡도 정보')
   return parseHotspotsResponse(body)
-}
-
-export async function fetchAreaSnapshots(
-  areaNames: readonly string[],
-): Promise<readonly (AreaSnapshot | null)[]> {
-  if (isMockMode()) {
-    const failing = mockFailureAreaNames()
-    return areaNames.map((name) =>
-      failing.has(name)
-        ? null
-        : parseCitydataResponse(
-            { CITYDATA: { LIVE_PPLTN_STTS: buildMockPopulationRows(name) } },
-            name,
-          ),
-    )
-  }
-
-  // 실제로 보내는 쿼리스트링은 중복 제거 + 정렬한 이름 집합이다(호출부가 넘긴
-  // areaNames 자체의 순서는 건드리지 않는다 — 반환값은 아래에서 원래 순서로 만든다).
-  // 이렇게 정규화해서 보내야, 호출부가 나중에 "거리순으로 정렬해서 넘기기" 같은
-  // 최적화를 하더라도 같은 명소 집합이면 항상 같은 URL이 되어 api/citydata-bulk.ts의
-  // CDN 캐시(Cache-Control: s-maxage)를 사용자 전체가 공유할 수 있다. 정규화하지
-  // 않으면 사용자마다 다른 순서로 보내는 순간 캐시가 쪼개지고, AGENTS.md가 경고한
-  // "사용자 수에 비례한 호출량 증가" 문제가 서버 쪽에서 재현된다.
-  const canonicalAreas = Array.from(new Set(areaNames)).toSorted()
-  const url = `${baseUrl()}/api/citydata-bulk?areas=${encodeURIComponent(canonicalAreas.join(','))}`
-  // 일괄 조회도 나이를 안 싣는다 — 단건 혼잡도와 같은 이유로 관측 시각이
-  // 응답 안에 함께 온다.
-  const envelope = parseBulkEnvelope((await requestJson(url, BULK_TIMEOUT_MS)).body)
-
-  // 봉투가 이름을 키로 쓰므로(api/citydata-bulk.ts 참고) 서버가 보낸 순서와
-  // 무관하게 호출부가 원래 넘긴 areaNames 순서로 결과를 만들 수 있다.
-  return areaNames.map((name) => {
-    try {
-      return parseCitydataResponse(envelope[name], name)
-    } catch (error) {
-      // 한 명소가 실패해도 목록 전체를 죽이지 않는다. 카드 하나만 "정보 없음"이 된다.
-      // 다만 조용히 삼키면 카탈로그 오타를 영영 못 찾으므로 원인은 남긴다.
-      console.error(`[${name}] 혼잡도 조회 실패:`, error)
-      return null
-    }
-  })
 }
