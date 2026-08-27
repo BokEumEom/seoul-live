@@ -238,6 +238,19 @@ export const EN: Readonly<Record<string, string>> = {
   따릉이: 'Ttareungi bikes',
   문화행사: 'Events',
   '{역} 도착 열차': 'Trains at {역}',
+  // ── 인파 변화(SeoulRtd `/api/ppltn`, 2026-08-27) ──
+  //
+  // **공식 API가 못 주는 값이다** — 요청 인자에 날짜가 없어 과거를 안 준다.
+  // 서울이 이미 계산해 놓은 대비를 인증키 없는 문에서 받아 온다.
+  '인파 변화': 'Change in crowd',
+  '1시간 전': '1 hour ago',
+  '3시간 전': '3 hours ago',
+  '한달 전': 'A month ago',
+  // 화살표는 그림이라 소리 채널에 안 실린다(`Icon`이 언제나 `aria-hidden`).
+  // 이 둘이 방향의 유일한 두 번째 채널이라 `sr-only`로 값 뒤에 선다.
+  증가: 'increase',
+  감소: 'decrease',
+
   // ── 역 승강기(`SUB_FACIINFO`, 2026-08-27) ──
   //
   // **갈래 이름은 옮긴다.** 값의 종류가 넷뿐이고 뜻이 하나다 — 자유 문장인

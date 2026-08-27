@@ -2,12 +2,15 @@ import { t } from '../../../i18n/t'
 import type { WeekPattern } from '../../../domain/pattern'
 import type { AreaSnapshot } from '../../../domain/types'
 import { ForecastChart } from '../../forecast/ForecastChart'
+import { PopulationTrendSection } from '../PopulationTrendSection'
 import { CongestionCard } from '../../home/CongestionCard'
 import { PopulationCard } from '../../home/PopulationCard'
 import { PopulationLead } from '../../home/PopulationLead'
 import { WeeklyPatternCard } from '../../home/WeeklyPatternCard'
 
 interface Props {
+  /** 서울 API 호출 키. **한국어 원문이어야 한다**(`entry.name`) */
+  readonly areaName: string
   readonly snapshot: AreaSnapshot
   /** 이 기기에 쌓인 요일×시간 관측. 「평소 대비」의 유일한 근거다. */
   readonly pattern: WeekPattern
@@ -22,7 +25,7 @@ interface Props {
  * 서울 API가 과거를 안 줘서 이 기기에 직접 쌓은 값이고, 「평소 대비」가 뜻을
  * 가지려면 그 표가 함께 보여야 한다.
  */
-export function PopulationPanel({ snapshot, pattern, now }: Props) {
+export function PopulationPanel({ areaName, snapshot, pattern, now }: Props) {
   return (
     <div className="flex flex-col gap-3">
       {/* 히어로가 이미 인원수를 크게 적었는데 여기 또 있는 것은 되풀이가
@@ -33,6 +36,15 @@ export function PopulationPanel({ snapshot, pattern, now }: Props) {
       <PopulationLead snapshot={snapshot} pattern={pattern} />
 
       <CongestionCard snapshot={snapshot} />
+
+      {/* **인원수 바로 다음이다.** 이 절이 답하는 것은 「그래서 지금이 평소와
+          견줘 어떤가」이고, 그 물음은 인원수를 본 직후에 생긴다 — 구성비(누가
+          있나)보다 앞이다.
+
+          공식 API가 못 주던 값이다(요청 인자에 날짜가 없다). 그래서 바로 위
+          `PopulationLead`의 「평소 대비」는 이 기기에 쌓인 관측이 근거이고,
+          이쪽은 서울이 계산해 준 값이다 — 근거가 다른 두 문장이 이웃한다. */}
+      <PopulationTrendSection areaName={areaName} />
 
       {/* 시안 `_3`의 성별·연령 카드다. **`CongestionCard` 안이 아니라 옆이다** —
           시안이 각자 테두리를 가진 카드로 그리는데 안에 있으면 카드 안의 카드가

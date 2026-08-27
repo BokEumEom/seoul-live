@@ -135,6 +135,33 @@ export async function fetchHotspotRows(): Promise<readonly unknown[]> {
   return rows
 }
 
+/**
+ * 한 명소의 인구 **시간 대비**(1시간·3시간·한달 전). 원본 배열을 그대로 넘긴다.
+ *
+ * **공식 API가 못 주는 값이라 여기까지 왔다.** `citydata_ppltn`은 요청 인자
+ * 여섯에 날짜가 없어 과거를 안 준다 — 이 앱이 요일×시간 패턴을 기기에 직접
+ * 쌓고 있는 이유가 그것이다(`domain/pattern.ts`). 이쪽은 서울이 이미 계산해
+ * 놓은 값을 그냥 준다.
+ *
+ * CCTV·목록과 **같은 상류이고 인증키를 안 쓴다** — 하루 1,000회 한도와 무관하다.
+ * 대신 같은 약점을 진다: 문서화된 API가 아니라 조용히 깨진다. 호출부가 실패를
+ * 화면 오류로 올리지 말고 「이 값 없음」으로 접어야 한다(`api/ppltn.ts`).
+ */
+export async function fetchPopulationRows(areaName: string): Promise<unknown> {
+  const listed = await withSession(
+    `/api/ppltn?hotspotNm=${encodeURIComponent(areaName)}`,
+    areaName,
+  )
+
+  if (!listed.ok) {
+    throw new Error(`SeoulRtd ppltn responded ${listed.status}`)
+  }
+
+  // **정규화하지 않는다.** 배열인지 아닌지도 여기서 안 따진다 — 파싱은
+  // 클라이언트의 관대한 리더(`ppltnSchema.ts`)가 맡는다(CCTV와 같은 경계).
+  return listed.json()
+}
+
 export async function fetchCctvRows(areaName: string): Promise<readonly unknown[]> {
   const encoded = encodeURIComponent(areaName)
   const listed = await withSession(`/api/cctv?hotspotNm=${encoded}`, areaName)

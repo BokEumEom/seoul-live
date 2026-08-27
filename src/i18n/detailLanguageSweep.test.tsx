@@ -28,6 +28,17 @@ vi.mock('../data/queries', () => ({
   useAreaCongestion: vi.fn(),
   useCityInfo: vi.fn(),
   useCctv: vi.fn(() => ({ data: [], isPending: false, isError: false })),
+  // 세 칸을 다 채운다. 이 절의 낱말(「1시간 전」·「증가」)이 영어로 바뀌는지가
+  // 이 파일이 볼 것이고, 비워 두면 절이 통째로 사라져 조용히 통과한다.
+  usePopulationTrend: vi.fn(() => ({
+    data: {
+      lastHour: { direction: 'up', percent: 7 },
+      lastThreeHours: { direction: 'down', percent: 30.1 },
+      lastMonth: { direction: 'up', percent: 15.3 },
+    },
+    isPending: false,
+    isError: false,
+  })),
 }))
 vi.mock('../app/locationContext', () => ({ useLocation: vi.fn() }))
 vi.mock('../platform/weekPattern', () => ({

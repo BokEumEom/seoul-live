@@ -27,6 +27,17 @@ vi.mock('../../data/queries', () => ({
   // 안 주면 조회 중으로 남아 절이 안 그려지므로, 여기서는 「없는 명소」로 둔다 —
   // 121곳 중 상당수가 실제로 그 상태다.
   useCctv: vi.fn(() => ({ data: [], isPending: false, isError: false })),
+  // 인파 변화는 SeoulRtd에서 오는 부가 정보다. 기본값을 「읽힌 값」으로 두는
+  // 이유는 그게 정상 화면이기 때문이다 — 실호출 10곳이 전부 세 칸을 다 줬다.
+  usePopulationTrend: vi.fn(() => ({
+    data: {
+      lastHour: { direction: 'up', percent: 7 },
+      lastThreeHours: { direction: 'up', percent: 30.1 },
+      lastMonth: { direction: 'down', percent: 15.3 },
+    },
+    isPending: false,
+    isError: false,
+  })),
 }))
 vi.mock('../../app/locationContext', () => ({ useLocation: vi.fn() }))
 // 요일×시간 패턴의 저장소는 여기서 볼 것이 아니다. 목업하지 않으면 비동기
@@ -51,6 +62,7 @@ const shareMessage = vi.mocked(links.shareMessage)
 const useAreaSnapshot = vi.mocked(queries.useAreaSnapshot)
 const useAreaCongestion = vi.mocked(queries.useAreaCongestion)
 const useCityInfo = vi.mocked(queries.useCityInfo)
+const usePopulationTrend = vi.mocked(queries.usePopulationTrend)
 const useLocation = vi.mocked(locationContext.useLocation)
 
 const SNAPSHOT: AreaSnapshot = {
@@ -109,6 +121,16 @@ beforeEach(() => {
   useAreaSnapshot.mockReturnValue(ok(SNAPSHOT))
   useAreaCongestion.mockReturnValue(ok<readonly AreaCongestion[]>([]))
   useCityInfo.mockReturnValue(ok(EMPTY_CITY_INFO))
+  // **여기서 다시 세워야 한다.** `clearAllMocks`는 호출 기록만 지우고
+  // `mockReturnValue`는 남긴다 — 한 테스트가 「못 받은 인파 변화」를 넣으면
+  // 그 값이 뒤 테스트로 새어 그쪽에서는 절이 조용히 사라진다.
+  usePopulationTrend.mockReturnValue(
+    ok({
+      lastHour: { direction: 'up', percent: 7 },
+      lastThreeHours: { direction: 'up', percent: 30.1 },
+      lastMonth: { direction: 'down', percent: 15.3 },
+    } as const),
+  )
   standAt(null)
 })
 
@@ -627,6 +649,42 @@ describe('AreaDetailScreen — 인구 탭', () => {
     }
     expect(screen.getByRole('heading', { name: '시간대별 인파' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '요일×시간 패턴' })).toBeInTheDocument()
+  })
+
+  /**
+   * **탭이 그 명소의 이름으로 조회하는지.** 이름을 안 넘기거나 표시용 이름
+   * (`areaDisplayName`)을 넘기면 프록시의 허용 목록에 걸려 400이 오고, 실패가
+   * 빈 값으로 흡수되므로 **화면에는 「그냥 절이 없는 것」으로만 보인다** —
+   * 눈으로는 정상과 구별되지 않는 자리다.
+   *
+   * 서울 API 호출 키는 언제나 한국어 원문이다(AGENTS.md 「언어」).
+   */
+  it('인파 변화를 그 명소의 한국어 이름으로 조회한다', async () => {
+    renderDetail('강남역')
+    await openTab('인구')
+
+    expect(usePopulationTrend).toHaveBeenCalledWith('강남역')
+    expect(screen.getByRole('heading', { name: '인파 변화' })).toBeInTheDocument()
+  })
+
+  // 이 절은 문서화되지 않은 상류에서 온다. 못 받았을 때 인구 탭의 나머지가
+  // 멀쩡해야 한다 — 공식 API에서 온 값까지 끌고 들어가면 안 된다.
+  it('인파 변화를 못 받아도 나머지 인구 탭은 그대로다', async () => {
+    usePopulationTrend.mockReturnValue({
+      data: {
+        lastHour: { direction: null, percent: null },
+        lastThreeHours: { direction: null, percent: null },
+        lastMonth: { direction: null, percent: null },
+      },
+      isPending: false,
+      isError: false,
+    } as unknown as ReturnType<typeof usePopulationTrend>)
+    renderDetail()
+    await openTab('인구')
+
+    expect(screen.queryByRole('heading', { name: '인파 변화' })).toBeNull()
+    expect(screen.getByRole('heading', { name: '성별 비율' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '시간대별 인파' })).toBeInTheDocument()
   })
 
   it('인구 구성이 시간대별 인파보다 위에 있다', async () => {

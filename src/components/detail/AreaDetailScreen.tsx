@@ -220,6 +220,7 @@ export function AreaDetailScreen({
               </p>
             ) : (
               <PopulationPanel
+                areaName={entry.name}
                 snapshot={snapshot}
                 pattern={pattern}
                 now={new Date()}
