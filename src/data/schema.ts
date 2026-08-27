@@ -142,7 +142,7 @@ const bulkEnvelopeSchema = z.object({
 })
 
 // 서울 API가 데이터 대신 에러를 돌려줄 때의 봉투. 성공 응답에도 부수적으로
-// `RESULT`가 실려 있을 수 있으므로, 이 스키마는 `responseSchema` 파싱이 실패했을 때만
+// `RESULT`가 실려 있을 수 있으므로, 이 스키마는 `rowsSchema` 파싱이 실패했을 때만
 // 진단용으로 시도한다 — 그래야 성공 응답을 오탐하지 않는다.
 const errorEnvelopeSchema = z.object({
   RESULT: z.object({

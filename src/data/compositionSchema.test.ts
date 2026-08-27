@@ -138,8 +138,10 @@ describe('parseComposition', () => {
 describe('citydata 봉투', () => {
   it('CITYDATA.LIVE_PPLTN_STTS에서도 같은 구성을 읽는다', () => {
     const row = { AREA_NM: '강남역', MALE_PPLTN_RATE: '50.5', FEMALE_PPLTN_RATE: '49.5' }
-    expect(parseComposition({ CITYDATA: { LIVE_PPLTN_STTS: [row] } }, '강남역')).toEqual(
-      parseComposition({ 'SeoulRtd.citydata_ppltn': [row] }, '강남역'),
-    )
+    const fromCitydata = parseComposition({ CITYDATA: { LIVE_PPLTN_STTS: [row] } }, '강남역')
+    // parseComposition은 실패해도 던지지 않고 null을 돌려주므로, toEqual만으로는
+    // 둘 다 null이어도(=아무것도 못 읽어도) 통과한다. 정상 경로임을 여기서도 못 박는다.
+    expect(fromCitydata).not.toBeNull()
+    expect(fromCitydata).toEqual(parseComposition({ 'SeoulRtd.citydata_ppltn': [row] }, '강남역'))
   })
 })
