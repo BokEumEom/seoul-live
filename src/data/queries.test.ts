@@ -18,6 +18,18 @@ vi.mock('./client', async (importOriginal) => ({
 const client = await import('./client')
 const fetchAreaPayload = vi.mocked(client.fetchAreaPayload)
 
+// select 참조 고정(useCallback) 테스트용 — parseCitydataResponse를 실제 구현으로
+// 감싸서 몇 번 불렸는지만 센다. 실패를 흉내 내는 게 아니라 재파싱 횟수를 재는
+// 것이라, mockReset을 안 쓰고 델타(호출 전후 차)로만 잰다 — 다른 테스트를
+// 건드리지 않는다.
+vi.mock('./schema', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./schema')>()
+  return { ...actual, parseCitydataResponse: vi.fn(actual.parseCitydataResponse) }
+})
+
+const schema = await import('./schema')
+const parseCitydataResponse = vi.mocked(schema.parseCitydataResponse)
+
 // I5 — shouldRetry는 재시도 정책이라는, 겉으로는 자명해 보이지만 실은 미묘한
 // 규칙(어떤 에러는 절대 재시도해도 안 풀린다)을 담은 순수 함수다. React 렌더
 // 없이도 완전히 검증할 수 있다.
@@ -245,6 +257,39 @@ describe('useAreaSnapshot·useCityInfo', () => {
       expect(info.result.current.data?.areaName).toBe('강남역')
     })
     expect(fetchAreaPayload).toHaveBeenCalledTimes(1)
+    // useCityInfo의 select가 `{ ...parseCityInfoResponse(...), freshness: payload.freshness }`
+    // 순서인지 잠근다. 스프레드 순서가 뒤집히면 파서 내부 기본값 null이
+    // (cityInfoSchema.ts) 실제 나이를 덮어써도 화면은 멀쩡해 보이고 「받은 지
+    // N분」만 조용히 사라진다.
+    expect(info.result.current.data?.freshness?.ageSeconds).toBe(5)
+  })
+
+  it('areaName이 그대로면 재렌더링해도 다시 파싱하지 않는다', async () => {
+    // TanStack Query 5는 select를 "함수 참조가 같을 때만" 메모한다
+    // (`@tanstack/query-core`의 `queryObserver.js`, `options.select === this.#selectFn`,
+    // v5.101.4로 확인). useAreaSnapshot이 select를 useCallback으로 고정하지
+    // 않으면 렌더마다 새 참조가 되어 이 비교가 항상 거짓이 되고, 데이터가
+    // 안 바뀌어도 렌더마다 parseCitydataResponse가 다시 돈다 — 상세는 홈의
+    // 바텀시트 안에 있어 지도를 움직이거나 시트를 드래그할 때마다 리렌더된다.
+    fetchAreaPayload.mockResolvedValue({
+      body: citydataPayload('강남역'),
+      freshness: { ageSeconds: 0, receivedAt: Date.now() },
+    })
+
+    const { result, rerender } = renderHook(() => useAreaSnapshot('강남역'), harness())
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(snapshot('강남역'))
+    })
+    const callsAfterFirstRender = parseCitydataResponse.mock.calls.length
+    expect(callsAfterFirstRender).toBeGreaterThan(0)
+
+    rerender()
+    rerender()
+
+    // 캐시 데이터도 areaName도 안 바뀌었으니 select 참조가 고정된 채라면
+    // 다시 안 돈다. useCallback 없이 인라인 select를 쓰면 이 값이 늘어난다.
+    expect(parseCitydataResponse.mock.calls.length).toBe(callsAfterFirstRender)
   })
 
   it('혼잡도 파싱이 실패해도 도시정보는 멀쩡하다', async () => {

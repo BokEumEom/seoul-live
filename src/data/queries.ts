@@ -3,6 +3,7 @@ import {
   type QueryClient,
   type UseQueryResult,
 } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import { z } from 'zod'
 import type { CctvCamera } from '../domain/cctv'
 import type { AreaPopulation } from '../domain/populationTrend'
@@ -15,6 +16,7 @@ import {
   fetchCctv,
   fetchAreaPopulation,
   ProxyResponseError,
+  type AreaPayload,
 } from './client'
 import { AreaNameMismatchError, SeoulApiError, parseCitydataResponse } from './schema'
 import { parseCityInfoResponse } from './cityInfoSchema'
@@ -146,10 +148,23 @@ function areaPayloadOptions(areaName: string | undefined) {
 export function useAreaSnapshot(
   areaName: string | undefined,
 ): UseQueryResult<AreaSnapshot> {
+  // **`select`를 `useCallback`으로 참조 고정한다.** TanStack Query 5는 select를
+  // "함수 참조가 같을 때만" 메모한다 — 값이 아니라 **레퍼런스**로 비교한다
+  // (`node_modules/@tanstack/query-core/build/modern/queryObserver.js`의
+  // `options.select === this.#selectFn`, v5.101.4에서 확인). 인라인 화살표를
+  // 넘기면 렌더마다 새 참조라 이 비교가 항상 거짓이 되어, 데이터가 안 바뀌어도
+  // 렌더마다 `parseCitydataResponse`가 다시 돈다.
+  //
+  // 실제로 자주 일어난다 — 상세는 홈의 바텀시트 안에 있어 지도를 움직이거나
+  // 시트를 드래그할 때마다 리렌더된다. 그때마다 큰 citydata 응답을 zod로 다시
+  // 검증하면, 호출 수를 아끼려던 이번 작업이 렌더 비용을 늘리는 셈이 된다.
+  const select = useCallback(
+    (payload: AreaPayload) => parseCitydataResponse(payload.body, areaName ?? ''),
+    [areaName],
+  )
   return useQuery({
     ...areaPayloadOptions(areaName),
-    // areaName이 없으면 queryFn이 먼저 거절하므로 여기까지 안 온다.
-    select: (payload) => parseCitydataResponse(payload.body, areaName ?? ''),
+    select,
   })
 }
 
@@ -158,12 +173,18 @@ export function useAreaSnapshot(
  * 깨지는 것은 다르다.
  */
 export function useCityInfo(areaName: string | undefined): UseQueryResult<CityInfo> {
-  return useQuery({
-    ...areaPayloadOptions(areaName),
-    select: (payload) => ({
+  // useAreaSnapshot과 같은 이유로 select를 useCallback으로 고정한다 — 근거는
+  // 그쪽 주석 참고.
+  const select = useCallback(
+    (payload: AreaPayload) => ({
       ...parseCityInfoResponse(payload.body, areaName ?? ''),
       freshness: payload.freshness,
     }),
+    [areaName],
+  )
+  return useQuery({
+    ...areaPayloadOptions(areaName),
+    select,
   })
 }
 
