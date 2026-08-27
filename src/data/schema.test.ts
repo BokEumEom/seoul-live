@@ -362,3 +362,13 @@ describe('parseBulkEnvelope', () => {
     expect(() => parseBulkEnvelope({ results: [VALID] })).toThrow(z.ZodError)
   })
 })
+
+describe('citydata 봉투', () => {
+  it('CITYDATA.LIVE_PPLTN_STTS에서도 같은 스냅샷을 만든다', () => {
+    // 2026-08-27 실호출 대조: 두 서비스의 행이 완전히 같다(스펙 참고).
+    const rows = VALID['SeoulRtd.citydata_ppltn']
+    const fromLegacy = parseCitydataResponse({ 'SeoulRtd.citydata_ppltn': rows }, NAME)
+    const fromCitydata = parseCitydataResponse({ CITYDATA: { LIVE_PPLTN_STTS: rows } }, NAME)
+    expect(fromCitydata).toEqual(fromLegacy)
+  })
+})

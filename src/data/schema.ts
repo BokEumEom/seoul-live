@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { parseCongestionLevel } from '../domain/congestion'
 import type { AreaSnapshot, CongestionLevel, Forecast } from '../domain/types'
 import { parseComposition } from './compositionSchema'
+import { populationRows } from './populationEnvelope'
 
 /** 요청한 명소와 응답에 담긴 명소가 다를 때. `sample` 인증키는 지역명과 무관하게
  * 항상 광화문·덕수궁을 돌려주므로, 이 대조가 없으면 아무도 모르게 엉뚱한 데이터가 흐른다. */
@@ -127,9 +128,9 @@ const areaSchema = z
     path: ['AREA_PPLTN_MAX'],
   })
 
-const responseSchema = z.object({
-  'SeoulRtd.citydata_ppltn': z.array(areaSchema).min(1),
-})
+// **봉투가 아니라 행 배열을 검증한다.** 어느 서비스에서 왔는지는
+// `populationEnvelope.ts`가 흡수하므로 여기는 알맹이만 본다.
+const rowsSchema = z.array(areaSchema).min(1)
 
 // api/citydata-bulk.ts가 돌려주는 봉투 모양. 값 하나하나(각 명소의 원본 응답)는
 // 여기서 검증하지 않는다 — 그건 parseCitydataResponse의 몫이다(파싱은 schema.ts
@@ -177,7 +178,7 @@ function toForecast(raw: z.infer<typeof forecastSchema>): Forecast {
 }
 
 export function parseCitydataResponse(payload: unknown, expectedName: string): AreaSnapshot {
-  const result = responseSchema.safeParse(payload)
+  const result = rowsSchema.safeParse(populationRows(payload))
   if (!result.success) {
     const apiError = seoulApiErrorFrom(payload)
     if (apiError !== null) {
@@ -186,7 +187,7 @@ export function parseCitydataResponse(payload: unknown, expectedName: string): A
     throw result.error
   }
 
-  const areas = result.data['SeoulRtd.citydata_ppltn']
+  const areas = result.data
   const area = areas.find((entry) => entry.AREA_NM === expectedName)
   if (area === undefined) {
     throw new AreaNameMismatchError(

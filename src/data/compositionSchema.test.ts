@@ -134,3 +134,12 @@ describe('parseComposition', () => {
     expect(parseComposition(multi, '경복궁')?.maleRate).toBe(10)
   })
 })
+
+describe('citydata 봉투', () => {
+  it('CITYDATA.LIVE_PPLTN_STTS에서도 같은 구성을 읽는다', () => {
+    const row = { AREA_NM: '강남역', MALE_PPLTN_RATE: '50.5', FEMALE_PPLTN_RATE: '49.5' }
+    expect(parseComposition({ CITYDATA: { LIVE_PPLTN_STTS: [row] } }, '강남역')).toEqual(
+      parseComposition({ 'SeoulRtd.citydata_ppltn': [row] }, '강남역'),
+    )
+  })
+})
