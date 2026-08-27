@@ -671,7 +671,15 @@ git commit -m "refactor: citydata_ppltn 프록시를 걷어내고 도시정보 T
 - Modify: `src/data/populationEnvelope.ts`, `src/data/populationEnvelope.test.ts`
 - Modify: `src/data/mock.ts`
 - Modify: `src/data/client.ts`, `src/data/schema.ts`, `src/data/queries.ts`
+- **Delete: `api/citydata-bulk.ts`, `api/_lib/citydata-bulk.test.ts`**
+- **Modify: `api/_lib/seoul.ts`** (`SeoulService`·`fetchArea`)
 - Test: 위 각각의 테스트 파일
+
+> **이 절은 2026-08-27에 고쳤다.** 원래 계획은 Task 6이 프록시 **둘**(`api/citydata.ts`·`api/citydata-bulk.ts`)을 지우는 것이었고, 그래서 이 태스크는 클라이언트 쪽 죽은 코드만 치우면 됐다.
+>
+> **그런데 bulk 삭제를 Task 6에서 여기로 옮겼다.** 이유는 계획서 자신의 원칙이다 — 「**호출자가 없어진 뒤에 지운다**」. bulk의 호출자(`fetchAreaSnapshots`)가 사라지는 곳이 바로 이 태스크라, Task 6에서 먼저 지우면 한 커밋 동안 죽은 엔드포인트를 가리키는 클라이언트 코드가 남는다.
+>
+> **옮기면서 이 Files 목록을 안 고쳐 두었다가 코드 품질 검토에 잡혔다.** 그대로 뒀으면 `api/citydata-bulk.ts`가 **아무도 안 지우는 채로 영구히 남을** 뻔했다 — Task 6은 「Task 7이 지운다」고 적고, Task 7은 「Task 6이 지웠다」고 적는 상태였다.
 
 - [ ] **Step 1: 옛 봉투 갈래를 지운다**
 
@@ -720,6 +728,27 @@ import도 `buildMockSnapshot` → `buildMockPopulationRows`로 바꾼다.
 | `parseBulkEnvelope`, `bulkEnvelopeSchema` | `src/data/schema.ts` |
 | `useAreaSnapshots` | `src/data/queries.ts` |
 | 위 셋의 테스트 | 각 `.test.ts` |
+| **프록시 자체** | **`api/citydata-bulk.ts`, `api/_lib/citydata-bulk.test.ts`** |
+
+**클라이언트를 먼저 지우고 그다음 프록시를 지운다** — 이 계획서의 원칙(「호출자가 없어진 뒤에 지운다」) 그대로다.
+
+**프록시를 지우면 `citydata_ppltn`을 부르는 경로가 저장소에서 완전히 사라진다.** 그때 `api/_lib/seoul.ts`를 마저 정리한다:
+
+```ts
+// 이제 한 서비스만 쓴다. `citydata`가 인구·주차장·따릉이·날씨·문화행사·
+// 재난문자를 한 번에 준다 — `citydata_ppltn`은 그중 인구만 주던 좁은 문이라
+// 2026-08-27에 걷어냈다(같은 행을 두 번 받고 있었다).
+export type SeoulService = 'citydata'
+```
+
+`fetchArea`의 두 번째 파라미터는 **없앤다.** 멤버가 하나뿐이라 고를 것이 없다. `api/cityinfo.ts`의 `fetchArea(area, 'citydata')` 호출도 인자를 뺀다.
+
+> **Task 6에서는 이걸 못 했다.** `api/citydata-bulk.ts:64`가 `mapWithConcurrency(areas, UPSTREAM_CONCURRENCY, fetchArea)`로 **두 번째 인자 없이** 부르고(`concurrency.ts:28`이 `fn(items[current])` 단항), 즉 **기본값 `'citydata_ppltn'`에 기대고 있었다.** 그때 타입을 좁혔으면 bulk가 조용히 몇 배 큰 `citydata` 응답으로 갈아탔을 것이다 — 최대 40곳을 한 번에 훑는 경로라 실제 영향이 크고, 테스트는 `fetch`를 목업하므로 아무것도 안 잡는다. **bulk가 사라지는 지금이 그 정리를 할 수 있는 첫 시점이다.**
+
+**함께 고칠 낡은 주석 둘** (bulk가 사라지면 낡는다):
+
+- `api/cityinfo.ts:6-10` — 「응답 크기가 인구만 받는 쪽의 몇 배」의 비교 대상이 bulk뿐이다
+- `api/_lib/citydata-bulk.test.ts:5` — 이미 지워진 `api/_lib/citydata.test.ts`를 가리킨다 (파일과 함께 사라지므로 자연 해소)
 | `BULK_TIMEOUT_MS` 상수와 그 긴 주석 | `src/data/client.ts` |
 
 **이유:** `useAreaSnapshots`는 어느 화면에서도 안 불린다(2026-08-27 확인 — `HomeScreen.tsx:129`에 「예전의 `useAreaSnapshots`는…」 주석만 남아 있다). Task 6에서 프록시를 지웠으므로 이제 부르면 404다.
