@@ -67,8 +67,15 @@ export function DetailAppBar({ entry, onBack, actions }: Props) {
           두 줄을 허용하면 아래 탭 줄이 밀린다 — 히어로의 `line-clamp-2`와
           다른 판단이고, 이유는 그 자리가 흐름 안이라 자랄 수 있어서다.
           영어 이름이 잘리는 값은 감수한다: 바로 아래 히어로가 카테고리와
-          거리를 적고, 사용자는 방금 그 이름을 눌러 들어왔다. */}
-      <h2 className="min-w-0 flex-1 truncate text-headline-sm text-on-surface">
+          거리를 적고, 사용자는 방금 그 이름을 눌러 들어왔다.
+
+          **그 감수의 크기가 2026-08-27에 커졌다.** 「장소 타이틀이 상대적으로
+          작다」는 사용자 지적으로 `text-headline-sm`(16px)을 `text-display-lg`
+          (24px)로 올리면서, 가용 폭 약 170px 기준 잘리는 명소가 5/121(4%)에서
+          28/121(23%)로 늘었다(실측 근사) — 가장 긴 이름은 「청량리 제기동 일대
+          전통시장」(15자)이다. 20px(`headline-md`)이면 15/121(12%)로, 나중에
+          「너무 많이 잘린다」는 말이 나오면 그 값이 중간 선택지다. */}
+      <h2 className="min-w-0 flex-1 truncate text-display-lg text-on-surface">
         {areaDisplayName(entry)}
       </h2>
 

@@ -38,6 +38,14 @@ interface Props {
  * 40,000명이고 서촌에서는 4,000명이라 숫자가 등급이 뭉갠 것을 되살린다 — 그
  * 판단은 그대로다. 다만 문장이 한 단 위인 것은 **모르는 사람이 먼저 읽어야 할
  * 것**이 「그래서 지금 갈 만한가」이기 때문이다. 숫자는 그 답의 근거다.
+ *
+ * **문장이 여전히 인원수보다 한 단 위다**(2026-08-27에도 20px > 16px로 유지돼
+ * 위 근거는 살아 있다). 다만 **화면에서 가장 큰 글씨는 이제 이 문장이
+ * 아니다** — 「장소 타이틀이 상대적으로 작다」는 사용자 지적으로
+ * `DetailAppBar`의 `h2`를 24px로 올리고 이 히어로 세 줄을 그 아래 한 단씩
+ * 내렸다(문장 24→20px, 인원수 20→16px, 안내 문구 16→14px). 「그래서 지금
+ * 갈 만한가」를 이름보다 먼저 읽어야 한다는 판단이 바뀐 것이 아니라, 그 순서를
+ * 재는 눈금 전체가 이름 아래 칸으로 옮겨간 것이다.
  */
 export function DetailHero({ entry, coords, snapshot }: Props) {
   const distanceMeters = coords === null ? null : haversineMeters(coords, entry)
@@ -62,7 +70,7 @@ export function DetailHero({ entry, coords, snapshot }: Props) {
           서므로 화면이 빈 채로 시작하지는 않는다. */}
       {snapshot !== undefined && tone !== null && (
         <>
-          <h3 className="mt-2 flex items-center gap-2 text-display-lg text-on-surface">
+          <h3 className="mt-2 flex items-center gap-2 text-headline-md text-on-surface">
             {/* 「지금 값이다」를 뜻하는 점. **색이 정보를 혼자 나르지 않는다** —
                 바로 옆 문장이 같은 말을 적는다(WCAG 1.4.1). `animate-pulse`는
                 `prefers-reduced-motion`에서 멈춘다(index.css). */}
@@ -73,7 +81,7 @@ export function DetailHero({ entry, coords, snapshot }: Props) {
             {t(congestionSentence(snapshot.congestion))}
           </h3>
 
-          <p className={`mt-1 text-headline-md ${TONE_TEXT_CLASS[tone]}`}>
+          <p className={`mt-1 text-headline-sm ${TONE_TEXT_CLASS[tone]}`}>
             {t('{최소}~{최대}명', {
               최소: snapshot.populationMin.toLocaleString(),
               최대: snapshot.populationMax.toLocaleString(),
@@ -85,7 +93,7 @@ export function DetailHero({ entry, coords, snapshot }: Props) {
               다른 조언이고, 그 차이는 상류만 안다. 빈 문자열로 오는 응답이
               있어 길이를 본다. */}
           {snapshot.message !== '' && (
-            <p className="mt-2 text-body-md text-on-surface-variant">
+            <p className="mt-2 text-label-md text-on-surface-variant">
               {snapshot.message}
             </p>
           )}
