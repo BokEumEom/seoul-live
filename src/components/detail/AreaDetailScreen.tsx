@@ -159,7 +159,17 @@ export function AreaDetailScreen({
             **아래 패딩을 두지 않는다.** sticky가 붙는 자리는 스크롤 상자의 패딩
             안쪽이라, `pb-6`을 주면 길찾기 바가 시트 밑변에서 24px 떠 있다
             (390×844 실측으로 확인했다). */}
-        <DetailHero entry={entry} coords={location.coords} snapshot={snapshot} />
+
+        {/* **히어로는 요약 탭에서만 그린다**(2026-08-27, 사용자 요청 — 「장소
+            상세 헤더 부분에 내용은 요약에서만 보여지고 나머지 탭에서는
+            안보여도 될 것 같다」). 다른 탭은 이미 자기 몫의 값을 갖고 있어
+            히어로가 되풀이가 된다 — 인구 탭은 스스로 인원수와 「평소 대비」를
+            갖고(`PopulationLead`), 카테고리·거리는 요약 카드가 이미 적는다.
+            빠지는 것은 **기준 시각**뿐이다 — 그건 `PopulationPanel`이 따로
+            떠맡는다(그쪽 주석). */}
+        {tab === 'summary' && (
+          <DetailHero entry={entry} coords={location.coords} snapshot={snapshot} />
+        )}
 
         <DetailTabs value={tab} onChange={setTab} />
 

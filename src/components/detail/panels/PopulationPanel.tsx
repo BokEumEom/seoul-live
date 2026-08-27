@@ -1,6 +1,8 @@
+import { t } from '../../../i18n/t'
 import { useAreaPopulation } from '../../../data/queries'
 import type { WeekPattern } from '../../../domain/pattern'
 import type { AreaSnapshot } from '../../../domain/types'
+import { Icon } from '../../common/Icon'
 import { PopulationFlowSection } from '../PopulationFlowSection'
 import { PopulationTrendCard } from '../PopulationTrendCard'
 import { CongestionCard } from '../../home/CongestionCard'
@@ -42,6 +44,18 @@ export function PopulationPanel({ areaName, snapshot, pattern, now }: Props) {
           말인지 알 수 없다). 시안도 `_2` 히어로와 `_3` 인구 상세에 같은
           숫자를 둘 다 적는다. */}
       <PopulationLead snapshot={snapshot} pattern={pattern} flow={data?.flow} />
+
+      {/* **기준 시각.** 히어로가 요약 탭에서만 그려지면서(`AreaDetailScreen`,
+          2026-08-27) 이 값을 공짜로 얻던 통로가 사라졌다 — 인구 탭이 인원
+          구성·인파 변화 숫자를 시각 표시 없이 보여주면 「지금」이라고 주장하는
+          셈이 된다(`DetailHero`의 판단 그대로: 5분 간격 관측 + 프록시 캐시라
+          시각을 빼면 앱이 거짓말을 한다). 문구·아이콘은 히어로가 쓰던 것과
+          같다. `px-4`인 것은 이 패널이 컨테이너에 가로 여백을 안 두고 자식마다
+          각자 잡기 때문이다(`PopulationLead`와 같은 값). */}
+      <p className="flex items-center gap-1 px-4 text-label-sm text-outline">
+        <Icon name="clock" className="size-4" />
+        {t('{시각} 기준', { 시각: snapshot.observedAtLabel })}
+      </p>
 
       <CongestionCard snapshot={snapshot} />
 

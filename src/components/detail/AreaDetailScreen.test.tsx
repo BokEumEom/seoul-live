@@ -444,6 +444,29 @@ describe('AreaDetailScreen — 히어로', () => {
   })
 })
 
+// **히어로는 요약 탭에서만 그려진다**(2026-08-27, 사용자 요청 — 「장소 상세
+// 헤더 부분에 내용은 요약에서만 보여지고 나머지 탭에서는 안보여도 될 것 같다」).
+// 위 describe의 테스트들은 전부 기본 탭(요약)에서 재므로 이 사실을 암묵적으로만
+// 잠근다 — 여기서는 탭을 옮겨서 명시적으로 잠근다.
+describe('AreaDetailScreen — 히어로는 요약에서만', () => {
+  it('요약 탭에 있다', () => {
+    renderDetail()
+    expect(
+      screen.getByRole('heading', { name: '지금은 약간 붐벼요' }),
+    ).toBeInTheDocument()
+  })
+
+  it('다른 탭으로 옮기면 사라진다', async () => {
+    renderDetail()
+    await openTab('인구')
+    // h3 「지금은 약간 붐벼요」는 히어로에만 있다 — `PopulationLead`·
+    // `CongestionCard`는 이 문장을 헤딩으로 다시 쓰지 않는다.
+    expect(screen.queryByRole('heading', { name: '지금은 약간 붐벼요' })).toBeNull()
+    // 카테고리·거리 줄도 히어로의 몫이라 함께 사라져야 한다.
+    expect(screen.queryByText('역·번화가')).toBeNull()
+  })
+})
+
 describe('AreaDetailScreen — 탭', () => {
   // 겉모습만 탭이고 버튼 일곱 개인 화면은 스크린리더에서 「버튼, 버튼…」으로
   // 읽혀 몇 개 중 몇째인지 알 수 없다.
@@ -671,9 +694,10 @@ describe('AreaDetailScreen — 인구 탭', () => {
     renderDetail()
     await openTab('인구')
 
-    // 히어로와 「평소 대비」 줄이 같은 숫자를 적는다 — 시안도 `_2`와 `_3`에
-    // 둘 다 적고, 여기서는 그 되풀이가 의도임을 함께 잠근다.
-    expect(screen.getAllByText(/74,000~76,000명/)).toHaveLength(2)
+    // **히어로는 요약 탭에서만 그려진다**(2026-08-27) — 인구 탭에는 이
+    // 탭 자신의 「평소 대비」 줄(`PopulationLead`)이 인원수를 한 번만 적는다.
+    // 예전에는 히어로가 탭과 무관하게 늘 떠 있어 같은 숫자가 둘이었다.
+    expect(screen.getAllByText(/74,000~76,000명/)).toHaveLength(1)
     // 시안 `_3`의 성별·연령 카드와 우리가 하나 더 갖는 거주 카드.
     for (const name of ['성별 비율', '연령대별 비율', '거주 비율']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
@@ -774,13 +798,15 @@ describe('AreaDetailScreen — 인구 탭', () => {
     expect(screen.getByRole('heading', { name: '24시간 인파 흐름' })).toBeInTheDocument()
   })
 
-  // **히어로가 이미 말한 것을 카드가 또 말하면 안 된다.** 히어로는 탭과 무관하게
-  // 늘 위에 있으므로, 안내 문구와 기준 시각이 카드에도 있으면 한 화면에 같은
-  // 말이 두 번 적힌다.
-  it('안내 문구와 기준 시각을 카드가 되풀이하지 않는다', async () => {
+  // **히어로가 요약 탭에서만 그려지므로**(2026-08-27, 사용자 요청) 인구 탭은
+  // 더 이상 히어로를 등에 업지 못한다. 안내 문구는 애초에 인구 탭이 다루는
+  // 값이 아니라서 그대로 없고, 기준 시각은 이 탭이 스스로 적어야 한다 —
+  // 그러지 않으면 「지금」이라고 주장하는 셈이 된다(`PopulationPanel` 주석).
+  it('안내 문구는 없고 기준 시각은 스스로 적는다', async () => {
     renderDetail()
     await openTab('인구')
-    expect(screen.getAllByText('조금 붐벼요.')).toHaveLength(1)
+    expect(screen.queryByText('조금 붐벼요.')).toBeNull()
+    expect(screen.getAllByText('11:00 기준')).toHaveLength(1)
     expect(screen.queryByText(/마지막 업데이트/)).toBeNull()
   })
 
