@@ -1,3 +1,7 @@
+import {
+  SUBWAY_FACILITY_KINDS,
+  type SubwayFacilityKind,
+} from '../domain/subwayFacility'
 import { findAreaByName } from './areas'
 import { formatSeoulTime, hashAreaName, mixSeed } from './mock'
 
@@ -512,6 +516,16 @@ function buildBikes(areaName: string, seed: number): readonly unknown[] {
 const SUB_MESSAGES = ['전역 출발', '전역 진입', '전역 도착'] as const
 const SUB_TERMINALS = ['대화', '오금', '소요산', '인천'] as const
 
+/**
+ * 승강기 갈래 코드. **네 코드를 다 돌려야** 갈래마다 다른 이름이 뜨는지 목업으로
+ * 볼 수 있다 — 실호출에서는 무빙워크가 160건 중 2건이라 우연에 맡기면 안 나온다.
+ *
+ * 도메인 표에서 뽑는다. 코드가 하나 늘면 목업도 함께 는다.
+ */
+const SUB_FACILITY_KINDS = Object.keys(
+  SUBWAY_FACILITY_KINDS,
+) as readonly SubwayFacilityKind[]
+
 function buildSubway(seed: number): readonly unknown[] {
   // 역이 0~2곳. 지하철역이 없는 명소(한강공원 등)를 목업으로도 볼 수 있어야 한다.
   const stationCount = mixSeed(seed, SUBWAY_SALT) % 3
@@ -545,6 +559,33 @@ function buildSubway(seed: number): readonly unknown[] {
           SUB_ARMG2: `${train % 90}번가`,
         }
       }),
+      SUB_FACIINFO: buildSubwayFacilities(mixed),
+    }
+  })
+}
+
+/**
+ * 역 승강기. **역마다 0~4건이다** — 실호출에서 44역 중 13역만 이 배열을 채웠고,
+ * 「승강기를 안 주는 역」이 정상 상태라 목업으로도 그 모습을 봐야 한다.
+ *
+ * **보수중이 반드시 섞인다**(넷 중 하나). 화면에서 이 절이 실제로 하는 말은
+ * 「지금 멈춘 것이 있다」인데, 전부 사용가능이면 그 자리를 목업으로 못 본다 —
+ * 실호출 비율은 6.9%라 우연에 맡기면 안 나온다.
+ */
+function buildSubwayFacilities(mixed: number): readonly unknown[] {
+  const count = mixed % 5
+
+  return Array.from({ length: count }, (_, index) => {
+    const facility = mixSeed(mixed, index + 20)
+    const kind = SUB_FACILITY_KINDS[facility % SUB_FACILITY_KINDS.length]
+    return {
+      // 실응답이 갈래 이름을 이 문자열에 담아 온다 — 코드의 뜻을 확인한 증인이
+      // 그것이다(`domain/subwayFacility.ts`). 파서는 안 읽지만 모양을 맞춘다.
+      ELVTR_NM: `승강기)${SUBWAY_FACILITY_KINDS[kind]}-${mixed % 90}번가 ${index + 1}`,
+      OPR_SEC: `B${1 + (facility % 3)}-B${2 + (facility % 3)}`,
+      INSTL_PSTN: `${1 + (facility % 9)}번 출입구`,
+      USE_YN: index % 4 === 3 ? '보수중' : '사용가능',
+      ELVTR_SE: kind,
     }
   })
 }

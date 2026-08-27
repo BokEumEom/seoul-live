@@ -29,6 +29,7 @@ import {
   type SubwayArrival,
   type ParkingLot,
 } from './cityInfo'
+import type { SubwayFacility } from './subwayFacility'
 
 function lot(name: string, available: number | null, capacity: number | null): ParkingLot {
   return makeParkingLot({ name, available, capacity, liveAvailable: true })
@@ -296,10 +297,10 @@ describe('groupSubwayArrivals', () => {
   }
 
   it('같은 역·같은 호선의 열차를 한 묶음으로 만든다', () => {
-    const groups = groupSubwayArrivals([
-      arrival('강남', '2호선', '성수행'),
-      arrival('강남', '2호선', '성수행'),
-    ])
+    const groups = groupSubwayArrivals(
+      [arrival('강남', '2호선', '성수행'), arrival('강남', '2호선', '성수행')],
+      [],
+    )
 
     expect(groups).toHaveLength(1)
     expect(groups[0].station).toBe('강남')
@@ -310,31 +311,34 @@ describe('groupSubwayArrivals', () => {
   it('같은 역이라도 호선이 다르면 나눈다', () => {
     // 강남역에는 2호선과 신분당선이 함께 온다. 역명만으로 묶으면 서로 다른
     // 노선의 열차가 한 덩어리로 보인다(detail_page.png).
-    const groups = groupSubwayArrivals([
-      arrival('강남', '2호선'),
-      arrival('강남', '신분당선'),
-    ])
+    const groups = groupSubwayArrivals(
+      [arrival('강남', '2호선'), arrival('강남', '신분당선')],
+      [],
+    )
 
     expect(groups).toHaveLength(2)
     expect(groups.map((group) => group.line)).toEqual(['2호선', '신분당선'])
   })
 
   it('호선이 같아도 역이 다르면 나눈다', () => {
-    const groups = groupSubwayArrivals([
-      arrival('신논현', '신분당선'),
-      arrival('강남', '신분당선'),
-    ])
+    const groups = groupSubwayArrivals(
+      [arrival('신논현', '신분당선'), arrival('강남', '신분당선')],
+      [],
+    )
 
     expect(groups).toHaveLength(2)
     expect(groups.map((group) => group.station)).toEqual(['신논현', '강남'])
   })
 
   it('묶음의 순서는 처음 나온 차례를 따른다', () => {
-    const groups = groupSubwayArrivals([
-      arrival('신논현', '9호선'),
-      arrival('강남', '2호선'),
-      arrival('신논현', '9호선'),
-    ])
+    const groups = groupSubwayArrivals(
+      [
+        arrival('신논현', '9호선'),
+        arrival('강남', '2호선'),
+        arrival('신논현', '9호선'),
+      ],
+      [],
+    )
 
     expect(groups.map((group) => group.station)).toEqual(['신논현', '강남'])
   })
@@ -343,11 +347,14 @@ describe('groupSubwayArrivals', () => {
     // 도착 시각으로 다시 정렬하지 않는다 — message가 「4분 20초 후」일 수도
     // 「전역 출발」일 수도 있어 둘을 한 축에 세울 방법이 없다. detail_page.png의
     // 강남 2호선도 4분·8분·2분 순으로, 시각순이 아니라 응답순이다.
-    const groups = groupSubwayArrivals([
-      arrival('강남', '2호선', '성수행', '4분 20초 후'),
-      arrival('강남', '2호선', '성수행', '8분 50초 후'),
-      arrival('강남', '2호선', '성수행', '2분 20초 후'),
-    ])
+    const groups = groupSubwayArrivals(
+      [
+        arrival('강남', '2호선', '성수행', '4분 20초 후'),
+        arrival('강남', '2호선', '성수행', '8분 50초 후'),
+        arrival('강남', '2호선', '성수행', '2분 20초 후'),
+      ],
+      [],
+    )
 
     expect(groups[0].arrivals.map((entry) => entry.message)).toEqual([
       '4분 20초 후',
@@ -358,12 +365,51 @@ describe('groupSubwayArrivals', () => {
 
   it('입력 배열을 건드리지 않는다', () => {
     const input = [arrival('강남', '2호선'), arrival('신논현', '9호선')]
-    groupSubwayArrivals(input)
+    groupSubwayArrivals(input, [])
     expect(input.map((entry) => entry.station)).toEqual(['강남', '신논현'])
   })
 
   it('빈 목록은 빈 묶음이다', () => {
-    expect(groupSubwayArrivals([])).toEqual([])
+    expect(groupSubwayArrivals([], [])).toEqual([])
+  })
+
+  describe('승강기 잇기', () => {
+    const lift: SubwayFacility = {
+      kind: 'EV',
+      section: 'B2-B4',
+      position: '서대문 방면1-1',
+      status: '사용가능',
+    }
+
+    it('역·호선이 맞는 승강기를 묶음에 얹는다', () => {
+      const groups = groupSubwayArrivals(
+        [arrival('광화문', '5호선')],
+        [{ station: '광화문', line: '5호선', facilities: [lift] }],
+      )
+
+      expect(groups[0].facilities).toEqual([lift])
+    })
+
+    /**
+     * **같은 역이라도 호선마다 갈린다.** 실호출에서 신당 6호선은 22건인데
+     * 신당 2호선은 0건이었다(2026-08-27). 역명만으로 이으면 2호선 승강장에
+     * 6호선의 승강기 스물둘이 붙는다.
+     */
+    it('역명이 같아도 호선이 다르면 안 얹는다', () => {
+      const groups = groupSubwayArrivals(
+        [arrival('신당', '2호선'), arrival('신당', '6호선')],
+        [{ station: '신당', line: '6호선', facilities: [lift] }],
+      )
+
+      expect(groups[0].facilities).toEqual([])
+      expect(groups[1].facilities).toEqual([lift])
+    })
+
+    it('승강기를 안 준 역은 빈 목록이다', () => {
+      const groups = groupSubwayArrivals([arrival('강남', '2호선')], [])
+
+      expect(groups[0].facilities).toEqual([])
+    })
   })
 })
 

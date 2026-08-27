@@ -328,6 +328,29 @@ const CITY_INFO: CityInfo = makeCityInfo({
       message: '4분 30초 후 (Euljiro 1-ga)',
     },
   ],
+  // 승강기 갈래(「에스컬레이터」)와 상태(「보수중」)는 옮기는 값이고, 설치위치는
+  // 역 이름·출구 번호가 섞인 자유 문장이라 못 옮긴다 — 그래서 여기만 라틴으로
+  // 채운다(이 파일의 허용 목록을 뒤집는 방식 그대로).
+  subwayFacilities: [
+    {
+      station: 'Gwanghwamun',
+      line: '5호선',
+      facilities: [
+        {
+          kind: 'EV',
+          section: 'B2-B4',
+          position: 'Exit 8',
+          status: '사용가능',
+        },
+        {
+          kind: 'ES',
+          section: 'B2-B3',
+          position: 'Transfer passage',
+          status: '보수중',
+        },
+      ],
+    },
+  ],
 })
 
 function ok<T>(data: T): UseQueryResult<T> {

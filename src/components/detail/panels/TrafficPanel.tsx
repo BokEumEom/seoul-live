@@ -92,7 +92,12 @@ export function TrafficPanel({ areaName, origin, onShowOnMap }: Props) {
                   <RidershipSummary ridership={info.subwayRidership} />
                 </div>
               )}
-              {info.subway.length > 0 && <SubwayArrivals arrivals={info.subway} />}
+              {info.subway.length > 0 && (
+                <SubwayArrivals
+                  arrivals={info.subway}
+                  facilities={info.subwayFacilities}
+                />
+              )}
             </InfoSection>
           )}
 

@@ -160,6 +160,35 @@ describe('실호출 citydata 응답 (2026-08-25) — 파서', () => {
     expect(info.subway.some((entry) => entry.message !== '')).toBe(true)
   })
 
+  /**
+   * **명세가 키 이름을 틀린 자리다.** 출력명 표는 `SUB_FACINFO`인데 실응답은
+   * `SUB_FACIINFO`(I가 하나 더)라, 이름대로 읽으면 언제나 빈 배열이 오고 화면은
+   * 「이 역에는 승강기 정보가 없다」로 조용히 정상으로 보인다. 지어낸 목업으로는
+   * 절대 안 잡히는 종류라 실응답으로 잰다.
+   *
+   * 이 픽스처(광화문·덕수궁)는 역 셋 중 광화문 5호선만 승강기를 주고 3건이다.
+   */
+  it('역 승강기를 읽는다', () => {
+    expect(info.subwayFacilities).toHaveLength(1)
+
+    const [station] = info.subwayFacilities
+    expect(station.station).toBe('광화문')
+    expect(station.facilities).toHaveLength(3)
+    // 갈래와 운행구간이 다 읽혀야 화면이 「에스컬레이터 B2-B3」을 적는다.
+    expect(station.facilities.every((entry) => entry.kind !== null)).toBe(true)
+    expect(station.facilities.every((entry) => entry.section !== '')).toBe(true)
+    expect(station.facilities.every((entry) => entry.position !== '')).toBe(true)
+  })
+
+  // 승강기는 도착 묶음 안에 그린다. 두 키가 어긋나면 화면에서 통째로 사라진다.
+  it('승강기의 역·호선 키가 도착 목록에 실제로 있다', () => {
+    const keys = new Set(info.subway.map((entry) => `${entry.station} ${entry.line}`))
+
+    for (const station of info.subwayFacilities) {
+      expect(keys.has(`${station.station} ${station.line}`)).toBe(true)
+    }
+  })
+
   it('시간대별 예보 24칸을 읽는다', () => {
     expect(info.weather?.hourly).toHaveLength(24)
     // FCST_DT가 붙여 쓴 12자리로 온다 — forecastHourLabel이 읽는 형식이다.

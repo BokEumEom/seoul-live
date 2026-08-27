@@ -238,6 +238,23 @@ export const EN: Readonly<Record<string, string>> = {
   따릉이: 'Ttareungi bikes',
   문화행사: 'Events',
   '{역} 도착 열차': 'Trains at {역}',
+  // ── 역 승강기(`SUB_FACIINFO`, 2026-08-27) ──
+  //
+  // **갈래 이름은 옮긴다.** 값의 종류가 넷뿐이고 뜻이 하나다 — 자유 문장인
+  // 설치위치(「환승통로(2호선 방면)」) 바로 옆에 있다고 함께 못 옮기는 것으로
+  // 분류하지 않는다(AGENTS.md 「언어」).
+  에스컬레이터: 'Escalator',
+  엘리베이터: 'Elevator',
+  휠체어리프트: 'Wheelchair lift',
+  무빙워크: 'Moving walkway',
+  // 처음 보는 `ELVTR_SE` 코드가 왔을 때의 총칭. 명세의 필드 이름(`ELVTR_*`)이
+  // 쓰는 말이기도 하다.
+  승강기: 'Lift',
+  // **「있음」이지 「정상 운행」이 아니다.** 시안의 `title`은 「엘리베이터 정상
+  // 운행」인데, 실제로는 6대 중 1대가 보수중인 역이 있어 그 말을 못 한다.
+  '엘리베이터 있음': 'Has elevator',
+  보수중: 'Under repair',
+  '{역} 보수중 시설': 'Facilities under repair at {역}',
   // ── 승하차 인원·버스정류소(2026-08-25) ──
   // `LIVE_SUB_PPLTN`·`LIVE_BUS_PPLTN`·`BUS_STN_STTS`. 같은 `citydata` 응답
   // 안이라 추가 호출이 0이다.

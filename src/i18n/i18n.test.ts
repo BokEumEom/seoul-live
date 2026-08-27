@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { ACCIDENT_DETAIL_TYPES, ACCIDENT_TYPES } from '../domain/accident'
 import { ROAD_SEGMENT_INDEXES } from '../domain/roadSegment'
 import { SKY_STATES } from '../domain/sky'
+import { SUBWAY_FACILITY_KINDS } from '../domain/subwayFacility'
 import {
   CHARGER_KINDS,
   CHARGER_METHODS,
@@ -204,6 +205,9 @@ function dynamicKeys(): readonly string[] {
     ...ACCIDENT_TYPES,
     ...ACCIDENT_DETAIL_TYPES,
     ...SUBWAY_DIRECTION_LABELS,
+    // 역 승강기의 갈래(`ELVTR_SE`). 화면이 코드로 표를 찾아 감싸므로 정적으로는
+    // 안 세어진다 — 도메인에서 뽑아 두면 새 코드가 늘 때 여기가 낡지 않는다.
+    ...Object.values(SUBWAY_FACILITY_KINDS),
     ...WEATHER_WARNING_LABELS,
     ...UV_GRADE_LABELS,
     ...COMMERCE_LEVELS,

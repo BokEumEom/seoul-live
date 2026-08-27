@@ -110,10 +110,40 @@ describe('buildMockCityInfo', () => {
 
   it('한 역에 열차가 여러 대 온다', () => {
     // 한 대씩만 오면 역·호선 묶음도 「외 N대」도 목업으로 확인할 수 없다.
-    const grouped = AREA_NAMES.map((name) =>
-      groupSubwayArrivals(infoFor(name).subway),
-    ).flat()
+    const grouped = AREA_NAMES.map((name) => {
+      const info = infoFor(name)
+      return groupSubwayArrivals(info.subway, info.subwayFacilities)
+    }).flat()
     expect(grouped.some((group) => group.arrivals.length > 1)).toBe(true)
+  })
+
+  /**
+   * **승강기를 주는 역과 안 주는 역이 둘 다 나와야 한다.** 실호출에서 44역 중
+   * 13역만 이 배열을 채웠고, 안 주는 쪽이 정상 상태다 — 목업이 전부 채우면
+   * 「표시가 없는 역」이 어떻게 보이는지를 개발 중에 한 번도 못 본다.
+   */
+  it('승강기를 주는 역과 안 주는 역이 둘 다 나온다', () => {
+    const counts = AREA_NAMES.flatMap((name) =>
+      groupSubwayArrivals(infoFor(name).subway, infoFor(name).subwayFacilities).map(
+        (group) => group.facilities.length,
+      ),
+    )
+
+    expect(counts.some((count) => count > 0)).toBe(true)
+    expect(counts.some((count) => count === 0)).toBe(true)
+  })
+
+  // 이 절이 화면에서 실제로 하는 말은 「지금 멈춘 것이 있다」다. 전부 사용가능이면
+  // 그 자리를 목업으로 못 본다 — 실호출 비율이 6.9%라 우연에 맡길 수 없다.
+  it('보수중인 승강기가 나온다', () => {
+    const statuses = AREA_NAMES.flatMap((name) =>
+      infoFor(name).subwayFacilities.flatMap((station) =>
+        station.facilities.map((facility) => facility.status),
+      ),
+    )
+
+    expect(statuses).toContain('보수중')
+    expect(statuses).toContain('사용가능')
   })
 
   it('분 단위와 문구형 도착 메세지가 둘 다 나온다', () => {

@@ -15,6 +15,12 @@ import type {
   WeatherWarning,
 } from '../domain/cityInfo'
 import type { AccidentControl } from '../domain/accident'
+import {
+  isSubwayFacilityKind,
+  isSubwayFacilityStatus,
+  type SubwayFacility,
+  type SubwayStationFacilities,
+} from '../domain/subwayFacility'
 import type { RoadSegment } from '../domain/roadSegment'
 import type { BikeStation } from '../domain/bike'
 import type { Charger, ChargerStation } from '../domain/charger'
@@ -525,24 +531,71 @@ function stationLineName(value: string): string {
 //
 // `SUB_ARMG2`는 읽지 않는다. 실제 값이 `SUB_ARMG1`("9분 후 (동대입구)")에 이미
 // 괄호로 들어 있는 역 이름("동대입구")이라, 따로 붙이면 같은 말이 두 번 나온다.
-function toSubway(rows: readonly Row[]): readonly SubwayArrival[] {
-  return rows.flatMap((stationRow) => {
+//
+// **도착과 승강기를 한 자리에서 만든다.** 화면은 둘을 역·호선으로 이어 붙이는데,
+// 그 키를 두 곳에서 따로 계산하면 한쪽만 「호선」을 붙이거나 한쪽만 열차를 보는
+// 순간 승강기가 영영 안 그려진다 — 화면에는 아무 표시도 안 난다. 호선을 역마다
+// 한 번 정하고 도착과 승강기가 그 값을 나눠 쓴다.
+function toSubway(rows: readonly Row[]): {
+  readonly arrivals: readonly SubwayArrival[]
+  readonly facilities: readonly SubwayStationFacilities[]
+} {
+  const arrivals: SubwayArrival[] = []
+  const facilities: SubwayStationFacilities[] = []
+
+  for (const stationRow of rows) {
     const station = text(stationRow, 'SUB_STN_NM')
     if (station === '') {
-      return []
+      continue
     }
-    const stationLine = text(stationRow, 'SUB_STN_LINE')
-
     // 열차가 없는 역은 통째로 버린다 — 제목만 있고 아래가 빈 묶음이 남는다.
-    return sectionRows(stationRow, ['SUB_DETAIL']).map(
-      (train): SubwayArrival => ({
+    // **승강기도 함께 버린다.** 화면이 도착 묶음 안에 그리므로 열차가 없으면
+    // 그릴 자리 자체가 없다. 실호출 44역에서 「승강기는 있는데 열차가 없는 역」은
+    // 0곳이었다(2026-08-27).
+    const trains = sectionRows(stationRow, ['SUB_DETAIL'])
+    if (trains.length === 0) {
+      continue
+    }
+
+    const line = lineOf(text(stationRow, 'SUB_STN_LINE'), trains[0])
+    for (const train of trains) {
+      arrivals.push({
         station,
-        line: lineOf(stationLine, train),
+        line,
         direction: directionOf(train),
         terminal: text(train, 'SUB_TERMINAL'),
         message: text(train, 'SUB_ARMG1'),
-      }),
-    )
+      })
+    }
+
+    const stationFacilities = toFacilities(stationRow)
+    if (stationFacilities.length > 0) {
+      facilities.push({ station, line, facilities: stationFacilities })
+    }
+  }
+
+  return { arrivals, facilities }
+}
+
+// **명세가 키 이름을 틀렸다.** 출력명 표(80행)는 `SUB_FACINFO`인데 실응답은
+// `SUB_FACIINFO`(I가 하나 더)다. 명세대로만 읽으면 언제나 빈 배열이 온다 —
+// 2026-08-25에 이 필드가 미구현으로 남은 이유가 그것이었다. 문화행사가
+// `CULTURALEVENTINFO`가 아니라 `EVENT_STTS`로 왔을 때와 같은 자리라, 이 파서가
+// 관대한 덕에 쓰는 처방(후보를 둘 다 받는다)을 그대로 쓴다.
+const FACILITY_KEYS = ['SUB_FACIINFO', 'SUB_FACINFO'] as const
+
+function toFacilities(stationRow: Row): readonly SubwayFacility[] {
+  return sectionRows(stationRow, FACILITY_KEYS).map((row): SubwayFacility => {
+    const kind = text(row, 'ELVTR_SE')
+    const status = text(row, 'USE_YN')
+    return {
+      // 처음 보는 코드·상태는 비운다. 갈래를 모르면서 「엘리베이터」라고 적거나
+      // 상태를 모르면서 「보수중」이라고 적는 것이 이 앱이 가장 피하는 일이다.
+      kind: isSubwayFacilityKind(kind) ? kind : null,
+      section: text(row, 'OPR_SEC'),
+      position: text(row, 'INSTL_PSTN'),
+      status: isSubwayFacilityStatus(status) ? status : null,
+    }
   })
 }
 
@@ -596,6 +649,9 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
     sectionRows(row, ['ROAD_TRAFFIC_STTS']),
   )
 
+  // 도착과 승강기가 역·호선 키를 나눠 쓰므로 한 번에 읽는다 — `toSubway` 주석.
+  const subway = toSubway(sectionRows(container, ['SUB_STTS']))
+
   return {
     // **파서는 나이를 모른다.** `Age`는 응답 본문이 아니라 HTTP 헤더에 있어
     // 여기까지 오지 않는다. `client.ts`가 받아서 이 값을 덮어쓴다 — 여기서
@@ -619,7 +675,8 @@ export function parseCityInfoResponse(payload: unknown, expectedName: string): C
     bikes: toBikes(sectionRows(container, ['SBIKE_STTS'])),
     events: toEvents(sectionRows(container, ['CULTURALEVENTINFO', 'EVENT_STTS'])),
     alerts: toAlerts(sectionRows(container, ['LIVE_DST_MESSAGE'])),
-    subway: toSubway(sectionRows(container, ['SUB_STTS'])),
+    subway: subway.arrivals,
+    subwayFacilities: subway.facilities,
     subwayRidership: toRidership(sectionRows(container, ['LIVE_SUB_PPLTN']), 'SUB'),
     busStops: toBusStops(sectionRows(container, ['BUS_STN_STTS'])),
     busRidership: toRidership(sectionRows(container, ['LIVE_BUS_PPLTN']), 'BUS'),

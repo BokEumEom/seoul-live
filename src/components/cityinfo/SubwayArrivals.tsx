@@ -6,6 +6,8 @@ import {
 import { t } from '../../i18n/t'
 import { groupSubwayArrivals, type SubwayArrival } from '../../domain/cityInfo'
 import { subwayLineBadge } from '../../domain/subwayLine'
+import type { SubwayStationFacilities } from '../../domain/subwayFacility'
+import { ElevatorMark, FacilityRepairs } from './SubwayFacilities'
 import { SubwayLineBadge } from './SubwayLineBadge'
 
 /** 한 묶음에 보여줄 열차 수. detail_page.png도 역·호선마다 셋이다. */
@@ -13,6 +15,8 @@ const VISIBLE_LIMIT = 3
 
 interface Props {
   readonly arrivals: readonly SubwayArrival[]
+  /** 역별 승강기. 도착 묶음과 역·호선으로 이어진다 */
+  readonly facilities: readonly SubwayStationFacilities[]
 }
 
 /**
@@ -22,8 +26,8 @@ interface Props {
  * 같은 필드로 오는데 값 목록이 명세에 없다(`ROAD_TRAFFIC_IDX`와 같은 규칙).
  * 「분」을 숫자로 뽑아 정렬하거나 색을 붙이면 처음 보는 문구에서 틀린다.
  */
-export function SubwayArrivals({ arrivals }: Props) {
-  const groups = groupSubwayArrivals(arrivals)
+export function SubwayArrivals({ arrivals, facilities }: Props) {
+  const groups = groupSubwayArrivals(arrivals, facilities)
 
   if (groups.length === 0) {
     return null
@@ -57,6 +61,9 @@ export function SubwayArrivals({ arrivals }: Props) {
                   {line}
                 </span>
               )}
+              {/* 시안 `_4`가 이 줄 끝(`ml-auto`)에 교통약자 표시를 놓는다.
+                  「있다」만 말하는 이유는 `ElevatorMark`에 적었다. */}
+              <ElevatorMark facilities={group.facilities} />
             </p>
 
             {/* role="list"를 명시하는 이유: preflight의 list-style:none이 WebKit에서
@@ -99,6 +106,11 @@ export function SubwayArrivals({ arrivals }: Props) {
             {hidden > 0 && (
               <p className="mt-1.5 text-label-sm text-outline">{t('외 {개수}대', { 개수: hidden })}</p>
             )}
+
+            {/* **도착 아래다.** 이 절을 여는 질문은 「열차가 언제 오나」이고
+                승강기는 그 다음이다 — 실호출에서 한 역이 승강기 스물여덟 건까지
+                오므로 위에 두면 도착 시각이 그 아래로 밀린다. */}
+            <FacilityRepairs facilities={group.facilities} title={title} />
           </div>
         )
       })}

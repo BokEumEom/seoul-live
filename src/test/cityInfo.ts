@@ -156,6 +156,7 @@ export function makeCityInfo(overrides: Partial<CityInfo> = {}): CityInfo {
     events: [],
     alerts: [],
     subway: [],
+    subwayFacilities: [],
     subwayRidership: null,
     busStops: [],
     busRidership: null,

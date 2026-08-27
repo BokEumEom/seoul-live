@@ -1054,6 +1054,99 @@ describe('parseCityInfoResponse — 지하철 실시간 도착', () => {
     expect(info.subway[0].message).toBe('9분 후 (동대입구)')
   })
 
+  describe('승강기(SUB_FACIINFO)', () => {
+    const ELEVATOR = {
+      ELVTR_NM: '승강기)엘리베이터-광화문 내부2',
+      OPR_SEC: 'B2-B4',
+      INSTL_PSTN: '서대문 방면1-1',
+      USE_YN: '사용가능',
+      ELVTR_SE: 'EV',
+    }
+
+    it('역별로 읽는다', () => {
+      const info = parseCityInfoResponse(
+        withTrains([{ SUB_ARMG1: '도착' }], { SUB_FACIINFO: [ELEVATOR] }),
+        AREA,
+      )
+
+      expect(info.subwayFacilities).toEqual([
+        {
+          station: '경복궁',
+          line: '3호선',
+          facilities: [
+            { kind: 'EV', section: 'B2-B4', position: '서대문 방면1-1', status: '사용가능' },
+          ],
+        },
+      ])
+    })
+
+    /**
+     * **명세가 키 이름을 틀렸다.** 출력명 표(80행)는 `SUB_FACINFO`인데 실응답은
+     * `SUB_FACIINFO`(I가 하나 더)다. 문화행사가 `CULTURALEVENTINFO`가 아니라
+     * `EVENT_STTS`로 왔을 때와 같은 자리라, 같은 처방으로 둘 다 받는다.
+     */
+    it('명세의 이름으로 와도 읽는다', () => {
+      const info = parseCityInfoResponse(
+        withTrains([{ SUB_ARMG1: '도착' }], { SUB_FACINFO: [ELEVATOR] }),
+        AREA,
+      )
+
+      expect(info.subwayFacilities[0].facilities).toHaveLength(1)
+    })
+
+    it('처음 보는 갈래 코드는 비운다', () => {
+      const info = parseCityInfoResponse(
+        withTrains([{ SUB_ARMG1: '도착' }], {
+          SUB_FACIINFO: [{ ...ELEVATOR, ELVTR_SE: 'XX' }],
+        }),
+        AREA,
+      )
+
+      expect(info.subwayFacilities[0].facilities[0].kind).toBeNull()
+    })
+
+    it('처음 보는 상태는 비운다', () => {
+      const info = parseCityInfoResponse(
+        withTrains([{ SUB_ARMG1: '도착' }], {
+          SUB_FACIINFO: [{ ...ELEVATOR, USE_YN: '점검예정' }],
+        }),
+        AREA,
+      )
+
+      expect(info.subwayFacilities[0].facilities[0].status).toBeNull()
+    })
+
+    // 실호출 44역 중 31역이 이 배열을 안 준다. 빈 자리를 남기면 「승강기가 없는
+    // 역」 31개가 목록에 생기는데, 없는 게 아니라 안 주는 것이다.
+    it('승강기가 없는 역은 자리를 안 만든다', () => {
+      const info = parseCityInfoResponse(
+        withTrains([{ SUB_ARMG1: '도착' }], { SUB_FACIINFO: [] }),
+        AREA,
+      )
+
+      expect(info.subwayFacilities).toEqual([])
+    })
+
+    /**
+     * **호선 키가 도착 목록의 것과 같아야 한다.** 화면이 이 둘을 역·호선으로
+     * 이어 붙이는데, 한쪽만 「호선」을 붙이거나 한쪽만 열차를 보면 승강기가
+     * 영영 안 그려진다. 잇는 자리가 아니라 만드는 자리에서 잠근다.
+     */
+    it('호선 키가 도착 목록의 것과 같다', () => {
+      const info = parseCityInfoResponse(
+        withTrains([{ SUB_LINE: '4호선', SUB_ARMG1: '도착' }], {
+          SUB_STN_NM: '샛강',
+          SUB_STN_LINE: '신림선',
+          SUB_FACIINFO: [ELEVATOR],
+        }),
+        AREA,
+      )
+
+      expect(info.subwayFacilities[0].line).toBe(info.subway[0].line)
+      expect(info.subwayFacilities[0].station).toBe(info.subway[0].station)
+    })
+  })
+
   it('역명이 없으면 그 역의 열차를 통째로 버린다', () => {
     // 어느 역인지 모르면 「4분 20초 후」는 쓸모가 없다.
     const info = parseCityInfoResponse(

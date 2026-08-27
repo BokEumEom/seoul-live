@@ -5,6 +5,10 @@ import type { Commerce } from './commerce'
 import type { CongestionTone } from './congestion'
 import type { Freshness } from './freshness'
 import type { RoadSegment } from './roadSegment'
+import type {
+  SubwayFacility,
+  SubwayStationFacilities,
+} from './subwayFacility'
 import type { Coords } from './types'
 
 // 「더보기」(도시정보) 화면이 쓰는 타입과 순수 함수. 혼잡도(citydata_ppltn)와 달리
@@ -355,17 +359,25 @@ export interface SubwayLineArrivals {
   readonly station: string
   readonly line: string
   readonly arrivals: readonly SubwayArrival[]
+  /** 이 역·이 호선의 승강기. 서울이 안 준 역이면 빈 목록이다 */
+  readonly facilities: readonly SubwayFacility[]
 }
 
 /**
- * 역·호선으로 묶는다. **순서는 응답 그대로 둔다.**
+ * 역·호선으로 묶고 그 역의 승강기를 얹는다. **순서는 응답 그대로 둔다.**
  *
  * 도착 시각으로 다시 정렬하지 않는 이유는 정렬 기준을 만들 수 없어서다 —
  * `message`가 「4분 20초 후」일 수도 「전역 출발」일 수도 있어 둘을 한 축에
  * 세울 방법이 없다. 서울 API가 내려준 차례가 유일하게 근거 있는 순서다.
+ *
+ * **승강기를 화면이 아니라 여기서 잇는다.** 키가 「역명 + 호선」 두 조각이고
+ * 역명만으로 이으면 신당 2호선 승강장에 6호선의 승강기 스물둘이 붙는다 —
+ * 실호출에서 그 둘이 22건과 0건이었다(2026-08-27). 순수 함수라 그 규칙을
+ * 렌더러 없이 잰다.
  */
 export function groupSubwayArrivals(
   arrivals: readonly SubwayArrival[],
+  facilities: readonly SubwayStationFacilities[],
 ): readonly SubwayLineArrivals[] {
   // 역명과 호선이 함께 키다. 강남역에 2호선과 신분당선이 함께 오는데 역명만으로
   // 묶으면 서로 다른 노선의 열차가 한 덩어리로 보인다(detail_page.png).
@@ -375,10 +387,14 @@ export function groupSubwayArrivals(
   // 건드리지 않는다 — 목록이 한 자릿수라 filter를 다시 도는 비용은 무시할 만하다.
   return [...new Set(arrivals.map(keyOf))].map((key) => {
     const bucket = arrivals.filter((arrival) => keyOf(arrival) === key)
+    const found = facilities.find(
+      (entry) => `${entry.station} ${entry.line}` === key,
+    )
     return {
       station: bucket[0].station,
       line: bucket[0].line,
       arrivals: bucket,
+      facilities: found?.facilities ?? [],
     }
   })
 }
@@ -522,6 +538,14 @@ export interface CityInfo {
   readonly events: readonly CulturalEvent[]
   readonly alerts: readonly CityAlert[]
   readonly subway: readonly SubwayArrival[]
+  /**
+   * 역별 승강기(`SUB_FACIINFO`). 역·호선 키가 `subway`의 것과 같아
+   * `groupSubwayArrivals`가 둘을 잇는다.
+   *
+   * **여기 없는 역이 「승강기가 없는 역」은 아니다** — 근거는
+   * `domain/subwayFacility.ts`의 `SubwayStationFacilities`.
+   */
+  readonly subwayFacilities: readonly SubwayStationFacilities[]
   /** 지하철 승하차 인원. 못 읽으면 `null` */
   readonly subwayRidership: Ridership | null
   readonly busStops: readonly BusStop[]

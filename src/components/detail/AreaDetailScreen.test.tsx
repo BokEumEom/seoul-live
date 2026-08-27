@@ -1337,6 +1337,44 @@ describe('AreaDetailScreen — 교통 탭의 승하차와 정류소', () => {
     expect(screen.getByText(/승차 550~600명/)).toBeInTheDocument()
   })
 
+  /**
+   * **탭이 승강기를 실제로 내려보내는지.** 잇는 규칙은 도메인이 잠그지만, 패널이
+   * `subwayFacilities`를 안 넘기면 그 규칙째로 화면에서 사라진다 — 도착 열차는
+   * 그대로 뜨므로 눈으로는 아무 일이 없어 보인다. 시안 `_9`의 안전 탭이
+   * `origin={null}`을 넘기던 것과 같은 종류의 자리다.
+   */
+  it('지하철 절이 역 승강기를 함께 보여준다', async () => {
+    useCityInfo.mockReturnValue(
+      ok({
+        ...EMPTY_CITY_INFO,
+        subway: [
+          {
+            station: '광화문',
+            line: '5호선',
+            direction: '방화행',
+            terminal: '방화',
+            message: '2분 후',
+          },
+        ],
+        subwayFacilities: [
+          {
+            station: '광화문',
+            line: '5호선',
+            facilities: [
+              { kind: 'EV', section: 'B2-B4', position: '8번 출입구', status: '사용가능' },
+              { kind: 'ES', section: 'B2-B3', position: '5번 출입구', status: '보수중' },
+            ],
+          },
+        ],
+      }),
+    )
+    renderDetail()
+    await openTab('교통')
+
+    expect(screen.getByRole('img', { name: '엘리베이터 있음' })).toBeInTheDocument()
+    expect(screen.getByText('에스컬레이터 B2-B3')).toBeInTheDocument()
+  })
+
   it('버스 절이 정류소와 승하차를 함께 보여준다', async () => {
     useCityInfo.mockReturnValue(
       ok({
