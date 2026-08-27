@@ -5,6 +5,10 @@ import {
   type UsualDelta,
   type WeekPattern,
 } from '../../domain/pattern'
+import {
+  compareFlowWithUsual,
+  type PopulationFlow,
+} from '../../domain/populationFlow'
 import type { AreaSnapshot } from '../../domain/types'
 
 // 상세에서 **가장 먼저, 가장 크게** 나오는 값. 샘플(서울 인파레이더)의
@@ -25,8 +29,16 @@ import type { AreaSnapshot } from '../../domain/types'
 
 interface Props {
   readonly snapshot: AreaSnapshot
-  /** 이 기기에 쌓인 요일×시간 관측. 「평소 대비」의 유일한 근거다. */
+  /**
+   * 이 기기에 쌓인 요일×시간 관측. **`flow`가 없을 때의 근거다** — 예전에는
+   * 유일한 근거였다.
+   */
   readonly pattern: WeekPattern
+  /**
+   * 24시간 흐름. 「지금」 칸의 최근 4주 평균이 여기 있다(`compareFlowWithUsual`).
+   * SeoulRtd가 안 답하면 `undefined`이고, 그때만 `pattern`으로 떨어진다.
+   */
+  readonly flow: PopulationFlow | undefined
 }
 
 // 화면이 쓰는 말. 도메인은 delta만 주고 문구는 여기서 고른다 — 같은 판정을
@@ -43,12 +55,27 @@ function usualText(delta: UsualDelta): string {
   return text[delta]
 }
 
-export function PopulationLead({ snapshot, pattern }: Props) {
+export function PopulationLead({ snapshot, pattern, flow }: Props) {
+  /**
+   * **서울이 준 평균을 먼저 쓴다.** 근거의 질이 다르다 — 저쪽은 최근 4주
+   * 같은 요일·같은 시각의 **인원 평균**이고, 이 기기 쪽은 사용자가 이 명소를
+   * 열어 본 **관측 서너 번의 등급 평균**이다. 4단계로 뭉갠 값을 서넛 모아 낸
+   * 판정보다, 연속값을 4주로 낸 평균이 낫다.
+   *
+   * **기기 쪽을 지우지는 않았다.** SeoulRtd는 문서화된 API가 아니라 조용히
+   * 깨지는데, 그때 이 줄이 통째로 사라지면 인원수가 다시 「많은지 적은지 알 수
+   * 없는 숫자」로 돌아간다.
+   */
+  const fromFlow = flow === undefined ? null : compareFlowWithUsual(flow)
+
   // 관측 시각에서 어느 칸인지 뽑는다. 형식이 다르면 null이고, 그때는 견줄
   // 대상 자체가 없다.
   const slot = observationSlot(snapshot.observedAt)
-  const usual =
+  const fromPattern =
     slot === null ? null : compareWithUsual(pattern, slot, snapshot.congestion)
+
+  // 서울 쪽이 있으면 기기 쪽 「기록이 부족해요」 안내도 필요 없다.
+  const hasBasis = fromFlow !== null || slot !== null
 
   return (
     <div className="px-4">
@@ -77,9 +104,24 @@ export function PopulationLead({ snapshot, pattern }: Props) {
       {/* 관측 시각을 못 읽으면(slot === null) 줄을 통째로 뺀다 — 어느 칸과
           견줄지가 없는데 「기록이 부족해요」라고 적으면 쌓으면 해결된다는
           틀린 기대를 준다. */}
-      {slot !== null && (
+      {hasBasis && (
         <p className="mt-0.5 text-label-sm">
-          {usual === null ? (
+          {fromFlow !== null ? (
+            <>
+              <span className="font-bold text-on-surface">
+                {usualText(fromFlow.delta)}
+              </span>{' '}
+              {/* **무엇과 견줬는지 적는다.** 「평소」가 어제인지 한 달인지 모르면
+                  판정이 공중에 뜬다. 표본 수 대신 **평소 인원**을 적는 이유는
+                  그게 더 구체적이라서다 — 「4주 평균과 견줬다」보다 「평소는 약
+                  38,000명」이 판정을 스스로 설명한다. */}
+              <span className="text-on-surface-variant">
+                {t('이 시간대 평소는 약 {인원}명이에요.', {
+                  인원: fromFlow.usual.toLocaleString(),
+                })}
+              </span>
+            </>
+          ) : fromPattern === null ? (
             // 「평소와 비슷」으로 떨어뜨리지 않는다. 안 본 것과 비슷한 것은
             // 정반대의 정보다(pattern.ts의 cellLevel과 같은 규칙).
             <span className="text-on-surface-variant">
@@ -88,13 +130,13 @@ export function PopulationLead({ snapshot, pattern }: Props) {
           ) : (
             <>
               <span className="font-bold text-on-surface">
-                {usualText(usual.delta)}
+                {usualText(fromPattern.delta)}
               </span>{' '}
               {/* 「평소」가 무엇인지 적지 않으면 어제 대비인지 한 달 대비인지
                   알 수 없다. 표본 수까지 적어야 사용자가 얼마나 믿을지 정한다. */}
               <span className="text-on-surface-variant">
                 {t('같은 요일·같은 시간대 관측 {횟수}번과 견줬어요.', {
-                  횟수: usual.samples,
+                  횟수: fromPattern.samples,
                 })}
               </span>
             </>

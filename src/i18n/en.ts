@@ -258,6 +258,11 @@ export const EN: Readonly<Record<string, string>> = {
   '평소 약 {인원}명': 'usually about {인원}',
   '인원 정보 없음': 'No population data',
   예상: 'forecast',
+  // 「평소 대비」의 근거가 바뀌었다(2026-08-27). 기기에 쌓은 관측 서너 번의
+  // 등급 평균 대신 서울이 준 4주 인원 평균을 쓴다 — 표본 수 대신 **평소 인원**을
+  // 적는 것이 판정을 스스로 설명한다.
+  '이 시간대 평소는 약 {인원}명이에요.': 'Usually about {인원} at this hour.',
+
 
   // 화살표는 그림이라 소리 채널에 안 실린다(`Icon`이 언제나 `aria-hidden`).
   // 이 둘이 방향의 유일한 두 번째 채널이라 `sr-only`로 값 뒤에 선다.

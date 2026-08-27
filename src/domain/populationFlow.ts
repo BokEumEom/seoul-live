@@ -1,3 +1,4 @@
+import type { UsualDelta } from './pattern'
 import type { CongestionLevel } from './types'
 
 /**
@@ -81,4 +82,55 @@ export function flowPeaks(flow: PopulationFlow): readonly number[] {
   return flow.slots.flatMap((slot) =>
     [slot.people, slot.usual].filter((value): value is number => value !== null),
   )
+}
+
+/**
+ * 「지금」 칸을 **최근 4주 같은 요일·같은 시각 평균**과 견준 결과.
+ *
+ * `pattern.ts`의 `UsualComparison`과 판정 이름(`UsualDelta`)을 나눠 쓴다 —
+ * 화면 문구가 같아야 하기 때문이다. 다른 점은 근거다: 저쪽은 **이 기기에 쌓인
+ * 관측 몇 번**이고 이쪽은 **서울이 4주로 낸 평균**이라, 화면이 무엇과 견줬는지를
+ * 다르게 적는다.
+ */
+export interface FlowComparison {
+  readonly delta: UsualDelta
+  /** 그 시각의 평소 인원. 화면이 「평소는 약 38,000명」으로 적는다 */
+  readonly usual: number
+}
+
+/**
+ * **10%가 문턱이다.** 2026-08-27 실호출 8곳의 실측 구간 104칸에서 오늘과 평소의
+ * 차이를 재 보니 **중앙값 3.1% · 90분위 10.4% · 최대 22.7%**였다. 그래서
+ *
+ * - 10%면 열 칸에 한 칸쯤 짚는다(104칸 중 11칸).
+ * - 20%면 두 칸뿐이고, 25%면 **한 칸도 없다** — 「평소와 비슷해요」만 영영 적게 된다.
+ *
+ * `pattern.ts`의 0.5와 성질이 다르다. 저쪽은 4단계 정수축이라 「이웃 등급으로
+ * 넘어갔나」가 문턱이었고, 여기는 연속값이라 비율로 긋는다.
+ *
+ * **한 시점의 표본이다.** 평일 오후 한 번이라 휴일·비 오는 날은 안 봤고, 명소별
+ * 편차도 크다(뚝섬한강공원 중앙값 12.4% 대 홍대 1.5% — 공원이 날씨를 더 탄다).
+ * 문턱을 옮길 일이 생기면 그때 다시 재라.
+ */
+const USUAL_THRESHOLD = 0.1
+
+export function compareFlowWithUsual(flow: PopulationFlow): FlowComparison | null {
+  if (flow.nowIndex === null) {
+    return null
+  }
+  const slot = flow.slots[flow.nowIndex]
+  // 평소가 0이면 비율을 낼 수 없다. 나눗셈이 무한대가 되기 전에 막는다.
+  if (slot === undefined || slot.people === null || slot.usual === null || slot.usual <= 0) {
+    return null
+  }
+
+  const difference = (slot.people - slot.usual) / slot.usual
+  const delta: UsualDelta =
+    difference >= USUAL_THRESHOLD
+      ? 'busier'
+      : difference <= -USUAL_THRESHOLD
+        ? 'calmer'
+        : 'similar'
+
+  return { delta, usual: slot.usual }
 }

@@ -1,13 +1,12 @@
 import { t } from '../../i18n/t'
-import { useAreaPopulation } from '../../data/queries'
-import { hasPopulationFlow } from '../../domain/populationFlow'
+import { hasPopulationFlow, type PopulationFlow } from '../../domain/populationFlow'
 import type { AreaSnapshot } from '../../domain/types'
 import { ForecastChart } from '../forecast/ForecastChart'
 import { PopulationFlowChart } from '../forecast/PopulationFlowChart'
 
 interface Props {
-  /** 서울 API 호출 키. **한국어 원문이어야 한다**(`entry.name`) */
-  readonly areaName: string
+  /** 못 받았으면 `undefined`. 그때는 공식 API의 예보 12칸으로 떨어진다 */
+  readonly flow: PopulationFlow | undefined
   readonly snapshot: AreaSnapshot
 }
 
@@ -23,12 +22,10 @@ interface Props {
  * `PopulationPanel`이 이 제목을 안 갖고 있던 시절의 주석이 그 이유를 적어 뒀고,
  * 그때는 과거를 받을 길이 아예 없어서 「시간대별 인파」로 고정이었다.
  *
- * 조회를 여기서 하는 이유는 `PopulationTrendSection`과 같다 — 같은 질의라
- * (`queryKey`가 같다) 호출은 한 번이고, 인구 탭이 마운트될 때만 나간다.
+ * **조회는 `PopulationPanel`이 한 번에 한다.** 이 절과 인파 변화가 같은 응답을
+ * 나눠 쓰므로, 각자 부르는 대신 위에서 받아 내려온다.
  */
-export function PopulationFlowSection({ areaName, snapshot }: Props) {
-  const { data } = useAreaPopulation(areaName)
-  const flow = data?.flow
+export function PopulationFlowSection({ flow, snapshot }: Props) {
   const full = flow !== undefined && hasPopulationFlow(flow)
 
   return (
