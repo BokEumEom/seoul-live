@@ -3,10 +3,11 @@ import { isAllowedAreaName } from './_lib/allowed-areas.js'
 import { setCacheHeaders, setCorsHeaders, setNoStoreHeader } from './_lib/http.js'
 import { cityInfoCacheTtlSeconds, fetchArea } from './_lib/seoul.js'
 
-// 「더보기」(도시정보) 화면용. citydata.ts와 구조가 같고 서비스 이름만 다르다 —
-// `citydata`는 주차장·따릉이·날씨·문화행사·재난문자를 한 응답에 담아준다.
-// 엔드포인트를 나눈 이유는 캐시다. 응답 크기가 인구만 받는 쪽의 몇 배라, 같은
-// 경로에 얹으면 인구만 필요한 목록 화면까지 큰 응답을 CDN에서 받게 된다.
+// 상세 화면용. `citydata`는 인구·주차장·따릉이·날씨·문화행사·재난문자를 한
+// 응답에 담아준다 — 상세는 이 응답 하나로 혼잡도까지 함께 읽는다(근거는
+// populationEnvelope.ts). **이 엔드포인트를 목록 화면까지 공유하지는 않는다.**
+// 응답 크기가 인구만 받는 쪽의 몇 배라, 같은 경로에 얹으면 인구만 필요한 목록
+// 화면(api/citydata-bulk.ts)까지 큰 응답을 CDN에서 받게 된다.
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
@@ -24,7 +25,7 @@ export default async function handler(
     return
   }
 
-  // 허용 목록 검사는 citydata.ts와 같은 이유로 필수다 — 임의 문자열이 그대로
+  // 허용 목록 검사는 citydata-bulk.ts와 같은 이유로 필수다 — 임의 문자열이 그대로
   // 통과하면 문자열 수만큼 캐시 키와 서울 API 호출이 늘어난다(하루 1,000회 한도).
   if (!isAllowedAreaName(area)) {
     res.status(400).json({ error: '알 수 없는 명소입니다.' })
