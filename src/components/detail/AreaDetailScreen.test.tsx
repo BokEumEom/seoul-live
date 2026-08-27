@@ -173,6 +173,31 @@ describe('AreaDetailScreen — 셸', () => {
     expect(screen.getByRole('heading', { name: '강남역' })).toBeInTheDocument()
   })
 
+  /**
+   * **상단 바 패딩과 조작부의 음수 여백은 한 쌍이다.**
+   *
+   * `ActionButtons`가 `-mr-3`으로 마지막 48px 버튼의 안쪽 12px을 되돌리는데,
+   * 그걸 받아줄 패딩이 상단 바에 없어서 12px이 헤더 밖으로 나가 있었다
+   * (390px에서 시트 `scrollWidth` 402, 2026-08-27 실측). 그 12px이
+   * `overflow-y-auto` 상자를 **가로로도 스크롤 가능**하게 만들어서, 위아래로
+   * 미는 손가락이 내용을 좌우로 밀었다 — 사용자가 신고한 결함이다.
+   *
+   * **두 값이 같아야 상쇄된다.** 한쪽만 고치면 다시 어긋나므로 짝을 잠근다.
+   * 두 파일에 흩어져 있어 각자 보면 둘 다 멀쩡해 보인다. jsdom에는 레이아웃이
+   * 없어 넘침 자체는 못 재고(`scrollWidth`가 언제나 0이다) 이 짝만 잴 수 있다.
+   */
+  it('상단 바 패딩이 조작부의 음수 여백과 짝이 맞는다', () => {
+    const { container } = renderDetail()
+    const header = container.querySelector('header')
+    const actions = container.querySelector('header div[class*="-mr-"]')
+
+    const padding = (header?.className ?? '').match(/(?:^|\s)pr-(\S+)/)?.[1]
+    const pull = (actions?.className ?? '').match(/(?:^|\s)-mr-(\S+)/)?.[1]
+
+    expect(pull).toBeDefined()
+    expect(padding).toBe(pull)
+  })
+
   it('뒤로 버튼이 콜백을 부른다', async () => {
     const onBack = vi.fn()
     render(

@@ -38,7 +38,21 @@ export function DetailAppBar({ entry, onBack, actions }: Props) {
     //
     // `z-20`은 탭 줄(`z-10`)보다 위다. 스크롤하면 탭 줄이 이 바 **아래로**
     // 지나가야 하는데, 같은 층이면 그리는 순서가 그것을 정해 버린다.
-    <header className="sticky top-0 z-20 flex h-12 items-center gap-1 border-b border-outline-variant bg-surface-container-lowest">
+    // **`pr-3`이 없으면 시트가 가로로 스크롤된다.** `ActionButtons`가 `-mr-3`으로
+    // 마지막 48px 버튼의 안쪽 여백을 되돌리는데(그쪽 주석), 그 음수 여백을
+    // 받아줄 패딩이 여기 없어서 12px이 헤더 밖으로 나갔다 — 390px에서
+    // `data-sheet-content`의 `scrollWidth`가 402였다(2026-08-27 실측).
+    //
+    // **그 12px이 세로 스크롤을 흔든다.** 시트 상자는 `overflow-y-auto`인데,
+    // 한 축이 `visible`이 아니면 다른 축의 `visible`도 `auto`로 계산된다 —
+    // 즉 가로로도 스크롤 가능한 상자가 되어, 위아래로 미는 손가락의 미세한
+    // 가로 성분이 그대로 내용을 좌우로 민다. 화면에는 잘린 것이 안 보이므로
+    // 코드로도 스크린샷으로도 드러나지 않았다.
+    //
+    // 12px인 것은 우연이 아니다: 되돌리는 대상이 48px 버튼 안의 12px이라
+    // 패딩도 같은 값이어야 정확히 상쇄된다. 결과는 왼쪽 뒤로 버튼과 대칭이다
+    // (글리프가 양쪽 다 가장자리에서 12px).
+    <header className="sticky top-0 z-20 flex h-12 items-center gap-1 border-b border-outline-variant bg-surface-container-lowest pr-3">
       <button
         type="button"
         onClick={onBack}

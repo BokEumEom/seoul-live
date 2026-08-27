@@ -256,7 +256,7 @@ export function BottomSheet({
       >
         <div
           data-sheet-content
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          className="min-h-0 flex-1 scroll-y-only overscroll-contain"
         >
           {children}
         </div>
@@ -340,7 +340,7 @@ export function BottomSheet({
           순간 엉뚱한 요소를 검사하면서 조용히 통과한다. */}
       <div
         data-sheet-content
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        className="min-h-0 flex-1 scroll-y-only overscroll-contain"
       >
         {children}
       </div>

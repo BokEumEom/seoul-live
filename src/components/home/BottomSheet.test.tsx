@@ -365,9 +365,27 @@ describe('BottomSheet', () => {
     // 시트가 따라 내려가면 안 된다.
     //
     // `min-h-0`·`flex-1`까지 함께 건다. 실제로 넘치는 내용을 줄여 주는 건
-    // 이 둘이고, `overflow-y-auto`만 남으면 시트가 안 줄어든 채 통과한다.
-    expect(scroller).toHaveClass('overflow-y-auto', 'min-h-0', 'flex-1')
+    // 이 둘이고, 스크롤 클래스만 남으면 시트가 안 줄어든 채 통과한다.
+    expect(scroller).toHaveClass('scroll-y-only', 'min-h-0', 'flex-1')
     expect(scroller).toContainElement(screen.getByText('시트내용'))
+  })
+
+  /**
+   * **`overflow-y-auto`로 되돌리지 마라.** 한 축이 `visible`이 아니면 다른 축의
+   * `visible`이 `auto`로 계산돼서(CSS Overflow §3), 그 한 줄만 쓰면 이 상자가
+   * **가로로도 스크롤 가능**해진다. 자식이 1px만 삐져나오면 위아래로 미는
+   * 손가락의 미세한 가로 성분이 내용을 좌우로 민다 — 2026-08-27에 상세 상단
+   * 바가 12px 넘쳐 사용자가 신고한 결함이고, 그때 `scrollWidth`는 402였다.
+   *
+   * **jsdom은 이걸 못 잰다**(레이아웃이 없어 `scrollWidth`가 언제나 0이다).
+   * 그래서 클래스로 잠근다 — 실측은 헤드리스 크롬으로 했고 숫자는 `index.css`의
+   * `scroll-y-only` 주석에 있다.
+   */
+  it('가로 스크롤을 잠근 채로 세로만 흐른다', () => {
+    const { scroller } = setup()
+
+    expect(scroller).not.toHaveClass('overflow-y-auto')
+    expect(scroller).not.toHaveClass('overflow-auto')
   })
 
   it('여백은 시트가 아니라 내용 뷰가 소유한다', () => {
