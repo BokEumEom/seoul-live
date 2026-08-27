@@ -496,20 +496,27 @@ function toAlerts(rows: readonly Row[]): readonly CityAlert[] {
 
 // 역명이 이 항목의 본체다 — 어느 역인지 모르면 「4분 20초 후」는 쓸모가 없다.
 //
-// 호선은 셋 중 처음 채워진 것을 쓴다. 명세에 「지하철호선」·「지하철노선명」·
-// 「지하철역 호선」 셋이 따로 있는데 값의 예시가 없어 무엇이 「9호선」·
-// 「신분당선」으로 오는지 모른다. 셋 다 비면 화면이 호선 없이 역명만 적는다.
-// **확인법:** 실호출 응답에서 세 필드의 값을 나란히 찍어 무엇이 채워지는지 본다.
-const LINE_KEYS = ['SUB_LINE', 'SUB_ROUTE_NM', 'SUB_STN_LINE'] as const
+// **호선은 역이 말한 것을 쓴다.** 예전에는 열차의 `SUB_LINE`이 먼저였고, 여기에
+// 「명세에 호선 후보가 셋인데 무엇이 채워지는지 모른다」는 주석과 함께
+// 「실호출로 세 필드를 나란히 찍어 보라」는 확인법이 적혀 있었다. 2026-08-27에
+// 34역으로 그 확인을 했고 차례가 뒤집혔다:
+//
+// - 역의 `SUB_STN_LINE` — 「3」·「경의중앙」·「공항철도」·「신림선」. 역 자신의 호선이다.
+// - 열차의 `SUB_LINE` — 대개 「3호선」으로 같은 값인데, **샛강(신림선)의 열차
+//   셋이 전부 「4호선」으로 온다.** 종착역이 관악산이라 신림선이 맞다. 열차를
+//   먼저 믿는 동안 그 역은 4호선 하늘색 배지를 달고 있었다.
+// - 열차의 `SUB_ROUTE_NM` — 「샛강행 - 샛강방면」. 명세의 이름이 「지하철노선명」이라
+//   후보에 뒀던 것이고 실제로는 행선지와 방면이다. **후보에서 뺀다.**
+//
+// 둘 다 비면 화면이 호선 없이 역명만 적는다.
+function lineOf(stationLine: string, train: Row): string {
+  return stationLine !== '' ? stationLineName(stationLine) : text(train, 'SUB_LINE')
+}
 
-function firstText(row: Row, keys: readonly string[]): string {
-  for (const key of keys) {
-    const value = text(row, key)
-    if (value !== '') {
-      return value
-    }
-  }
-  return ''
+// 「3」처럼 숫자만 오면 「호선」을 붙인다 — 그대로 쓰면 「경복궁 3」이 된다.
+// **숫자일 때만이다.** 무턱대고 붙이면 「경의중앙호선」이라는 없는 노선이 생긴다.
+function stationLineName(value: string): string {
+  return /^\d+$/.test(value) ? `${value}호선` : value
 }
 
 // **열차는 역 한 겹 안에 있다.** 2026-08-13 실호출로 확인했다 — 바깥 행은 역
@@ -524,16 +531,13 @@ function toSubway(rows: readonly Row[]): readonly SubwayArrival[] {
     if (station === '') {
       return []
     }
-    // 바깥 호선은 "3"처럼 숫자만 온다. 그대로 쓰면 「경복궁 3」이 된다.
     const stationLine = text(stationRow, 'SUB_STN_LINE')
-    const fallbackLine = stationLine === '' ? '' : `${stationLine}호선`
 
     // 열차가 없는 역은 통째로 버린다 — 제목만 있고 아래가 빈 묶음이 남는다.
     return sectionRows(stationRow, ['SUB_DETAIL']).map(
       (train): SubwayArrival => ({
         station,
-        // 열차 쪽 SUB_LINE이 "3호선"으로 온다. 없으면 역의 숫자로 만든다.
-        line: firstText(train, LINE_KEYS) || fallbackLine,
+        line: lineOf(stationLine, train),
         direction: directionOf(train),
         terminal: text(train, 'SUB_TERMINAL'),
         message: text(train, 'SUB_ARMG1'),

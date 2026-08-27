@@ -965,8 +965,27 @@ describe('parseCityInfoResponse — 지하철 실시간 도착', () => {
     })
   }
 
-  it('호선은 열차 쪽을 먼저 쓴다', () => {
-    // 열차 쪽 SUB_LINE이 「3호선」이고 역 쪽 SUB_STN_LINE은 「3」이다.
+  /**
+   * **호선은 역이 말한 것을 쓴다**(2026-08-27에 뒤집었다).
+   *
+   * 예전에는 열차의 `SUB_LINE`이 먼저였고, 그 자리에 「무엇이 채워지는지 모른다,
+   * 실호출로 확인하라」는 주석이 달려 있었다. 34역을 실제로 찍어 보니 **샛강
+   * (신림선)의 열차 셋이 전부 `SUB_LINE: '4호선'`으로 온다** — 종착역이
+   * 관악산이라 신림선이 맞다. 열차를 믿으면 그 역이 4호선 하늘색 배지를 단다.
+   */
+  it('역과 열차의 호선이 다르면 역을 믿는다', () => {
+    const info = parseCityInfoResponse(
+      withTrains([{ SUB_LINE: '4호선', SUB_TERMINAL: '관악산', SUB_ARMG1: '샛강 출발' }], {
+        SUB_STN_NM: '샛강',
+        SUB_STN_LINE: '신림선',
+      }),
+      AREA,
+    )
+    expect(info.subway[0].line).toBe('신림선')
+  })
+
+  it('역의 호선이 숫자면 「호선」을 붙인다', () => {
+    // 바깥 SUB_STN_LINE은 「3」처럼 숫자만 온다. 그대로 쓰면 「경복궁 3」이 된다.
     const info = parseCityInfoResponse(
       withTrains([{ SUB_LINE: '3호선', SUB_ARMG1: '도착' }]),
       AREA,
@@ -974,12 +993,39 @@ describe('parseCityInfoResponse — 지하철 실시간 도착', () => {
     expect(info.subway[0].line).toBe('3호선')
   })
 
-  it('열차 쪽 호선이 없으면 노선명을 본다', () => {
+  // 숫자일 때만 붙인다. 무턱대고 붙이면 「경의중앙호선」이라는 없는 노선이 생긴다.
+  it('역의 호선이 이름이면 그대로 쓴다', () => {
     const info = parseCityInfoResponse(
-      withTrains([{ SUB_ROUTE_NM: '신분당선', SUB_ARMG1: '도착' }]),
+      withTrains([{ SUB_ARMG1: '도착' }], {
+        SUB_STN_NM: '홍대입구',
+        SUB_STN_LINE: '경의중앙',
+      }),
       AREA,
     )
-    expect(info.subway[0].line).toBe('신분당선')
+    expect(info.subway[0].line).toBe('경의중앙')
+  })
+
+  it('역이 호선을 안 주면 열차 쪽을 쓴다', () => {
+    const info = parseCityInfoResponse(
+      withTrains([{ SUB_LINE: '3호선', SUB_ARMG1: '도착' }], { SUB_STN_LINE: '' }),
+      AREA,
+    )
+    expect(info.subway[0].line).toBe('3호선')
+  })
+
+  /**
+   * **`SUB_ROUTE_NM`은 호선 후보가 아니다.** 명세의 이름이 「지하철노선명」이라
+   * 예전에는 후보 셋 중 하나로 뒀는데, 실호출 값은 「샛강행 - 샛강방면」처럼
+   * 행선지와 방면이다. 후보로 두면 호선 자리에 행선지가 들어앉는다.
+   */
+  it('노선명을 호선으로 쓰지 않는다', () => {
+    const info = parseCityInfoResponse(
+      withTrains([{ SUB_ROUTE_NM: '샛강행 - 샛강방면', SUB_ARMG1: '도착' }], {
+        SUB_STN_LINE: '',
+      }),
+      AREA,
+    )
+    expect(info.subway[0].line).toBe('')
   })
 
   it('방면은 종착역에 「행」을 붙여 만든다', () => {
@@ -1121,7 +1167,7 @@ describe('parseCityInfoResponse — 실제 응답 구조 (2026-08-13 실측)', (
     expect(info.subway.every((entry) => entry.station === '시청')).toBe(true)
   })
 
-  it('호선이 SUB_DETAIL에 없으면 역의 숫자에 「호선」을 붙인다', () => {
+  it('역의 숫자에 「호선」을 붙인다', () => {
     // 바깥 SUB_STN_LINE은 "3"처럼 숫자만 온다. 그대로 쓰면 「경복궁 3」이 된다.
     const info = parseCityInfoResponse(
       payload({

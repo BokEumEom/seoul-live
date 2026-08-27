@@ -329,9 +329,9 @@ export interface SubwayArrival {
   /** SUB_STN_NM — 지하철역명 */
   readonly station: string
   /**
-   * 호선 이름. 2026-08-13 실측: **열차 쪽 `SUB_LINE`이 「3호선」**으로 오고,
-   * 역 쪽 `SUB_STN_LINE`은 「3」처럼 숫자만 온다. 그래서 열차 쪽을 먼저 쓰고
-   * 없으면 역의 숫자에 「호선」을 붙인다 — 숫자만 쓰면 「경복궁 3」이 된다.
+   * 호선 이름. **역이 말한 것(`SUB_STN_LINE`)이 먼저다** — 2026-08-27 실측 34역에서
+   * 샛강(신림선)의 열차가 `SUB_LINE: '4호선'`으로 왔다. 규칙과 근거는
+   * `cityInfoSchema.ts`의 `lineOf`에 있다.
    */
   readonly line: string
   /** SUB_DIR — 지하철방향 */
