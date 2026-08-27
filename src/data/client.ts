@@ -14,8 +14,15 @@ import { buildMockAreaPopulation } from './mockPopulationTrend'
 import { buildMockCityInfo } from './mockCityInfo'
 import { parseBulkEnvelope, parseCitydataResponse } from './schema'
 
-// 단일 명소 타임아웃. 프록시(api/citydata.ts)는 서울 API 호출 자체를 8초에서 끊으므로,
-// 프록시가 502로 정리해서 응답할 여유를 두고 그보다 넉넉하게 잡는다.
+// 단일 명소 타임아웃. 이 상수를 쓰는 셋(fetchAreaPayload→/api/cityinfo,
+// fetchCctv→/api/cctv, fetchAreaPopulation→/api/ppltn) 모두 상류 호출 자체를
+// 8초에서 끊는다 — api/_lib/seoul.ts의 FETCH_TIMEOUT_MS와 api/_lib/seoulRtd.ts의
+// 같은 이름·같은 값 상수다. 프록시가 502로 정리해서 응답할 여유를 두고 그보다
+// 넉넉하게 잡는다.
+//
+// **예전에는 api/citydata.ts(→citydata_ppltn)를 가리켰다.** Task 4에서
+// fetchAreaPayload가 그 경로를 그만 부르면서 절반은 맞고 절반은 허구인 주석이
+// 될 뻔했다 — 게다가 그 파일 자체가 곧 사라진다(Task 6).
 const SINGLE_AREA_TIMEOUT_MS = 10_000
 
 // 일괄 조회 타임아웃. maxDuration(15초)은 Vercel 함수의 "실행 시간"이고 이 값은
