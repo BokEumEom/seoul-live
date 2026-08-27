@@ -22,7 +22,7 @@ import { parseBulkEnvelope, parseCitydataResponse } from './schema'
 //
 // **예전에는 api/citydata.ts(→citydata_ppltn)를 가리켰다.** Task 4에서
 // fetchAreaPayload가 그 경로를 그만 부르면서 절반은 맞고 절반은 허구인 주석이
-// 될 뻔했다 — 게다가 그 파일 자체가 곧 사라진다(Task 6).
+// 될 뻔했다 — 게다가 그 파일 자체가 이제 없다(Task 6, `53803aa`).
 const SINGLE_AREA_TIMEOUT_MS = 10_000
 
 // 일괄 조회 타임아웃. maxDuration(15초)은 Vercel 함수의 "실행 시간"이고 이 값은
