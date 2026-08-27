@@ -42,6 +42,10 @@ describe('fetchAreaPayload', () => {
     const payload = await fetchAreaPayload('강남역')
 
     expect(fetchSpy).not.toHaveBeenCalled()
+    // body는 파싱하지 않고 그대로 넘긴다 — 목업이 실데이터와 같은 `citydata`
+    // 봉투(`CITYDATA.AREA_NM`)를 주는지, select(queries.ts)가 먹을 모양인지 확인한다.
+    const body = payload.body as { CITYDATA?: { AREA_NM?: string } }
+    expect(body.CITYDATA?.AREA_NM).toBe('강남역')
     // 목업에는 CDN도 서울 API도 없으므로 나이가 0이다 — 「모른다」가 아니라
     // 실제로 아는 사실이다.
     expect(payload.freshness?.ageSeconds).toBe(0)
