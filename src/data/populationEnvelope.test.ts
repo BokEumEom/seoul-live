@@ -22,4 +22,8 @@ describe('populationRows', () => {
     expect(populationRows({ CITYDATA: null })).toBeUndefined()
     expect(populationRows({ CITYDATA: {} })).toBeUndefined()
   })
+
+  it('배열이 아니어도 거르지 않는다 — 판별은 호출자 zod의 몫이다', () => {
+    expect(populationRows({ CITYDATA: { LIVE_PPLTN_STTS: '문자열' } })).toBe('문자열')
+  })
 })
