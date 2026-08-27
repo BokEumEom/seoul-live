@@ -19,7 +19,7 @@ describe('buildMockCityInfo', () => {
 
   it('citydata 봉투에 LIVE_PPLTN_STTS를 함께 싣는다', () => {
     // 합쳐진 뒤에는 이 payload 하나가 혼잡도 파서와 도시정보 파서를 다 먹인다.
-    const payload = buildMockCityInfo('광화문·덕수궁') as {
+    const payload = buildMockCityInfo('광화문·덕수궁', NOW) as {
       CITYDATA: { LIVE_PPLTN_STTS?: readonly Record<string, unknown>[] }
     }
     const rows = payload.CITYDATA.LIVE_PPLTN_STTS
