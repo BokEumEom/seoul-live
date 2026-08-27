@@ -34,7 +34,7 @@ export default async function handler(
 
   try {
     const payload = await fetchArea(area, 'citydata')
-    // 혼잡도와 다른 TTL을 쓴다 — 근거는 cityInfoCacheTtlSeconds의 주석(쿼터 배분).
+    // 혼잡도와 같은 값이다. 손잡이로 따로 조일 수는 있다 — 근거는 cityInfoCacheTtlSeconds의 주석.
     setCacheHeaders(res, cityInfoCacheTtlSeconds())
     res.status(200).json(payload)
   } catch (error) {
