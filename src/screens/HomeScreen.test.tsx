@@ -313,6 +313,29 @@ describe('HomeScreen', () => {
     expect(layer).toHaveClass('inset-0')
   })
 
+  // 지도가 상태 표시줄 밑까지 가는 대가다 — `index.html`이 `black-translucent`라
+  // 시계·배터리가 **흰 글씨로** 지도 위에 얹힌다. 밝은 테마의 지도는 거의 흰
+  // 바탕이라 그림자가 없으면 글자가 사라진다.
+  //
+  // 유틸리티가 실제로 무엇을 그리는지는 `app/viewport.test.ts`가 본다 — jsdom은
+  // CSS를 적용하지 않아서 여기서 잠글 수 있는 것은 클래스가 붙는다는 사실뿐이다.
+  it('상태 표시줄 자리에 그림자를 깐다', () => {
+    render(<HomeScreen />)
+    const scrim = document.querySelector('[data-status-bar-scrim]')
+    expect(scrim).toHaveClass('status-bar-scrim')
+    // 지도를 못 끌게 되면 안 된다 — 이 띠는 보이기만 하는 것이다.
+    expect(scrim).toHaveClass('pointer-events-none')
+  })
+
+  // 오버레이 열은 시트를 전체로 펼치면 물러나지만 이 띠는 안 물러난다.
+  // 상태 표시줄은 시트를 어떻게 두든 늘 거기 있기 때문이다.
+  it('시트를 전체로 펼쳐도 상태 표시줄 그림자는 남는다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetHandle()) // half → full
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(document.querySelector('[data-status-bar-scrim]')).not.toBeNull()
+  })
+
   // 지도가 살아 있는 상태에서 **목록 행**을 누르는 경로다. 다른 테스트들이
   // 쓰는 `areaButtons(...)[0]`은 DOM 순서상 전부 지도 마커라, 이 테스트가
   // 없으면 `AreaListItem` → 상세가 한 번도 검증되지 않는다.

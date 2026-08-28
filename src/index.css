@@ -516,6 +516,26 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* 상태 표시줄 글자가 지도 위에서 읽히도록 위쪽에 깔리는 그림자.
+
+   **`index.html`의 `apple-mobile-web-app-status-bar-style="black-translucent"`가
+   짝이다.** 그 값이라야 시계·배터리가 지도 위에 겹쳐 뜨는데, 그 글자는
+   **항상 흰색**이고 밝은 테마의 구글 지도는 거의 흰 바탕이라 그대로 두면
+   글자가 사라진다. 둘 중 하나만 남으면 뜻을 잃는다.
+
+   **높이가 `env(safe-area-inset-top)` 그대로다 — 보태지 않는다.** 8px이라도
+   더하면 노치 없는 기기와 브라우저 탭에서 이유 없는 검은 띠가 생긴다(그런
+   곳에서는 상태 표시줄이 우리 화면 위에 겹치지도 않는다). 값이 0이면 이
+   상자는 높이 0이라 아무것도 안 그린다 — `pt-safe`와 같은 성질이다.
+
+   그라디언트가 그 띠 안에서 투명까지 떨어지므로 아래쪽에 경계선이 안 남는다.
+   지도를 가리는 것이 목적이 아니라 **글자 뒤만 눌러 주는** 것이라 위쪽도
+   불투명하지 않다. */
+@utility status-bar-scrim {
+  height: env(safe-area-inset-top);
+  background-image: linear-gradient(to bottom, rgb(0 0 0 / 0.32), rgb(0 0 0 / 0));
+}
+
 /* 아래로 12px 띄우되 홈 인디케이터는 **추가로** 피한다.
    `pb-3 pb-safe`처럼 나란히 쓸 수 없다 — 둘 다 `padding-bottom`이라 뒤엣것이
    앞엣것을 덮고, 노치 없는 기기에서는 `env()`가 0이라 여백이 통째로 사라진다.

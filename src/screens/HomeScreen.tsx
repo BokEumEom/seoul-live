@@ -1047,6 +1047,26 @@ export function HomeScreen() {
           {mapPane}
         </div>
 
+        {/* **지도가 상태 표시줄 밑까지 가는 대가로 붙는 그림자다.**
+            `index.html`이 `black-translucent`라 iOS standalone에서는 시계·
+            배터리가 지도 위에 **흰 글씨로** 얹히는데, 밝은 테마의 구글 지도는
+            거의 흰 바탕이라 그대로 두면 글자가 사라진다. 두 줄은 한 쌍이고
+            근거는 그쪽 주석에 한 벌 있다.
+
+            **조건부로 그리지 않는다.** 상태 표시줄은 시트를 펼치든 명소를 열든
+            늘 거기 있으므로 오버레이 열(`data-overlay`)과 달리 사라질 이유가
+            없다. 높이가 `env(safe-area-inset-top)`이라 노치 없는 기기와
+            브라우저 탭에서는 0px이고, 그때는 아무것도 안 그린다.
+
+            `z-20`은 시트(`z-10`)보다 위다. 지금은 시트가 full에서도 64px에서
+            시작해 이 띠와 겹치지 않지만, 겹치게 되는 날에도 글자 뒤가 비면
+            안 되는 것은 마찬가지다. */}
+        <div
+          data-status-bar-scrim
+          aria-hidden
+          className="status-bar-scrim pointer-events-none absolute inset-x-0 top-0 z-20"
+        />
+
         {/* **전체로 펼치면 지도 위 조작부가 통째로 물러난다.** 이유가 조작부마다
             다르지만 결론이 같아서 한 조건으로 묶었다.
 

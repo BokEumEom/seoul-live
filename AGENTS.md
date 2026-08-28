@@ -206,7 +206,9 @@ api/          Vercel Function. 서울 API 중계와 캐시만 한다.
   - **`bottom-6`을 되살리지 마라(넓은 화면 FAB).** 가로로 든 폰은 768px을 넘어 넓은 화면 갈래로 오는데, 그 화면 끝이 곧 홈 인디케이터다. 좁은 화면의 `bottom-[18%]`·`bottom-[58%]`는 시트 비율을 따라가므로 같은 문제가 없다.
   - **`pt-safe`/`pb-safe`를 `max()`로 감싸지 마라.** 「최소 16px은 띄운다」를 섞으면 안전영역과 디자인 여백이 한 값에 엉켜, 노치 없는 기기에서 이유 없는 여백이 생긴다. 이 유틸리티는 기기가 먹는 만큼만 돌려준다.
   - **`viewport-fit=cover`의 필요성은 실측으로 못 잡는다.** 데스크톱 크롬의 `Emulation.setSafeAreaInsetsOverride`는 `viewport-fit`과 **무관하게** 값을 준다(빼고 재 봤더니 `padding-top`이 그대로 59px이었다). 헤드리스가 증명하는 것은 「값이 0이 아닐 때 배치가 옳은가」까지다 — 그래서 `src/app/viewport.test.ts`가 그 한 줄의 존재를 대신 지킨다.
-  - **`apple-mobile-web-app-status-bar-style`은 아직 `default`다.** iOS 홈 화면에 설치해 standalone으로 띄우면 상태 표시줄 자리가 지도가 아니라 배경색으로 찬다 — 거기까지 지도를 보내려면 `black-translucent`인데, 그러면 상태 표시줄 글자가 크림색 지도 위에서 안 읽힐 위험이 있고 **확인할 실기기가 없어 안 바꿨다.** 토스 웹뷰와 모바일 사파리(비-standalone)에는 해당 없다.
+  - **`apple-mobile-web-app-status-bar-style`은 `black-translucent`다 — `default`로 되돌리지 마라.** `viewport-fit=cover`는 브라우저 안에서만 일한다. iOS 홈 화면에 설치한 standalone의 상태 표시줄 자리는 이 메타가 정하고, `default`면 그 띠가 지도가 아니라 배경색으로 찬다 — **설치한 사용자에게만** 지도가 화면 끝까지 안 가고, 브라우저로 보는 개발자는 영영 못 본다. `src/app/viewport.test.ts`가 지킨다.
+  - **그 값의 짝이 `status-bar-scrim`이다. 둘은 함께 산다.** 반투명 상태 표시줄의 글자는 **항상 흰색**인데 밝은 테마의 구글 지도는 거의 흰 바탕이라, 그림자가 없으면 시계·배터리가 사라진다. `HomeScreen`의 `data-status-bar-scrim`이 그 자리에 `env(safe-area-inset-top)` 높이의 그라디언트를 깐다 — **높이에 상수를 보태지 마라.** 노치 없는 기기와 브라우저 탭에서는 값이 0이라 아무것도 안 그리는 것이 옳고, 8px이라도 더하면 거기에 이유 없는 검은 띠가 생긴다.
+  - **실기기로 확인하지 못했다.** 데스크톱 크롬은 standalone 상태 표시줄을 흉내 내지 못한다(`Emulation.setSafeAreaInsetsOverride`는 여백만 준다). iOS 기기가 생기면 **시계 대비를 먼저 볼 것** — 그림자가 모자라면 알파(0.32)를 올린다.
 
 - **즐겨찾기 상태는 `src/hooks/favoritesStore.ts`가 모듈에 한 벌만 든다.** `useFavorites`는 `useSyncExternalStore`로 잇기만 한다. 훅 안에 상태를 되돌리지 마라 — 한 화면에서 칩과 목록 행이 동시에 보는데, 인스턴스마다 들면 서로 다른 말을 하고 상세가 새로 마운트될 때마다 옛 값을 본다.
 
