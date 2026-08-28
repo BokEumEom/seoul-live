@@ -215,9 +215,13 @@ export function useCctv(areaName: string | undefined): UseQueryResult<readonly C
  * **한 질의가 둘을 다 준다.** 인구 탭이 언제나 함께 그리므로 왕복도 캐시도
  * 하나여야 한다 — 프록시가 상류 세션까지 한 번만 연다(`api/ppltn.ts`).
  *
- * `staleTime`이 CCTV(1시간)가 아니라 상세 혼잡도(30분)와 같은 값인 이유는
- * 프록시 TTL을 그렇게 맞춘 이유와 같다(`api/ppltn.ts`) — 이 값이 인원수 바로
- * 옆에 놓이므로 두 숫자가 서로 다른 순간을 말하면 안 된다.
+ * **`staleTime`이 CCTV(1시간)가 아니라 상세(30분)와 같은 값이다.** 이 값은
+ * 인원수 **바로 옆**에 놓이므로, 시계를 따로 두면 「38,000명」과 「1시간 전보다
+ * 7% 증가」가 한 화면에서 서로 다른 순간을 말한다.
+ *
+ * 프록시 TTL(`api/ppltn.ts`)도 같은 이유로 상세와 묶여 있지만 **숫자는 다르다**
+ * — 그쪽은 `cacheTtlSeconds()`라 1시간이다. 여기는 클라이언트 `staleTime`이고
+ * 저기는 CDN TTL이라 층이 다르다. 「같다」는 것은 값이 아니라 **묶는 이유**다.
  */
 export function useAreaPopulation(
   areaName: string | undefined,
