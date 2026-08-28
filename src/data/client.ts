@@ -36,11 +36,13 @@ const SINGLE_AREA_TIMEOUT_MS = 10_000
 // 플랫폼 타임아웃인데 "네트워크 상태를 확인해주세요" 같은 오해를 부르는 메시지를
 // 보지 않는다.
 //
-// **예전에는 api/citydata-bulk.ts(동시 연결 8개로 제한된 명소별 호출)의 타임아웃도
-// 겸했다.** 그 프록시와 그걸 부르던 fetchAreaSnapshots는 2026-08-27에 지웠다
-// (Task 7, 죽은 일괄 조회 경로) — 지금은 이 상수를 쓰는 호출이 fetchAreaCongestion
-// 하나뿐이다.
-const BULK_TIMEOUT_MS = 20_000
+// **`BULK_TIMEOUT_MS`였다.** 그 이름이 맞던 시절에는 api/citydata-bulk.ts(동시
+// 연결 8개로 제한된 명소별 호출)의 타임아웃도 겸했는데, 그 프록시와 그걸 부르던
+// fetchAreaSnapshots를 2026-08-27에 지웠다(Task 7, 죽은 일괄 조회 경로).
+// 남은 호출은 fetchAreaCongestion 하나이고 그건 **한 번에 다 받아 오는 단일
+// 요청**이라, 「bulk」는 없는 구조를 가리키는 이름이 됐다 — 선언만 훑는 사람이
+// 옛 아키텍처를 짐작하게 된다. 엔드포인트 이름을 그대로 쓴다.
+const HOTSPOTS_TIMEOUT_MS = 20_000
 
 // 이름을 `useMock`으로 지으면 ESLint의 react-hooks/rules-of-hooks가 "use"로 시작하는
 // 이름을 React 훅으로 오인해 오류를 낸다. 이 함수는 훅이 아니라 순수 판별 함수라 이름을
@@ -283,6 +285,6 @@ export async function fetchAreaCongestion(): Promise<readonly AreaCongestion[]> 
   }
 
   const url = `${baseUrl()}/api/hotspots`
-  const { body } = await requestJson(url, BULK_TIMEOUT_MS, '혼잡도 정보')
+  const { body } = await requestJson(url, HOTSPOTS_TIMEOUT_MS, '혼잡도 정보')
   return parseHotspotsResponse(body)
 }
