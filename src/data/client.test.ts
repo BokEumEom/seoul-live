@@ -81,7 +81,7 @@ describe('fetchAreaPayload', () => {
 
   // 프록시가 CDN 캐시에서 준 응답이면 얼마나 묵었는지 `Age`에 실려 온다. 그 값이
   // 화면의 「12분 전 값이에요」가 되는 유일한 근거다 — 없으면 세 절이 「최대
-  // 3시간 전」이라는 뭉뚱그린 문구에 머문다.
+  // 1시간 전」이라는 뭉뚱그린 문구에 머문다.
   describe('응답의 나이', () => {
     function stubCityFetch(headers: Headers) {
       vi.stubEnv('VITE_USE_MOCK', 'false')
@@ -105,7 +105,7 @@ describe('fetchAreaPayload', () => {
 
     // **0으로 떨어뜨리면 안 된다.** 프록시에 `Access-Control-Expose-Headers`가
     // 아직 안 배포됐거나 CDN을 안 거친 응답이면 이 헤더가 없는데, 그때 0으로
-    // 두면 최대 3시간 묵은 값이 「방금」으로 둔갑해 고치기 전보다 나빠진다.
+    // 두면 최대 1시간 묵은 값이 「방금」으로 둔갑해 고치기 전보다 나빠진다.
     it('Age 헤더가 없으면 모른다고 한다', async () => {
       stubCityFetch(new Headers())
 

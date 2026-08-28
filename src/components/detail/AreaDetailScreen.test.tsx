@@ -943,8 +943,8 @@ describe('AreaDetailScreen — 교통 탭', () => {
   })
 
   it('지하철 도착은 언제 기준인지 같이 적는다', async () => {
-    // 「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다. 도시정보를 3시간
-    // 캐시로 받기로 한 이상(쿼터), 기준을 안 적으면 3시간 전 열차를 지금 오는
+    // 「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다. 도시정보를 1시간
+    // 캐시로 받기로 한 이상(쿼터), 기준을 안 적으면 1시간 전 열차를 지금 오는
     // 것처럼 보여주게 된다.
     useCityInfo.mockReturnValue(
       ok({
@@ -966,7 +966,7 @@ describe('AreaDetailScreen — 교통 탭', () => {
     const section = screen
       .getByRole('heading', { name: '지하철 도착' })
       .closest('section') as HTMLElement
-    expect(within(section).getByText(/최대 3시간 전 기준/)).toBeInTheDocument()
+    expect(within(section).getByText(/최대 1시간 전 기준/)).toBeInTheDocument()
   })
 
   // 도로 정보가 하나도 없으면 제목만 있는 빈 절이 남으면 안 된다.
@@ -1357,9 +1357,9 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
   })
 })
 
-// 도시정보는 하루 1,000회 한도 때문에 프록시가 최대 3시간 캐시한다. 그래서
+// 도시정보는 하루 1,000회 한도 때문에 프록시가 최대 1시간 캐시한다. 그래서
 // 「잔여 568면」이 한참 전 값일 수 있는데, 예전에는 세 절이 **방금 받은
-// 값에도** 「최대 3시간 전 기준이에요」라고 적었다 — 절반은 거짓말이었다.
+// 값에도** 「최대 1시간 전 기준이에요」라고 적었다 — 절반은 거짓말이었다.
 describe('AreaDetailScreen — 값이 언제 기준인지', () => {
   const RECEIVED_AT = Date.parse('2026-08-18T09:00:00Z')
 
@@ -1407,10 +1407,10 @@ describe('AreaDetailScreen — 값이 언제 기준인지', () => {
 
   // **모를 때가 문제의 핵심이다.** 프록시가 `Age`를 CORS로 열어 주기 전이거나
   // CDN을 안 거친 응답이면 나이를 알 수 없는데, 그때 「방금」이라 적으면 최대
-  // 3시간 묵은 값이 갓 받은 값으로 둔갑해 **고치기 전보다 나빠진다.**
+  // 1시간 묵은 값이 갓 받은 값으로 둔갑해 **고치기 전보다 나빠진다.**
   it('나이를 모르면 예전처럼 뭉뚱그려 말한다', async () => {
     await renderWithAge(null)
-    expect(parkingNote()).toBe('잔여 면수는 최대 3시간 전 기준이에요')
+    expect(parkingNote()).toBe('잔여 면수는 최대 1시간 전 기준이에요')
   })
 
   afterEach(() => {

@@ -98,7 +98,7 @@ export class ProxyResponseError extends Error {
  *
  * **없을 때 0으로 떨어뜨리면 안 된다.** `Age`는 CORS 안전목록 헤더가 아니라
  * 프록시가 `Access-Control-Expose-Headers`로 열어 줘야 보이는데, 그게 아직 안
- * 배포됐거나 CDN을 안 거친 응답이면 없다. 그때 0으로 두면 최대 3시간 묵은 값이
+ * 배포됐거나 CDN을 안 거친 응답이면 없다. 그때 0으로 두면 최대 1시간 묵은 값이
  * 「방금」으로 둔갑해 **고치기 전보다 나빠진다.**
  */
 function readAgeSeconds(headers: Headers): number | null {
