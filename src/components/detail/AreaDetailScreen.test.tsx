@@ -4,7 +4,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CityInfo } from '../../domain/cityInfo'
 import { DETAIL_TABS } from '../../domain/detailTabs'
-import type { AreaCongestion, AreaSnapshot } from '../../domain/types'
+import type { AreaCongestion, AreaSnapshot, CongestionLevel } from '../../domain/types'
 import { reset } from '../../hooks/favoritesStore'
 import {
   makeAccident,
@@ -188,15 +188,25 @@ function before(first: Element, second: Element): boolean {
 // 그래서 기준점을 카탈로그에서 읽고, 거기서의 **차이**만 여기서 정한다.
 const GANGNAM = findAreaByName('강남역')!
 
-function renderDetail(areaName = '강남역') {
+function renderDetail(areaName = '강남역', seeded?: CongestionLevel) {
   return render(
     <AreaDetailScreen
       areaName={areaName}
       onBack={() => undefined}
       onSelectArea={() => undefined}
       onShowOnMap={() => undefined}
+      seededCongestion={seeded}
     />,
   )
+}
+
+/** 상세 응답이 아직 안 온 상태로 둔다. 씨앗만 있는 화면을 재는 데 쓴다. */
+function pending() {
+  useAreaSnapshot.mockReturnValue({
+    data: undefined,
+    isPending: true,
+    isError: false,
+  } as UseQueryResult<AreaSnapshot>)
 }
 
 /** 그 탭으로 옮긴다. 탭 밖의 값은 DOM에 아예 없으므로 먼저 눌러야 한다. */
@@ -259,6 +269,7 @@ describe('AreaDetailScreen — 셸', () => {
         onBack={onBack}
         onSelectArea={() => undefined}
         onShowOnMap={() => undefined}
+        seededCongestion={undefined}
       />,
     )
     await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
@@ -431,16 +442,49 @@ describe('AreaDetailScreen — 히어로', () => {
 
   // **자리를 미리 안 잡는다.** 히어로가 스켈레톤으로 자라면 도착할 때 바로
   // 아래 sticky 탭 줄이 통째로 밀린다.
-  it('혼잡도가 오기 전에는 문장 블록이 없다', () => {
-    useAreaSnapshot.mockReturnValue({
-      data: undefined,
-      isPending: true,
-      isError: false,
-    } as UseQueryResult<AreaSnapshot>)
+  it('혼잡도도 씨앗도 없으면 문장 블록이 없다', () => {
+    pending()
     renderDetail()
     expect(screen.queryByText(/지금은/)).toBeNull()
     // 카탈로그만으로 서는 줄은 그대로 있어야 한다 — 화면이 통째로 비지 않는다.
     expect(screen.getByText('역·번화가')).toBeInTheDocument()
+  })
+})
+
+// **씨앗 심기 — 2026-08-20부터 2026-08-28까지 조용히 죽어 있었다.**
+// 목록이 이미 121곳 등급을 받아 두는데(`useAreaCongestion`) 상세는 그걸 놔두고
+// 왕복을 기다렸다. 이제 `HomeScreen`이 그 등급을 prop으로 내려준다.
+//
+// **캐시를 키로 뒤지지 않는 것이 이번 설계의 요점이다.** 죽은 원인이 「뒤지는
+// 키와 채우는 키가 갈렸다」였는데, 갈릴 키가 없으면 그 사고가 다시 날 수 없다.
+describe('AreaDetailScreen — 씨앗 심기', () => {
+  it('응답 전이라도 씨앗이 있으면 큰 글씨가 먼저 뜬다', () => {
+    pending()
+    renderDetail('강남역', '붐빔')
+    expect(screen.getByRole('heading', { name: '지금은 붐벼요' })).toBeInTheDocument()
+  })
+
+  // **없는 값을 그럴듯한 틀린 값으로 떨어뜨리지 않는다.** 인원수를 0으로,
+  // 시각을 빈 문자열로 채우면 「0명」이 잠깐 떴다가 진짜 값으로 바뀐다.
+  it('씨앗만 있을 때 인원수·안내·기준 시각은 안 그린다', () => {
+    pending()
+    renderDetail('강남역', '붐빔')
+    expect(screen.queryByText(/명$/)).toBeNull()
+    expect(screen.queryByText(/기준/)).toBeNull()
+    expect(screen.queryByText('조금 붐벼요.')).toBeNull()
+  })
+
+  // 씨앗은 5분 갱신이고 snapshot은 관측 시각을 달고 온다 — 도착하면 그쪽이 권위다.
+  it('응답이 오면 씨앗이 아니라 응답의 등급을 말한다', () => {
+    // 목은 「약간 붐빔」을 준다. 씨앗은 일부러 다른 값으로 둔다.
+    renderDetail('강남역', '여유')
+    expect(
+      screen.getByRole('heading', { name: '지금은 약간 붐벼요' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '지금은 여유로워요' })).toBeNull()
+    // 나머지 세 줄도 함께 채워진다.
+    expect(screen.getByText('74,000~76,000명')).toBeInTheDocument()
+    expect(screen.getByText('11:00 기준')).toBeInTheDocument()
   })
 })
 
@@ -907,6 +951,7 @@ describe('AreaDetailScreen — 교통 탭', () => {
         onBack={() => undefined}
         onSelectArea={() => undefined}
         onShowOnMap={onShowOnMap}
+        seededCongestion={undefined}
       />,
     )
     await openTab('교통')
@@ -999,6 +1044,7 @@ describe('AreaDetailScreen — 주변 탭', () => {
         onBack={() => undefined}
         onSelectArea={() => undefined}
         onShowOnMap={onShowOnMap}
+        seededCongestion={undefined}
       />,
     )
     await openTab('주변')
@@ -1240,6 +1286,7 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
         onBack={() => undefined}
         onSelectArea={() => undefined}
         onShowOnMap={onShowOnMap}
+        seededCongestion={undefined}
       />,
     )
     await openTab('행사')
@@ -1335,6 +1382,7 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
         onBack={() => undefined}
         onSelectArea={() => undefined}
         onShowOnMap={onShowOnMap}
+        seededCongestion={undefined}
       />,
     )
     await openTab('안전')

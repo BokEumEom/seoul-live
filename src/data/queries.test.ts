@@ -196,12 +196,14 @@ function brokenCongestionPayload(name: string): unknown {
 }
 
 // 씨앗 심기 테스트 넷이 여기 있었다. `['areas', …]` 캐시를 seed해서 useAreaSnapshot이
-// findSeededSnapshot으로 즉시 값을 보여주는지 재던 것들인데, 목록 출처가 SeoulRtd로
-// 가면서(AGENTS.md, 2026-08-20) 그 캐시를 아무도 안 채우게 됐고, 위 새 useAreaSnapshot도
-// findSeededSnapshot을 더는 안 부른다 — 그래서 시나리오 자체가 성립하지 않는다.
-// **기능 자체는 되살릴 것이다**(계획서 Task 8) — 그때는 `['area-congestion']` 캐시의
-// 등급을 쓰는 다른 모양이 된다. findSeededSnapshot 정의는 그때까지 queries.ts에 그대로
-// 남겨 둔다.
+// `findSeededSnapshot`으로 즉시 값을 보여주는지 재던 것들인데, 목록 출처가 SeoulRtd로
+// 가면서(AGENTS.md, 2026-08-20) 그 캐시를 아무도 안 채우게 됐다.
+//
+// **기능은 2026-08-28에 되살렸고, 여기로는 안 돌아온다.** 새 모양은 캐시를 키로
+// 뒤지지 않는다 — `HomeScreen`이 손에 든 등급을 prop으로 내려주므로 이 훅과
+// 무관하고, `queries.ts`에 잴 함수도 없다. 잠그는 자리가 두 곳으로 옮겨갔다:
+// 「홈이 그 값을 골라 넘기는가」는 `HomeScreen.test.tsx`, 「히어로가 씨앗만으로
+// 무엇을 그리는가」는 `AreaDetailScreen.test.tsx`.
 describe('useAreaSnapshot·useCityInfo', () => {
   let queryClient: QueryClient
 

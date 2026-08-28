@@ -16,7 +16,7 @@ import type { CityAlert } from '../domain/cityInfo'
 // 그래서 여기서도 `parseCityInfoResponse`를 직접 불러야 재난문자를 꺼낼 수
 // 있다. **키는 반드시 `areaPayloadKey`로만 만든다** — 문자열을 여기 따로 적으면
 // 뒤지는 키와 채우는 키가 갈리고, 그게 씨앗 심기를 조용히 죽인 바로 그
-// 사고다(`findSeededSnapshot`, 2026-08-20. AGENTS.md 참고).
+// 사고다(씨앗 심기, 2026-08-20. AGENTS.md 참고).
 export function useCachedCityAlerts(): readonly CityAlert[] {
   const client = useQueryClient()
   return AREA_NAMES.flatMap((name) => {

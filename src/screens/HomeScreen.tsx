@@ -1035,6 +1035,14 @@ export function HomeScreen() {
         onBack={showList}
         onSelectArea={openArea}
         onShowOnMap={showFacilityOnMap}
+        // **씨앗 심기.** 목록이 이미 121곳 등급을 받아 뒀으므로(`snapshots`),
+        // 상세가 왕복을 기다리는 동안 큰 글씨 한 줄은 바로 뜬다. 등급이 `null`인
+        // 행은 `undefined`로 떨어뜨린다 — 색 없는 큰 글씨가 잠깐 떴다가 바뀌느니
+        // 안 그리는 편이 낫다(`hotspotsSchema.ts`가 모르는 등급을 `null`로 준다).
+        seededCongestion={
+          snapshots.data?.find((row) => row.name === route.name)?.congestion ??
+          undefined
+        }
       />
     ) : (
       listPane

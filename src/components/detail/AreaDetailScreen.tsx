@@ -6,6 +6,7 @@ import { MotionProvider } from '../../app/MotionProvider'
 import { findAreaByName } from '../../data/areas'
 import { useAreaSnapshot } from '../../data/queries'
 import type { FacilityLocation } from '../../domain/cityInfo'
+import type { CongestionLevel } from '../../domain/types'
 import {
   detailTabButtonId,
   detailTabIndex,
@@ -34,6 +35,17 @@ interface Props {
   readonly onSelectArea: (name: string) => void
   /** 주차장·따릉이 줄의 아이콘이 누르는 것. 지도는 `HomeScreen`이 갖는다. */
   readonly onShowOnMap: (place: FacilityLocation) => void
+  /**
+   * 목록이 이미 받아 둔 이 명소의 등급. 상세 응답이 오기 전 히어로의 **큰 글씨
+   * 한 줄**이 이걸로 먼저 선다 — 「씨앗 심기」다.
+   *
+   * **캐시를 직접 뒤지지 않고 prop으로 받는다.** 이 값의 출처(`useAreaCongestion`)를
+   * `HomeScreen`이 이미 손에 들고 있고, 그쪽에서 골라 넘기면 **캐시 키가 이
+   * 경로에 아예 등장하지 않는다.** 2026-08-20에 씨앗 심기가 조용히 죽은 원인이
+   * 「뒤지는 키와 채우는 키가 갈렸다」였는데, 갈릴 키가 없으면 그 사고가 다시
+   * 날 수 없다.
+   */
+  readonly seededCongestion: CongestionLevel | undefined
 }
 
 /**
@@ -61,6 +73,7 @@ export function AreaDetailScreen({
   onBack,
   onSelectArea,
   onShowOnMap,
+  seededCongestion,
 }: Props) {
   const entry = findAreaByName(areaName)
 
@@ -69,6 +82,7 @@ export function AreaDetailScreen({
   const query = useAreaSnapshot(entry === undefined ? undefined : areaName)
   const location = useLocation()
   const snapshot = query.data
+
 
   // 상세를 열 때마다 이 명소의 지금 혼잡도를 한 칸 쌓는다. 서울 API가 과거를
   // 주지 않아 패턴을 조회할 수 없고, 쌓는 것 말고 방법이 없다 — PLAN.md 4차.
@@ -168,7 +182,12 @@ export function AreaDetailScreen({
             빠지는 것은 **기준 시각**뿐이다 — 그건 `PopulationPanel`이 따로
             떠맡는다(그쪽 주석). */}
         {tab === 'summary' && (
-          <DetailHero entry={entry} coords={location.coords} snapshot={snapshot} />
+          <DetailHero
+              entry={entry}
+              coords={location.coords}
+              snapshot={snapshot}
+              seededCongestion={seededCongestion}
+            />
         )}
 
         <DetailTabs value={tab} onChange={setTab} />

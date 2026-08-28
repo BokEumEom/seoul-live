@@ -327,6 +327,36 @@ describe('HomeScreen', () => {
     expect(scrim).toHaveClass('pointer-events-none')
   })
 
+  // **씨앗 심기.** 목록이 이미 121곳 등급을 받아 뒀으므로(`useAreaCongestion`),
+  // 상세를 열면 상세 응답을 **기다리지 않고** 큰 글씨가 뜬다. 2026-08-20부터
+  // 2026-08-28까지 조용히 죽어 있던 기능이고, 죽은 원인이 「뒤지는 캐시 키와
+  // 채우는 키가 갈렸다」였다 — 이제 캐시를 안 뒤지고 `HomeScreen`이 손에 든
+  // 값을 prop으로 내려주므로 갈릴 키 자체가 없다.
+  //
+  // **여기서만 잠글 수 있다.** `AreaDetailScreen`의 테스트는 prop을 직접
+  // 넘기므로 「홈이 그 값을 실제로 골라 넘기는가」는 못 본다.
+  it('상세를 열면 목록이 받아 둔 등급이 응답 없이 먼저 뜬다', async () => {
+    const { AREA_NAMES } = await import('../data/areas')
+    useAreaCongestion.mockReturnValue({
+      data: AREA_NAMES.map((name) =>
+        snapshotFor(name, name === '강남역' ? '붐빔' : '보통'),
+      ),
+      isPending: false,
+      isError: false,
+    } as unknown as UseQueryResult<readonly AreaCongestion[]>)
+    // 상세 응답은 아직 안 왔다.
+    useAreaSnapshot.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+    } as unknown as UseQueryResult<AreaSnapshot>)
+
+    render(<HomeScreen />)
+    await userEvent.click(areaButtons(/강남역/)[0])
+
+    expect(screen.getByRole('heading', { name: '지금은 붐벼요' })).toBeInTheDocument()
+  })
+
   // 오버레이 열은 시트를 전체로 펼치면 물러나지만 이 띠는 안 물러난다.
   // 상태 표시줄은 시트를 어떻게 두든 늘 거기 있기 때문이다.
   it('시트를 전체로 펼쳐도 상태 표시줄 그림자는 남는다', async () => {

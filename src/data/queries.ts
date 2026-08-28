@@ -1,8 +1,4 @@
-import {
-  useQuery,
-  type QueryClient,
-  type UseQueryResult,
-} from '@tanstack/react-query'
+import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { z } from 'zod'
 import type { CctvCamera } from '../domain/cctv'
@@ -59,46 +55,6 @@ export function shouldRetry(failureCount: number, error: Error): boolean {
   return failureCount < MAX_RETRIES
 }
 
-/** 목록이 이미 받아 둔 한 곳. `undefined`면 받아 둔 적이 없다는 뜻이다. */
-interface SeededSnapshot {
-  readonly snapshot: AreaSnapshot
-  /** 그 값을 **언제** 받았는지. 이걸 빼면 묵은 값이 새 값 행세를 한다. */
-  readonly updatedAt: number
-}
-
-// 홈의 일괄 조회가 30곳을 통째로 받아 두는데, 상세가 그중 한 곳을 **다시** 물었다.
-// 이미 메모리에 있는 값을 받으려고 왕복 한 번을 더 기다렸고 그동안 스켈레톤이
-// 떴다 — 서울 인파레이더가 즉시 열리는 것과 갈리던 자리다. 게다가 그 왕복은
-// CDN 캐시 키가 따로라 하루 1,000회에서 **또 한 번**을 썼다(최악 30곳 × 24 = 720회).
-//
-// 일괄 조회의 결과는 자리순 배열이고 이름은 queryKey에 들어 있다. 그래서 키에서
-// 이름을 꺼내 자리를 찾는다. `getQueriesData`로 접두어 검색을 하는 이유는 홈이
-// 넘기는 명소 목록이 언제 달라져도(필터·즐겨찾기) 여기가 안 깨지게 하기 위해서다.
-export function findSeededSnapshot(
-  client: QueryClient,
-  areaName: string,
-): SeededSnapshot | undefined {
-  const entries = client.getQueriesData<readonly (AreaSnapshot | null)[]>({
-    queryKey: ['areas'],
-  })
-
-  for (const [key, data] of entries) {
-    const names: unknown = key[1]
-    if (!Array.isArray(names) || data === undefined) {
-      continue
-    }
-    const index = names.indexOf(areaName)
-    // 일괄 조회는 명소 하나가 실패하면 그 자리를 null로 준다(client.ts).
-    // null을 「받아 둔 값」으로 세면 상세가 영영 빈 화면이 된다.
-    const snapshot = index === -1 ? null : (data[index] ?? null)
-    if (snapshot === null) {
-      continue
-    }
-    return { snapshot, updatedAt: client.getQueryState(key)?.dataUpdatedAt ?? 0 }
-  }
-  return undefined
-}
-
 // 도시정보는 인구보다 느리게 변한다(날씨는 정시, 문화행사는 하루 단위). 혼잡도와
 // 같은 5분을 쓰면 사실상 바뀌지 않는 값을 계속 다시 받는다. 이제 두 훅이 이
 // staleTime 하나를 함께 쓴다 — 캐시 항목이 하나뿐이라 둘을 따로 둘 수 없다.
@@ -107,12 +63,15 @@ const THIRTY_MINUTES = 30 * 60 * 1_000
 /**
  * 상세 한 곳의 원본 응답 캐시 키.
  *
- * **문자열을 두 군데 적지 않는다.** 이 저장소는 같은 실수로 이미 한 번
- * 기능을 잃었다 — 씨앗 심기(`findSeededSnapshot`)가 2026-08-20에 멈춘
- * 원인이 「뒤지는 키와 채우는 키가 갈렸다」였고, 코드는 안 깨지고 테스트도
- * 초록이었다(AGENTS.md 참고). 캐시를 직접 읽는 쪽(`useCachedCityAlerts`)도
- * `queryFn`으로 채우지 않고 `getQueryData`로 뒤지기만 하지만, 키는 반드시
- * 이 함수로만 만든다.
+ * **문자열을 두 군데 적지 않는다.** 이 저장소는 같은 실수로 이미 한 번 기능을
+ * 잃었다 — 씨앗 심기가 2026-08-20에 멈춘 원인이 「뒤지는 키와 채우는 키가
+ * 갈렸다」였고, 코드는 안 깨지고 테스트도 초록이었다(AGENTS.md 참고).
+ * 캐시를 직접 읽는 쪽(`useCachedCityAlerts`)도 `queryFn`으로 채우지 않고
+ * `getQueryData`로 뒤지기만 하지만, 키는 반드시 이 함수로만 만든다.
+ *
+ * **씨앗 심기는 2026-08-28에 이 방식을 아예 안 쓰게 됐다.** 캐시를 키로 뒤지는
+ * 대신 `HomeScreen`이 손에 든 값을 prop으로 내려준다 — 갈릴 키가 없으면 그
+ * 사고가 다시 날 수 없다(`AreaDetailScreen`의 `seededCongestion`).
  */
 export function areaPayloadKey(areaName: string | undefined) {
   return ['areaPayload', areaName] as const

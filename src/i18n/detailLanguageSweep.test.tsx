@@ -445,6 +445,7 @@ describe('영어 상세 화면에 옮기지 않은 한국어가 없다', () => {
           onBack={() => undefined}
           onSelectArea={() => undefined}
           onShowOnMap={() => undefined}
+          seededCongestion={undefined}
         />,
       )
 
@@ -463,6 +464,7 @@ describe('영어 상세 화면에 옮기지 않은 한국어가 없다', () => {
         onBack={() => undefined}
         onSelectArea={() => undefined}
         onShowOnMap={() => undefined}
+        seededCongestion={undefined}
       />,
     )
 
