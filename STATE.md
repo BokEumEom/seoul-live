@@ -430,12 +430,12 @@ src/components/ common(Icon, CongestionBadge, ToneBadge, toneClass, ErrorState,
                          InfoSection, RoadTrafficCard, AccidentList)
                 today(SummaryCard, RankList, CategoryAverages, AlertDigest, RecommendationCard)
 src/screens/    HomeScreen(화면 전체), TodayScreen(시트 안 뷰)
-api/            _lib/(seoul, allowed-areas, concurrency, http), citydata, citydata-bulk, cityinfo
+api/            _lib/(seoul, seoulRtd, allowed-areas, http), cityinfo, hotspots, cctv, ppltn
 ```
 
 **`src/components/layout/`은 없다.** `BottomTabBar`가 Task 10에서, `TopAppBar`가 같은 태스크에서 사라져 디렉터리가 통째로 비었다. 여기에 헤더·탭바를 다시 만들지 마라 — 근거는 아래 「셸은 `<main className="h-dvh">` 하나다」.
 
-**`src/screens/`는 둘이다.** `TodayScreen`은 독립 화면이 아니라 시트 안 뷰지만, `useAreaSnapshots`로 스스로 데이터를 가져와 컴포넌트에 내려주므로 레이어상 screens에 속한다. `HomeScreen`이 `<TodayScreen onSelectArea onBack />`으로 시트에 끼워 넣는다.
+**`src/screens/`는 둘이다.** `TodayScreen`은 독립 화면이 아니라 시트 안 뷰지만, `useAreaCongestion`으로 스스로 데이터를 가져와 컴포넌트에 내려주므로 레이어상 screens에 속한다. `HomeScreen`이 `<TodayScreen onSelectArea onBack />`으로 시트에 끼워 넣는다.
 
 `npm run dev` → <http://localhost:5173/> 에서 실제로 뜬다. 라우터도 탭 상태도 없다 — `App.tsx`는 Provider 둘과 `<main className="h-dvh">` 한 겹뿐이고, 그 안의 유일한 자식이 `HomeScreen`이다.
 
@@ -719,11 +719,13 @@ detail_page.png의 「티맵 안내」를 붙여 카카오맵·네이버·티맵
 
 ### 오늘의 서울은 추가 호출이 0이다
 
-이 뷰의 존재 근거다. `useAreaSnapshots`로 이미 받아둔 30곳 스냅샷을 `domain/summary.ts`가 다르게 집계할 뿐이다.
+이 뷰의 존재 근거다. `useAreaCongestion`으로 이미 받아둔 121곳 혼잡도를 `domain/summary.ts`가 다르게 집계할 뿐이다.
 
 시트 안 뷰가 되면서 여는 길이 시트 맨 위 **요약 스트립**이 됐고, 돌아오는 길은 뷰 안의 「목록으로」다. 요약 스트립도 같은 `summarize()`를 쓰므로 여기서도 호출이 늘지 않는다.
 
-**재난문자는 캐시에 있는 것만 모은다.** `useCachedCityAlerts`가 `queryClient.getQueryData(['cityInfo', name])`를 읽고, 없으면 조회하지 않는다. 사용자가 상세에서 도시 정보를 펼친 명소만 여기 잡힌다. 30곳의 `cityInfo`를 새로 부르면 하루 720회가 그대로 더해진다.
+**재난문자는 캐시에 있는 것만 모은다.** `useCachedCityAlerts`가 `queryClient.getQueryData(areaPayloadKey(name))`를 읽고, 없으면 조회하지 않는다. 사용자가 상세를 연 명소만 여기 잡힌다. 목록의 121곳을 새로 부르면 하루 2,904회가 그대로 더해진다 — 한도의 세 배다.
+
+**그 키는 손으로 적으면 안 된다.** 2026-08-27에 키(`['cityInfo', name]` → `['areaPayload', name]`)와 캐시에 앉는 모양(파싱된 `CityInfo` → 원본 `AreaPayload`)이 함께 바뀌었는데, 이 훅만 옛 키를 손으로 들고 있어서 **조용히 항상 빈 값**이 됐다. 지금은 `areaPayloadKey` 하나가 키를 만드는 유일한 자리다.
 
 **같은 경보가 여러 명소에 실려 온다.** `AlertDigest`가 문구로 중복을 지운다 — 안 지우면 폭염 경보 하나가 30줄이 된다.
 
@@ -731,24 +733,26 @@ detail_page.png의 「티맵 안내」를 붙여 카카오맵·네이버·티맵
 
 PLAN.md와 이전 STATE는 "`citydata` 하나로 다 오니 호출이 늘지 않는다"고 적었지만, **그건 `citydata_ppltn`을 `citydata`로 교체할 때 이야기다.** 실제 구현은 `/api/cityinfo`라는 **별도 엔드포인트**를 얹었으므로 호출이 더해진다.
 
-**정본이다(2026-08-14). 셋 중 하나라도 건드리면 나머지를 다시 계산하라.**
+**아래 표는 2026-08-14의 정본이었고 지금은 한 칸도 맞지 않는다. 정본은 `AGENTS.md`의 쿼터 조항 하나다** — 여기서 다시 세지 마라. 옛 표를 남겨 두는 것은 **무엇이 왜 바뀌었는지**가 다음 결정의 근거이기 때문이다.
 
-| | 서비스 | 하루 호출량 |
-| --- | --- | --- |
-| 혼잡도 일괄(전 화면) | `citydata_ppltn` | 30곳 ÷ TTL 1시간 = **720회** (고정) |
-| 상세 혼잡도 | — | **0회** — 목록 캐시에서 씨앗을 받는다(`findSeededSnapshot`) |
-| 도시 정보 | `citydata` | 본 명소 수 ÷ TTL 3시간. 최악 30곳 = **240회** |
-| 합계 | | **960 / 1,000** |
+| | 서비스 | 하루 호출량 | 지금은 |
+| --- | --- | --- | --- |
+| 혼잡도 일괄(전 화면) | `citydata_ppltn` | 30곳 ÷ TTL 1시간 = 720회 | **0회** — 출처가 SeoulRtd로 갔다(인증키를 안 쓴다) |
+| 상세 혼잡도 | — | 0회 — 씨앗(`findSeededSnapshot`) | **0회이되 이유가 다르다** — 도시정보와 한 응답이다. 씨앗은 멈춰 있다 |
+| 도시 정보 | `citydata` | 본 명소 수 ÷ TTL 3시간. 최악 30곳 = 240회 | **상세 전체**가 24 × 연 명소 수. 최악 41곳 = 984회 |
+| 합계 | | 960 / 1,000 | **984 / 1,000** (41곳까지) |
+
+바뀐 것이 셋이다. (1) 목록·지도가 인증키 없는 상류로 옮겨 **720회가 통째로 0이 됐다.** (2) 상세가 `citydata` **한 번**으로 혼잡도와 도시정보를 함께 받는다(2026-08-27) — 그전까지 명소당 하루 8회를 더 쓰던 `citydata_ppltn` 호출이 사라졌다. (3) TTL이 3시간에서 1시간이 됐다. 합쳐서 천장이 **30곳에서 41곳으로** 올라갔다.
 
 **예전에는 1,440회로 이미 넘고 있었다.** 상세가 목록이 이미 받아 둔 혼잡도를 다시 물어 720회를 더 썼는데, 그건 CDN 캐시 키가 따로라 정말로 호출이었다. 그 왕복을 없앤 자리에 도시정보 자동 조회를 넣었다.
 
-**`findSeededSnapshot`을 지우면 표가 1,680회로 무너진다.** 스켈레톤이 되돌아오는 것은 눈에 보이지만 쿼터는 안 보인다.
+**「`findSeededSnapshot`을 지우면 표가 1,680회로 무너진다」고 적혀 있었다 — 이제 아니다.** 그 함수는 2026-08-20에 이미 동작을 멈췄고(목록이 그 캐시를 안 채운다) 쿼터에는 아무 영향이 없다. 지금 그것을 되살리려는 이유는 호출량이 아니라 **상세를 열 때 큰 글씨가 왕복 없이 뜨게 하려는 것**이다.
 
-교체하지 않고 나눈 이유: `citydata`는 응답이 훨씬 크다. 30곳을 한 번에 받는 `citydata-bulk`에 그걸 얹으면 인구 목록만 필요한 지도·목록까지 매번 큰 응답을 받는다.
+**「교체하지 않고 나눴다」고 적혀 있었다 — 2026-08-27에 합쳤다.** 막던 이유는 응답 크기였다: `citydata`는 훨씬 크고, 30곳을 한 번에 받던 `citydata-bulk`에 얹으면 인구 목록만 필요한 지도·목록까지 매번 큰 응답을 받아야 했다. 그 전제가 사라졌다 — 지도·목록이 SeoulRtd로 가면서 큰 응답을 받는 자리가 **사용자가 실제로 연 상세 한 곳뿐**이 됐다.
 
 손잡이는 **`CITYINFO_CACHE_TTL_SECONDS`** 환경변수다(Vercel에 넣는다). 비워두면 `CACHE_TTL_SECONDS`와 같은 값으로 떨어진다. 늘리면 도시 정보 호출이 그만큼 줄고, 대신 주차 여유 면수가 그만큼 묵는다. **활용갤러리에 등록해 한도가 풀리면 이 손잡이는 의미가 없어진다** — 등록이 근본 해결책이다.
 
-**인구 구성은 이 표에 들어가지 않는다.** `citydata_ppltn`의 같은 응답에서 읽으므로 위 720회 안에 이미 들어 있다 — 추가 호출이 진짜로 0이다.
+**인구 구성은 이 표에 들어가지 않는다.** 상세가 받는 `citydata` 응답의 인구 행(`LIVE_PPLTN_STTS`)에서 함께 읽으므로 위 「상세 전체」 24회 안에 이미 들어 있다 — 추가 호출이 진짜로 0이다.
 
 ### 시안(stitch_ui) 반영 상태
 

@@ -137,7 +137,7 @@ src/screens/  데이터를 가져와 컴포넌트에 내려준다.
 api/          Vercel Function. 서울 API 중계와 캐시만 한다.
 ```
 
-`src/screens/`에는 `HomeScreen`(화면 전체)과 `TodayScreen`(시트 안 뷰) 둘이 있다. `TodayScreen`은 독립 화면이 아니지만 스스로 `useAreaSnapshots`를 부르므로 레이어상 여기 속한다. **명소 상세는 `src/components/detail/`에 있다** — 전체 화면 층이지만 `HomeScreen`이 지도 위에 얹는 것이라 화면 목록에는 안 든다.
+`src/screens/`에는 `HomeScreen`(화면 전체)과 `TodayScreen`(시트 안 뷰) 둘이 있다. `TodayScreen`은 독립 화면이 아니지만 스스로 `useAreaCongestion`을 부르므로 레이어상 여기 속한다. **명소 상세는 `src/components/detail/`에 있다** — 전체 화면 층이지만 `HomeScreen`이 지도 위에 얹는 것이라 화면 목록에는 안 든다.
 
 **`src/components/`의 데이터 페칭 예외 — 늘리지 마라.** 「props만 받는다」는 규칙이 실제로는 여러 번 깨져 있다: `AreaDetailScreen`(`useAreaSnapshot`·`useLocation`), `CityInfoBoundary`(`useCityInfo`), `SummaryPanel`(`useCityInfo`), `CctvSection`(`useCctv`), `NearbyCalmSection`(`useAreaCongestion`·`useLocation`), `PopulationPanel`(`useAreaPopulation`). 규칙이 위반을 낳는 채로 두지 않으려고 경계를 사실대로 적는다.
 
