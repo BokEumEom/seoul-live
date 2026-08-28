@@ -40,7 +40,7 @@ import {
   type Row,
 } from './rowReaders'
 
-// `citydata` 응답을 CityInfo로 옮긴다. `citydata_ppltn`을 다루는 schema.ts와 달리
+// `citydata` 응답을 CityInfo로 옮긴다. 같은 봉투에서 인구 행을 읽는 schema.ts와 달리
 // 필드 단위 zod 스키마를 세우지 않는다. 이유는 취향이 아니라 검증 가능성이다:
 //
 //   - 인증키가 없어 실제 응답을 한 번도 못 봤다. 필드 이름·타입·유무를 명세의

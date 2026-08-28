@@ -6,6 +6,7 @@ import { MotionProvider } from '../../app/MotionProvider'
 import { findAreaByName } from '../../data/areas'
 import { useAreaSnapshot } from '../../data/queries'
 import type { FacilityLocation } from '../../domain/cityInfo'
+import type { CongestionLevel } from '../../domain/types'
 import {
   detailTabButtonId,
   detailTabIndex,
@@ -34,6 +35,17 @@ interface Props {
   readonly onSelectArea: (name: string) => void
   /** 주차장·따릉이 줄의 아이콘이 누르는 것. 지도는 `HomeScreen`이 갖는다. */
   readonly onShowOnMap: (place: FacilityLocation) => void
+  /**
+   * 목록이 이미 받아 둔 이 명소의 등급. 상세 응답이 오기 전 히어로의 **큰 글씨
+   * 한 줄**이 이걸로 먼저 선다 — 「씨앗 심기」다.
+   *
+   * **캐시를 직접 뒤지지 않고 prop으로 받는다.** 이 값의 출처(`useAreaCongestion`)를
+   * `HomeScreen`이 이미 손에 들고 있고, 그쪽에서 골라 넘기면 **캐시 키가 이
+   * 경로에 아예 등장하지 않는다.** 2026-08-20에 씨앗 심기가 조용히 죽은 원인이
+   * 「뒤지는 키와 채우는 키가 갈렸다」였는데, 갈릴 키가 없으면 그 사고가 다시
+   * 날 수 없다.
+   */
+  readonly seededCongestion: CongestionLevel | undefined
 }
 
 /**
@@ -61,6 +73,7 @@ export function AreaDetailScreen({
   onBack,
   onSelectArea,
   onShowOnMap,
+  seededCongestion,
 }: Props) {
   const entry = findAreaByName(areaName)
 
@@ -69,6 +82,7 @@ export function AreaDetailScreen({
   const query = useAreaSnapshot(entry === undefined ? undefined : areaName)
   const location = useLocation()
   const snapshot = query.data
+
 
   // 상세를 열 때마다 이 명소의 지금 혼잡도를 한 칸 쌓는다. 서울 API가 과거를
   // 주지 않아 패턴을 조회할 수 없고, 쌓는 것 말고 방법이 없다 — PLAN.md 4차.
@@ -159,7 +173,22 @@ export function AreaDetailScreen({
             **아래 패딩을 두지 않는다.** sticky가 붙는 자리는 스크롤 상자의 패딩
             안쪽이라, `pb-6`을 주면 길찾기 바가 시트 밑변에서 24px 떠 있다
             (390×844 실측으로 확인했다). */}
-        <DetailHero entry={entry} coords={location.coords} snapshot={snapshot} />
+
+        {/* **히어로는 요약 탭에서만 그린다**(2026-08-27, 사용자 요청 — 「장소
+            상세 헤더 부분에 내용은 요약에서만 보여지고 나머지 탭에서는
+            안보여도 될 것 같다」). 다른 탭은 이미 자기 몫의 값을 갖고 있어
+            히어로가 되풀이가 된다 — 인구 탭은 스스로 인원수와 「평소 대비」를
+            갖고(`PopulationLead`), 카테고리·거리는 요약 카드가 이미 적는다.
+            빠지는 것은 **기준 시각**뿐이다 — 그건 `PopulationPanel`이 따로
+            떠맡는다(그쪽 주석). */}
+        {tab === 'summary' && (
+          <DetailHero
+              entry={entry}
+              coords={location.coords}
+              snapshot={snapshot}
+              seededCongestion={seededCongestion}
+            />
+        )}
 
         <DetailTabs value={tab} onChange={setTab} />
 

@@ -305,7 +305,7 @@ export const EN: Readonly<Record<string, string>> = {
   // ── 상세: 전기차 충전(2026-08-25) ──
   // `CHARGER_STTS`. 시안에 화면이 없어 「주변」 탭의 셋째 절로 넣었다.
   '전기차 충전': 'EV charging',
-  '충전기 상태는 최대 3시간 전 기준이에요': 'Charger status can be up to 3 hours old',
+  '충전기 상태는 최대 1시간 전 기준이에요': 'Charger status can be up to 1 hour old',
   '{대수}대 가능': '{대수} free',
   // 「0대」가 아니라 「사용 불가」다 — 0은 「충전기가 없다」로도 읽힌다.
   '사용 불가': 'None free',
@@ -413,7 +413,7 @@ export const EN: Readonly<Record<string, string>> = {
   병원: 'Hospital',
   약국: 'Pharmacies',
   '스포츠/문화/레저': 'Sports & culture',
-  // 세 절(지하철·주차장·따릉이)의 「이 값이 언제 기준인가」. 아래 「최대 3시간」
+  // 세 절(지하철·주차장·따릉이)의 「이 값이 언제 기준인가」. 아래 「최대 1시간」
   // 세 줄은 **나이를 못 읽었을 때만** 쓰인다 — `CityInfoPanel`의 `freshnessNote`.
   //
   // 「받은」이 「측정된」이 아닌 것은 사실 관계다. `Age`는 우리가 서울 API에서
@@ -421,15 +421,15 @@ export const EN: Readonly<Record<string, string>> = {
   '방금 받은 값이에요': 'Just fetched',
   '{분}분 전 값이에요': 'Fetched {분} min ago',
   '{시간}시간 전 값이에요': 'Fetched {시간}h ago',
-  '최대 3시간 전 기준이에요': 'As of up to 3 hours ago',
-  '잔여 면수는 최대 3시간 전 기준이에요': 'Spaces free as of up to 3 hours ago',
-  '거치 대수는 최대 3시간 전 기준이에요': 'Bike counts as of up to 3 hours ago',
+  '최대 1시간 전 기준이에요': 'As of up to 1 hour ago',
+  '잔여 면수는 최대 1시간 전 기준이에요': 'Spaces free as of up to 1 hour ago',
+  '거치 대수는 최대 1시간 전 기준이에요': 'Bike counts as of up to 1 hour ago',
   '주변에 주차장 정보가 없어요.': 'No parking information nearby.',
   '주변에 따릉이 대여소가 없어요.': 'No bike stations nearby.',
 
   // ── 주변 CCTV ──
   //
-  // **「실시간」이 여기서만 글자 그대로다.** 다른 절은 최대 3시간 묵은 값을
+  // **「실시간」이 여기서만 글자 그대로다.** 다른 절은 최대 1시간 묵은 값을
   // 보여주지만 영상은 지금 화면이다 — 캐시되는 것은 카메라 목록이지 영상이
   // 아니다. 영어에서도 그 차이가 드러나게 「Live」를 쓴다.
   '주변 CCTV': 'Nearby cameras',

@@ -871,34 +871,46 @@ export function HomeScreen() {
             })
           : t('조건에 맞는 명소가 없어요.')
 
-  const listPane = (
-    <div className="flex flex-col gap-3 pb-6">
-      {/* **넓은 화면에서는 검색·필터가 여기 산다.** 좁은 화면에서는 지도 위에
-          떠 있지만(오버레이), PC에서는 그 열이 화면 폭을 가로질러 검색창이
-          1,358px이 됐다 — 패널 안으로 들이면 400px로 묶인다. 목록의 맨 위인
-          이유는 조작 순서 그대로다: 찾고 → 거르고 → 고른다. */}
-      {wide && (
-        <div className="flex flex-col gap-1 pt-3">
-          {/* 검색과 테마 토글이 한 줄이다. 인파레이더는 상단바에 두지만 우리는
-              상단바를 걷어냈으므로(세로가 가장 귀한 자원) 이 줄이 그 자리다. */}
-          <div className="flex items-center gap-2 pr-4">
-            <div className="min-w-0 flex-1">
-              <SearchBar value={filters.query} onChange={filters.setQuery} />
-            </div>
-            <LanguageToggle />
-            <ThemeToggle />
-          </div>
-          <FilterChips
-            counts={counts}
-            total={list.length}
-            value={filters.filter}
-            onChange={handleFilterChange}
-          />
-          {mapUnavailableReason !== null && (
-            <MapUnavailableNotice reason={mapUnavailableReason} />
-          )}
+  // **넓은 화면의 검색·필터 열.** 좁은 화면에서는 같은 열이 지도 위에 떠
+  // 있지만(`data-overlay`), PC에서는 그 열이 화면 폭을 가로질러 검색창이
+  // 1,358px이 됐다 — 패널 안으로 들이면 400px로 묶인다.
+  //
+  // **`listPane` 안이 아니라 패널 머리다(2026-08-28).** 목록 안에 얹혀 있던
+  // 시절에는 상세를 열면 목록이 통째로 교체되면서 **검색이 함께 사라졌다** —
+  // PC에서만 「목록으로」를 눌러야 다른 곳을 찾을 수 있었다. 좁은 화면 오버레이
+  // 열에 「상세가 열려 있어도 남는다」고 적어 둔 근거가 여기에도 그대로
+  // 적용되는데 이쪽만 못 받고 있었다.
+  //
+  // **칩도 함께 남는 이유는 지도에 있다.** 칩과 검색어는 목록만이 아니라
+  // 마커도 거른다(`visible` → `markers`). 넓은 화면에서는 상세를 봐도 지도가
+  // 오른쪽에 살아 있으므로 두 조작 다 눈에 보이는 효과가 있다.
+  const wideSearchColumn = !wide ? null : (
+    <div className="flex flex-col gap-1 py-3">
+      {/* 검색과 테마 토글이 한 줄이다. 인파레이더는 상단바에 두지만 우리는
+          상단바를 걷어냈으므로(세로가 가장 귀한 자원) 이 줄이 그 자리다. */}
+      <div className="flex items-center gap-2 pr-4">
+        <div className="min-w-0 flex-1">
+          <SearchBar value={filters.query} onChange={filters.setQuery} />
         </div>
+        <LanguageToggle />
+        <ThemeToggle />
+      </div>
+      <FilterChips
+        counts={counts}
+        total={list.length}
+        value={filters.filter}
+        onChange={handleFilterChange}
+      />
+      {mapUnavailableReason !== null && (
+        <MapUnavailableNotice reason={mapUnavailableReason} />
       )}
+    </div>
+  )
+
+  // `pt-3`이 넓은 화면에만 붙는 것은 그때만 바로 위에 패널 머리(경계선)가
+  // 있기 때문이다. 좁은 화면에서는 시트 손잡이가 그 자리를 이미 띄운다.
+  const listPane = (
+    <div className={`flex flex-col gap-3 pb-6${wide ? ' pt-3' : ''}`}>
       {/* **재난문자가 목록보다 먼저다.** 서울 인파레이더도 같은 자리에 둔다.
           시트가 half로 시작하므로 이 줄은 열자마자 보이고, 경보가 없는 날은
           통째로 빠져 세로 공간을 한 픽셀도 안 쓴다.
@@ -1023,6 +1035,14 @@ export function HomeScreen() {
         onBack={showList}
         onSelectArea={openArea}
         onShowOnMap={showFacilityOnMap}
+        // **씨앗 심기.** 목록이 이미 121곳 등급을 받아 뒀으므로(`snapshots`),
+        // 상세가 왕복을 기다리는 동안 큰 글씨 한 줄은 바로 뜬다. 등급이 `null`인
+        // 행은 `undefined`로 떨어뜨린다 — 색 없는 큰 글씨가 잠깐 떴다가 바뀌느니
+        // 안 그리는 편이 낫다(`hotspotsSchema.ts`가 모르는 등급을 `null`로 준다).
+        seededCongestion={
+          snapshots.data?.find((row) => row.name === route.name)?.congestion ??
+          undefined
+        }
       />
     ) : (
       listPane
@@ -1046,6 +1066,26 @@ export function HomeScreen() {
         <div data-map-layer className="absolute inset-0">
           {mapPane}
         </div>
+
+        {/* **지도가 상태 표시줄 밑까지 가는 대가로 붙는 그림자다.**
+            `index.html`이 `black-translucent`라 iOS standalone에서는 시계·
+            배터리가 지도 위에 **흰 글씨로** 얹히는데, 밝은 테마의 구글 지도는
+            거의 흰 바탕이라 그대로 두면 글자가 사라진다. 두 줄은 한 쌍이고
+            근거는 그쪽 주석에 한 벌 있다.
+
+            **조건부로 그리지 않는다.** 상태 표시줄은 시트를 펼치든 명소를 열든
+            늘 거기 있으므로 오버레이 열(`data-overlay`)과 달리 사라질 이유가
+            없다. 높이가 `env(safe-area-inset-top)`이라 노치 없는 기기와
+            브라우저 탭에서는 0px이고, 그때는 아무것도 안 그린다.
+
+            `z-20`은 시트(`z-10`)보다 위다. 지금은 시트가 full에서도 64px에서
+            시작해 이 띠와 겹치지 않지만, 겹치게 되는 날에도 글자 뒤가 비면
+            안 되는 것은 마찬가지다. */}
+        <div
+          data-status-bar-scrim
+          aria-hidden
+          className="status-bar-scrim pointer-events-none absolute inset-x-0 top-0 z-20"
+        />
 
         {/* **전체로 펼치면 지도 위 조작부가 통째로 물러난다.** 이유가 조작부마다
             다르지만 결론이 같아서 한 조건으로 묶었다.
@@ -1170,6 +1210,11 @@ export function HomeScreen() {
           detent={sheetDetent}
           onDetentChange={setDetent}
           onDragRatioChange={setDragRatio}
+          // **여기 있어야 뷰가 갈려도 안 사라진다.** `children`은 목록 →
+          // 상세에서 통째로 교체되는 자리라, 검색을 거기 얹으면 상세를 열 때
+          // 함께 없어진다(2026-08-28 전까지 PC가 그랬다). 좁은 화면에서는
+          // `null`이고 같은 열이 지도 위에 따로 있다.
+          panelHeader={wideSearchColumn}
         >
           {/* 여백을 걸지 않는다 — 시트의 규칙이 아니라 뷰의 몫이다(BottomSheet
               주석 참조). 이 상자는 오직 포커스를 받기 위한 것이다.

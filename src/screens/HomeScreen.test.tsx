@@ -313,6 +313,59 @@ describe('HomeScreen', () => {
     expect(layer).toHaveClass('inset-0')
   })
 
+  // 지도가 상태 표시줄 밑까지 가는 대가다 — `index.html`이 `black-translucent`라
+  // 시계·배터리가 **흰 글씨로** 지도 위에 얹힌다. 밝은 테마의 지도는 거의 흰
+  // 바탕이라 그림자가 없으면 글자가 사라진다.
+  //
+  // 유틸리티가 실제로 무엇을 그리는지는 `app/viewport.test.ts`가 본다 — jsdom은
+  // CSS를 적용하지 않아서 여기서 잠글 수 있는 것은 클래스가 붙는다는 사실뿐이다.
+  it('상태 표시줄 자리에 그림자를 깐다', () => {
+    render(<HomeScreen />)
+    const scrim = document.querySelector('[data-status-bar-scrim]')
+    expect(scrim).toHaveClass('status-bar-scrim')
+    // 지도를 못 끌게 되면 안 된다 — 이 띠는 보이기만 하는 것이다.
+    expect(scrim).toHaveClass('pointer-events-none')
+  })
+
+  // **씨앗 심기.** 목록이 이미 121곳 등급을 받아 뒀으므로(`useAreaCongestion`),
+  // 상세를 열면 상세 응답을 **기다리지 않고** 큰 글씨가 뜬다. 2026-08-20부터
+  // 2026-08-28까지 조용히 죽어 있던 기능이고, 죽은 원인이 「뒤지는 캐시 키와
+  // 채우는 키가 갈렸다」였다 — 이제 캐시를 안 뒤지고 `HomeScreen`이 손에 든
+  // 값을 prop으로 내려주므로 갈릴 키 자체가 없다.
+  //
+  // **여기서만 잠글 수 있다.** `AreaDetailScreen`의 테스트는 prop을 직접
+  // 넘기므로 「홈이 그 값을 실제로 골라 넘기는가」는 못 본다.
+  it('상세를 열면 목록이 받아 둔 등급이 응답 없이 먼저 뜬다', async () => {
+    const { AREA_NAMES } = await import('../data/areas')
+    useAreaCongestion.mockReturnValue({
+      data: AREA_NAMES.map((name) =>
+        snapshotFor(name, name === '강남역' ? '붐빔' : '보통'),
+      ),
+      isPending: false,
+      isError: false,
+    } as unknown as UseQueryResult<readonly AreaCongestion[]>)
+    // 상세 응답은 아직 안 왔다.
+    useAreaSnapshot.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+    } as unknown as UseQueryResult<AreaSnapshot>)
+
+    render(<HomeScreen />)
+    await userEvent.click(areaButtons(/강남역/)[0])
+
+    expect(screen.getByRole('heading', { name: '지금은 붐벼요' })).toBeInTheDocument()
+  })
+
+  // 오버레이 열은 시트를 전체로 펼치면 물러나지만 이 띠는 안 물러난다.
+  // 상태 표시줄은 시트를 어떻게 두든 늘 거기 있기 때문이다.
+  it('시트를 전체로 펼쳐도 상태 표시줄 그림자는 남는다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetHandle()) // half → full
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(document.querySelector('[data-status-bar-scrim]')).not.toBeNull()
+  })
+
   // 지도가 살아 있는 상태에서 **목록 행**을 누르는 경로다. 다른 테스트들이
   // 쓰는 `areaButtons(...)[0]`은 DOM 순서상 전부 지도 마커라, 이 테스트가
   // 없으면 `AreaListItem` → 상세가 한 번도 검증되지 않는다.
@@ -1802,6 +1855,59 @@ describe('HomeScreen — 넓은 화면의 상세', () => {
 
     expect(document.querySelector('[data-map-layer]')).not.toHaveAttribute('inert')
     expect(screen.getByRole('button', { name: '내 주변' })).toBeInTheDocument()
+  })
+
+  // **PC에서 상세를 열면 검색이 사라졌다(2026-08-28에 고쳤다).** 검색·필터 열이
+  // `listPane` 안에 얹혀 있었고, 상세를 열면 그 목록이 통째로 교체되면서 함께
+  // 없어졌다 — 다른 곳을 찾으려면 「목록으로」를 먼저 눌러야 했다. 좁은
+  // 화면에서는 같은 열이 지도 위에 따로 떠 있어(`data-overlay`) 살아남는데,
+  // 넓은 화면만 그 혜택을 못 받고 있었다.
+  //
+  // **어느 쪽으로도 테스트가 없었다.** 「의도한 차이지만 확인되진 않았다」고
+  // STATE.md에 미결로 적혀 있던 항목이고, 이 테스트가 그 결정을 처음으로 잠근다.
+  it('상세를 열어도 검색과 필터가 남는다', async () => {
+    render(<HomeScreen />)
+    expect(screen.getByRole('searchbox')).toBeInTheDocument()
+
+    await userEvent.click(sheetRow(/강남역/))
+
+    // 상세가 실제로 열렸는지 먼저 본다 — 안 열렸는데 검색이 남은 것을
+    // 통과시키면 이 테스트는 아무것도 안 지킨다.
+    expect(screen.getByRole('button', { name: '뒤로' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: '필터' })).toBeInTheDocument()
+  })
+
+  // **스크롤 상자 바깥이어야 한다.** 안에 넣으면 스크롤과 함께 올라가 사라지고,
+  // 무엇보다 상세의 `sticky top-0`(앱 바)·`top-12`(탭 줄)가 이 열을 기준으로
+  // 다시 풀려 두 줄이 겹친다. 형제로 두면 기준이 그대로다.
+  //
+  // 기하는 jsdom이 못 잰다 — 잠글 수 있는 것은 「어느 상자에 속하는가」이고,
+  // 그것이 곧 sticky 기준을 정하는 사실이다(`data-map-layer`와 같은 처지).
+  it('검색 열이 스크롤 상자 밖에 있다', async () => {
+    render(<HomeScreen />)
+    await userEvent.click(sheetRow(/강남역/))
+
+    const search = screen.getByRole('searchbox')
+    expect(search.closest('[data-panel-header]')).not.toBeNull()
+    expect(search.closest('[data-sheet-content]')).toBeNull()
+    // 상세 쪽은 반대다 — 앱 바는 스크롤 상자 안에 있어야 sticky가 일한다.
+    expect(
+      screen.getByRole('button', { name: '뒤로' }).closest('[data-sheet-content]'),
+    ).not.toBeNull()
+  })
+})
+
+// 좁은 화면은 한 줄도 안 바뀌어야 한다. 검색 열이 패널 머리로 옮겨 간 것은
+// 넓은 화면 갈래뿐이고, 여기서는 같은 열이 여전히 지도 위 오버레이다 —
+// 두 곳에 다 그리면 검색창이 두 개가 된다.
+describe('HomeScreen — 좁은 화면에는 패널 머리가 없다', () => {
+  it('검색은 지도 위 오버레이 하나뿐이다', () => {
+    render(<HomeScreen />)
+
+    expect(document.querySelector('[data-panel-header]')).toBeNull()
+    expect(screen.getAllByRole('searchbox')).toHaveLength(1)
+    expect(screen.getByRole('searchbox').closest('[data-overlay]')).not.toBeNull()
   })
 })
 

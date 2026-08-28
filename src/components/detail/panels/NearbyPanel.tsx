@@ -42,7 +42,7 @@ export function NearbyPanel({ areaName, origin, onShowOnMap }: Props) {
             count={info.parking.length}
             note={freshnessNote(
               info.freshness,
-              t('잔여 면수는 최대 3시간 전 기준이에요'),
+              t('잔여 면수는 최대 1시간 전 기준이에요'),
             )}
           >
             {info.parking.length === 0 ? (
@@ -62,7 +62,7 @@ export function NearbyPanel({ areaName, origin, onShowOnMap }: Props) {
             count={info.bikes.length}
             note={freshnessNote(
               info.freshness,
-              t('거치 대수는 최대 3시간 전 기준이에요'),
+              t('거치 대수는 최대 1시간 전 기준이에요'),
             )}
           >
             {info.bikes.length === 0 ? (
@@ -88,7 +88,7 @@ export function NearbyPanel({ areaName, origin, onShowOnMap }: Props) {
               count={info.chargers.length}
               note={freshnessNote(
                 info.freshness,
-                t('충전기 상태는 최대 3시간 전 기준이에요'),
+                t('충전기 상태는 최대 1시간 전 기준이에요'),
               )}
             >
               <ChargerList

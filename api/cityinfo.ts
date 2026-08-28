@@ -3,10 +3,14 @@ import { isAllowedAreaName } from './_lib/allowed-areas.js'
 import { setCacheHeaders, setCorsHeaders, setNoStoreHeader } from './_lib/http.js'
 import { cityInfoCacheTtlSeconds, fetchArea } from './_lib/seoul.js'
 
-// 「더보기」(도시정보) 화면용. citydata.ts와 구조가 같고 서비스 이름만 다르다 —
-// `citydata`는 주차장·따릉이·날씨·문화행사·재난문자를 한 응답에 담아준다.
-// 엔드포인트를 나눈 이유는 캐시다. 응답 크기가 인구만 받는 쪽의 몇 배라, 같은
-// 경로에 얹으면 인구만 필요한 목록 화면까지 큰 응답을 CDN에서 받게 된다.
+// 상세 화면용. `citydata`는 인구·주차장·따릉이·날씨·문화행사·재난문자를 한
+// 응답에 담아준다 — 상세는 이 응답 하나로 혼잡도까지 함께 읽는다(근거는
+// populationEnvelope.ts). **이 파일이 공식 서울 OpenAPI(citydata)를 부르는
+// 유일한 프록시다.** 예전에는 목록 화면(api/citydata-bulk.ts)도 같은 API를
+// 인구만 주는 좁은 서비스(citydata_ppltn)로 따로 불렀는데, 그 프록시는
+// 2026-08-27에 지웠다(Task 7) — 목록은 인증키가 필요 없는 /api/hotspots로
+// 완전히 갈아탔다(api/hotspots.ts 참고). 그래서 지금은 응답 크기를 나눠 볼
+// 상대가 없다.
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
@@ -24,7 +28,7 @@ export default async function handler(
     return
   }
 
-  // 허용 목록 검사는 citydata.ts와 같은 이유로 필수다 — 임의 문자열이 그대로
+  // 허용 목록 검사는 다른 엔드포인트와 같은 이유로 필수다 — 임의 문자열이 그대로
   // 통과하면 문자열 수만큼 캐시 키와 서울 API 호출이 늘어난다(하루 1,000회 한도).
   if (!isAllowedAreaName(area)) {
     res.status(400).json({ error: '알 수 없는 명소입니다.' })
@@ -32,8 +36,8 @@ export default async function handler(
   }
 
   try {
-    const payload = await fetchArea(area, 'citydata')
-    // 혼잡도와 다른 TTL을 쓴다 — 근거는 cityInfoCacheTtlSeconds의 주석(쿼터 배분).
+    const payload = await fetchArea(area)
+    // 혼잡도와 같은 값이다. 손잡이로 따로 조일 수는 있다 — 근거는 cityInfoCacheTtlSeconds의 주석.
     setCacheHeaders(res, cityInfoCacheTtlSeconds())
     res.status(200).json(payload)
   } catch (error) {

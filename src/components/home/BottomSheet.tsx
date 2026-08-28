@@ -32,6 +32,23 @@ interface Props {
    * 덮인 시트는 눈에만 안 보일 뿐 탭 키와 스크린리더에는 그대로 남는다.
    */
   readonly inert?: boolean
+  /**
+   * 패널 맨 위에 **스크롤 밖으로** 고정할 것. 넓은 화면에서만 그린다.
+   *
+   * **`children` 안에 넣으면 안 되는 것들이 여기 온다.** `children`은 뷰가
+   * 갈릴 때 통째로 교체되므로(목록 → 상세), 거기 얹은 것은 뷰와 함께 사라진다.
+   * 검색·필터가 정확히 그래서 PC 상세에서 없어졌다 — 좁은 화면에서는 그 열이
+   * 지도 위에 따로 떠 있어 살아남는데, 넓은 화면에서는 목록 안에 얹혀 있었다.
+   *
+   * **스크롤 상자 바깥이라는 것이 핵심이다.** 안에 넣으면 스크롤과 함께
+   * 올라가 사라지고, 무엇보다 상세의 `sticky top-0`(앱 바)·`top-12`(탭 줄)가
+   * 이것을 기준으로 다시 풀린다. 형제로 두면 스크롤 상자의 위치만 내려갈 뿐
+   * 그 안의 기준은 그대로다 — sticky 쪽은 한 줄도 안 고쳐도 된다.
+   *
+   * 좁은 화면에서는 **무시한다.** 거기서는 같은 열이 이미 지도 위에 있고
+   * (`HomeScreen`의 `data-overlay`), 시트 안에까지 두면 두 겹이 된다.
+   */
+  readonly panelHeader?: ReactNode
   readonly children: ReactNode
 }
 
@@ -90,6 +107,7 @@ export function BottomSheet({
   onDetentChange,
   onDragRatioChange,
   inert = false,
+  panelHeader = null,
   children,
 }: Props) {
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -254,6 +272,21 @@ export function BottomSheet({
         inert={inert}
         className="absolute inset-y-0 left-0 z-10 flex w-100 flex-col border-r border-outline-variant bg-surface-container-lowest shadow-floating"
       >
+        {/* 스크롤 상자의 **형제**다 — 근거는 `panelHeader`의 주석에 한 벌 있다.
+            요약하면: `children`에 얹으면 뷰가 갈릴 때 함께 사라지고, 스크롤
+            상자 **안**에 넣으면 상세의 sticky 기준이 이것으로 옮겨 간다.
+
+            `flex-none`을 붙이지 않아도 되지만 붙인다. 이 상자가 줄어들 이유가
+            없는데 형제가 `flex-1`이라, 안 적어 두면 내용이 길어질 때 어느
+            쪽이 양보하는지가 읽는 사람에게 안 보인다. */}
+        {panelHeader !== null && (
+          <div
+            data-panel-header
+            className="flex-none border-b border-outline-variant"
+          >
+            {panelHeader}
+          </div>
+        )}
         <div
           data-sheet-content
           className="min-h-0 flex-1 scroll-y-only overscroll-contain"

@@ -17,6 +17,18 @@ describe('buildMockCityInfo', () => {
     expect(info.weather).not.toBeNull()
   })
 
+  it('citydata 봉투에 LIVE_PPLTN_STTS를 함께 싣는다', () => {
+    // 합쳐진 뒤에는 이 payload 하나가 혼잡도 파서와 도시정보 파서를 다 먹인다.
+    const payload = buildMockCityInfo('광화문·덕수궁', NOW) as {
+      CITYDATA: { LIVE_PPLTN_STTS?: readonly Record<string, unknown>[] }
+    }
+    const rows = payload.CITYDATA.LIVE_PPLTN_STTS
+    expect(rows).toHaveLength(1)
+    expect(rows?.[0].AREA_NM).toBe('광화문·덕수궁')
+    expect(rows?.[0].PPLTN_TIME).toEqual(expect.any(String))
+    expect(rows?.[0].FCST_PPLTN).toEqual(expect.any(Array))
+  })
+
   it('카탈로그의 장소 코드를 그대로 준다', () => {
     // 실제 응답은 등록된 코드를 돌려준다. 목업이 다른 값을 주면 코드 대조나
     // React key로 쓸 때 목업에서만 동작이 갈린다.

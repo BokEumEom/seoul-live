@@ -178,11 +178,11 @@ describe('CctvSection', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  // 다른 절은 최대 3시간 묵은 값이라 기준 시각을 적지만, 여기서 같은 문구를
+  // 다른 절은 최대 1시간 묵은 값이라 기준 시각을 적지만, 여기서 같은 문구를
   // 쓰면 영상이 묵은 것처럼 읽힌다.
   it('묵은 값이라고 적지 않는다', () => {
     renderSection([camera('광화문', 'https://a/1.m3u8')])
 
-    expect(screen.queryByText(/최대 3시간/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/최대 1시간/)).not.toBeInTheDocument()
   })
 })

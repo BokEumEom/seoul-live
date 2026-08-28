@@ -4,7 +4,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CityInfo } from '../../domain/cityInfo'
 import { DETAIL_TABS } from '../../domain/detailTabs'
-import type { AreaCongestion, AreaSnapshot } from '../../domain/types'
+import type { AreaCongestion, AreaSnapshot, CongestionLevel } from '../../domain/types'
 import { reset } from '../../hooks/favoritesStore'
 import {
   makeAccident,
@@ -188,15 +188,25 @@ function before(first: Element, second: Element): boolean {
 // 그래서 기준점을 카탈로그에서 읽고, 거기서의 **차이**만 여기서 정한다.
 const GANGNAM = findAreaByName('강남역')!
 
-function renderDetail(areaName = '강남역') {
+function renderDetail(areaName = '강남역', seeded?: CongestionLevel) {
   return render(
     <AreaDetailScreen
       areaName={areaName}
       onBack={() => undefined}
       onSelectArea={() => undefined}
       onShowOnMap={() => undefined}
+      seededCongestion={seeded}
     />,
   )
+}
+
+/** 상세 응답이 아직 안 온 상태로 둔다. 씨앗만 있는 화면을 재는 데 쓴다. */
+function pending() {
+  useAreaSnapshot.mockReturnValue({
+    data: undefined,
+    isPending: true,
+    isError: false,
+  } as UseQueryResult<AreaSnapshot>)
 }
 
 /** 그 탭으로 옮긴다. 탭 밖의 값은 DOM에 아예 없으므로 먼저 눌러야 한다. */
@@ -259,6 +269,7 @@ describe('AreaDetailScreen — 셸', () => {
         onBack={onBack}
         onSelectArea={() => undefined}
         onShowOnMap={() => undefined}
+        seededCongestion={undefined}
       />,
     )
     await userEvent.click(screen.getByRole('button', { name: '뒤로' }))
@@ -431,16 +442,72 @@ describe('AreaDetailScreen — 히어로', () => {
 
   // **자리를 미리 안 잡는다.** 히어로가 스켈레톤으로 자라면 도착할 때 바로
   // 아래 sticky 탭 줄이 통째로 밀린다.
-  it('혼잡도가 오기 전에는 문장 블록이 없다', () => {
-    useAreaSnapshot.mockReturnValue({
-      data: undefined,
-      isPending: true,
-      isError: false,
-    } as UseQueryResult<AreaSnapshot>)
+  it('혼잡도도 씨앗도 없으면 문장 블록이 없다', () => {
+    pending()
     renderDetail()
     expect(screen.queryByText(/지금은/)).toBeNull()
     // 카탈로그만으로 서는 줄은 그대로 있어야 한다 — 화면이 통째로 비지 않는다.
     expect(screen.getByText('역·번화가')).toBeInTheDocument()
+  })
+})
+
+// **씨앗 심기 — 2026-08-20부터 2026-08-28까지 조용히 죽어 있었다.**
+// 목록이 이미 121곳 등급을 받아 두는데(`useAreaCongestion`) 상세는 그걸 놔두고
+// 왕복을 기다렸다. 이제 `HomeScreen`이 그 등급을 prop으로 내려준다.
+//
+// **캐시를 키로 뒤지지 않는 것이 이번 설계의 요점이다.** 죽은 원인이 「뒤지는
+// 키와 채우는 키가 갈렸다」였는데, 갈릴 키가 없으면 그 사고가 다시 날 수 없다.
+describe('AreaDetailScreen — 씨앗 심기', () => {
+  it('응답 전이라도 씨앗이 있으면 큰 글씨가 먼저 뜬다', () => {
+    pending()
+    renderDetail('강남역', '붐빔')
+    expect(screen.getByRole('heading', { name: '지금은 붐벼요' })).toBeInTheDocument()
+  })
+
+  // **없는 값을 그럴듯한 틀린 값으로 떨어뜨리지 않는다.** 인원수를 0으로,
+  // 시각을 빈 문자열로 채우면 「0명」이 잠깐 떴다가 진짜 값으로 바뀐다.
+  it('씨앗만 있을 때 인원수·안내·기준 시각은 안 그린다', () => {
+    pending()
+    renderDetail('강남역', '붐빔')
+    expect(screen.queryByText(/명$/)).toBeNull()
+    expect(screen.queryByText(/기준/)).toBeNull()
+    expect(screen.queryByText('조금 붐벼요.')).toBeNull()
+  })
+
+  // 씨앗은 5분 갱신이고 snapshot은 관측 시각을 달고 온다 — 도착하면 그쪽이 권위다.
+  it('응답이 오면 씨앗이 아니라 응답의 등급을 말한다', () => {
+    // 목은 「약간 붐빔」을 준다. 씨앗은 일부러 다른 값으로 둔다.
+    renderDetail('강남역', '여유')
+    expect(
+      screen.getByRole('heading', { name: '지금은 약간 붐벼요' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '지금은 여유로워요' })).toBeNull()
+    // 나머지 세 줄도 함께 채워진다.
+    expect(screen.getByText('74,000~76,000명')).toBeInTheDocument()
+    expect(screen.getByText('11:00 기준')).toBeInTheDocument()
+  })
+})
+
+// **히어로는 요약 탭에서만 그려진다**(2026-08-27, 사용자 요청 — 「장소 상세
+// 헤더 부분에 내용은 요약에서만 보여지고 나머지 탭에서는 안보여도 될 것 같다」).
+// 위 describe의 테스트들은 전부 기본 탭(요약)에서 재므로 이 사실을 암묵적으로만
+// 잠근다 — 여기서는 탭을 옮겨서 명시적으로 잠근다.
+describe('AreaDetailScreen — 히어로는 요약에서만', () => {
+  it('요약 탭에 있다', () => {
+    renderDetail()
+    expect(
+      screen.getByRole('heading', { name: '지금은 약간 붐벼요' }),
+    ).toBeInTheDocument()
+  })
+
+  it('다른 탭으로 옮기면 사라진다', async () => {
+    renderDetail()
+    await openTab('인구')
+    // h3 「지금은 약간 붐벼요」는 히어로에만 있다 — `PopulationLead`·
+    // `CongestionCard`는 이 문장을 헤딩으로 다시 쓰지 않는다.
+    expect(screen.queryByRole('heading', { name: '지금은 약간 붐벼요' })).toBeNull()
+    // 카테고리·거리 줄도 히어로의 몫이라 함께 사라져야 한다.
+    expect(screen.queryByText('역·번화가')).toBeNull()
   })
 })
 
@@ -671,9 +738,10 @@ describe('AreaDetailScreen — 인구 탭', () => {
     renderDetail()
     await openTab('인구')
 
-    // 히어로와 「평소 대비」 줄이 같은 숫자를 적는다 — 시안도 `_2`와 `_3`에
-    // 둘 다 적고, 여기서는 그 되풀이가 의도임을 함께 잠근다.
-    expect(screen.getAllByText(/74,000~76,000명/)).toHaveLength(2)
+    // **히어로는 요약 탭에서만 그려진다**(2026-08-27) — 인구 탭에는 이
+    // 탭 자신의 「평소 대비」 줄(`PopulationLead`)이 인원수를 한 번만 적는다.
+    // 예전에는 히어로가 탭과 무관하게 늘 떠 있어 같은 숫자가 둘이었다.
+    expect(screen.getAllByText(/74,000~76,000명/)).toHaveLength(1)
     // 시안 `_3`의 성별·연령 카드와 우리가 하나 더 갖는 거주 카드.
     for (const name of ['성별 비율', '연령대별 비율', '거주 비율']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
@@ -774,13 +842,15 @@ describe('AreaDetailScreen — 인구 탭', () => {
     expect(screen.getByRole('heading', { name: '24시간 인파 흐름' })).toBeInTheDocument()
   })
 
-  // **히어로가 이미 말한 것을 카드가 또 말하면 안 된다.** 히어로는 탭과 무관하게
-  // 늘 위에 있으므로, 안내 문구와 기준 시각이 카드에도 있으면 한 화면에 같은
-  // 말이 두 번 적힌다.
-  it('안내 문구와 기준 시각을 카드가 되풀이하지 않는다', async () => {
+  // **히어로가 요약 탭에서만 그려지므로**(2026-08-27, 사용자 요청) 인구 탭은
+  // 더 이상 히어로를 등에 업지 못한다. 안내 문구는 애초에 인구 탭이 다루는
+  // 값이 아니라서 그대로 없고, 기준 시각은 이 탭이 스스로 적어야 한다 —
+  // 그러지 않으면 「지금」이라고 주장하는 셈이 된다(`PopulationPanel` 주석).
+  it('안내 문구는 없고 기준 시각은 스스로 적는다', async () => {
     renderDetail()
     await openTab('인구')
-    expect(screen.getAllByText('조금 붐벼요.')).toHaveLength(1)
+    expect(screen.queryByText('조금 붐벼요.')).toBeNull()
+    expect(screen.getAllByText('11:00 기준')).toHaveLength(1)
     expect(screen.queryByText(/마지막 업데이트/)).toBeNull()
   })
 
@@ -881,6 +951,7 @@ describe('AreaDetailScreen — 교통 탭', () => {
         onBack={() => undefined}
         onSelectArea={() => undefined}
         onShowOnMap={onShowOnMap}
+        seededCongestion={undefined}
       />,
     )
     await openTab('교통')
@@ -917,8 +988,8 @@ describe('AreaDetailScreen — 교통 탭', () => {
   })
 
   it('지하철 도착은 언제 기준인지 같이 적는다', async () => {
-    // 「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다. 도시정보를 3시간
-    // 캐시로 받기로 한 이상(쿼터), 기준을 안 적으면 3시간 전 열차를 지금 오는
+    // 「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다. 도시정보를 1시간
+    // 캐시로 받기로 한 이상(쿼터), 기준을 안 적으면 1시간 전 열차를 지금 오는
     // 것처럼 보여주게 된다.
     useCityInfo.mockReturnValue(
       ok({
@@ -940,7 +1011,7 @@ describe('AreaDetailScreen — 교통 탭', () => {
     const section = screen
       .getByRole('heading', { name: '지하철 도착' })
       .closest('section') as HTMLElement
-    expect(within(section).getByText(/최대 3시간 전 기준/)).toBeInTheDocument()
+    expect(within(section).getByText(/최대 1시간 전 기준/)).toBeInTheDocument()
   })
 
   // 도로 정보가 하나도 없으면 제목만 있는 빈 절이 남으면 안 된다.
@@ -973,6 +1044,7 @@ describe('AreaDetailScreen — 주변 탭', () => {
         onBack={() => undefined}
         onSelectArea={() => undefined}
         onShowOnMap={onShowOnMap}
+        seededCongestion={undefined}
       />,
     )
     await openTab('주변')
@@ -1214,6 +1286,7 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
         onBack={() => undefined}
         onSelectArea={() => undefined}
         onShowOnMap={onShowOnMap}
+        seededCongestion={undefined}
       />,
     )
     await openTab('행사')
@@ -1309,6 +1382,7 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
         onBack={() => undefined}
         onSelectArea={() => undefined}
         onShowOnMap={onShowOnMap}
+        seededCongestion={undefined}
       />,
     )
     await openTab('안전')
@@ -1331,9 +1405,9 @@ describe('AreaDetailScreen — 날씨·행사·안전 탭', () => {
   })
 })
 
-// 도시정보는 하루 1,000회 한도 때문에 프록시가 최대 3시간 캐시한다. 그래서
+// 도시정보는 하루 1,000회 한도 때문에 프록시가 최대 1시간 캐시한다. 그래서
 // 「잔여 568면」이 한참 전 값일 수 있는데, 예전에는 세 절이 **방금 받은
-// 값에도** 「최대 3시간 전 기준이에요」라고 적었다 — 절반은 거짓말이었다.
+// 값에도** 「최대 1시간 전 기준이에요」라고 적었다 — 절반은 거짓말이었다.
 describe('AreaDetailScreen — 값이 언제 기준인지', () => {
   const RECEIVED_AT = Date.parse('2026-08-18T09:00:00Z')
 
@@ -1381,10 +1455,10 @@ describe('AreaDetailScreen — 값이 언제 기준인지', () => {
 
   // **모를 때가 문제의 핵심이다.** 프록시가 `Age`를 CORS로 열어 주기 전이거나
   // CDN을 안 거친 응답이면 나이를 알 수 없는데, 그때 「방금」이라 적으면 최대
-  // 3시간 묵은 값이 갓 받은 값으로 둔갑해 **고치기 전보다 나빠진다.**
+  // 1시간 묵은 값이 갓 받은 값으로 둔갑해 **고치기 전보다 나빠진다.**
   it('나이를 모르면 예전처럼 뭉뚱그려 말한다', async () => {
     await renderWithAge(null)
-    expect(parkingNote()).toBe('잔여 면수는 최대 3시간 전 기준이에요')
+    expect(parkingNote()).toBe('잔여 면수는 최대 1시간 전 기준이에요')
   })
 
   afterEach(() => {

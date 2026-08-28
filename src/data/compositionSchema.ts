@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { PopulationComposition } from '../domain/composition'
+import { populationRows } from './populationEnvelope'
 
 // cityInfoSchema.ts와 같은 방향의 관대한 파싱이다. schema.ts의 엄격한
 // areaSchema에 이 필드들을 얹으면, 비율 하나가 비어 오는 순간 혼잡도까지
@@ -7,10 +8,8 @@ import type { PopulationComposition } from '../domain/composition'
 //
 // **이 파일의 함수는 절대 예외를 던지지 않는다.**
 
-/** payload 안의 원본 명소 객체만 꺼낸다. areaSchema와 달리 키를 버리지 않는다. */
-const looseListSchema = z.object({
-  'SeoulRtd.citydata_ppltn': z.array(z.unknown()),
-})
+/** 원본 명소 객체만 꺼낸다. areaSchema와 달리 키를 버리지 않는다. */
+const looseRowsSchema = z.array(z.unknown())
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -68,12 +67,12 @@ export function parseComposition(
   payload: unknown,
   expectedName: string,
 ): PopulationComposition | null {
-  const parsed = looseListSchema.safeParse(payload)
+  const parsed = looseRowsSchema.safeParse(populationRows(payload))
   if (!parsed.success) {
     return null
   }
 
-  const area = parsed.data['SeoulRtd.citydata_ppltn'].find(
+  const area = parsed.data.find(
     (item) => isRecord(item) && item.AREA_NM === expectedName,
   )
   if (!isRecord(area)) {

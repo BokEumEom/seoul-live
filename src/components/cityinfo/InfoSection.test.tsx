@@ -40,14 +40,14 @@ describe('InfoSection', () => {
   })
 
   it('기준 시각을 넘기면 값 옆에 적는다', () => {
-    // **이 테스트가 정직성을 잠근다.** 도시정보는 3시간 캐시로 받는데 기준을
-    // 안 적으면 「4분 후 도착」이 3시간 묵은 값일 때도 지금인 것처럼 읽힌다.
+    // **이 테스트가 정직성을 잠근다.** 도시정보는 1시간 캐시로 받는데 기준을
+    // 안 적으면 「4분 후 도착」이 1시간 묵은 값일 때도 지금인 것처럼 읽힌다.
     render(
-      <InfoSection title="지하철 도착" note="최대 3시간 전 기준이에요">
+      <InfoSection title="지하철 도착" note="최대 1시간 전 기준이에요">
         <p>내용</p>
       </InfoSection>,
     )
 
-    expect(screen.getByText('최대 3시간 전 기준이에요')).toBeInTheDocument()
+    expect(screen.getByText('최대 1시간 전 기준이에요')).toBeInTheDocument()
   })
 })

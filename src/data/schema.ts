@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { parseCongestionLevel } from '../domain/congestion'
 import type { AreaSnapshot, CongestionLevel, Forecast } from '../domain/types'
 import { parseComposition } from './compositionSchema'
+import { populationRows } from './populationEnvelope'
 
 /** 요청한 명소와 응답에 담긴 명소가 다를 때. `sample` 인증키는 지역명과 무관하게
  * 항상 광화문·덕수궁을 돌려주므로, 이 대조가 없으면 아무도 모르게 엉뚱한 데이터가 흐른다. */
@@ -127,21 +128,12 @@ const areaSchema = z
     path: ['AREA_PPLTN_MAX'],
   })
 
-const responseSchema = z.object({
-  'SeoulRtd.citydata_ppltn': z.array(areaSchema).min(1),
-})
-
-// api/citydata-bulk.ts가 돌려주는 봉투 모양. 값 하나하나(각 명소의 원본 응답)는
-// 여기서 검증하지 않는다 — 그건 parseCitydataResponse의 몫이다(파싱은 schema.ts
-// 안에서도 한 곳에만 두고, 이 스키마는 "봉투가 봉투답게 생겼는지"만 본다).
-// z.unknown()으로 값을 열어두는 이유: api/는 원본을 정규화하지 않고 그대로
-// 넘기므로, 성공 값과 실패 봉투(RESULT.CODE 등)가 같은 자리에 섞여 들어올 수 있다.
-const bulkEnvelopeSchema = z.object({
-  results: z.record(z.string(), z.unknown()),
-})
+// **봉투가 아니라 행 배열을 검증한다.** 어느 서비스에서 왔는지는
+// `populationEnvelope.ts`가 흡수하므로 여기는 알맹이만 본다.
+const rowsSchema = z.array(areaSchema).min(1)
 
 // 서울 API가 데이터 대신 에러를 돌려줄 때의 봉투. 성공 응답에도 부수적으로
-// `RESULT`가 실려 있을 수 있으므로, 이 스키마는 `responseSchema` 파싱이 실패했을 때만
+// `RESULT`가 실려 있을 수 있으므로, 이 스키마는 `rowsSchema` 파싱이 실패했을 때만
 // 진단용으로 시도한다 — 그래야 성공 응답을 오탐하지 않는다.
 const errorEnvelopeSchema = z.object({
   RESULT: z.object({
@@ -177,7 +169,7 @@ function toForecast(raw: z.infer<typeof forecastSchema>): Forecast {
 }
 
 export function parseCitydataResponse(payload: unknown, expectedName: string): AreaSnapshot {
-  const result = responseSchema.safeParse(payload)
+  const result = rowsSchema.safeParse(populationRows(payload))
   if (!result.success) {
     const apiError = seoulApiErrorFrom(payload)
     if (apiError !== null) {
@@ -186,7 +178,7 @@ export function parseCitydataResponse(payload: unknown, expectedName: string): A
     throw result.error
   }
 
-  const areas = result.data['SeoulRtd.citydata_ppltn']
+  const areas = result.data
   const area = areas.find((entry) => entry.AREA_NM === expectedName)
   if (area === undefined) {
     throw new AreaNameMismatchError(
@@ -219,17 +211,4 @@ export function parseCitydataResponse(payload: unknown, expectedName: string): A
     // 원본 payload에서 따로 읽는다. 실패해도 null일 뿐 위 값들은 그대로다.
     composition: parseComposition(payload, expectedName),
   }
-}
-
-// api/citydata-bulk.ts 응답의 봉투만 검증한다. `payload`가 `null`이거나 객체가
-// 아니거나 `results`가 없으면 ZodError를 던진다 — client.ts가 검증 없이
-// `(payload as {...}).results`로 캐스트하면, 응답 본문이 JSON `null`일 때
-// "Cannot read properties of null" 같은 번역되지 않은 원본 TypeError가 그대로
-// 사용자에게 샐 수 있었다. 이제 다른 형태가 와도 항상 ZodError 하나로 실패한다.
-export function parseBulkEnvelope(payload: unknown): Readonly<Record<string, unknown>> {
-  const result = bulkEnvelopeSchema.safeParse(payload)
-  if (!result.success) {
-    throw result.error
-  }
-  return result.data.results
 }

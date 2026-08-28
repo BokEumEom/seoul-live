@@ -162,9 +162,9 @@ describe('buildNearbyList', () => {
 
   it('카탈로그 순서를 바꾸지 않는다', () => {
     // 카탈로그는 모듈 전역 상수라 제자리 정렬하면 그 순서가 앱 전체에 남는다.
-    // 사용자 위치에 따라 순서가 바뀌면 useAreaSnapshots의 queryKey(['areas', names])가
-    // 매번 달라져 클라이언트 캐시가 미스난다. 서버 쪽 CDN 캐시 키는 client.ts가
-    // 이름을 중복 제거·정렬해 보내므로 여기 영향을 받지 않는다.
+    // HomeScreen과 TodayScreen 둘 다 AREA_CATALOG를 그대로 넘겨 「전체」 목록을
+    // 그리므로, 여기서 정렬해 버리면 이 훅과 무관한 화면의 렌더 순서까지 매
+    // 렌더마다 바뀐다.
     const before = AREA_CATALOG.map((entry) => entry.name)
 
     buildNearbyList({

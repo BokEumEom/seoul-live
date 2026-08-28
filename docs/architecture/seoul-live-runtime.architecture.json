@@ -1,0 +1,396 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Seoul Live — Runtime Architecture",
+    "locale": "en",
+    "output": "seoul-live-runtime.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/BokEumEom/seoul-live",
+      "revision": "cf626ba7635098384ba36f94768104ba2cdec4fd"
+    },
+    "views": [
+      {
+        "id": "primary-path",
+        "label": "Primary path",
+        "focus": [
+          "toss",
+          "spa",
+          "client",
+          "cdn",
+          "fnRtd",
+          "rtd"
+        ],
+        "note": "Opening the app to painting 121 congestion markers, without spending one quota call."
+      },
+      {
+        "id": "quota-path",
+        "label": "Keyed detail path",
+        "focus": [
+          "cdn",
+          "gate",
+          "fnSeoul",
+          "openapi"
+        ],
+        "note": "The only branch that spends the 1,000 calls/day budget, and the gate guarding it."
+      },
+      {
+        "id": "trust",
+        "label": "Trust boundaries",
+        "focus": [
+          "spa",
+          "client",
+          "gate",
+          "fnSeoul",
+          "openapi"
+        ],
+        "note": "Where the API key lives, and why no client path reaches Seoul OpenAPI directly."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "toss",
+      "type": "external",
+      "label": "Toss App Shell",
+      "sublabel": "Apps in Toss WebView",
+      "tag": "bridge APIs",
+      "pos": [
+        60,
+        50
+      ],
+      "size": [
+        200,
+        78
+      ],
+      "sources": [
+        {
+          "path": "src/platform/location.ts",
+          "label": "Device bridge"
+        }
+      ]
+    },
+    {
+      "id": "gmaps",
+      "type": "external",
+      "label": "Google Maps JS",
+      "sublabel": "tiles + markers",
+      "tag": "browser SDK",
+      "pos": [
+        330,
+        50
+      ],
+      "size": [
+        200,
+        78
+      ],
+      "sources": [
+        {
+          "path": "src/platform/googleMaps.ts",
+          "label": "Key + map id"
+        }
+      ]
+    },
+    {
+      "id": "spa",
+      "type": "frontend",
+      "label": "React 19 SPA",
+      "sublabel": "screens + domain",
+      "tag": "TanStack Query",
+      "brand": "react",
+      "pos": [
+        60,
+        240
+      ],
+      "size": [
+        200,
+        78
+      ],
+      "sources": [
+        {
+          "path": "src/screens/HomeScreen.tsx",
+          "label": "Map + list shell"
+        }
+      ]
+    },
+    {
+      "id": "client",
+      "type": "frontend",
+      "label": "API Client",
+      "sublabel": "fetch + Zod parsers",
+      "pos": [
+        60,
+        430
+      ],
+      "size": [
+        200,
+        78
+      ],
+      "sources": [
+        {
+          "path": "src/data/client.ts",
+          "label": "Timeouts, Age, parse"
+        }
+      ]
+    },
+    {
+      "id": "cdn",
+      "type": "cloud",
+      "label": "Vercel CDN",
+      "sublabel": "shared cache 5m–3h",
+      "brand": "vercel",
+      "pos": [
+        400,
+        240
+      ],
+      "size": [
+        200,
+        78
+      ],
+      "sources": [
+        {
+          "path": "api/_lib/http.ts",
+          "label": "CORS + cache headers"
+        }
+      ]
+    },
+    {
+      "id": "gate",
+      "type": "security",
+      "label": "Request Gate",
+      "sublabel": "areas.ts allowlist",
+      "tag": "redacts API key",
+      "pos": [
+        400,
+        430
+      ],
+      "size": [
+        200,
+        78
+      ],
+      "sources": [
+        {
+          "path": "api/_lib/allowed-areas.ts",
+          "label": "Area allowlist"
+        },
+        {
+          "path": "api/_lib/seoul.ts",
+          "label": "redactApiKey"
+        }
+      ]
+    },
+    {
+      "id": "fnRtd",
+      "type": "backend",
+      "label": "Keyless Relay",
+      "sublabel": "hotspots · cctv",
+      "tag": "off the quota",
+      "pos": [
+        730,
+        240
+      ],
+      "size": [
+        200,
+        78
+      ],
+      "sources": [
+        {
+          "path": "api/hotspots.ts",
+          "label": "All 121 areas"
+        },
+        {
+          "path": "api/_lib/seoulRtd.ts",
+          "label": "Session bootstrap"
+        }
+      ]
+    },
+    {
+      "id": "fnSeoul",
+      "type": "backend",
+      "label": "Keyed Relay",
+      "sublabel": "citydata · cityinfo",
+      "tag": "spends quota",
+      "pos": [
+        730,
+        430
+      ],
+      "size": [
+        200,
+        78
+      ],
+      "sources": [
+        {
+          "path": "api/citydata.ts",
+          "label": "Detail congestion"
+        },
+        {
+          "path": "api/cityinfo.ts",
+          "label": "City info, 3h TTL"
+        }
+      ]
+    },
+    {
+      "id": "rtd",
+      "type": "external",
+      "label": "SeoulRtd",
+      "sublabel": "data.seoul.go.kr",
+      "tag": "undocumented",
+      "pos": [
+        1060,
+        240
+      ],
+      "size": [
+        200,
+        78
+      ]
+    },
+    {
+      "id": "openapi",
+      "type": "external",
+      "label": "Seoul OpenAPI",
+      "sublabel": "http :8088 plaintext",
+      "tag": "1,000 calls/day",
+      "pos": [
+        1060,
+        430
+      ],
+      "size": [
+        200,
+        78
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "Toss WebView — HTTPS only, no secrets",
+      "wraps": [
+        "spa",
+        "client"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Vercel Functions — SEOUL_API_KEY stays here",
+      "wraps": [
+        "cdn",
+        "gate",
+        "fnRtd",
+        "fnSeoul"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Seoul city upstreams",
+      "wraps": [
+        "rtd",
+        "openapi"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "host-loads-app",
+      "from": "toss",
+      "to": "spa",
+      "label": "hosts the bundle",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 30
+    },
+    {
+      "id": "congestion-query",
+      "from": "spa",
+      "to": "client",
+      "label": "congestion query",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 30
+    },
+    {
+      "id": "proxy-call",
+      "from": "client",
+      "to": "cdn",
+      "label": "GET /api/hotspots",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cache-miss",
+      "from": "cdn",
+      "to": "fnRtd",
+      "label": "miss · 5 min TTL",
+      "variant": "emphasis"
+    },
+    {
+      "id": "bulk-fetch",
+      "from": "fnRtd",
+      "to": "rtd",
+      "label": "121 areas · 1 call",
+      "variant": "emphasis"
+    },
+    {
+      "id": "detail-request",
+      "from": "cdn",
+      "to": "gate",
+      "label": "detail requests",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 30
+    },
+    {
+      "id": "guarded-call",
+      "from": "gate",
+      "to": "fnSeoul",
+      "label": "allowlist · key",
+      "variant": "security"
+    },
+    {
+      "id": "quota-call",
+      "from": "fnSeoul",
+      "to": "openapi",
+      "label": "1 call per area",
+      "variant": "dashed"
+    },
+    {
+      "id": "map-tiles",
+      "from": "spa",
+      "to": "gmaps",
+      "label": "map tiles"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Primary path — costs 0 quota calls",
+      "items": [
+        "Toss loads the Vite bundle over HTTPS; there is no server-rendered tier.",
+        "HomeScreen calls useAreaCongestion(); TanStack Query answers it for 5 minutes.",
+        "/api/hotspots takes no parameters, so all users share one CDN cache key.",
+        "SeoulRtd returns all 121 areas in one unauthenticated call."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Trust boundaries",
+      "items": [
+        "openapi.seoul.go.kr is plaintext HTTP :8088 only, so an HTTPS page cannot call it.",
+        "The proxy is not an optimisation — it is the only route that exists.",
+        "SEOUL_API_KEY stays in Vercel env; redactApiKey() scrubs it from thrown errors.",
+        "Area names are checked against the areas.ts catalog before any upstream call."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Quota budget and failure posture",
+      "items": [
+        "Detail costs 24 congestion + 8 cityinfo calls/day per area a user opens.",
+        "~30 distinct detail opens/day reaches ~960 of 1,000 — unguarded today.",
+        "hotspots fails as 502; cctv and ppltn fail as empty — that upstream is undocumented.",
+        "Failures set no-store; Age is CORS-exposed so the UI can admit staleness."
+      ]
+    }
+  ]
+}

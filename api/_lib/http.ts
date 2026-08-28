@@ -15,7 +15,7 @@ export function setCorsHeaders(res: VercelResponse): void {
   res.setHeader('Access-Control-Expose-Headers', 'Age')
 }
 
-// 정상 응답에만 쓴다. citydata.ts와 citydata-bulk.ts가 각자 캐시 헤더를 따로
+// 정상 응답에만 쓴다. cityinfo.ts와 citydata-bulk.ts가 각자 캐시 헤더를 따로
 // 만들다가 실패 응답에도 이 TTL이 붙는 결함이 났었다 — 공용 함수 하나로 합쳐서
 // 같은 실수가 두 곳에서 따로 나는 걸 막는다.
 export function setCacheHeaders(res: VercelResponse, ttlSeconds: number): void {

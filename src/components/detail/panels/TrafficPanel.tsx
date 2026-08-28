@@ -82,8 +82,8 @@ export function TrafficPanel({ areaName, origin, onShowOnMap }: Props) {
               icon="subway"
               count={info.subway.length}
               // **「4분 후 도착」은 상대 시각이라 캐시를 견디지 못한다.** 기준을
-              // 안 적으면 3시간 전 열차를 지금 오는 것처럼 보여준다.
-              note={freshnessNote(info.freshness, t('최대 3시간 전 기준이에요'))}
+              // 안 적으면 1시간 전 열차를 지금 오는 것처럼 보여준다.
+              note={freshnessNote(info.freshness, t('최대 1시간 전 기준이에요'))}
             >
               {/* 승하차가 도착보다 위다. 「지금 사람이 모이는 중인가」가 이 절의
                   머리이고, 어느 열차가 몇 분 뒤인지는 그다음 질문이다. */}

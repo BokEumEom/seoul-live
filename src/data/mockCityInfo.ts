@@ -3,9 +3,9 @@ import {
   type SubwayFacilityKind,
 } from '../domain/subwayFacility'
 import { findAreaByName } from './areas'
-import { formatSeoulTime, hashAreaName, mixSeed } from './mock'
+import { buildMockPopulationRows, formatSeoulTime, hashAreaName, mixSeed } from './mock'
 
-// 「더보기」(도시정보) 화면용 목업. buildMockSnapshot과 같은 씨앗을 쓰되 salt를
+// 「더보기」(도시정보) 화면용 목업. buildMockPopulationRows와 같은 씨앗을 쓰되 salt를
 // 달리해 섹션끼리 상관이 생기지 않게 한다.
 //
 // 일부러 "비어 있는" 명소를 만든다. 모든 명소에 주차장·따릉이·문화행사를 채워주면
@@ -742,6 +742,11 @@ export function buildMockCityInfo(areaName: string, now: Date = new Date()): unk
     CITYDATA: {
       AREA_NM: areaName,
       AREA_CD: findAreaByName(areaName)?.code ?? 'POI000',
+      // **혼잡도 파서와 도시정보 파서가 이 payload 하나를 나눠 먹는다.**
+      // 실제 `citydata` 응답도 인구 블록을 여기 담아 준다 — 2026-08-27에
+      // 명소 3곳에서 `citydata_ppltn`과 대조해 6필드와 예보 12칸이 전부
+      // 일치하는 것을 확인했다(스펙 참고).
+      LIVE_PPLTN_STTS: buildMockPopulationRows(areaName, now),
       WEATHER_STTS: [buildWeather(seed, now)],
       ROAD_TRAFFIC_STTS: buildRoadTraffic(areaName, seed, now),
       ACDNT_CNTRL_STTS: buildAccidents(areaName, seed, now),
