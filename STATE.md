@@ -420,11 +420,10 @@ src/tokens.test.ts                                              정본(DESIGN.md
 src/components/ common(Icon, CongestionBadge, ToneBadge, toneClass, ErrorState,
                        SkeletonCard = SkeletonList(카드) + SkeletonRows(목록 행))
                 home(BottomSheet, SearchBar, FilterChips, SummaryStrip,
-                     AreaDetail, AreaHero, CongestionCard, PopulationCard,
-                     ActionButtons, CityInfoPanel, NearbyCalmSection,
-                     WeeklyPatternCard)
-                list(AreaList, AreaListItem, CategoryFilter, LocationNotice, SortSegmented)
-                map(CongestionMarker, MapUnavailableNotice, RecenterButton)
+                     CongestionCard, PopulationCard, ActionButtons,
+                     NearbyCalmSection, WeeklyPatternCard)
+                list(AreaList, AreaListItem, CategoryFilter, LocationNotice)
+                map(CongestionMarker, MapUnavailableNotice, MapFabStack)
                 forecast(ForecastChart)
                 cityinfo(AlertBanner, WeatherCard, ParkingList, BikeList, EventList,
                          InfoSection, RoadTrafficCard, AccidentList)
@@ -432,6 +431,8 @@ src/components/ common(Icon, CongestionBadge, ToneBadge, toneClass, ErrorState,
 src/screens/    HomeScreen(화면 전체), TodayScreen(시트 안 뷰)
 api/            _lib/(seoul, seoulRtd, allowed-areas, http), cityinfo, hotspots, cctv, ppltn
 ```
+
+**이 트리는 완전한 목록이 아니다.** 2026-08-13 셸 개편 직후의 스냅샷에서 죽은 이름 몇 개만 걷어낸 것이다 — 그 뒤 두 주 동안 명소 상세가 탭 일곱 개(`src/components/detail/`, 이 트리에 아예 없다)로 갈리고 도메인·데이터·cityinfo 쪽에 파일이 각각 스무 개 안팎 더 생겼다. 여기 남은 이름들은 **여전히 존재한다는 것만** 확인했다 — 무엇이 어디 있는지 찾으려면 `ls src/domain` 같은 명령을 직접 돌려라. 전체를 다시 세는 것은 이 손질의 범위 밖이다.
 
 **`src/components/layout/`은 없다.** `BottomTabBar`가 Task 10에서, `TopAppBar`가 같은 태스크에서 사라져 디렉터리가 통째로 비었다. 여기에 헤더·탭바를 다시 만들지 마라 — 근거는 아래 「셸은 `<main className="h-dvh">` 하나다」.
 
